@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['..\\copiar_jdl_pendrive.py'],
+    ['..\\scripts\\copiar_jdl_pendrive.py'],
     pathex=[],
     binaries=[],
     datas=[('C:\\Users\\lmalerbo\\Documents\\GitHub\\base-op\\assets\\icone_jdl.ico', 'assets')],

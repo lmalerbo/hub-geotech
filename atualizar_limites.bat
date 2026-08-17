@@ -9,12 +9,12 @@ echo ============================================
 echo.
 
 echo [1/3] Formatando shapefile em base\input ...
-python format_oc_boundaries.py config.yaml
+python scripts\format_oc_boundaries.py config.yaml
 if errorlevel 1 goto :erro
 
 echo.
 echo [2/3] Simulando sincronizacao com o Operations Center (dry-run, nao grava nada ainda) ...
-python sync_boundaries_api.py config.yaml
+python scripts\sync_boundaries_api.py config.yaml
 if errorlevel 1 goto :erro
 
 echo.
@@ -23,7 +23,7 @@ if /i not "%CONFIRMAR%"=="S" goto :cancelado
 
 echo.
 echo [3/3] Gravando limites no Operations Center ...
-python sync_boundaries_api.py config.yaml --live
+python scripts\sync_boundaries_api.py config.yaml --live
 if errorlevel 1 goto :erro
 
 echo.
