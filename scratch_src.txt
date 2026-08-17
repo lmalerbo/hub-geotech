@@ -1,0 +1,19 @@
+    def import_entities(
+        self,
+        entities: Iterable[DXFEntity],
+        target_layout: Optional[BaseLayout] = None,
+    ) -> None:
+        """Import all `entities` into `target_layout` or the modelspace of the
+        target document, if `target_layout` is ``None``.
+
+        Args:
+            entities: Iterable of DXF entities
+            target_layout: any layout (modelspace, paperspace or block) from
+                the target document
+
+        Raises:
+            DXFStructureError: `target_layout` is not a layout of target document
+
+        """
+        for entity in entities:
+            self.import_entity(entity, target_layout)

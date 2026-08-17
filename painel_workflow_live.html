@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel do Workflow — Colheitabilidade (ao vivo)</title>
+<style>
+  :root{
+    --bg:#171a15;
+    --surface:#1e2219;
+    --surface-2:#262b20;
+    --line:#333827;
+    --ink:#eef0e6;
+    --ink-2:#b9c0ab;
+    --ink-3:#7c8570;
+    --accent:#d99a4e;
+    --accent-ink:#1a1509;
+    --good:#5a9c5f;
+    --warn:#d9a441;
+    --bad:#c9584d;
+    --neutral:#4a5140;
+    --focus:#e8c48a;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f3f1e8; --surface:#fffdf6; --surface-2:#ece7d6; --line:#d8d2ba;
+      --ink:#211f16; --ink-2:#54503e; --ink-3:#847d63; --accent:#b5722a;
+      --accent-ink:#fffaf0; --good:#3f7a44; --warn:#a8752b; --bad:#a8392f;
+      --neutral:#b8b39c; --focus:#8a5418;
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);}
+  body{
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:28px 32px 60px;
+    max-width:1320px;
+    margin:0 auto;
+  }
+  .mono{font-family:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;}
+
+  header{margin-bottom:26px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px;}
+  header .eyebrow{
+    font-family:ui-monospace,"SF Mono",Consolas,monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 6px;
+  }
+  header h1{margin:0; font-size:24px; font-weight:700; letter-spacing:-.01em;}
+  header p{margin:6px 0 0; font-size:13px; color:var(--ink-3); line-height:1.5; max-width:640px;}
+
+  #status-live{
+    display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-3);
+    white-space:nowrap; padding-top:4px;
+  }
+  #status-live .dot{
+    width:8px; height:8px; border-radius:50%; background:var(--good);
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  #status-live.offline .dot{background:var(--bad); animation:none;}
+  @keyframes pulse{
+    0%,100%{opacity:1; box-shadow:0 0 0 0 color-mix(in srgb, var(--good) 45%, transparent);}
+    50%{opacity:.6; box-shadow:0 0 0 5px transparent;}
+  }
+  @media (prefers-reduced-motion: reduce){ #status-live .dot{animation:none;} }
+
+  .stat-row{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+    margin:22px 0 30px;
+  }
+  .stat{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px;
+  }
+  .stat .n{
+    font-family:ui-monospace,"SF Mono",Consolas,monospace;
+    font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;
+    color:var(--ink); display:block;
+  }
+  .stat .l{font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em;}
+  .stat.bad .n{color:var(--bad);}
+  .stat.warn .n{color:var(--warn);}
+  .stat.good .n{color:var(--good);}
+
+  section{margin-bottom:34px;}
+  section h2{
+    font-family:ui-monospace,"SF Mono",Consolas,monospace;
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-3); display:flex; align-items:center; gap:10px;
+    margin:0 0 14px;
+  }
+  section h2::after{content:""; flex:1; height:1px; background:var(--line);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  thead th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-3); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  tbody td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tbody tr:hover{background:var(--surface-2);}
+  tbody tr:last-child td{border-bottom:none;}
+
+  .pill{
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600;
+  }
+  .pill.ok{background:color-mix(in srgb, var(--good) 22%, transparent); color:var(--good);}
+  .pill.erro{background:color-mix(in srgb, var(--bad) 22%, transparent); color:var(--bad);}
+  .pill.pendente{background:color-mix(in srgb, var(--neutral) 30%, transparent); color:var(--ink-3);}
+
+  .celula-etapa{
+    width:26px; height:26px; border-radius:6px; display:inline-flex;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    cursor:default;
+  }
+  .celula-etapa.ok{background:color-mix(in srgb, var(--good) 30%, transparent); color:var(--good);}
+  .celula-etapa.erro{background:color-mix(in srgb, var(--bad) 30%, transparent); color:var(--bad);}
+  .celula-etapa.pendente{background:var(--surface-2); color:var(--ink-3); border:1px dashed var(--line);}
+
+  .empty{color:var(--ink-3); font-size:13px; padding:18px; text-align:center;}
+
+  .card-revisao{
+    background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--warn);
+    border-radius:8px; padding:12px 16px; margin-bottom:8px;
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+  }
+  .card-revisao .info{font-size:13px;}
+  .card-revisao .info b{color:var(--ink); font-family:ui-monospace,monospace;}
+  .card-revisao .metricas{font-size:11.5px; color:var(--ink-3); margin-top:2px;}
+  .card-revisao .metricas b{color:var(--warn);}
+
+  select, input[type="text"]{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:7px;
+    color:var(--ink); font:inherit; font-size:12.5px; padding:6px 10px;
+  }
+  .filtros{display:flex; gap:8px; margin-bottom:12px;}
+
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <p class="eyebrow">Usina da Pedra · Pipeline de Colheitabilidade</p>
+    <h1>Painel do Workflow</h1>
+    <p>Status por fazenda, fila de revisão manual e histórico de execuções do pipeline (DWG → DXF → classificação → mapa → qualidade → Gen4/GS3_2630/AgData/AgGPS).</p>
+  </div>
+  <div id="status-live"><span class="dot"></span><span id="status-live-texto">conectando...</span></div>
+</header>
+
+<div class="stat-row" id="stat-row"></div>
+
+<section>
+  <h2>Fila de revisão manual</h2>
+  <div id="fila-revisao"></div>
+</section>
+
+<section>
+  <h2>Status por fazenda</h2>
+  <div class="filtros">
+    <input type="text" id="filtro-busca" placeholder="Buscar código ou nome...">
+    <select id="filtro-status">
+      <option value="">Todos os status</option>
+      <option value="erro">Com erro</option>
+      <option value="incompleto">Incompleto</option>
+      <option value="completo">Completo</option>
+    </select>
+  </div>
+  <div style="overflow-x:auto;">
+    <table id="tabela-status">
+      <thead><tr id="cabecalho-etapas"></tr></thead>
+      <tbody id="corpo-status"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Histórico de execuções</h2>
+  <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+    <table>
+      <thead><tr><th>Quando</th><th>Fazenda</th><th>Tipo</th><th>Etapa</th><th>Status</th><th>Detalhes</th></tr></thead>
+      <tbody id="corpo-historico"></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+let EVENTOS = [];
+const ETAPAS = ["dxf","classificacao","mapa","qualidade","gen4","gs3_2630","agdata","aggps"];
+const NOMES_ETAPA = {
+  dxf: "DXF", classificacao: "Classif.", mapa: "Mapa", qualidade: "Qualid.",
+  gen4: "Gen4", gs3_2630: "GS3", agdata: "AgData", aggps: "AgGPS",
+};
+
+function chave(ev){ return `${ev.codigo}|${ev.tipo}`; }
+
+function agregarFazendas(eventos){
+  const mapa = new Map();
+  for(const ev of eventos){
+    const k = chave(ev);
+    if(!mapa.has(k)){
+      mapa.set(k, {codigo: ev.codigo, nome: ev.nome, tipo: ev.tipo, etapas: {}, ultimaAtualizacao: ev.ts});
+    }
+    const f = mapa.get(k);
+    f.etapas[ev.etapa] = ev; // ultimo evento de cada etapa vence (eventos em ordem cronologica)
+    if(ev.ts > f.ultimaAtualizacao) f.ultimaAtualizacao = ev.ts;
+  }
+  return [...mapa.values()].sort((a,b)=> a.codigo.localeCompare(b.codigo) || a.tipo.localeCompare(b.tipo));
+}
+
+function formatarData(iso){
+  const d = new Date(iso);
+  return d.toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit"});
+}
+
+function renderStats(fazendas){
+  const total = fazendas.length;
+  const comErro = fazendas.filter(f => Object.values(f.etapas).some(e => e.status === "erro")).length;
+  const precisaRevisao = fazendas.filter(f => f.etapas.qualidade?.detalhes?.precisa_revisao).length;
+  const completas = fazendas.filter(f => ETAPAS.every(et => f.etapas[et]?.status === "ok")).length;
+
+  const stats = [
+    {n: total, l: "Fazenda/tipo rastreados", cls: ""},
+    {n: completas, l: "Pipeline completo", cls: "good"},
+    {n: precisaRevisao, l: "Fila de revisão", cls: "warn"},
+    {n: comErro, l: "Com erro em alguma etapa", cls: "bad"},
+  ];
+  document.getElementById("stat-row").innerHTML = stats.map(s =>
+    `<div class="stat ${s.cls}"><span class="n">${s.n}</span><span class="l">${s.l}</span></div>`
+  ).join("");
+}
+
+function renderFilaRevisao(fazendas){
+  const fila = fazendas.filter(f => f.etapas.qualidade?.detalhes?.precisa_revisao);
+  const el = document.getElementById("fila-revisao");
+  if(fila.length === 0){
+    el.innerHTML = '<div class="empty">Nenhuma fazenda sinalizada pra revisão manual no momento.</div>';
+    return;
+  }
+  el.innerHTML = fila.map(f => {
+    const d = f.etapas.qualidade.detalhes;
+    return `<div class="card-revisao">
+      <div class="info">
+        <div><b>${f.codigo}</b> — ${f.nome || f.codigo} <span class="mono" style="color:var(--ink-3)">(${f.tipo})</span></div>
+        <div class="metricas">compacidade=<b>${d.compacidade_media}</b> · desequilíbrio=<b>${d.desequilibrio_cv_pct}%</b> · custo de corte=<b>${d.custo_corte_km}km</b></div>
+      </div>
+      <div class="mono" style="font-size:11px;color:var(--ink-3);">${formatarData(f.etapas.qualidade.ts)}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderTabelaStatus(fazendas){
+  document.getElementById("cabecalho-etapas").innerHTML =
+    '<th>Fazenda</th><th>Tipo</th>' + ETAPAS.map(e => `<th>${NOMES_ETAPA[e]}</th>`).join("") + '<th>Atualizado</th>';
+
+  const busca = document.getElementById("filtro-busca").value.toLowerCase();
+  const statusFiltro = document.getElementById("filtro-status").value;
+
+  const linhas = fazendas.filter(f => {
+    if(busca && !(`${f.codigo} ${f.nome}`.toLowerCase().includes(busca))) return false;
+    const temErro = Object.values(f.etapas).some(e => e.status === "erro");
+    const completo = ETAPAS.every(et => f.etapas[et]?.status === "ok");
+    if(statusFiltro === "erro" && !temErro) return false;
+    if(statusFiltro === "completo" && !completo) return false;
+    if(statusFiltro === "incompleto" && (completo || temErro)) return false;
+    return true;
+  });
+
+  document.getElementById("corpo-status").innerHTML = linhas.length === 0
+    ? `<tr><td colspan="${ETAPAS.length+3}" class="empty">Nenhuma fazenda encontrada.</td></tr>`
+    : linhas.map(f => {
+        const celulas = ETAPAS.map(et => {
+          const ev = f.etapas[et];
+          if(!ev) return '<td><span class="celula-etapa pendente">·</span></td>';
+          const simbolo = ev.status === "ok" ? "✓" : "!";
+          const titulo = ev.status === "erro" ? (ev.detalhes?.erro || "erro") : "ok";
+          return `<td><span class="celula-etapa ${ev.status}" title="${titulo.replace(/"/g,'&quot;')}">${simbolo}</span></td>`;
+        }).join("");
+        return `<tr>
+          <td class="mono"><b>${f.codigo}</b> ${f.nome && f.nome !== f.codigo ? "· "+f.nome : ""}</td>
+          <td class="mono">${f.tipo}</td>
+          ${celulas}
+          <td class="mono" style="color:var(--ink-3);font-size:11.5px;">${formatarData(f.ultimaAtualizacao)}</td>
+        </tr>`;
+      }).join("");
+}
+
+function renderHistorico(eventos){
+  const ordenado = [...eventos].sort((a,b)=> b.ts.localeCompare(a.ts)).slice(0, 500);
+  document.getElementById("corpo-historico").innerHTML = ordenado.length === 0
+    ? '<tr><td colspan="6" class="empty">Nenhum evento registrado ainda.</td></tr>'
+    : ordenado.map(ev => {
+        const detalhe = ev.status === "erro"
+          ? (ev.detalhes?.erro || "")
+          : Object.entries(ev.detalhes || {}).map(([k,v]) => `${k}=${v}`).join(", ");
+        return `<tr>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-3);">${formatarData(ev.ts)}</td>
+          <td class="mono"><b>${ev.codigo}</b> ${ev.nome && ev.nome !== ev.codigo ? "· "+ev.nome : ""}</td>
+          <td class="mono">${ev.tipo}</td>
+          <td>${NOMES_ETAPA[ev.etapa] || ev.etapa}</td>
+          <td><span class="pill ${ev.status}">${ev.status === "ok" ? "✓ ok" : "✗ erro"}</span></td>
+          <td style="font-size:11.5px;color:var(--ink-3);">${detalhe}</td>
+        </tr>`;
+      }).join("");
+}
+
+function render(){
+  const fazendas = agregarFazendas(EVENTOS);
+  renderStats(fazendas);
+  renderFilaRevisao(fazendas);
+  renderTabelaStatus(fazendas);
+  renderHistorico(EVENTOS);
+}
+
+document.getElementById("filtro-busca").addEventListener("input", render);
+document.getElementById("filtro-status").addEventListener("change", render);
+
+const statusLiveEl = document.getElementById("status-live");
+const statusLiveTexto = document.getElementById("status-live-texto");
+
+async function carregarEventos(){
+  try {
+    const resp = await fetch("/api/eventos", {cache: "no-store"});
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    EVENTOS = await resp.json();
+    render();
+    statusLiveEl.classList.remove("offline");
+    statusLiveTexto.textContent = "ao vivo · atualizado " + new Date().toLocaleTimeString("pt-BR");
+  } catch(e) {
+    statusLiveEl.classList.add("offline");
+    statusLiveTexto.textContent = "servidor offline (tentando de novo...)";
+  }
+}
+
+carregarEventos();
+setInterval(carregarEventos, 3000);
+</script>
+</body>
+</html>
