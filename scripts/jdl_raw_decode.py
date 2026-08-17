@@ -44,7 +44,10 @@ def decode_message(buf, pos, end, indent=0, out=None):
             data = buf[pos:pos+length]
             pos += length
             # heurística: tenta como submensagem, senão como string/bytes
-            printable = all(32 <= c < 127 or c in (9, 10, 13) for c in data) and len(data) > 0
+            # (estrito: sem tab/newline/CR -- esses bytes de controle são exatamente
+            # os primeiros bytes de tags protobuf comuns tipo 0x0a, e permiti-los aqui
+            # fazia submensagens reais serem tratadas como string e nunca abertas)
+            printable = all(32 <= c < 127 for c in data) and len(data) > 0
             if printable:
                 out.append(f"{'  '*indent}[{tag_start}] field {field_no} (bytes, len={length}) = STRING {data!r}")
             else:

@@ -2,6 +2,9 @@
 .env
 .deere_tokens.json
 
+# estado local do harness (nao é projeto)
+.claude/
+
 # python cache
 __pycache__/
 *.pyc

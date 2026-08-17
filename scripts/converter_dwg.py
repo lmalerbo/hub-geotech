@@ -41,6 +41,29 @@ def converter_pasta(pasta_entrada: str, pasta_saida: str, recursivo: bool = Fals
         raise RuntimeError(f"ODAFileConverter falhou (codigo {resultado.returncode}): {resultado.stderr}")
 
 
+def converter_dxf_para_dwg(dxf_path: str, pasta_saida: str, exe_path: Path = EXE_PADRAO) -> Path:
+    """Converte um unico .dxf pra .dwg (sentido inverso de converter_arquivo)."""
+    import shutil
+    import tempfile
+
+    dxf_path = Path(dxf_path)
+    Path(pasta_saida).mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_in = Path(tmp) / dxf_path.name
+        shutil.copy2(dxf_path, tmp_in)
+        resultado = subprocess.run(
+            [str(exe_path), tmp, pasta_saida, VERSAO_SAIDA, "DWG", "0", "1"],
+            capture_output=True, text=True, timeout=300,
+        )
+        if resultado.returncode != 0:
+            raise RuntimeError(f"ODAFileConverter falhou (codigo {resultado.returncode}): {resultado.stderr}")
+
+    dwg_path = Path(pasta_saida) / (dxf_path.stem + ".dwg")
+    if not dwg_path.exists():
+        raise RuntimeError(f"Conversao nao gerou {dwg_path}.")
+    return dwg_path
+
+
 def converter_arquivo(dwg_path: str, pasta_saida: str, exe_path: Path = EXE_PADRAO) -> Path:
     """Converte um unico .dwg -- copia pra pasta temp isolada pra nao converter
     junto outros arquivos que possam estar na mesma pasta de origem."""
