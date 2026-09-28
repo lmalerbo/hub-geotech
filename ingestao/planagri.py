@@ -1,6 +1,8 @@
-"""Importa a demanda de Plantio do PLANAGRI para hub.talhao_plantio.
+"""Importa a demanda de Plantio e de Preparo do PLANAGRI para
+hub.talhao_plantio e hub.talhao_preparo.
 
-Entram só os talhões liberados (status PLAN. = LIB), como no sistema atual.
+Entram só os talhões liberados (status PLAN. = LIB), como nos sistemas
+atuais — Plantio e Preparo sempre leram a mesma demanda do PLANAGRI.
 Grava só o que o PLANAGRI é dono: o talhão estar na demanda e o mês de
 plantio. Mapeamento e projeto não são tocados em talhão que já existe
 (talhão novo nasce com os valores padrão da tabela). O tipo de conservação
@@ -82,6 +84,9 @@ def main():
     with Execucao(hub, 'planagri') as execucao:
         execucao.linhas_lidas = sum(status.values())
         hub.upsert('talhao_plantio', validos, 'layer')
+        # No Preparo o andamento é por fazenda (etapas); aqui basta o talhão
+        # estar na demanda.
+        hub.upsert('talhao_preparo', [{'layer': t['layer']} for t in validos], 'layer')
         execucao.linhas_gravadas = len(validos)
         execucao.detalhes = {'fora_da_base_fazendas': fora}
     print('Gravado no Hub.')
