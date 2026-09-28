@@ -468,6 +468,10 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .tal-wrap{padding:6px 12px 14px;max-height:340px;overflow-y:auto}
 .aviso-leitura{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t3);background:var(--s2);border-radius:8px;padding:9px 12px}
 .aviso-leitura .ico{font-size:16px}
+.retro{margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);font-size:11.5px;color:var(--t3);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.btn-retro{font-family:'Poppins',sans-serif;font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;transition:border-color var(--tb),color var(--tb)}
+.btn-retro:hover{border-color:var(--t2);color:var(--t1)}
+.btn-acao:disabled{cursor:wait}
 .flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1142,7 +1146,36 @@ function rDet(){
       <thead><tr><th>Talhão</th><th>Área</th><th>Conservação</th><th>Mês plantio</th><th>Mapeamento</th><th>Etapa</th></tr></thead>
       <tbody>${linhas}</tbody>
     </table></div>
-    <div class="acao-w"><div class="aviso-leitura"><span class="ico">visibility</span>Versão de consulta: avançar etapa e anexar arquivos chegam na próxima versão.</div></div>`;
+    <div class="acao-w">${acaoPlantio(f)}</div>`;
+}
+
+// Ações do Plantio: mesmo fluxo do sistema atual, sempre pra fazenda inteira.
+function acaoPlantio(f){
+  if(!podeEditar('plantio'))
+    return`<div class="aviso-leitura"><span class="ico">visibility</span>Seu acesso ao Plantio é só de consulta.</div>`;
+  const cod=Number(f.cod);
+  const qtd=i=>f.tals.filter(t=>t.e===i).length;
+  const botao=(fn,cor,ico,txt)=>`<button class="btn-acao" style="background:${cor};box-shadow:0 6px 20px ${cor}44"
+    onclick="rpcAcao(this,'${fn}',{p_cod_faz:${cod}},'${txt}')"><span class="ico">${ico}</span>${txt}</button>`;
+  const info=txt=>`<div class="hint-file"><span class="ico" style="font-size:14px">info</span>${txt}</div>`;
+  let html='<div class="acao-head"><span class="acao-lbl">Próxima ação</span></div>';
+  if(f.e===0)      html+=info(`${qtd(0)} talhão(ões) aguardando mapeamento. Registre quando o mapa estiver aprovado.`)
+                        +botao('plantio_mapeamento_concluido',ET[1].c,'check','Mapeamento concluído');
+  else if(f.e===1) html+=info(`${qtd(1)} talhão(ões) prontos para iniciar.`)
+                        +botao('plantio_iniciar',ET[2].c,'play_arrow','Iniciar projeto');
+  else if(f.e===2) html+=info('Projeto em andamento. Ao concluir, anexe a exportação (.zip) — o envio de arquivos chega na próxima versão.');
+  else if(f.e===3) html+=info('Aguardando o Mapa de Plantio do outro setor. Ao receber, anexe o .pdf — o envio de arquivos chega na próxima versão.');
+  else html='<div class="done-b" style="background:rgba(22,167,107,.1);color:var(--plantio)"><span class="ico">check_circle</span>Fazenda concluída</div>';
+  const maisAvancada=Math.max(...f.tals.map(t=>t.e));
+  if(maisAvancada>0)
+    html+=`<div class="retro">↩ Retroceder para:${ET.slice(0,maisAvancada).map(s=>
+      `<button class="btn-retro" onclick="retroPlantio(this,${cod},'${s.l}')">${s.l}</button>`).join('')}</div>`;
+  return html;
+}
+function retroPlantio(btn,cod,para){
+  const aviso=para==='Aguard. Map.'?'\n\nIsso também volta o mapeamento para "Não".':'';
+  if(!confirm(`Retroceder os talhões desta fazenda para "${para}"?${aviso}`))return;
+  rpcAcao(btn,'plantio_retroceder',{p_cod_faz:cod,p_para:para},`Retrocedido para ${para}`);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1197,11 +1230,7 @@ function rDetP(){
       <div class="slbl" style="${act?`color:${c};font-weight:700`:''}">${s.l}</div>
     </div>`;
   }).join('');
-  const acao=(done4
-    ?`<div class="done-b" style="background:rgba(160,120,64,.1);color:var(--preparo);margin-bottom:10px"><span class="ico">check_circle</span>Fazenda concluída</div>`
-    :`<div class="acao-head"><span class="acao-lbl">Etapa atual: ${ET_P[curStage].l}</span></div>`)
-    +(f.obs?`<div class="hint-file"><span class="ico" style="font-size:14px">comment</span>${esc(f.obs)}</div>`:'')
-    +`<div class="aviso-leitura"><span class="ico">visibility</span>Versão de consulta: concluir etapas e anexar arquivos chegam na próxima versão.</div>`;
+  const acao=acaoPreparo(f,curStage,done4);
   const audit=ET_P.map((s,i)=>f.ok[i]?`<div class="prep-audit-row">
     <div class="pad" style="background:var(--plantio)"></div>${s.l} — <strong>${f.usr[i]}</strong> — ${f.dt[i]}
   </div>`:'').filter(Boolean).join('');
@@ -1221,6 +1250,42 @@ function rDetP(){
     </div></div>
     <div class="acao-w">${acao}</div>
     ${audit?`<div class="prep-audit"><div class="prep-audit-t">Histórico</div>${audit}</div>`:''}`;
+}
+
+// Ações do Preparo: etapas em sequência, por fazenda.
+function acaoPreparo(f,cur,done4){
+  const cod=Number(f.cod);
+  const obs=f.obs?`<div class="hint-file"><span class="ico" style="font-size:14px">comment</span>${esc(f.obs)}</div>`:'';
+  if(!podeEditar('preparo'))
+    return obs+`<div class="aviso-leitura"><span class="ico">visibility</span>Seu acesso ao Preparo é só de consulta.</div>`;
+  const info=txt=>`<div class="hint-file"><span class="ico" style="font-size:14px">info</span>${txt}</div>`;
+  const concluir=(ordem,txt,extra='')=>`<button class="btn-acao" style="background:var(--preparo);box-shadow:0 6px 20px #a0784044"
+    onclick="concluirPreparo(this,${cod},${ordem})"><span class="ico">check</span>${txt}</button>${extra}`;
+  let html;
+  if(done4) html=`<div class="done-b" style="background:rgba(160,120,64,.1);color:var(--preparo);margin-bottom:10px"><span class="ico">check_circle</span>Fazenda concluída</div>`+obs;
+  else {
+    html=`<div class="acao-head"><span class="acao-lbl">Próxima ação — ${ET_P[cur].l}</span></div>`;
+    if(cur===0)      html+=info('Confirme que a fazenda foi identificada no ortomosaico processado.')+concluir(1,'Confirmar identificação');
+    else if(cur===1) html+=info('Anexe o Mapa de Escoamento (.pdf) — o envio de arquivos chega na próxima versão.');
+    else if(cur===2) html+=`<textarea class="prep-obs-area" id="obs-prep" placeholder="Observações recebidas (opcional)…">${esc(f.obs)}</textarea>`
+                          +concluir(3,'Confirmar observações');
+    else             html+=obs+info('Anexe os 3 arquivos: Projeto (.dwg), Exportação (.zip) e Mapa de Sistematização (.pdf) — o envio de arquivos chega na próxima versão.');
+  }
+  const feitas=ET_P.map((s,i)=>f.ok[i]?i:-1).filter(i=>i>=0);
+  if(feitas.length)
+    html+=`<div class="retro">↩ Reabrir:${feitas.map(i=>
+      `<button class="btn-retro" onclick="reabrirPreparo(this,${cod},${i+1},'${ET_P[i].l}')">${ET_P[i].l}</button>`).join('')}</div>`;
+  return html;
+}
+function concluirPreparo(btn,cod,ordem){
+  const args={p_cod_faz:cod,p_ordem:ordem};
+  const ta=document.getElementById('obs-prep');
+  if(ordem===3&&ta)args.p_observacao=ta.value;
+  rpcAcao(btn,'preparo_concluir_etapa',args,`${ET_P[ordem-1].l} concluída`);
+}
+function reabrirPreparo(btn,cod,ordem,nome){
+  if(!confirm(`Reabrir "${nome}"? As etapas seguintes também voltam a ficar pendentes.`))return;
+  rpcAcao(btn,'preparo_reabrir_etapa',{p_cod_faz:cod,p_ordem:ordem},`${nome} reaberta`);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1986,6 +2051,31 @@ async function carregarDados(){
     }
     FZ_P.push(f);
   });
+}
+
+// Mesma regra do banco (hub.pode_editar): o botão só aparece pra quem pode;
+// quem decide de verdade é a função no banco.
+function podeEditar(mod){return !!EU&&(EU.admin||(EU.role==='editor'&&EU.perms[mod]));}
+
+// Executa uma ação (função do banco), avisa o resultado e recarrega os dados.
+async function rpcAcao(btn,fn,args,msgOk){
+  if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  const {data,error}=await sb.rpc(fn,args);
+  if(error){
+    showToast('Não foi possível: '+error.message);
+    if(btn){btn.disabled=false;btn.style.opacity='';}
+    return;
+  }
+  showToast(msgOk+(typeof data==='number'?` — ${data} talhão(ões)`:''));
+  await recarregar();
+}
+async function recarregar(){
+  const codP=ativa!==null?FZ[ativa]?.cod:null;
+  const codPr=ativaP!==null?FZ_P[ativaP]?.cod:null;
+  await carregarDados();
+  ativa=codP?FZ.findIndex(f=>f.cod===codP):null;   if(ativa===-1)ativa=null;
+  ativaP=codPr?FZ_P.findIndex(f=>f.cod===codPr):null; if(ativaP===-1)ativaP=null;
+  rDash();rFaz();rDet();rFazP();rDetP();
 }
 
 // Nome/papel na barra e módulos visíveis conforme o acesso de quem entrou.
