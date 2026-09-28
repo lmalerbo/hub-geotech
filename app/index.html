@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hub Geotech</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -451,7 +456,23 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
   .topbar{margin-right:10px}
   .hub-body{padding-right:10px}
 }
+/* ── Dados reais ─────────────────────────────────────────── */
+.login-erro{font-size:12.5px;color:#dc3c3c;min-height:18px;margin-top:2px}
+.btn-in:disabled{opacity:.6;cursor:wait;transform:none}
+.carregando{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:300;font-size:14px;color:var(--t2);gap:10px}
+.carregando.off{display:none}
+.tal-tab{width:100%;border-collapse:collapse;font-size:12px}
+.tal-tab th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);padding:8px 10px;border-bottom:1px solid var(--bd)}
+.tal-tab td{padding:7px 10px;border-bottom:1px solid var(--bd);color:var(--t2);font-variant-numeric:tabular-nums}
+.tal-tab tr:last-child td{border-bottom:none}
+.tal-wrap{padding:6px 12px 14px;max-height:340px;overflow-y:auto}
+.aviso-leitura{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t3);background:var(--s2);border-radius:8px;padding:9px 12px}
+.aviso-leitura .ico{font-size:16px}
+.flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
 
 <!-- LOGIN -->
 <div id="login" class="scr">
@@ -461,12 +482,16 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
     <h1 class="ltitle">Bem-vindo de volta</h1>
     <p class="lsub">Acesse sua conta para continuar</p>
     <div class="lform">
-      <div class="tbx"><input type="email" id="f-email" placeholder=" " autocomplete="off"><label for="f-email">E-mail</label></div>
-      <div class="tbx"><input type="password" id="f-pass" placeholder=" "><label for="f-pass">Senha</label></div>
-      <button class="btn-in" onclick="entrar()">Entrar</button>
+      <div class="tbx"><input type="email" id="f-email" placeholder=" " autocomplete="username"><label for="f-email">E-mail</label></div>
+      <div class="tbx"><input type="password" id="f-pass" placeholder=" " autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()"><label for="f-pass">Senha</label></div>
+      <div class="login-erro" id="login-erro"></div>
+      <button class="btn-in" id="btn-entrar" onclick="entrar()">Entrar</button>
+      <p class="lsub" style="margin:4px 0 0;font-size:12px">Use o mesmo e-mail e senha do GeoMap.</p>
     </div>
   </div>
 </div>
+
+<div class="carregando off" id="carregando"><span class="ico">progress_activity</span><span id="carregando-msg">Carregando dados do Hub…</span></div>
 
 <!-- HUB -->
 <div id="hub" class="scr off">
@@ -475,9 +500,9 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
     <nav class="sb-nav">
       <button class="ni on" onclick="trocar('dash',this)"><span class="ico ni-ico">home</span><span class="ni-lbl">Dashboard</span></button>
       <button class="ni" onclick="trocar('plantio',this)"><span class="ico ni-ico">eco</span><span class="ni-lbl">Plantio</span></button>
-      <button class="ni" onclick="trocar('colheita',this)"><span class="ico ni-ico">agriculture</span><span class="ni-lbl">Colheita</span></button>
+      <button class="ni dim"><span class="ico ni-ico">agriculture</span><span class="ni-lbl">Colheita<span class="soon">em breve</span></span></button>
       <button class="ni" onclick="trocar('preparo',this)"><span class="ico ni-ico">construction</span><span class="ni-lbl">Preparo</span></button>
-      <button class="ni" onclick="trocar('portal',this)"><span class="ico ni-ico">phone_iphone</span><span class="ni-lbl">Portal Mobile</span></button>
+      <button class="ni dim"><span class="ico ni-ico">phone_iphone</span><span class="ni-lbl">Portal Mobile<span class="soon">em breve</span></span></button>
       <button class="ni" onclick="trocar('consultas',this)"><span class="ico ni-ico">table_view</span><span class="ni-lbl">Consultas</span></button>
       <div class="sep"></div>
       <button class="ni dim"><span class="ico ni-ico">water_drop</span><span class="ni-lbl">Irrigação<span class="soon">em breve</span></span></button>
@@ -488,8 +513,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
     <div class="sb-bot">
       <button class="ni" onclick="trocar('config',this)"><span class="ico ni-ico">settings</span><span class="ni-lbl">Configurações</span></button>
       <div class="urow">
-        <div class="av">L</div>
-        <div class="uinfo"><div class="uname">Leonardo</div><div class="urole" id="sb-urole"></div></div>
+        <div class="av" id="sb-av"></div>
+        <div class="uinfo"><div class="uname" id="sb-uname"></div><div class="urole" id="sb-urole"></div></div>
         <button class="btn-out" onclick="sair()"><span class="ico">logout</span></button>
       </div>
     </div>
@@ -502,7 +527,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
         <span class="tb-sep">/</span>
         <span class="tb-tit" id="tb-tit">Visão geral</span>
       </div>
-      <div class="uchip"><div class="av sm">L</div><span>Leonardo</span></div>
+      <div class="uchip"><div class="av sm" id="tb-av"></div><span id="tb-uname"></span></div>
     </header>
     <div class="hub-body">
 
@@ -578,7 +603,6 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
         <div class="cons-head">
           <div class="cons-mod-tabs">
             <button class="cons-mod-tab on" onclick="consMod('plantio',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">eco</span>Plantio</button>
-            <button class="cons-mod-tab" onclick="consMod('colheita',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">agriculture</span>Colheita</button>
             <button class="cons-mod-tab" onclick="consMod('preparo',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">construction</span>Preparo</button>
           </div>
           <button class="btn-export" id="btn-export" onclick="exportCons()" disabled>
@@ -843,20 +867,16 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 // ─────────────────────────────────────────────────────────────
 // DADOS — Plantio
 // ─────────────────────────────────────────────────────────────
+// Etapas reais do Plantio (hub.talhao_plantio.projeto), na ordem do fluxo.
 const ET=[
-  {l:'Ag. Topografia',c:'#8898c0',a:'Confirmar Topografia',i:'pin_drop'},
-  {l:'Pendente',       c:'#d4890a',a:'Iniciar Projeto',    i:'pending_actions'},
-  {l:'Andamento',      c:'#2566e8',a:'Upload Exportação',  i:'upload_file',hint:'${cod}_Exp1.zip'},
-  {l:'Ag. Arquivo',   c:'#7c5de8',a:'Upload Mapa Plantio',i:'map',        hint:'${cod}_Mapa.pdf'},
-  {l:'Concluído',      c:'#16a76b',a:null,                 i:'check_circle'},
+  {l:'Aguard. Map.',c:'#8898c0',i:'pin_drop'},
+  {l:'Pendente',    c:'#d4890a',i:'pending_actions'},
+  {l:'Andamento',   c:'#2566e8',i:'edit_note'},
+  {l:'Ag. Mapa',    c:'#7c5de8',i:'map'},
+  {l:'Ok',          c:'#16a76b',i:'check_circle'},
 ];
-const FZ=[
-  {n:'Retiro Queimadas',cod:'RQ01',t:12,e:0,ha:850, mes:'Out/26'},
-  {n:'Várzea',         cod:'VZ01',t:8, e:1,ha:420, mes:'Nov/26'},
-  {n:'Pedra Branca',   cod:'PB01',t:15,e:2,ha:1200,mes:'Nov/26'},
-  {n:'Pico Morrinhos', cod:'PM01',t:6, e:3,ha:640, mes:'Dez/26'},
-  {n:'Buriti',         cod:'BT01',t:10,e:4,ha:380, mes:'Dez/26'},
-];
+// Uma entrada por fazenda. A etapa da fazenda (e) é a do talhão menos avançado.
+const FZ=[];
 let ativa=null, fqP='';
 
 // ─────────────────────────────────────────────────────────────
@@ -868,22 +888,9 @@ const ET_P=[
   {l:'Observações',  a:'Confirmar observações',    sub:'Observações de campo tratadas',    i:'comment',      hint:null,obs:true},
   {l:'Preparo',      a:'Confirmar entrega',         sub:'Entrega do projeto completo',      i:'construction', hint:'${cod}_Exp1.dwg · zip · pdf',obs:false},
 ];
-const VOO={P:{l:'Processado',c:'#16a76b'},V:{l:'Voado',c:'#d4890a'},PR:{l:'Processando',c:'#2566e8'},S:{l:'Sem sol.',c:'#9895a2'}};
-const FZ_P=[
-  {n:'Retiro Queimadas',cod:'RQ01',ha:850, mes:'Out/26',voo:'P',ok:[true,true,true,true],
-   obs:'Curvas conferidas. Sistematização validada.',
-   usr:['João','João','Maria','Maria'],dt:['14/09 14:22','14/09 14:25','15/09 09:10','15/09 11:44']},
-  {n:'Várzea',         cod:'VZ01',ha:420, mes:'Out/26',voo:'P',ok:[true,true,true,true],
-   obs:'Observações recebidas em reunião de campo.',
-   usr:['Ana','Ana','Carlos','Carlos'],dt:['16/09 10:00','16/09 10:05','17/09 09:30','17/09 14:20']},
-  {n:'Pedra Branca',   cod:'PB01',ha:1200,mes:'Nov/26',voo:'P',ok:[true,true,true,false],
-   obs:'Aguardando .dwg final do projetista.',
-   usr:['João','João','Maria',''],dt:['18/09 08:00','18/09 08:10','19/09 10:00','']},
-  {n:'Pico Morrinhos', cod:'PM01',ha:640, mes:'Nov/26',voo:'P',ok:[true,true,false,false],
-   obs:'',usr:['Ana','Ana','',''],dt:['19/09 11:00','19/09 11:20','','']},
-  {n:'Buriti',         cod:'BT01',ha:380, mes:'Dez/26',voo:'V',ok:[false,false,false,false],
-   obs:'',usr:['','','',''],dt:['','','','']},
-];
+// '?' = ainda sem sincronização do Drone MGMT no Hub.
+const VOO={P:{l:'Processado',c:'#16a76b'},V:{l:'Voado',c:'#d4890a'},PR:{l:'Processando',c:'#2566e8'},S:{l:'Sem sol.',c:'#9895a2'},'?':{l:'Sem dado',c:'#9895a2'}};
+const FZ_P=[];
 let ativaP=null, fqPr='';
 
 // ─────────────────────────────────────────────────────────────
@@ -895,35 +902,8 @@ const ST_COL={
   'SEM LINHAS': {c:'#9895a2',bg:'rgba(152,149,162,.1)', cls:'SEM_LINHAS'},
   'REAVALIAR':  {c:'#e05252',bg:'rgba(224,82,82,.1)',    cls:'REAVALIAR'},
 };
-const FZ_C=[
-  {n:'Retiro Queimadas',cod:'RQ01',fr:2,tals:[
-    {id:1,ha:45.2,est:'05º CORTE',st:'CONCLUIDO',  mes:'Out/26'},
-    {id:2,ha:38.7,est:'18 MESES', st:'CONCLUIDO',  mes:'Out/26'},
-    {id:3,ha:52.1,est:'03º CORTE',st:'CONCLUIDO',  mes:'Nov/26'},
-    {id:4,ha:29.4,est:'A PLANTAR',st:'A FAZER',    mes:'Nov/26'},
-    {id:5,ha:41.8,est:'07º CORTE',st:'CONCLUIDO',  mes:'Out/26'},
-  ]},
-  {n:'Várzea',         cod:'VZ01',fr:2,tals:[
-    {id:1,ha:33.5,est:'04º CORTE',st:'CONCLUIDO',  mes:'Out/26'},
-    {id:2,ha:28.9,est:'18 MESES', st:'A FAZER',    mes:'Nov/26'},
-    {id:3,ha:45.0,est:'02º CORTE',st:'SEM LINHAS', mes:'Nov/26'},
-  ]},
-  {n:'Pedra Branca',   cod:'PB01',fr:4,tals:[
-    {id:1,ha:62.3,est:'06º CORTE',st:'CONCLUIDO',  mes:'Nov/26'},
-    {id:2,ha:48.1,est:'05º CORTE',st:'A FAZER',    mes:'Dez/26'},
-    {id:3,ha:55.7,est:'07º CORTE',st:'A FAZER',    mes:'Dez/26'},
-    {id:4,ha:39.2,est:'18 MESES', st:'A FAZER',    mes:'Dez/26'},
-  ]},
-  {n:'Pico Morrinhos', cod:'PM01',fr:4,tals:[
-    {id:1,ha:71.4,est:'08º CORTE',st:'A FAZER',    mes:'Dez/26'},
-    {id:2,ha:43.6,est:'03º CORTE',st:'A FAZER',    mes:'Dez/26'},
-    {id:3,ha:58.9,est:'A PLANTAR',st:'A FAZER',    mes:'Jan/27'},
-  ]},
-  {n:'Buriti',         cod:'BT01',fr:4,tals:[
-    {id:1,ha:36.8,est:'04º CORTE',st:'A FAZER',    mes:'Jan/27'},
-    {id:2,ha:29.3,est:'18 MESES', st:'A FAZER',    mes:'Jan/27'},
-  ]},
-];
+// Colheita entra no Hub no corte seguinte (Expo_safra).
+const FZ_C=[];
 let ativaC=null, selTals=[], fqC='';
 function getCiclo(){
   const now=new Date(),yr=now.getFullYear(),mo=now.getMonth()+1;
@@ -971,9 +951,7 @@ const MOD_DATA=[
   {id:'plantio', nome:'Projetos de Plantio',   c:'#16a76b',i:'eco',
    concTal:()=>FZ.filter(f=>f.e===4).reduce((s,f)=>s+f.t,0),
    totalTal:()=>FZ.reduce((s,f)=>s+f.t,0),unit:'talhões'},
-  {id:'colheita',nome:'Projetos de Colheita',  c:'#d4890a',i:'agriculture',
-   concTal:()=>FZ_C.flatMap(f=>f.tals).filter(t=>t.st==='CONCLUIDO').length,
-   totalTal:()=>FZ_C.flatMap(f=>f.tals).length,unit:'talhões'},
+  {id:'colheita',nome:'Projetos de Colheita',  c:'#d4890a',i:'agriculture',coming:true},
   {id:'preparo', nome:'Projetos de Preparo',   c:'#a07840',i:'construction',
    concTal:()=>FZ_P.filter(f=>f.ok.every(x=>x)).length,
    totalTal:()=>FZ_P.length,unit:'fazendas'},
@@ -984,7 +962,7 @@ function rDash(){
   const hr=new Date().getHours();
   const gr=hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite';
   const ciclo=getCiclo();
-  const me=USUARIOS[0];
+  const me=EU||{nome:''};
   document.getElementById('dash-greeting').innerHTML=`
     <div class="dash-greeting-name">${gr}, ${me.nome.split(' ')[0]}</div>
     <div class="dash-greeting-sub">Safra ${ciclo}&nbsp;·&nbsp;${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
@@ -995,33 +973,30 @@ function rDash(){
   const pctG=Math.round(concU/allU*100)||0;
   const concFazP=FZ.filter(f=>f.e===4).length;
   const concFazPR=FZ_P.filter(f=>f.ok.every(x=>x)).length;
-  const concFazC=FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO')).length;
-  const totalFaz=FZ.length+FZ_P.length+FZ_C.length;
-  const concFaz=concFazP+concFazPR+concFazC;
   // ha por módulo
   const haP={conc:FZ.filter(f=>f.e===4).reduce((s,f)=>s+f.ha,0),tot:FZ.reduce((s,f)=>s+f.ha,0)};
   const haPR={conc:FZ_P.filter(f=>f.ok.every(x=>x)).reduce((s,f)=>s+f.ha,0),tot:FZ_P.reduce((s,f)=>s+f.ha,0)};
-  const haC={
-    conc:FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO')).reduce((s,f)=>s+f.tals.reduce((a,t)=>a+t.ha,0),0),
-    tot:FZ_C.reduce((s,f)=>s+f.tals.reduce((a,t)=>a+t.ha,0),0)
-  };
   const fmtHa=v=>v>=1000?(v/1000).toFixed(1)+'k ha':Math.round(v)+' ha';
-  const haTotConc=haP.conc+haPR.conc+haC.conc;
-  const haTot=haP.tot+haPR.tot+haC.tot;
+  // Plantio e Preparo têm a mesma demanda (PLANAGRI): fazendas e área contadas
+  // uma vez só, sem somar os módulos.
+  const fazSafra=new Map();
+  [...FZ,...FZ_P].forEach(f=>fazSafra.set(f.cod,f.ha));
+  const haSafra=[...fazSafra.values()].reduce((s,v)=>s+v,0);
   document.getElementById('dash-meta').innerHTML=[
     {v:pctG+'%',l:'Progresso geral',c:'#2566e8'},
-    {v:concFaz+'/'+totalFaz,l:'Fazendas concluídas',c:'var(--plantio)'},
-    {v:fmtHa(haTotConc),l:'Hectares concluídos',c:'var(--preparo)'},
-    {v:fmtHa(haTot),l:'Área total safra',c:'var(--t1)'},
+    {v:fazSafra.size,l:'Fazendas na safra',c:'var(--plantio)'},
+    {v:fmtHa(haSafra),l:'Área da safra',c:'var(--t1)'},
+    {v:ATUALIZADO.txt,l:ATUALIZADO.lbl,c:ATUALIZADO.atrasado?'#dc3c3c':'var(--t2)'},
   ].map(k=>`<div class="dash-meta-card">
     <div class="dash-meta-val" style="color:${k.c}">${k.v}</div>
     <div class="dash-meta-lbl">${k.l}</div>
   </div>`).join('');
 
-  // distribuição Plantio por etapa
+  // No Plantio a etapa é por talhão: a distribuição conta talhões, não fazendas.
+  const talsP=FZ.flatMap(f=>f.tals);
   const distP=ET.map((e,i)=>{
-    const fz=FZ.filter(f=>f.e===i);
-    return{l:e.l,c:e.c,n:fz.length,ha:fz.reduce((s,f)=>s+f.ha,0)};
+    const ts=talsP.filter(t=>t.e===i);
+    return{l:e.l,c:e.c,n:ts.length,ha:ts.reduce((s,t)=>s+t.ha,0)};
   });
   // distribuição Colheita por status (em talhões)
   const allTals=FZ_C.flatMap(f=>f.tals);
@@ -1063,10 +1038,7 @@ function rDash(){
   const mods=[
     {nome:'Plantio',c:'var(--plantio)',i:'eco',
      conc:concFazP,tot:FZ.length,haConc:haP.conc,haTot:haP.tot,
-     dist:stageBlock(distP,'faz')},
-    {nome:'Colheita',c:'var(--colheita)',i:'agriculture',
-     conc:concFazC,tot:FZ_C.length,haConc:haC.conc,haTot:haC.tot,
-     dist:stageBlock(distC,'tlh')},
+     dist:stageBlock(distP,'tlh')},
     {nome:'Preparo',c:'var(--preparo)',i:'construction',
      conc:concFazPR,tot:FZ_P.length,haConc:haPR.conc,haTot:haPR.tot,
      dist:stageBlock(distPR,'faz')},
@@ -1120,7 +1092,7 @@ function rFaz(){
       <div class="fcard-bar" style="background:${e.c}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·${f.t} talhões</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·${f.t} talhões · ${f.tals.filter(t=>t.e===4).length} Ok</div>
       </div>
       <div class="ebadge" style="background:${e.c}1a;color:${e.c}">${e.l}</div>
     </div>`;
@@ -1144,23 +1116,20 @@ function rDet(){
       <div class="slbl" style="${act?`color:${s.c};font-weight:700`:''}">${s.l}</div>
     </div>`;
   }).join('');
-  let acao='';
-  if(e.a){
-    const fh=e.hint?`<div class="hint-file"><span class="ico" style="font-size:14px">info</span>Arquivo esperado: <code>${e.hint.replace('${cod}',f.cod)}</code></div>`:'';
-    const ni=ET[f.e+1]||{};
-    acao=`<div class="acao-head"><span class="acao-lbl">Próxima ação</span></div>
-    ${fh}
-    <button class="btn-acao" style="background:${e.c};box-shadow:0 6px 20px ${e.c}44" onclick="avc(${ativa})">
-      <span class="ico">${ni.i||'arrow_forward'}</span>${e.a}
-    </button>
-    ${f.e>0?`<button class="btn-roll" onclick="vlr(${ativa})">← Reverter etapa</button>`:''}`;
-  }else{
-    acao=`<div class="done-b" style="background:rgba(22,167,107,.1);color:var(--plantio)"><span class="ico">check_circle</span>Fazenda concluída</div>
-    <button class="btn-roll" onclick="vlr(${ativa})">← Reverter etapa</button>`;
-  }
+  const linhas=f.tals.map(t=>{
+    const te=ET[t.e];
+    return`<tr>
+      <td><strong>${t.num}</strong></td>
+      <td>${fmtNum(t.ha)} ha</td>
+      <td>${t.sist_conser||'—'}</td>
+      <td>${t.mes||'—'}</td>
+      <td>${t.mapeamento}</td>
+      <td><span class="ebadge" style="background:${te.c}1a;color:${te.c}">${te.l}</span></td>
+    </tr>`;
+  }).join('');
   document.getElementById('dpanel').innerHTML=`
     <div class="dhead">
-      <div class="dhead-l"><div class="dnome">${f.n}</div><div class="dsub">${f.t} talhões · Safra 2025</div></div>
+      <div class="dhead-l"><div class="dnome">${f.n}</div><div class="dsub">${f.t} talhões · ${fmtNum(f.ha)} ha · Safra ${getCiclo()}</div></div>
       <span class="dhead-cod">${f.cod}</span>
       <div class="ebadge" style="background:${e.c}1a;color:${e.c};font-size:11px;padding:4px 10px">${e.l}</div>
     </div>
@@ -1169,10 +1138,12 @@ function rDet(){
       <div class="stp-fill" style="background:${e.c};width:calc(17px + ${pct}% * (100% - 34px) / 100%)"></div>
       <div class="stp-row">${dots}</div>
     </div></div>
-    <div class="acao-w">${acao}</div>`;
+    <div class="tal-wrap"><table class="tal-tab">
+      <thead><tr><th>Talhão</th><th>Área</th><th>Conservação</th><th>Mês plantio</th><th>Mapeamento</th><th>Etapa</th></tr></thead>
+      <tbody>${linhas}</tbody>
+    </table></div>
+    <div class="acao-w"><div class="aviso-leitura"><span class="ico">visibility</span>Versão de consulta: avançar etapa e anexar arquivos chegam na próxima versão.</div></div>`;
 }
-function avc(i){if(FZ[i].e<4){FZ[i].e++;rFaz();rDet();rDash();}}
-function vlr(i){if(FZ[i].e>0){FZ[i].e--;rFaz();rDet();rDash();}}
 
 // ─────────────────────────────────────────────────────────────
 // PREPARO
@@ -1226,22 +1197,11 @@ function rDetP(){
       <div class="slbl" style="${act?`color:${c};font-weight:700`:''}">${s.l}</div>
     </div>`;
   }).join('');
-  let acao='';
-  if(done4){
-    acao=`<div class="done-b" style="background:rgba(160,120,64,.1);color:var(--preparo)"><span class="ico">check_circle</span>Fazenda concluída</div>
-    <button class="btn-roll" onclick="reopP(${ativaP},3)">← Reverter última etapa</button>`;
-  }else{
-    const s=ET_P[curStage];
-    let extra='';
-    if(s.hint)extra=`<div class="hint-file"><span class="ico" style="font-size:14px">info</span>Arquivos esperados: <code>${s.hint.replace('${cod}',f.cod)}</code></div>`;
-    if(s.obs) extra=`<textarea class="prep-obs-area" id="obs-${ativaP}" placeholder="Descreva as observações recebidas…">${f.obs}</textarea>`;
-    acao=`<div class="acao-head"><span class="acao-lbl">Próxima ação</span></div>
-    ${extra}
-    <button class="btn-acao" style="background:var(--preparo);box-shadow:0 6px 20px #a0784044" onclick="okP(${ativaP},${curStage})">
-      <span class="ico">check</span>${s.a}
-    </button>
-    ${curStage>0?`<button class="btn-roll" onclick="reopP(${ativaP},${curStage-1})">← Reverter etapa</button>`:''}`;
-  }
+  const acao=(done4
+    ?`<div class="done-b" style="background:rgba(160,120,64,.1);color:var(--preparo);margin-bottom:10px"><span class="ico">check_circle</span>Fazenda concluída</div>`
+    :`<div class="acao-head"><span class="acao-lbl">Etapa atual: ${ET_P[curStage].l}</span></div>`)
+    +(f.obs?`<div class="hint-file"><span class="ico" style="font-size:14px">comment</span>${esc(f.obs)}</div>`:'')
+    +`<div class="aviso-leitura"><span class="ico">visibility</span>Versão de consulta: concluir etapas e anexar arquivos chegam na próxima versão.</div>`;
   const audit=ET_P.map((s,i)=>f.ok[i]?`<div class="prep-audit-row">
     <div class="pad" style="background:var(--plantio)"></div>${s.l} — <strong>${f.usr[i]}</strong> — ${f.dt[i]}
   </div>`:'').filter(Boolean).join('');
@@ -1261,16 +1221,6 @@ function rDetP(){
     </div></div>
     <div class="acao-w">${acao}</div>
     ${audit?`<div class="prep-audit"><div class="prep-audit-t">Histórico</div>${audit}</div>`:''}`;
-}
-function okP(fi,si){
-  const f=FZ_P[fi];
-  if(si===2){const ta=document.getElementById('obs-'+fi);if(ta)f.obs=ta.value;}
-  f.ok[si]=true;f.usr[si]='Você';f.dt[si]='agora';
-  rFazP();rDetP();rDash();
-}
-function reopP(fi,si){
-  FZ_P[fi].ok[si]=false;FZ_P[fi].usr[si]='';FZ_P[fi].dt[si]='';
-  rFazP();rDetP();rDash();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1496,11 +1446,40 @@ function trocar(v,el){
   }
   if(v==='consultas')rConsFilters();
 }
-function entrar(){
+async function entrar(){
+  const email=document.getElementById('f-email').value.trim();
+  const senha=document.getElementById('f-pass').value;
+  const erro=document.getElementById('login-erro');
+  const btn=document.getElementById('btn-entrar');
+  erro.textContent='';
+  if(!email||!senha){erro.textContent='Informe e-mail e senha.';return;}
+  btn.disabled=true;btn.textContent='Entrando…';
+  const {error}=await sb.auth.signInWithPassword({email,password:senha});
+  btn.disabled=false;btn.textContent='Entrar';
+  if(error){
+    erro.textContent=/banned/i.test(error.message)
+      ?'Acesso bloqueado. Se o seu cadastro no GeoMap é novo, defina sua senha lá primeiro.'
+      :'E-mail ou senha incorretos.';
+    return;
+  }
+  document.getElementById('f-pass').value='';
+  await abrirHub();
+}
+async function abrirHub(){
+  const car=document.getElementById('carregando');
+  const falhar=async msg=>{car.classList.add('off');await sb.auth.signOut();document.getElementById('login-erro').textContent=msg;};
+  car.classList.remove('off');
+  try{await carregarDados();}
+  catch(e){return falhar('Não foi possível carregar os dados: '+(e.message||e));}
+  if(!EU)return falhar('Sua conta não tem acesso ao Hub. Fale com o administrador.');
+  aplicarUsuario();
+  rDash();rFaz();rFazP();rUsrList();rGeotech();initCfgChips();
+  car.classList.add('off');
   document.getElementById('login').classList.add('off');
   document.getElementById('hub').classList.remove('off');
 }
-function sair(){
+async function sair(){
+  await sb.auth.signOut();
   document.getElementById('hub').classList.add('off');
   document.getElementById('login').classList.remove('off');
 }
@@ -1539,14 +1518,8 @@ function toggleKey(id){
 // ─────────────────────────────────────────────────────────────
 // USUÁRIOS
 // ─────────────────────────────────────────────────────────────
-const USUARIOS=[
-  {id:'lmalerbo', nome:'Leonardo Malerbo', role:'editor',  admin:true,  perms:{plantio:true, colheita:true, preparo:true, portal:true, config:true}},
-  {id:'igabriel', nome:'Igor Gabriel',     role:'editor',  admin:false, perms:{plantio:true, colheita:true, preparo:true, portal:true, config:false}},
-  {id:'jcamilo',  nome:'João Camilo',      role:'editor',  admin:false, perms:{plantio:true, colheita:true, preparo:true, portal:true, config:false}},
-  {id:'tferri',   nome:'T. Ferri',         role:'leitura', admin:false, perms:{plantio:true, colheita:true, preparo:true, portal:true, config:false}},
-  {id:'lucaso',   nome:'Lucas O.',         role:'leitura', admin:false, perms:{plantio:true, colheita:false, preparo:false, portal:true, config:false}},
-  {id:'luizvf',   nome:'Luiz V. F.',       role:'leitura', admin:false, perms:{plantio:true, colheita:false, preparo:false, portal:true, config:false}},
-];
+// Preenchido por carregarDados() a partir de hub.usuarios / hub.usuario_modulos.
+const USUARIOS=[];
 const ROLE_LABELS={editor:'Editor',leitura:'Leitura'};
 const ROLE_CLASSES={editor:'rc-a',leitura:'rc-dash'};
 const PERMS=[
@@ -1565,7 +1538,7 @@ function rUsrList(){
       <div class="usr-av">${u.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome}</div>
-        <div style="font-size:11px;color:var(--t3)">${u.id}</div>
+        <div style="font-size:11px;color:var(--t3)">${modulosTxt(u)}</div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:120px">
         <span class="role-chip ${ROLE_CLASSES[u.role]}">${ROLE_LABELS[u.role]}</span>
@@ -1593,13 +1566,13 @@ function selUsr(i){
         <div class="usr-av" style="width:48px;height:48px;font-size:16px">${u.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
         <div>
           <div style="font-size:15px;font-weight:700;color:var(--t1)">${u.nome}</div>
-          <div style="font-size:12px;color:var(--t3)">${u.id}</div>
+          <div style="font-size:12px;color:var(--t3)">${modulosTxt(u)}</div>
         </div>
         ${u.admin?'<span class="role-chip rc-admin" style="margin-left:auto">Admin</span>':''}
       </div>
       <div class="cfg-row">
         <div class="cfg-row-l"><div class="cfg-row-lbl">Acesso</div><div class="cfg-row-sub">Editor pode registrar e avançar etapas; Leitura só visualiza</div></div>
-        <select class="cfg-sel" onchange="updRole(${i},this.value)">
+        <select class="cfg-sel" disabled onchange="updRole(${i},this.value)">
           <option ${u.role==='editor'?'selected':''}>Editor</option>
           <option ${u.role==='leitura'?'selected':''}>Leitura</option>
         </select>
@@ -1611,14 +1584,11 @@ function selUsr(i){
         ${PERMS.map((p,pi)=>`
           <div class="cfg-row" style="${pi<PERMS.length-1?'border-bottom:1px solid var(--bd)':''}">
             <div class="cfg-row-l"><div class="cfg-row-lbl">${p.label}</div><div class="cfg-row-sub">${p.sub}</div></div>
-            <label class="toggle"><input type="checkbox" ${u.perms[p.key]?'checked':''} onchange="USUARIOS[${i}].perms['${p.key}']=this.checked"><span class="tgl-tr"></span><span class="tgl-th"></span></label>
+            <label class="toggle"><input type="checkbox" disabled ${u.perms[p.key]?'checked':''}><span class="tgl-tr"></span><span class="tgl-th"></span></label>
           </div>`).join('')}
       </div>
     </div>
-    <div style="margin-top:10px;display:flex;gap:8px">
-      <button class="btn-cfg-save" onclick="showToast('Permissões salvas — ${u.nome}')">Salvar permissões</button>
-      ${!u.admin?`<button style="padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t3);font-size:12px;cursor:pointer" onclick="showToast('Funcionalidade em desenvolvimento')">Remover usuário</button>`:''}
-    </div>`;
+    <div class="aviso-leitura" style="margin-top:10px"><span class="ico">info</span>Login e senha são os do GeoMap (a troca de senha é feita lá). Editar papel e módulos pelo Hub chega na próxima versão.</div>`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1898,14 +1868,151 @@ function exportCons(){
   });
 }
 
+// ─────────────────────────────────────────────────────────────
+// DADOS REAIS — Supabase, schema hub (acesso controlado pelo RLS)
+// ─────────────────────────────────────────────────────────────
+const SB_URL='https://dpvsivypabmvmrrpgmhc.supabase.co';
+const SB_KEY='sb_publishable_3xv0R1kmhSXkoUh3i4vN0A_Q5oLBbVL';   // chave pública por natureza; quem protege os dados é o RLS
+const sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'hub'}});
+let EU=null;
+// Frescor dos dados: a importação mais antiga entre as fontes diárias.
+const FONTES_DIARIAS=['base_fazendas','planagri','conservacao'];
+let ATUALIZADO={txt:'—',lbl:'Dados atualizados',atrasado:false};
+
+const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function mesLabel(iso){if(!iso)return '';const[a,m]=iso.split('-');return `${MESES[+m-1]}/${a.slice(2)}`;}
+function fmtNum(v){return (Math.round((v||0)*10)/10).toLocaleString('pt-BR');}
+function fmtDataHora(iso){
+  if(!iso)return '';
+  const d=new Date(iso);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function modulosTxt(u){
+  const m=['plantio','preparo','colheita'].filter(k=>u.perms[k]).map(k=>LABELS[k]||k);
+  return m.length?m.join(', '):'Sem módulos';
+}
+
+// O PostgREST devolve no máximo 1000 linhas por chamada: pagina sempre.
+async function lerTudo(consulta){
+  const linhas=[];
+  for(let ini=0;;ini+=1000){
+    const {data,error}=await consulta().range(ini,ini+999);
+    if(error)throw error;
+    linhas.push(...data);
+    if(data.length<1000)return linhas;
+  }
+}
+
+async function carregarDados(){
+  const {data:{user}}=await sb.auth.getUser();
+  const [usuarios,plantio,preparo,etapas,status,execucoes]=await Promise.all([
+    lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
+    lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))')),
+    lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))')),
+    lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
+    lerTudo(()=>sb.from('etapa_status').select('etapa_id,entidade_id,ok,usuario_id,concluido_em,observacao')),
+    sb.from('execucoes_ingestao').select('fonte,finalizado_em').eq('status','ok')
+      .in('fonte',FONTES_DIARIAS).order('finalizado_em',{ascending:false}).limit(60)
+      .then(({data,error})=>{if(error)throw error;return data;}),
+  ]);
+
+  const ultima=Object.fromEntries(FONTES_DIARIAS.map(f=>[f,execucoes.find(e=>e.fonte===f)?.finalizado_em]));
+  const faltando=FONTES_DIARIAS.filter(f=>!ultima[f]);
+  const maisAntiga=faltando.length?null:FONTES_DIARIAS.map(f=>ultima[f]).sort()[0];
+  const horas=maisAntiga?(Date.now()-new Date(maisAntiga))/36e5:Infinity;
+  ATUALIZADO={
+    txt:maisAntiga?fmtDataHora(maisAntiga):'—',
+    lbl:horas>26?'Atualização atrasada':'Dados atualizados',
+    atrasado:horas>26,
+  };
+
+  USUARIOS.length=0;
+  for(const u of usuarios){
+    const mods=new Set((u.usuario_modulos||[]).map(m=>m.modulo_id));
+    USUARIOS.push({id:u.id,nome:u.nome,role:u.papel,admin:u.admin,
+      perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),portal:false,config:u.admin}});
+  }
+  EU=USUARIOS.find(u=>u.id===user.id)||null;
+  const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
+
+  // Plantio: agrupa os talhões por fazenda.
+  const idxEtapa=Object.fromEntries(ET.map((e,i)=>[e.l,i]));
+  const porFaz=new Map();
+  for(const r of plantio){
+    const t=r.talhoes;
+    if(!t)continue;
+    let f=porFaz.get(t.cod_faz);
+    if(!f){
+      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),t:0,ha:0,e:ET.length-1,mes:'',_mesIso:null,tals:[]};
+      porFaz.set(t.cod_faz,f);
+    }
+    const e=idxEtapa[r.projeto]??0;
+    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,sist_conser:t.sist_conser,
+                 mes:mesLabel(r.mes_plantio),mapeamento:r.mapeamento,e});
+    f.t++;f.ha+=t.area_ha||0;f.e=Math.min(f.e,e);
+    if(r.mes_plantio&&(!f._mesIso||r.mes_plantio<f._mesIso)){f._mesIso=r.mes_plantio;f.mes=mesLabel(r.mes_plantio);}
+  }
+  FZ.length=0;
+  [...porFaz.values()].sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(f=>{
+    f.ha=Math.round(f.ha*10)/10;f.tals.sort((a,b)=>a.num-b.num);FZ.push(f);
+  });
+
+  // Preparo: fazendas da demanda + etapas concluídas (escopo fazenda).
+  const idsEtapa=new Set(etapas.map(e=>e.id));
+  const st=new Map(status.filter(s=>idsEtapa.has(s.etapa_id)).map(s=>[s.etapa_id+'|'+s.entidade_id,s]));
+  const mesFaz=Object.fromEntries(FZ.map(f=>[f.cod,f.mes]));
+  const porFazP=new Map();
+  for(const r of preparo){
+    const t=r.talhoes;
+    if(!t)continue;
+    let f=porFazP.get(t.cod_faz);
+    if(!f){
+      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:mesFaz[String(t.cod_faz)]||'',
+         voo:'?',ok:[],usr:[],dt:[],obs:''};
+      porFazP.set(t.cod_faz,f);
+    }
+    f.ha+=t.area_ha||0;
+  }
+  FZ_P.length=0;
+  [...porFazP.entries()].sort((a,b)=>a[1].n.localeCompare(b[1].n,'pt-BR')).forEach(([cod,f])=>{
+    f.ha=Math.round(f.ha*10)/10;
+    for(const e of etapas){
+      const s=st.get(e.id+'|'+cod);
+      f.ok.push(!!s?.ok);
+      f.usr.push(s?.ok?(nomeUsr[s.usuario_id]||'—'):'');
+      f.dt.push(s?.ok?fmtDataHora(s.concluido_em):'');
+      if(s?.observacao)f.obs=s.observacao;
+    }
+    FZ_P.push(f);
+  });
+}
+
+// Nome/papel na barra e módulos visíveis conforme o acesso de quem entrou.
+function aplicarUsuario(){
+  const iniciais=EU.nome.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const primeiro=EU.nome.split(/\s+/)[0];
+  document.getElementById('sb-av').textContent=iniciais;
+  document.getElementById('tb-av').textContent=iniciais;
+  document.getElementById('sb-uname').textContent=primeiro;
+  document.getElementById('tb-uname').textContent=primeiro;
+  document.getElementById('sb-urole').textContent=ROLE_LABELS[EU.role]+(EU.admin?' · Admin':'');
+  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['config','config']]){
+    const btn=document.querySelector(`.ni[onclick*="'${alvo}'"]`);
+    if(btn)btn.style.display=EU.perms[mod]?'':'none';
+  }
+}
+
 // Init
 // ─────────────────────────────────────────────────────────────
-const _me=USUARIOS[0];document.getElementById('sb-urole').textContent=ROLE_LABELS[_me.role]+(_me.admin?' · Admin':'');
-rDash();rFaz();rFazC();rFazP();rPhone();rUsrList();rGeotech();initCfgChips();
 LABELS['config']='Configurações';
 LABELS['usuarios']='Usuários';
 LABELS['consultas']='Consultas';
 MOD_AC['config']='var(--t2)';
 MOD_AC['usuarios']='var(--t2)';
 MOD_AC['consultas']='var(--t2)';
+// Sessão salva no navegador: entra direto, sem pedir login de novo.
+sb.auth.getSession().then(({data})=>{if(data.session)abrirHub();});
 </script>
+</body>
+</html>
