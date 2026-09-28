@@ -1,0 +1,1911 @@
+<title>Hub Geotech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<style>
+/* ── RESET ─────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eff3f7;--sf:#fff;--s2:#edf0f8;--bd:#e5e9ec;--bd2:#dde1f0;
+  --t1:#20262e;--t2:#4d4a57;--t3:#9895a2;
+  --sh-sm:0 4px 20px rgb(0 0 0/.05);--sh-md:0 12px 40px rgb(0 0 0/.09);--sh-lg:0 20px 80px rgb(96 68 121/.16);
+  --r-sm:8px;--r-md:12px;--r-lg:20px;--r-xl:32px;
+  --tf:.175s;--tb:.3s;--sp:cubic-bezier(.16,1,.3,1);
+  --plantio:#16a76b;--colheita:#d4890a;--preparo:#a07840;--irrigacao:#0892c8;--drones:#5b6ee8;
+  --sb-w:66px;--sb-gap:12px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased}
+.ico{font-family:'Material Symbols Outlined';font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;-webkit-font-feature-settings:'liga';font-feature-settings:'liga';-webkit-font-smoothing:antialiased}
+.scr{position:fixed;inset:0;transition:opacity .3s var(--sp),transform .3s var(--sp)}
+.scr.off{opacity:0;pointer-events:none;transform:scale(.98)}
+
+/* ── SCROLLBAR ────────────────────────────────────────────── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.1);border-radius:10px}
+
+/* ── LOGIN ────────────────────────────────────────────────── */
+#login{display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10}
+.deco{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.dc{position:absolute;border-radius:50%;opacity:.05}
+.dc.a{width:600px;height:600px;top:-200px;right:-80px;background:var(--plantio)}
+.dc.b{width:350px;height:350px;bottom:-120px;left:-80px;background:var(--drones)}
+.lcard{background:var(--sf);border-radius:var(--r-xl);padding:52px 44px 48px;width:380px;box-shadow:var(--sh-lg);position:relative}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:32px}
+.bmark{width:40px;height:40px;background:var(--plantio);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.bmark.sm{width:30px;height:30px;border-radius:8px;font-size:10px}
+.bname{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.ltitle{font-size:22px;font-weight:600;letter-spacing:-.3px;margin-bottom:6px}
+.lsub{font-size:13px;color:var(--t3);margin-bottom:28px}
+.lform{display:flex;flex-direction:column;gap:12px}
+.tbx{position:relative}
+.tbx input{width:100%;height:52px;background:var(--s2);border:2px solid var(--bd2);border-radius:var(--r-sm);padding:18px 16px 6px;font-family:'Poppins',sans-serif;font-size:14px;color:var(--t1);outline:none;transition:border-color var(--tb),box-shadow var(--tb)}
+.tbx input:focus{border-color:var(--plantio);box-shadow:0 0 0 3px rgba(22,167,107,.12)}
+.tbx label{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3);pointer-events:none;transition:.2s;transform-origin:left center}
+.tbx input:focus~label,.tbx input:not(:placeholder-shown)~label{top:13px;transform:translateY(0) scale(.76);color:var(--plantio);font-weight:600;letter-spacing:.2px}
+.btn-in{margin-top:8px;width:100%;height:52px;background:var(--t1);color:#fff;border:none;border-radius:var(--r-sm);font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background var(--tb),transform var(--tf),box-shadow var(--tb)}
+.btn-in:hover{background:var(--plantio);transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,167,107,.3)}
+.btn-in:active{transform:scale(.98)}
+
+/* ── SIDEBAR ──────────────────────────────────────────────── */
+#hub{display:flex;background:var(--bg)}
+.sb{position:fixed;top:20px;left:20px;bottom:20px;width:var(--sb-w);border-radius:18px;background:var(--sf);box-shadow:var(--sh-md);overflow:hidden;overflow-y:auto;transition:width .4s var(--sp);display:flex;flex-direction:column;z-index:50;will-change:width}
+.sb:hover{width:246px}
+.sb::-webkit-scrollbar{display:none}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;flex-shrink:0}
+.sb-bname{font-size:14px;font-weight:700;white-space:nowrap;opacity:0;transition:opacity var(--tf)}
+.sb:hover .sb-bname{opacity:1}
+.sb-nav{flex:1;display:flex;flex-direction:column;gap:3px;padding:0 10px;overflow:hidden;min-height:0}
+.sep{height:1px;background:var(--bd);margin:5px 2px;flex-shrink:0}
+.ni{display:flex;align-items:center;gap:12px;padding:0 9px;height:42px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:background var(--tb),color var(--tb);color:var(--t3);flex-shrink:0;border:none;background:transparent;font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;width:100%;text-align:left;position:relative}
+.ni:hover{background:var(--s2);color:var(--t2)}
+.ni.on{background:rgba(22,167,107,.1);color:var(--plantio)}
+.ni.dim{opacity:.38;cursor:default;pointer-events:none}
+.ni-ico{font-size:20px;flex-shrink:0;width:22px;text-align:center}
+.ni-lbl{opacity:0;transition:opacity var(--tf);display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.sb:hover .ni-lbl{opacity:1}
+.soon{font-size:9px;font-weight:700;background:var(--s2);border:1px solid var(--bd);color:var(--t3);border-radius:20px;padding:1px 6px;letter-spacing:.3px;text-transform:uppercase}
+.ext-tag{font-size:10px;color:var(--t3);opacity:.5}
+
+/* ── HUB GEOTECH ─────────────────────────────────────────── */
+.gt-header{margin-bottom:20px}
+.gt-title{font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px}
+.gt-sub{font-size:13px;color:var(--t3)}
+.gt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.gt-card{background:var(--sf);border-radius:var(--r-lg);padding:24px 22px 20px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:0;transition:box-shadow var(--tb),transform var(--tf);position:relative;overflow:hidden}
+.gt-card:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
+.gt-card-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.gt-ico-wrap{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.gt-ico-wrap .ico{font-size:22px;color:#fff}
+.gt-name{font-size:15px;font-weight:700;letter-spacing:-.2px;margin-bottom:5px}
+.gt-desc{font-size:12.5px;color:var(--t3);line-height:1.55;flex:1;margin-bottom:16px}
+.gt-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gt-status{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
+.gt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.btn-gt{height:36px;padding:0 18px;border:none;border-radius:9px;font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity var(--tb),transform var(--tf),box-shadow var(--tb);color:#fff}
+.btn-gt .ico{font-size:15px}
+.btn-gt:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.btn-gt:active{transform:scale(.97)}
+.btn-gt:disabled{opacity:.35;cursor:default;pointer-events:none}
+.gt-card.coming{opacity:.55}
+.gt-card.coming .gt-card-accent{background:var(--bd)!important}
+.gt-add{border:2px dashed var(--bd);box-shadow:none;background:transparent;align-items:center;justify-content:center;min-height:160px;cursor:default}
+.gt-add:hover{box-shadow:none;transform:none}
+.gt-add-inner{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--t3)}
+.gt-add-inner .ico{font-size:32px;opacity:.3}
+.gt-add-inner span{font-size:12.5px;font-weight:500}
+.sb-bot{padding:10px;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+.urow{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;background:var(--s2);overflow:hidden;flex-shrink:0}
+.av{width:30px;height:30px;border-radius:50%;background:var(--plantio);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.av.sm{width:24px;height:24px;font-size:10px}
+.uinfo{flex:1;min-width:0}
+.uname{font-size:12px;font-weight:600;white-space:nowrap}
+.urole{font-size:10.5px;color:var(--t3);white-space:nowrap}
+.btn-out{width:26px;height:26px;border-radius:7px;border:none;background:transparent;color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--tb),color var(--tb);flex-shrink:0}
+.btn-out:hover{background:rgba(220,60,60,.1);color:#dc3c3c}
+.btn-out .ico{font-size:16px}
+
+/* ── MAIN LAYOUT ─────────────────────────────────────────── */
+.hub-main{margin-left:calc(var(--sb-w) + 20px + var(--sb-gap));flex:1;display:flex;flex-direction:column;height:100%;min-width:0}
+.topbar{height:60px;background:var(--sf);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;margin:20px 20px 0 0;border-radius:14px;box-shadow:var(--sh-sm)}
+.tbl{display:flex;align-items:center;gap:8px}
+.tb-mod{font-size:11.5px;font-weight:700;background:rgba(22,167,107,.1);color:var(--plantio);padding:3px 10px;border-radius:20px}
+.tb-sep{color:var(--bd)}
+.tb-tit{font-size:13.5px;font-weight:500;color:var(--t2)}
+.uchip{display:flex;align-items:center;gap:7px;background:var(--s2);border-radius:20px;padding:5px 12px 5px 7px;font-size:12px;font-weight:500;color:var(--t2)}
+.hub-body{flex:1;overflow-y:auto;padding:14px 20px 20px 0}
+/* View transitions */
+.view{display:none}
+.view.on{display:block;animation:fin .22s var(--sp)}
+@keyframes fin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sec-h{font-size:14px;font-weight:600;margin-bottom:10px}
+
+/* ── SEARCH BAR — shared ─────────────────────────────────── */
+.search-wrap{position:relative;margin-bottom:10px}
+.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--t3);pointer-events:none}
+.search-inp{width:100%;height:38px;background:var(--sf);border:2px solid var(--bd);border-radius:10px;padding:0 12px 0 34px;font-family:'Poppins',sans-serif;font-size:12.5px;color:var(--t1);outline:none;transition:border-color var(--tb),box-shadow var(--tb)}
+.search-inp::placeholder{color:var(--t3)}
+
+/* ── DASHBOARD ────────────────────────────────────────────── */
+.dash-greeting{margin-bottom:16px}
+.dash-greeting-name{font-size:21px;font-weight:700;letter-spacing:-.5px;color:var(--t1)}
+.dash-greeting-sub{font-size:12px;color:var(--t3);margin-top:2px}
+.dash-meta-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.dash-meta-card{background:var(--sf);border-radius:var(--r-md);padding:13px 16px;box-shadow:var(--sh-sm)}
+.dash-meta-val{font-size:23px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:3px}
+.dash-meta-lbl{font-size:11px;color:var(--t3);font-weight:500}
+.dash-mod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.dash-mod-card{background:var(--sf);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-sm)}
+.dash-mod-accent{height:3px}
+.dash-mod-body{padding:16px 18px 14px}
+.dash-mod-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.dash-mod-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dash-mod-ico .ico{font-size:17px;color:#fff}
+.dash-mod-title{font-size:13.5px;font-weight:700;color:var(--t1);flex:1}
+.dash-mod-pct{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.dash-mod-track{height:5px;border-radius:3px;margin-bottom:12px}
+.dash-mod-fill{height:100%;border-radius:3px;transition:width .6s var(--sp)}
+.dash-mod-stats{display:flex;gap:0;margin-bottom:12px;background:var(--s2);border-radius:9px;overflow:hidden}
+.dash-mod-stat{flex:1;padding:8px 0;text-align:center;border-right:1px solid var(--bd)}
+.dash-mod-stat:last-child{border-right:none}
+.dash-mod-stat-v{font-size:16px;font-weight:700;letter-spacing:-.5px;line-height:1;margin-bottom:2px}
+.dash-mod-stat-l{font-size:9.5px;color:var(--t3);font-weight:500}
+.dash-stage-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;gap:1px;margin-bottom:10px}
+.dash-stage-seg{height:100%;min-width:3px;transition:flex .5s var(--sp)}
+.dash-stage-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.dash-stage-row{display:flex;align-items:center;gap:5px}
+.dash-stage-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dash-stage-lbl{flex:1;font-size:10.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-stage-cnt{font-size:10.5px;font-weight:700;color:var(--t1);white-space:nowrap}
+.dash-stage-ha{font-size:9.5px;color:var(--t3);white-space:nowrap;margin-left:2px}
+
+/* ── FAZENDA LIST — shared ────────────────────────────────── */
+.pgrid{display:grid;grid-template-columns:264px 1fr;gap:14px;align-items:start}
+.flist{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 210px);overflow-y:auto;padding-right:2px}
+.fcard{background:var(--sf);border-radius:13px;padding:12px 14px 12px 18px;cursor:pointer;transition:box-shadow var(--tb),transform var(--tf),border-color var(--tb);border:2px solid transparent;box-shadow:var(--sh-sm);display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;will-change:transform}
+.fcard-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px;transition:background var(--tb)}
+.fcard:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
+.fcard.on{border-color:currentColor}
+.finfo{flex:1;min-width:0}
+.fnome{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsub{font-size:11px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:5px}
+.fcod{font-size:10px;font-weight:700;letter-spacing:.6px;color:var(--t3)}
+.ebadge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;transition:background var(--tb),color var(--tb)}
+.dempty{background:var(--sf);border-radius:16px;padding:56px 20px;text-align:center;color:var(--t3);box-shadow:var(--sh-sm)}
+.dempty .ico{font-size:44px;display:block;margin-bottom:10px;opacity:.25}
+.dempty p{font-size:12.5px}
+.flist-empty{font-size:12px;color:var(--t3);text-align:center;padding:20px 0}
+
+/* ── DETAIL PANEL — shared ────────────────────────────────── */
+.dpanel{background:var(--sf);border-radius:16px;box-shadow:var(--sh-md);overflow:hidden;animation:fin .2s var(--sp)}
+.dhead{padding:16px 20px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.dhead-l{flex:1;min-width:0}
+.dnome{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.dsub{font-size:11.5px;color:var(--t3);margin-top:2px}
+.dhead-cod{font-size:11px;font-weight:700;letter-spacing:.8px;background:var(--s2);color:var(--t2);padding:4px 10px;border-radius:8px;flex-shrink:0}
+
+/* ── STEPPER — Plantio + Preparo ─────────────────────────── */
+.stp-w{padding:20px 22px 16px;border-bottom:1px solid var(--bd)}
+.stp-out{position:relative;padding-bottom:2px}
+.stp-bg{position:absolute;top:17px;left:17px;right:17px;height:3px;background:var(--bd);z-index:0;border-radius:2px}
+.stp-fill{position:absolute;top:17px;left:17px;height:3px;z-index:1;border-radius:2px;transition:width .4s var(--sp),background .3s}
+.stp-row{display:flex;justify-content:space-between;position:relative;z-index:2}
+.snode{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:64px}
+.sdot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid var(--bd);background:var(--sf);color:var(--t3);transition:background var(--tb),border-color var(--tb),transform var(--tf),box-shadow var(--tb)}
+.sdot .ico{font-size:15px;transition:color var(--tb)}
+.slbl{font-size:9.5px;font-weight:500;color:var(--t3);text-align:center;line-height:1.3;transition:color var(--tb),font-weight var(--tb)}
+.snode.done .sdot{color:#fff;border-color:transparent}
+.snode.act .sdot{color:#fff;border-color:transparent;transform:scale(1.1);box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.snode.act .slbl{font-weight:700}
+/* Action area */
+.acao-w{padding:16px 20px}
+.acao-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.acao-lbl{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px}
+.btn-acao{width:100%;height:46px;border:none;border-radius:var(--r-md);font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:transform var(--tf),box-shadow var(--tb),opacity var(--tb);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;will-change:transform}
+.btn-acao .ico{font-size:16px}
+.btn-acao:hover{transform:translateY(-2px)}
+.btn-acao:active{transform:scale(.97)}
+.btn-roll{background:transparent;border:none;color:var(--t3);font-family:'Poppins',sans-serif;font-size:11.5px;cursor:pointer;padding:8px 0 0;transition:color var(--tb);display:block}
+.btn-roll:hover{color:var(--t2)}
+.done-b{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:var(--r-md);font-size:13.5px;font-weight:600}
+.done-b .ico{font-size:18px}
+.hint-file{font-size:11px;color:var(--t3);margin-bottom:10px;display:flex;align-items:center;gap:5px;background:var(--s2);padding:7px 10px;border-radius:7px}
+.hint-file code{font-size:10.5px;background:var(--bd);padding:1px 5px;border-radius:4px;color:var(--t2)}
+.prep-obs-area{width:100%;height:68px;border:2px solid var(--bd2);border-radius:8px;padding:8px 12px;font-family:'Poppins',sans-serif;font-size:12.5px;resize:none;background:var(--s2);color:var(--t1);outline:none;transition:border-color var(--tb);margin-bottom:10px;display:block}
+.prep-obs-area:focus{border-color:var(--preparo)}
+.prep-audit{padding:10px 20px 14px;background:var(--s2);border-top:1px solid var(--bd)}
+.prep-audit-t{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px}
+.prep-audit-row{display:flex;align-items:center;gap:7px;margin-bottom:3px;font-size:11px;color:var(--t2)}
+.pad{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.voo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── COLHEITA — talhão grid ──────────────────────────────── */
+.col-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.col-leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)}
+.col-leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tal-actions{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.btn-tal-action{height:30px;padding:0 12px;border:1.5px solid var(--bd2);border-radius:8px;background:var(--sf);font-family:'Poppins',sans-serif;font-size:11.5px;font-weight:600;color:var(--t2);cursor:pointer;transition:border-color var(--tb),color var(--tb),background var(--tb);white-space:nowrap;display:flex;align-items:center;gap:4px}
+.btn-tal-action:hover{border-color:var(--colheita);color:var(--colheita);background:rgba(212,137,10,.06)}
+.tal-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tal-chip{padding:6px 10px;border-radius:9px;cursor:pointer;transition:outline var(--tf),opacity var(--tb);border:2px solid transparent;display:flex;flex-direction:column;gap:2px;min-width:70px;user-select:none}
+.tal-chip.sel{outline:2px solid var(--colheita);outline-offset:1px}
+.tal-chip .tn{font-size:12px;font-weight:700}
+.tal-chip .te{font-size:9.5px;font-weight:600;opacity:.8}
+.tal-chip .tha{font-size:10px;opacity:.55}
+.tal-chip.CONCLUIDO{background:rgba(22,167,107,.12);color:var(--plantio)}
+.tal-chip.A_FAZER{background:rgba(212,137,10,.08);color:#b57200}
+.tal-chip.SEM_LINHAS{background:var(--s2);color:var(--t3)}
+.tal-chip.REAVALIAR{background:rgba(224,82,82,.1);color:#e05252}
+.col-form-wrap{background:var(--s2);border-radius:var(--r-md);padding:14px 16px;border:2px solid var(--bd);margin-top:4px}
+.col-form-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:10px}
+.col-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.col-field label{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+.col-sel{width:100%;height:38px;border:2px solid var(--bd2);border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;padding:0 10px;background:var(--sf);color:var(--t1);outline:none;cursor:pointer;transition:border-color var(--tb)}
+.col-sel:focus{border-color:var(--colheita)}
+.col-ciclo-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;background:rgba(22,167,107,.1);color:var(--plantio);padding:4px 10px;border-radius:20px;margin-bottom:10px}
+.col-ciclo-chip .ico{font-size:13px}
+.btn-reg{width:100%;height:42px;background:var(--colheita);color:#fff;border:none;border-radius:var(--r-md);font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 6px 20px rgba(212,137,10,.28);transition:transform var(--tf),opacity var(--tb)}
+.btn-reg:hover{transform:translateY(-1px)}
+.btn-reg:disabled{opacity:.4;cursor:default;transform:none}
+.col-sel-hint{font-size:12px;color:var(--t3);text-align:center;padding:14px 0}
+
+/* ── PORTAL ──────────────────────────────────────────────── */
+.portal-wrap{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.phone-frame{width:360px;flex-shrink:0;background:#1a1a2e;border-radius:44px;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.08)}
+.phone-notch{width:120px;height:30px;background:#1a1a2e;border-radius:0 0 20px 20px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center}
+.phone-dot{width:10px;height:10px;background:#333;border-radius:50%}
+.phone-screen{border-radius:34px;overflow:hidden;background:#f5f7fa;height:660px;display:flex;flex-direction:column}
+.ph-header{padding:18px 14px 10px;background:#fff;border-bottom:1px solid #eee;flex-shrink:0}
+.ph-brand{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ph-bmark{width:26px;height:26px;background:var(--plantio);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700}
+.ph-bname{font-size:13px;font-weight:700;color:#20262e}
+.ph-title{font-size:19px;font-weight:700;color:#20262e;letter-spacing:-.3px}
+.ph-sub{font-size:11.5px;color:#9895a2;margin-top:2px}
+.ph-tabs{display:flex;overflow-x:auto;scrollbar-width:none;padding:0 2px;gap:4px}
+.ph-tabs::-webkit-scrollbar{display:none}
+.ph-tab{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:20px;font-family:'Poppins',sans-serif;font-size:11.5px;font-weight:600;white-space:nowrap;border:none;cursor:pointer;transition:all var(--tb);color:#9895a2;background:transparent;flex-shrink:0}
+.ph-tab.on{color:#fff}
+.ph-body{flex:1;overflow-y:auto}
+.ph-body::-webkit-scrollbar{display:none}
+.ph-rel-header{padding:12px 14px 8px;background:#f5f7fa;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2}
+.ph-rel-name{font-size:12px;font-weight:700;color:#20262e}
+.ph-rel-date{font-size:11px;color:#9895a2}
+.ph-file{display:flex;align-items:center;gap:11px;padding:12px 14px;background:#fff;border-bottom:1px solid #f0f0f0}
+.ph-ftype{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;letter-spacing:.2px;flex-shrink:0}
+.ph-finfo{flex:1;min-width:0}
+.ph-fname{font-size:12px;font-weight:600;color:#20262e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph-fmeta{font-size:10.5px;color:#9895a2;margin-top:2px}
+.ph-btn-dl{width:34px;height:34px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform var(--tf)}
+.ph-btn-dl:hover{transform:scale(1.08)}
+.ph-btn-dl .ico{font-size:17px;color:#fff}
+.portal-info{flex:1;min-width:240px;padding-top:8px}
+.portal-info-title{font-size:18px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+.portal-info-sub{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:18px}
+.portal-how{display:flex;flex-direction:column;gap:12px}
+.how-item{display:flex;gap:12px;align-items:flex-start}
+.how-num{width:24px;height:24px;border-radius:50%;background:var(--plantio);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.how-text{font-size:12.5px;color:var(--t2);line-height:1.5}
+.how-text strong{color:var(--t1)}
+
+/* ── CONSULTAS ────────────────────────────────────────────── */
+.cons-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.cons-mod-tabs{display:flex;gap:4px;background:var(--s2);border-radius:10px;padding:3px}
+.cons-mod-tab{padding:5px 16px;border-radius:7px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--t3);transition:all var(--tb);font-family:'Poppins',sans-serif}
+.cons-mod-tab.on{background:var(--sf);color:var(--t1);box-shadow:var(--sh-sm)}
+.cons-filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.cons-sel{height:34px;background:var(--sf);border:2px solid var(--bd);border-radius:9px;padding:0 10px 0 12px;font-family:'Poppins',sans-serif;font-size:12px;color:var(--t2);outline:none;cursor:pointer;transition:border-color var(--tb)}
+.cons-sel:focus{border-color:var(--plantio)}
+.cons-sel.active{border-color:var(--plantio);background:rgba(22,167,107,.06);color:var(--t1)}
+.cons-search{flex:1;min-width:160px;height:34px;background:var(--sf);border:2px solid var(--bd);border-radius:9px;padding:0 12px;font-family:'Poppins',sans-serif;font-size:12px;color:var(--t1);outline:none;transition:border-color var(--tb)}
+.cons-search:focus{border-color:var(--plantio)}
+.cons-search::placeholder{color:var(--t3)}
+.cons-table-wrap{background:var(--sf);border-radius:14px;box-shadow:var(--sh-sm);overflow:hidden}
+.cons-table{width:100%;border-collapse:collapse}
+.cons-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--t3);padding:10px 12px;border-bottom:1px solid var(--bd);text-align:left;background:var(--sf);white-space:nowrap}
+.cons-table td{padding:9px 12px;font-size:12.5px;color:var(--t2);border-bottom:1px solid var(--bd);transition:background var(--tb)}
+.cons-table tbody tr.cons-faz-row{cursor:pointer}
+.cons-table tbody tr.cons-faz-row:hover td{background:var(--s2)}
+.cons-table tbody tr.cons-faz-row.exp td{background:var(--s2);font-weight:600}
+.cons-table tbody tr.cons-faz-row.sel td{background:rgba(22,167,107,.06)}
+.cons-exp-ico{font-size:10px;color:var(--t3);margin-right:5px;display:inline-block;width:10px;transition:transform .15s}
+.cons-exp-ico.open{transform:rotate(90deg)}
+.cons-detail-row td{padding:0!important;border-bottom:1px solid var(--bd)}
+.cons-detail-inner{padding:6px 12px 10px 36px;background:var(--s2)}
+.cons-detail-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.cons-detail-table th{color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 10px;border-bottom:1px solid var(--bd);text-align:left;background:transparent}
+.cons-detail-table td{padding:6px 10px;border-bottom:1px solid var(--bd);color:var(--t2)}
+.cons-detail-table tr:last-child td{border-bottom:none}
+.cons-cb{width:15px;height:15px;accent-color:var(--plantio);cursor:pointer}
+.cons-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.cons-footer{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-top:1px solid var(--bd);background:var(--s2);gap:10px;flex-wrap:wrap}
+.cons-count{font-size:11.5px;color:var(--t3)}
+.cons-count strong{color:var(--t1);font-weight:700}
+.cons-footer-r{display:flex;align-items:center;gap:10px}
+.cons-pgn{display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1px solid var(--bd);justify-content:center}
+.cons-pgn-btn{height:30px;padding:0 12px;border:1.5px solid var(--bd2);border-radius:7px;background:var(--sf);font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:border-color var(--tb)}
+.cons-pgn-btn:hover:not(:disabled){border-color:var(--plantio);color:var(--plantio)}
+.cons-pgn-btn:disabled{opacity:.3;cursor:default}
+.cons-pgn-info{font-size:11.5px;color:var(--t3);padding:0 6px}
+.btn-export{height:32px;padding:0 14px;background:var(--t1);color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background var(--tb),opacity var(--tb)}
+.btn-export:hover{background:var(--plantio)}
+.btn-export:disabled{opacity:.35;cursor:default;pointer-events:none}
+.btn-export .ico{font-size:14px}
+.btn-export-cnt{background:rgba(255,255,255,.2);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px}
+.cons-empty{padding:40px;text-align:center;color:var(--t3);font-size:13px}
+.cons-empty .ico{font-size:36px;display:block;margin-bottom:8px;opacity:.25}
+
+/* ── USUÁRIOS ─────────────────────────────────────────────── */
+.usr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.usr-list{display:flex;flex-direction:column;gap:6px}
+.usr-card{background:var(--sf);border-radius:12px;padding:13px 16px;box-shadow:var(--sh-sm);display:flex;align-items:center;gap:12px;cursor:pointer;transition:box-shadow var(--tb),border-color var(--tb),transform var(--tf);border:2px solid transparent;will-change:transform}
+.usr-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
+.usr-card.on{border-color:var(--plantio)}
+.usr-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0}
+.usr-info{flex:1;min-width:0}
+.usr-nome{font-size:13px;font-weight:600}
+.usr-email{font-size:11px;color:var(--t3);margin-top:1px}
+.usr-roles{display:flex;gap:4px;flex-wrap:wrap}
+.role-chip{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.3px;white-space:nowrap}
+.rc-a{background:rgba(37,102,232,.1);color:#2566e8}
+.rc-preen{background:rgba(212,137,10,.1);color:var(--colheita)}
+.rc-dash{background:var(--s2);color:var(--t2)}
+.rc-admin{background:rgba(22,167,107,.12);color:var(--plantio)}
+.usr-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.usr-inactive{opacity:.45}
+.usr-panel{background:var(--sf);border-radius:16px;box-shadow:var(--sh-md);overflow:hidden;animation:fin .2s var(--sp)}
+.usr-panel-head{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px}
+.usr-perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.usr-perm-section{padding:16px 20px;border-right:1px solid var(--bd)}
+.usr-perm-section:last-child{border-right:none}
+.usr-perm-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:10px}
+.perm-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0}
+.perm-row-l{font-size:12.5px;color:var(--t2)}
+.perm-sub{font-size:11px;color:var(--t3)}
+.btn-add-usr{height:36px;padding:0 16px;background:var(--t1);color:#fff;border:none;border-radius:9px;font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background var(--tb)}
+.btn-add-usr:hover{background:var(--plantio)}
+.btn-add-usr .ico{font-size:15px}
+/* ── GERENCIAR — action cards ────────────────────────────── */
+.mgr-section{margin-bottom:10px}
+.mgr-section-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:8px;padding:0 2px}
+.mgr-card{background:var(--sf);border-radius:12px;padding:14px 16px;box-shadow:var(--sh-sm);display:flex;align-items:center;gap:14px;margin-bottom:7px;transition:box-shadow var(--tb),transform var(--tf);cursor:default}
+.mgr-card:last-child{margin-bottom:0}
+.mgr-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mgr-ico .ico{font-size:19px;color:#fff}
+.mgr-body{flex:1;min-width:0}
+.mgr-name{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px}
+.mgr-desc{font-size:11.5px;color:var(--t3);line-height:1.4}
+.btn-mgr{height:34px;padding:0 16px;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:opacity var(--tb),transform var(--tf);color:#fff;white-space:nowrap;flex-shrink:0}
+.btn-mgr .ico{font-size:14px}
+.btn-mgr:hover{opacity:.88;transform:translateY(-1px)}
+.btn-mgr:active{transform:scale(.97)}
+.btn-mgr-ghost{background:transparent;border:1.5px solid var(--bd2);color:var(--t2)}
+.btn-mgr-ghost:hover{border-color:var(--t2);opacity:1}
+
+/* ── CONFIGURAÇÕES ──────────────────────────────────────── */
+.cfg-layout{display:grid;grid-template-columns:196px 1fr;gap:14px;align-items:start}
+.cfg-nav{background:var(--sf);border-radius:14px;padding:8px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:2px;position:sticky;top:0}
+.cfg-cat{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;cursor:pointer;border:none;background:transparent;font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:500;color:var(--t2);width:100%;text-align:left;transition:background var(--tb),color var(--tb)}
+.cfg-cat:hover{background:var(--s2);color:var(--t1)}
+.cfg-cat.on{background:var(--s2);color:var(--t1);font-weight:600}
+.cfg-cat .ico{font-size:17px;color:var(--t3);flex-shrink:0;transition:color var(--tb)}
+.cfg-cat.on .ico{color:var(--t1)}
+.cfg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:auto}
+.cfg-body{display:flex;flex-direction:column;gap:10px}
+.cfg-panel{display:none;flex-direction:column;gap:10px}
+.cfg-panel.on{display:flex;animation:fin .2s var(--sp)}
+.cfg-card{background:var(--sf);border-radius:14px;padding:18px 20px;box-shadow:var(--sh-sm)}
+.cfg-card-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.cfg-card-t .ico{font-size:15px}
+.cfg-sep{height:1px;background:var(--bd);margin:10px 0}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 0}
+.cfg-row-l{flex:1;min-width:0}
+.cfg-row-lbl{font-size:13px;font-weight:500;color:var(--t1)}
+.cfg-row-sub{font-size:11.5px;color:var(--t3);margin-top:1px}
+/* Inputs */
+.cfg-inp{height:36px;background:var(--s2);border:2px solid var(--bd2);border-radius:8px;padding:0 12px;font-family:'Poppins',sans-serif;font-size:12.5px;color:var(--t1);outline:none;transition:border-color var(--tb),box-shadow var(--tb);min-width:0}
+.cfg-inp:focus{border-color:var(--plantio);box-shadow:0 0 0 3px rgba(22,167,107,.1)}
+.cfg-inp.w-sm{width:110px}
+.cfg-inp.w-md{width:180px}
+.cfg-inp.w-lg{width:240px}
+.cfg-inp[readonly]{color:var(--t3);cursor:default}
+.cfg-inp[readonly]:focus{border-color:var(--bd2);box-shadow:none}
+.cfg-sel{height:36px;background:var(--s2);border:2px solid var(--bd2);border-radius:8px;padding:0 10px;font-family:'Poppins',sans-serif;font-size:12.5px;color:var(--t1);outline:none;cursor:pointer;transition:border-color var(--tb)}
+.cfg-sel:focus{border-color:var(--plantio)}
+.cfg-inrow{display:flex;align-items:center;gap:8px}
+.cfg-inrow .ico-btn{width:32px;height:32px;border:none;border-radius:7px;background:var(--s2);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--tb),color var(--tb);flex-shrink:0}
+.cfg-inrow .ico-btn:hover{background:var(--bd);color:var(--t1)}
+.cfg-inrow .ico-btn .ico{font-size:15px}
+/* Toggle */
+.toggle{position:relative;display:inline-flex;width:40px;height:22px;flex-shrink:0;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.tgl-tr{position:absolute;inset:0;border-radius:11px;background:var(--bd2);transition:background var(--tb)}
+.toggle input:checked+.tgl-tr{background:var(--plantio)}
+.tgl-th{position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform var(--tb);box-shadow:0 1px 4px rgba(0,0,0,.18);pointer-events:none;z-index:1}
+.toggle input:checked~.tgl-th{transform:translateX(18px)}
+/* Module accent toggles */
+.toggle.col input:checked+.tgl-tr{background:var(--colheita)}
+.toggle.pre input:checked+.tgl-tr{background:var(--preparo)}
+.toggle.ext input:checked+.tgl-tr{background:#5b6ee8}
+/* Status chip */
+.cfg-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+/* Save bar */
+.cfg-savebar{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+.btn-cfg-save{height:38px;padding:0 20px;background:var(--t1);color:#fff;border:none;border-radius:9px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--tb),transform var(--tf)}
+.btn-cfg-save:hover{background:var(--plantio);transform:translateY(-1px)}
+/* Toast */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--t1);color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:500;box-shadow:var(--sh-md);z-index:200;transition:transform .35s var(--sp),opacity .35s var(--sp);opacity:0;pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media(max-width:900px){
+  .pgrid{grid-template-columns:1fr}
+  .flist{max-height:180px}
+  .dash-meta-strip{grid-template-columns:repeat(2,1fr)}
+  .dash-mod-grid{grid-template-columns:1fr}
+  .portal-wrap{flex-direction:column}
+  .cfg-layout{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .hub-main{margin-left:calc(var(--sb-w) + 10px + var(--sb-gap))}
+  .topbar{margin-right:10px}
+  .hub-body{padding-right:10px}
+}
+</style>
+
+<!-- LOGIN -->
+<div id="login" class="scr">
+  <div class="deco"><div class="dc a"></div><div class="dc b"></div></div>
+  <div class="lcard">
+    <div class="brand"><div class="bmark">HG</div><span class="bname">hub geotech</span></div>
+    <h1 class="ltitle">Bem-vindo de volta</h1>
+    <p class="lsub">Acesse sua conta para continuar</p>
+    <div class="lform">
+      <div class="tbx"><input type="email" id="f-email" placeholder=" " autocomplete="off"><label for="f-email">E-mail</label></div>
+      <div class="tbx"><input type="password" id="f-pass" placeholder=" "><label for="f-pass">Senha</label></div>
+      <button class="btn-in" onclick="entrar()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- HUB -->
+<div id="hub" class="scr off">
+  <aside class="sb">
+    <div class="sb-brand"><div class="bmark sm">HG</div><span class="sb-bname">hub geotech</span></div>
+    <nav class="sb-nav">
+      <button class="ni on" onclick="trocar('dash',this)"><span class="ico ni-ico">home</span><span class="ni-lbl">Dashboard</span></button>
+      <button class="ni" onclick="trocar('plantio',this)"><span class="ico ni-ico">eco</span><span class="ni-lbl">Plantio</span></button>
+      <button class="ni" onclick="trocar('colheita',this)"><span class="ico ni-ico">agriculture</span><span class="ni-lbl">Colheita</span></button>
+      <button class="ni" onclick="trocar('preparo',this)"><span class="ico ni-ico">construction</span><span class="ni-lbl">Preparo</span></button>
+      <button class="ni" onclick="trocar('portal',this)"><span class="ico ni-ico">phone_iphone</span><span class="ni-lbl">Portal Mobile</span></button>
+      <button class="ni" onclick="trocar('consultas',this)"><span class="ico ni-ico">table_view</span><span class="ni-lbl">Consultas</span></button>
+      <div class="sep"></div>
+      <button class="ni dim"><span class="ico ni-ico">water_drop</span><span class="ni-lbl">Irrigação<span class="soon">em breve</span></span></button>
+      <button class="ni dim"><span class="ico ni-ico">flight</span><span class="ni-lbl">Drones<span class="soon">em breve</span></span></button>
+      <div class="sep"></div>
+      <button class="ni" onclick="trocar('geotech',this)"><span class="ico ni-ico">apps</span><span class="ni-lbl" style="display:flex;align-items:center;gap:6px">Ferramentas<span style="font-size:9px;font-weight:700;background:rgba(91,110,232,.12);color:#5b6ee8;border-radius:20px;padding:1px 6px;white-space:nowrap">BETA</span></span></button>
+    </nav>
+    <div class="sb-bot">
+      <button class="ni" onclick="trocar('config',this)"><span class="ico ni-ico">settings</span><span class="ni-lbl">Configurações</span></button>
+      <div class="urow">
+        <div class="av">L</div>
+        <div class="uinfo"><div class="uname">Leonardo</div><div class="urole" id="sb-urole"></div></div>
+        <button class="btn-out" onclick="sair()"><span class="ico">logout</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="hub-main">
+    <header class="topbar">
+      <div class="tbl">
+        <span class="tb-mod" id="tb-mod">Dashboard</span>
+        <span class="tb-sep">/</span>
+        <span class="tb-tit" id="tb-tit">Visão geral</span>
+      </div>
+      <div class="uchip"><div class="av sm">L</div><span>Leonardo</span></div>
+    </header>
+    <div class="hub-body">
+
+      <!-- DASHBOARD -->
+      <div id="v-dash" class="view on">
+        <div class="dash-greeting" id="dash-greeting"></div>
+        <div class="dash-meta-strip" id="dash-meta"></div>
+        <div class="dash-mod-grid" id="dash-mod-grid"></div>
+      </div>
+
+      <!-- PLANTIO -->
+      <div id="v-plantio" class="view">
+        <div class="pgrid">
+          <div>
+            <div class="sec-h">Fazendas</div>
+            <div class="search-wrap">
+              <span class="ico search-ico">search</span>
+              <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarF(this.value)"
+                style="--focus-c:var(--plantio)">
+            </div>
+            <div class="flist" id="flist"></div>
+          </div>
+          <div>
+            <div class="sec-h" id="dsh" style="visibility:hidden">Detalhes</div>
+            <div id="dempty" class="dempty"><span class="ico">park</span><p>Selecione uma fazenda para ver o progresso</p></div>
+            <div id="dpanel" class="dpanel" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLHEITA -->
+      <div id="v-colheita" class="view">
+        <div class="pgrid">
+          <div>
+            <div class="sec-h">Fazendas</div>
+            <div class="search-wrap">
+              <span class="ico search-ico">search</span>
+              <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarC(this.value)"
+                style="--focus-c:var(--colheita)">
+            </div>
+            <div class="flist" id="flist-c"></div>
+          </div>
+          <div>
+            <div class="sec-h" id="dsh-c" style="visibility:hidden">Talhões</div>
+            <div id="dempty-c" class="dempty"><span class="ico">agriculture</span><p>Selecione uma fazenda para ver os talhões</p></div>
+            <div id="dpanel-c" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREPARO -->
+      <div id="v-preparo" class="view">
+        <div class="pgrid">
+          <div>
+            <div class="sec-h">Fazendas</div>
+            <div class="search-wrap">
+              <span class="ico search-ico">search</span>
+              <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarP(this.value)"
+                style="--focus-c:var(--preparo)">
+            </div>
+            <div class="flist" id="flist-p"></div>
+          </div>
+          <div>
+            <div class="sec-h" id="dsh-p" style="visibility:hidden">Etapas</div>
+            <div id="dempty-p" class="dempty"><span class="ico">construction</span><p>Selecione uma fazenda para ver as etapas</p></div>
+            <div id="dpanel-p" class="dpanel" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSULTAS -->
+      <div id="v-consultas" class="view">
+        <div class="cons-head">
+          <div class="cons-mod-tabs">
+            <button class="cons-mod-tab on" onclick="consMod('plantio',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">eco</span>Plantio</button>
+            <button class="cons-mod-tab" onclick="consMod('colheita',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">agriculture</span>Colheita</button>
+            <button class="cons-mod-tab" onclick="consMod('preparo',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">construction</span>Preparo</button>
+          </div>
+          <button class="btn-export" id="btn-export" onclick="exportCons()" disabled>
+            <span class="ico">content_copy</span>Excel
+            <span class="btn-export-cnt" id="exp-cnt" style="display:none">0</span>
+          </button>
+          <button class="btn-export" id="btn-wpp" onclick="exportWpp()" disabled style="background:#25d366">
+            <span class="ico">chat</span>WhatsApp
+            <span class="btn-export-cnt" id="wpp-cnt" style="display:none">0</span>
+          </button>
+        </div>
+        <div class="cons-filters" id="cons-filters"></div>
+        <div class="cons-table-wrap">
+          <table class="cons-table"><thead id="cons-thead"></thead><tbody id="cons-tbody"></tbody></table>
+          <div id="cons-table-wrap-pgn"></div>
+          <div class="cons-footer">
+            <div class="cons-count" id="cons-count"></div>
+            <div class="cons-footer-r">
+              <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2);cursor:pointer;white-space:nowrap">
+                <input type="checkbox" class="cons-cb" id="cb-all" onchange="consSelAll(this)"> Selecionar todos
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PORTAL -->
+      <div id="v-portal" class="view">
+        <div class="portal-wrap">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px">Prévia mobile</div>
+            <div class="phone-frame">
+              <div class="phone-notch"><div class="phone-dot"></div></div>
+              <div class="phone-screen" id="phone-screen"></div>
+            </div>
+          </div>
+          <div class="portal-info">
+            <div class="portal-info-title">Portal de Downloads</div>
+            <div class="portal-info-sub">Página separada, 100% mobile-first. O analista de campo acessa via link direto, sem precisar entrar no hub.</div>
+            <div class="portal-how">
+              <div class="how-item"><div class="how-num">1</div><div class="how-text"><strong>Projeto concluído</strong> — última etapa marcada como OK gera automaticamente uma release no GitHub com os arquivos (ZIP, DWG, PDF).</div></div>
+              <div class="how-item"><div class="how-num">2</div><div class="how-text"><strong>Portal atualiza sozinho</strong> — consulta <code style="font-size:11px;background:var(--s2);padding:1px 5px;border-radius:4px">/releases/latest</code> de cada repo.</div></div>
+              <div class="how-item"><div class="how-num">3</div><div class="how-text"><strong>Download direto</strong> — toca no botão, download começa direto do asset da release.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HUB GEOTECH -->
+      <div id="v-geotech" class="view">
+        <div class="gt-header">
+          <div>
+            <div class="gt-title">Ferramentas</div>
+            <div class="gt-sub">Ferramentas de geotecnologia integradas ao fluxo agroindustrial</div>
+          </div>
+        </div>
+        <div class="gt-grid" id="gt-grid"></div>
+      </div>
+
+      <!-- USUÁRIOS -->
+      <div id="v-usuarios" class="view">
+        <div class="pgrid">
+          <div>
+            <div class="usr-header">
+              <div class="sec-h" style="margin:0">Usuários</div>
+              <button class="btn-add-usr" onclick="selUsr(-1)"><span class="ico">person_add</span>Novo usuário</button>
+            </div>
+            <div class="usr-list" id="usr-list"></div>
+          </div>
+          <div>
+            <div class="sec-h" id="dsh-u" style="visibility:hidden">Permissões</div>
+            <div id="dempty-u" class="dempty"><span class="ico">manage_accounts</span><p>Selecione um usuário para editar permissões</p></div>
+            <div id="dpanel-u" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIGURAÇÕES -->
+      <div id="v-config" class="view">
+        <div class="cfg-layout">
+          <div class="cfg-nav">
+            <button class="cfg-cat on" onclick="cfgTab('geral',this)"><span class="ico">person</span>Geral</button>
+            <button class="cfg-cat" onclick="cfgTab('plantio',this)"><span class="ico" style="color:var(--plantio)">eco</span>Plantio<span class="cfg-dot" style="background:var(--plantio)"></span></button>
+            <button class="cfg-cat" onclick="cfgTab('colheita',this)"><span class="ico" style="color:var(--colheita)">agriculture</span>Colheita<span class="cfg-dot" style="background:var(--colheita)"></span></button>
+            <button class="cfg-cat" onclick="cfgTab('preparo',this)"><span class="ico" style="color:var(--preparo)">construction</span>Preparo<span class="cfg-dot" style="background:var(--preparo)"></span></button>
+            <button class="cfg-cat" onclick="cfgTab('portal',this)"><span class="ico">phone_iphone</span>Portal Mobile</button>
+            <button class="cfg-cat" onclick="cfgTab('extras',this)"><span class="ico" style="color:#5b6ee8">apps</span>Ferramentas</button>
+          </div>
+          <div class="cfg-body">
+
+            <!-- GERAL -->
+            <div id="cfg-geral" class="cfg-panel on">
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">person</span>Perfil</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Nome</div></div><input class="cfg-inp w-md" value="Leonardo Malerbo"></div>
+              </div>
+              <div class="cfg-card" style="padding-bottom:8px">
+                <div class="cfg-card-t"><span class="ico">manage_accounts</span>Acesso</div>
+                <div class="mgr-card" style="margin-bottom:0;box-shadow:none;padding:10px 2px;background:transparent">
+                  <div class="mgr-ico" style="background:#5b6ee8"><span class="ico">group</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Gerenciar Usuários</div><div class="mgr-desc">Perfis, papéis e permissões de todos os módulos</div></div>
+                  <button class="btn-mgr" style="background:var(--t1)" onclick="trocar('usuarios',null)"><span class="ico">arrow_forward</span>Acessar</button>
+                </div>
+              </div>
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">settings</span>Sistema</div>
+                <div class="cfg-row">
+                  <div class="cfg-row-l"><div class="cfg-row-lbl">Safra início</div><div class="cfg-row-sub">Compartilhado entre todos os módulos</div></div>
+                  <input class="cfg-inp w-md" value="01/03/2026" id="cfg-safra-ini">
+                </div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row">
+                  <div class="cfg-row-l"><div class="cfg-row-lbl">Safra fim</div></div>
+                  <input class="cfg-inp w-md" value="01/03/2027" id="cfg-safra-fim">
+                </div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row">
+                  <div class="cfg-row-l"><div class="cfg-row-lbl">Ciclo ativo</div></div>
+                  <span class="cfg-chip" style="background:rgba(22,167,107,.12);color:var(--plantio)" id="cfg-ciclo-chip">—</span>
+                </div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Rollback de etapas habilitado</div><div class="cfg-row-sub">Permite reverter etapas já concluídas</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Release automático ao concluir</div><div class="cfg-row-sub">Aplica-se a Plantio e Preparo</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+              </div>
+              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
+            </div>
+
+            <!-- PLANTIO -->
+            <div id="cfg-plantio" class="cfg-panel">
+              <div class="mgr-section">
+                <div class="mgr-section-lbl">Operações</div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:var(--plantio)"><span class="ico">download_for_offline</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Importar Demanda</div><div class="mgr-desc">Atualizar base de talhões a partir da Sequência de Plantio</div></div>
+                  <button class="btn-mgr" style="background:var(--plantio)" onclick="showToast('Importar Demanda — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
+                </div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:#2566e8"><span class="ico">sync</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Sincronizar Planilha</div><div class="mgr-desc">Instalar scripts e sincronizar com pasta de rede</div></div>
+                  <button class="btn-mgr" style="background:#2566e8" onclick="showToast('Sincronizar Planilha — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
+                </div>
+              </div>
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">tune</span>Configurações</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Excluir prefixo COD_FAZ</div><div class="cfg-row-sub">Fazendas administrativas excluídas da importação</div></div><input class="cfg-inp w-sm" value="20"></div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Sist. Conser. automático</div><div class="cfg-row-sub">Recebem mapeamento='Sim' sem aprovação manual</div></div><input class="cfg-inp w-lg" value="Base Larga, Livre"></div>
+              </div>
+              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
+            </div>
+
+            <!-- COLHEITA -->
+            <div id="cfg-colheita" class="cfg-panel">
+              <div class="mgr-section">
+                <div class="mgr-section-lbl">Operações</div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:var(--colheita)"><span class="ico">database</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Atualizar Base</div><div class="mgr-desc">Base ICOL e fazendas</div></div>
+                  <button class="btn-mgr" style="background:var(--colheita)" onclick="showToast('Atualizar Base — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
+                </div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:#2566e8"><span class="ico">upload_file</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Atualizar Projetos</div><div class="mgr-desc">Reenviar arquivos .dwg/.zip de fazendas já consolidadas</div></div>
+                  <button class="btn-mgr" style="background:#2566e8" onclick="showToast('Atualizar Projetos — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
+                </div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:#e05252"><span class="ico">flight</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Voo (dronemgmt)</div><div class="mgr-desc">Status de voo dos talhões Sem Linhas (Falha Soca)</div></div>
+                  <button class="btn-mgr" style="background:#e05252" onclick="showToast('Voo DroneMgmt — em breve no Hub Geotech')"><span class="ico">open_in_new</span>Abrir</button>
+                </div>
+              </div>
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">tune</span>Configurações</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Excluir prefixos COD_FAZ</div></div><input class="cfg-inp w-sm" value="20, 21"></div>
+              </div>
+              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
+            </div>
+
+            <!-- PREPARO -->
+            <div id="cfg-preparo" class="cfg-panel">
+              <div class="mgr-section">
+                <div class="mgr-section-lbl">Operações</div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:var(--preparo)"><span class="ico">database</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Atualizar Base</div><div class="mgr-desc">Base de preparo e fazendas</div></div>
+                  <button class="btn-mgr" style="background:var(--preparo)" onclick="showToast('Atualizar Base — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
+                </div>
+                <div class="mgr-card">
+                  <div class="mgr-ico" style="background:#e05252"><span class="ico">flight</span></div>
+                  <div class="mgr-body"><div class="mgr-name">Voo (dronemgmt)</div><div class="mgr-desc">Status de voo dos talhões</div></div>
+                  <button class="btn-mgr" style="background:#e05252" onclick="showToast('Voo DroneMgmt — em breve no Hub Geotech')"><span class="ico">open_in_new</span>Abrir</button>
+                </div>
+              </div>
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">tune</span>Configurações</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Projetos de voo relevantes</div><div class="cfg-row-sub">PREPARO_PROJETOS — filtro aplicado no sync dronemgmt</div></div></div>
+                <div style="display:flex;flex-direction:column;gap:4px;padding:6px 0">
+                  <div class="cfg-row" style="padding:2px 0"><div class="cfg-row-l"><div class="cfg-row-lbl" style="font-size:12px">LEVANTAMENTO TOPOGRAFICO</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+                  <div class="cfg-row" style="padding:2px 0"><div class="cfg-row-l"><div class="cfg-row-lbl" style="font-size:12px">EXPANSOES</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+                  <div class="cfg-row" style="padding:2px 0"><div class="cfg-row-l"><div class="cfg-row-lbl" style="font-size:12px">SISTEMATIZACAO</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+                </div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Exigir observações</div><div class="cfg-row-sub">Obrigatório na etapa Observações antes de avançar</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+              </div>
+              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
+            </div>
+
+            <!-- PORTAL -->
+            <div id="cfg-portal" class="cfg-panel">
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">link</span>Acesso</div>
+                <div class="cfg-row">
+                  <div class="cfg-row-l"><div class="cfg-row-lbl">URL do portal</div></div>
+                  <div class="cfg-inrow">
+                    <input class="cfg-inp w-lg" value="lmalerbo.github.io/project-plantio/portal.html" readonly>
+                    <button class="ico-btn" onclick="navigator.clipboard?.writeText('lmalerbo.github.io/project-plantio/portal.html');showToast('Link copiado!')"><span class="ico">content_copy</span></button>
+                  </div>
+                </div>
+              </div>
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">visibility</span>Módulos visíveis</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Plantio</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Colheita (Expo Safra)</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Preparo</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+              </div>
+              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
+            </div>
+
+            <!-- EXTRAS / FERRAMENTAS -->
+            <div id="cfg-extras" class="cfg-panel">
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">map</span>Geomap</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">URL</div></div><div class="cfg-inrow"><input class="cfg-inp w-lg" placeholder="https://geomap.exemplo.com" id="cfg-geomap-url"><button class="ico-btn" onclick="testExt('cfg-geomap-url')"><span class="ico">open_in_new</span></button></div></div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Visível no sidebar</div></div><label class="toggle ext"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+              </div>
+              <div class="cfg-card">
+                <div class="cfg-card-t"><span class="ico">memory</span>Kronos</div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">URL</div></div><div class="cfg-inrow"><input class="cfg-inp w-lg" placeholder="https://kronos.exemplo.com" id="cfg-kronos-url"><button class="ico-btn" onclick="testExt('cfg-kronos-url')"><span class="ico">open_in_new</span></button></div></div>
+                <div class="cfg-sep"></div>
+                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Visível no sidebar</div></div><label class="toggle ext"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
+              </div>
+              <div class="cfg-card" style="border:2px dashed var(--bd);box-shadow:none;background:transparent">
+                <div style="display:flex;align-items:center;gap:10px;color:var(--t3)"><span class="ico">add_circle</span><div><div style="font-size:13px;font-weight:500">Adicionar ferramenta</div><div style="font-size:11.5px;margin-top:2px">Conecte qualquer sistema interno via URL</div></div></div>
+              </div>
+              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
+            </div>
+
+          </div><!-- end cfg-body -->
+        </div><!-- end cfg-layout -->
+      </div><!-- end v-config -->
+
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// DADOS — Plantio
+// ─────────────────────────────────────────────────────────────
+const ET=[
+  {l:'Ag. Topografia',c:'#8898c0',a:'Confirmar Topografia',i:'pin_drop'},
+  {l:'Pendente',       c:'#d4890a',a:'Iniciar Projeto',    i:'pending_actions'},
+  {l:'Andamento',      c:'#2566e8',a:'Upload Exportação',  i:'upload_file',hint:'${cod}_Exp1.zip'},
+  {l:'Ag. Arquivo',   c:'#7c5de8',a:'Upload Mapa Plantio',i:'map',        hint:'${cod}_Mapa.pdf'},
+  {l:'Concluído',      c:'#16a76b',a:null,                 i:'check_circle'},
+];
+const FZ=[
+  {n:'Retiro Queimadas',cod:'RQ01',t:12,e:0,ha:850, mes:'Out/26'},
+  {n:'Várzea',         cod:'VZ01',t:8, e:1,ha:420, mes:'Nov/26'},
+  {n:'Pedra Branca',   cod:'PB01',t:15,e:2,ha:1200,mes:'Nov/26'},
+  {n:'Pico Morrinhos', cod:'PM01',t:6, e:3,ha:640, mes:'Dez/26'},
+  {n:'Buriti',         cod:'BT01',t:10,e:4,ha:380, mes:'Dez/26'},
+];
+let ativa=null, fqP='';
+
+// ─────────────────────────────────────────────────────────────
+// DADOS — Preparo
+// ─────────────────────────────────────────────────────────────
+const ET_P=[
+  {l:'Identificação',a:'Confirmar identificação', sub:'Fazenda no ortomosaico processado',i:'pin_drop',     hint:null,obs:false},
+  {l:'Escoamento',   a:'Confirmar upload',         sub:'Upload do mapa de escoamento',     i:'water',        hint:'${cod}_Escoa.pdf',obs:false},
+  {l:'Observações',  a:'Confirmar observações',    sub:'Observações de campo tratadas',    i:'comment',      hint:null,obs:true},
+  {l:'Preparo',      a:'Confirmar entrega',         sub:'Entrega do projeto completo',      i:'construction', hint:'${cod}_Exp1.dwg · zip · pdf',obs:false},
+];
+const VOO={P:{l:'Processado',c:'#16a76b'},V:{l:'Voado',c:'#d4890a'},PR:{l:'Processando',c:'#2566e8'},S:{l:'Sem sol.',c:'#9895a2'}};
+const FZ_P=[
+  {n:'Retiro Queimadas',cod:'RQ01',ha:850, mes:'Out/26',voo:'P',ok:[true,true,true,true],
+   obs:'Curvas conferidas. Sistematização validada.',
+   usr:['João','João','Maria','Maria'],dt:['14/09 14:22','14/09 14:25','15/09 09:10','15/09 11:44']},
+  {n:'Várzea',         cod:'VZ01',ha:420, mes:'Out/26',voo:'P',ok:[true,true,true,true],
+   obs:'Observações recebidas em reunião de campo.',
+   usr:['Ana','Ana','Carlos','Carlos'],dt:['16/09 10:00','16/09 10:05','17/09 09:30','17/09 14:20']},
+  {n:'Pedra Branca',   cod:'PB01',ha:1200,mes:'Nov/26',voo:'P',ok:[true,true,true,false],
+   obs:'Aguardando .dwg final do projetista.',
+   usr:['João','João','Maria',''],dt:['18/09 08:00','18/09 08:10','19/09 10:00','']},
+  {n:'Pico Morrinhos', cod:'PM01',ha:640, mes:'Nov/26',voo:'P',ok:[true,true,false,false],
+   obs:'',usr:['Ana','Ana','',''],dt:['19/09 11:00','19/09 11:20','','']},
+  {n:'Buriti',         cod:'BT01',ha:380, mes:'Dez/26',voo:'V',ok:[false,false,false,false],
+   obs:'',usr:['','','',''],dt:['','','','']},
+];
+let ativaP=null, fqPr='';
+
+// ─────────────────────────────────────────────────────────────
+// DADOS — Colheita
+// ─────────────────────────────────────────────────────────────
+const ST_COL={
+  'CONCLUIDO':  {c:'#16a76b',bg:'rgba(22,167,107,.12)',  cls:'CONCLUIDO'},
+  'A FAZER':    {c:'#b57200',bg:'rgba(212,137,10,.08)',  cls:'A_FAZER'},
+  'SEM LINHAS': {c:'#9895a2',bg:'rgba(152,149,162,.1)', cls:'SEM_LINHAS'},
+  'REAVALIAR':  {c:'#e05252',bg:'rgba(224,82,82,.1)',    cls:'REAVALIAR'},
+};
+const FZ_C=[
+  {n:'Retiro Queimadas',cod:'RQ01',fr:2,tals:[
+    {id:1,ha:45.2,est:'05º CORTE',st:'CONCLUIDO',  mes:'Out/26'},
+    {id:2,ha:38.7,est:'18 MESES', st:'CONCLUIDO',  mes:'Out/26'},
+    {id:3,ha:52.1,est:'03º CORTE',st:'CONCLUIDO',  mes:'Nov/26'},
+    {id:4,ha:29.4,est:'A PLANTAR',st:'A FAZER',    mes:'Nov/26'},
+    {id:5,ha:41.8,est:'07º CORTE',st:'CONCLUIDO',  mes:'Out/26'},
+  ]},
+  {n:'Várzea',         cod:'VZ01',fr:2,tals:[
+    {id:1,ha:33.5,est:'04º CORTE',st:'CONCLUIDO',  mes:'Out/26'},
+    {id:2,ha:28.9,est:'18 MESES', st:'A FAZER',    mes:'Nov/26'},
+    {id:3,ha:45.0,est:'02º CORTE',st:'SEM LINHAS', mes:'Nov/26'},
+  ]},
+  {n:'Pedra Branca',   cod:'PB01',fr:4,tals:[
+    {id:1,ha:62.3,est:'06º CORTE',st:'CONCLUIDO',  mes:'Nov/26'},
+    {id:2,ha:48.1,est:'05º CORTE',st:'A FAZER',    mes:'Dez/26'},
+    {id:3,ha:55.7,est:'07º CORTE',st:'A FAZER',    mes:'Dez/26'},
+    {id:4,ha:39.2,est:'18 MESES', st:'A FAZER',    mes:'Dez/26'},
+  ]},
+  {n:'Pico Morrinhos', cod:'PM01',fr:4,tals:[
+    {id:1,ha:71.4,est:'08º CORTE',st:'A FAZER',    mes:'Dez/26'},
+    {id:2,ha:43.6,est:'03º CORTE',st:'A FAZER',    mes:'Dez/26'},
+    {id:3,ha:58.9,est:'A PLANTAR',st:'A FAZER',    mes:'Jan/27'},
+  ]},
+  {n:'Buriti',         cod:'BT01',fr:4,tals:[
+    {id:1,ha:36.8,est:'04º CORTE',st:'A FAZER',    mes:'Jan/27'},
+    {id:2,ha:29.3,est:'18 MESES', st:'A FAZER',    mes:'Jan/27'},
+  ]},
+];
+let ativaC=null, selTals=[], fqC='';
+function getCiclo(){
+  const now=new Date(),yr=now.getFullYear(),mo=now.getMonth()+1;
+  const a=mo>=4?yr:yr-1;
+  return`${String(a).slice(2)}/${String(a+1).slice(2)}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// DADOS — Portal
+// ─────────────────────────────────────────────────────────────
+const PORTAL_MODS=[
+  {m:'Plantio',  c:'#16a76b',i:'eco',         rel:'v2025.09.2',dt:'18 set 2025',files:[
+    {nome:'RQ01_Plantio_2025S1.zip',tp:'ZIP',sz:'4.2 MB'},
+    {nome:'VZ01_Plantio_2025S1.zip',tp:'ZIP',sz:'3.8 MB'},
+    {nome:'PB01_Plantio_2025S1.zip',tp:'ZIP',sz:'5.1 MB'},
+  ]},
+  {m:'Colheita', c:'#d4890a',i:'agriculture',  rel:'v2025.09.1',dt:'14 set 2025',files:[
+    {nome:'RQ01+VZ01_Exp1L.zip',tp:'ZIP',sz:'8.4 MB'},
+    {nome:'PB01_Exp2L.zip',     tp:'ZIP',sz:'6.1 MB'},
+  ]},
+  {m:'Preparo',  c:'#a07840',i:'construction', rel:'v2025.09.1',dt:'12 set 2025',files:[
+    {nome:'RQ01_Exp1.dwg',tp:'DWG',sz:'1.8 MB'},
+    {nome:'RQ01_Exp1.zip',tp:'ZIP',sz:'6.3 MB'},
+    {nome:'RQ01_Mapa.pdf',tp:'PDF',sz:'2.1 MB'},
+  ]},
+  {m:'Expo Safra',c:'#5b6ee8',i:'flight',      rel:'v2025.09.3',dt:'20 set 2025',files:[
+    {nome:'RQ+VZ+PB_Exp1L.zip', tp:'ZIP',sz:'12.4 MB'},
+    {nome:'PM+BT_Exp1L.zip',    tp:'ZIP',sz:'8.7 MB'},
+    {nome:'MapaPlantio.pdf',    tp:'PDF',sz:'2.1 MB'},
+  ]},
+];
+let pMod=0;
+
+// ─────────────────────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────────────────────
+const GRADS={
+  plantio:  ['#0a7a47','#3ecf82'],
+  colheita: ['#9a6200','#e8b840'],
+  preparo:  ['#6e4a1a','#c49058'],
+  irrigacao:['#0668a0','#32b8e8'],
+  drones:   ['#3a48c0','#8098f0'],
+};
+const MOD_DATA=[
+  {id:'plantio', nome:'Projetos de Plantio',   c:'#16a76b',i:'eco',
+   concTal:()=>FZ.filter(f=>f.e===4).reduce((s,f)=>s+f.t,0),
+   totalTal:()=>FZ.reduce((s,f)=>s+f.t,0),unit:'talhões'},
+  {id:'colheita',nome:'Projetos de Colheita',  c:'#d4890a',i:'agriculture',
+   concTal:()=>FZ_C.flatMap(f=>f.tals).filter(t=>t.st==='CONCLUIDO').length,
+   totalTal:()=>FZ_C.flatMap(f=>f.tals).length,unit:'talhões'},
+  {id:'preparo', nome:'Projetos de Preparo',   c:'#a07840',i:'construction',
+   concTal:()=>FZ_P.filter(f=>f.ok.every(x=>x)).length,
+   totalTal:()=>FZ_P.length,unit:'fazendas'},
+  {id:'irrigacao',nome:'Projetos de Irrigação',c:'#0892c8',i:'water_drop',coming:true},
+  {id:'drones',  nome:'Projetos de Drones',    c:'#5b6ee8',i:'flight',     coming:true},
+];
+function rDash(){
+  const hr=new Date().getHours();
+  const gr=hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite';
+  const ciclo=getCiclo();
+  const me=USUARIOS[0];
+  document.getElementById('dash-greeting').innerHTML=`
+    <div class="dash-greeting-name">${gr}, ${me.nome.split(' ')[0]}</div>
+    <div class="dash-greeting-sub">Safra ${ciclo}&nbsp;·&nbsp;${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
+
+  const ativos=MOD_DATA.filter(m=>!m.coming);
+  const allU=ativos.reduce((s,m)=>s+m.totalTal(),0);
+  const concU=ativos.reduce((s,m)=>s+m.concTal(),0);
+  const pctG=Math.round(concU/allU*100)||0;
+  const concFazP=FZ.filter(f=>f.e===4).length;
+  const concFazPR=FZ_P.filter(f=>f.ok.every(x=>x)).length;
+  const concFazC=FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO')).length;
+  const totalFaz=FZ.length+FZ_P.length+FZ_C.length;
+  const concFaz=concFazP+concFazPR+concFazC;
+  // ha por módulo
+  const haP={conc:FZ.filter(f=>f.e===4).reduce((s,f)=>s+f.ha,0),tot:FZ.reduce((s,f)=>s+f.ha,0)};
+  const haPR={conc:FZ_P.filter(f=>f.ok.every(x=>x)).reduce((s,f)=>s+f.ha,0),tot:FZ_P.reduce((s,f)=>s+f.ha,0)};
+  const haC={
+    conc:FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO')).reduce((s,f)=>s+f.tals.reduce((a,t)=>a+t.ha,0),0),
+    tot:FZ_C.reduce((s,f)=>s+f.tals.reduce((a,t)=>a+t.ha,0),0)
+  };
+  const fmtHa=v=>v>=1000?(v/1000).toFixed(1)+'k ha':Math.round(v)+' ha';
+  const haTotConc=haP.conc+haPR.conc+haC.conc;
+  const haTot=haP.tot+haPR.tot+haC.tot;
+  document.getElementById('dash-meta').innerHTML=[
+    {v:pctG+'%',l:'Progresso geral',c:'#2566e8'},
+    {v:concFaz+'/'+totalFaz,l:'Fazendas concluídas',c:'var(--plantio)'},
+    {v:fmtHa(haTotConc),l:'Hectares concluídos',c:'var(--preparo)'},
+    {v:fmtHa(haTot),l:'Área total safra',c:'var(--t1)'},
+  ].map(k=>`<div class="dash-meta-card">
+    <div class="dash-meta-val" style="color:${k.c}">${k.v}</div>
+    <div class="dash-meta-lbl">${k.l}</div>
+  </div>`).join('');
+
+  // distribuição Plantio por etapa
+  const distP=ET.map((e,i)=>{
+    const fz=FZ.filter(f=>f.e===i);
+    return{l:e.l,c:e.c,n:fz.length,ha:fz.reduce((s,f)=>s+f.ha,0)};
+  });
+  // distribuição Colheita por status (em talhões)
+  const allTals=FZ_C.flatMap(f=>f.tals);
+  const stC=[
+    {st:'CONCLUIDO', l:'Concluído', c:'var(--plantio)'},
+    {st:'A FAZER',   l:'A Fazer',   c:'#b57200'},
+    {st:'SEM LINHAS',l:'Sem Linhas',c:'var(--t3)'},
+    {st:'REAVALIAR', l:'Reavaliar', c:'#e05252'},
+  ];
+  const distC=stC.map(s=>{
+    const tls=allTals.filter(t=>t.st===s.st);
+    return{l:s.l,c:s.c,n:tls.length,ha:tls.reduce((a,t)=>a+t.ha,0)};
+  }).filter(d=>d.n>0);
+  // distribuição Preparo por etapa
+  const stPColors=['#8898c0','#d4890a','#7c5de8','var(--preparo)'];
+  const distPR=ET_P.map((e,i)=>{
+    const fz=FZ_P.filter(f=>!f.ok.every(x=>x)&&f.ok.indexOf(false)===i);
+    return{l:e.l,c:stPColors[i]||'var(--preparo)',n:fz.length,ha:fz.reduce((s,f)=>s+f.ha,0)};
+  });
+  const prConc=FZ_P.filter(f=>f.ok.every(x=>x));
+  distPR.push({l:'Entregue',c:'var(--plantio)',n:prConc.length,ha:prConc.reduce((s,f)=>s+f.ha,0)});
+
+  function stageBlock(dist,unit){
+    const tot=dist.reduce((s,d)=>s+d.n,0)||1;
+    const bar=dist.filter(d=>d.n>0).map(d=>
+      `<div class="dash-stage-seg" title="${d.l}: ${d.n}" style="flex:${d.n};background:${d.c}"></div>`
+    ).join('');
+    const leg=dist.map(d=>
+      `<div class="dash-stage-row">
+        <div class="dash-stage-dot" style="background:${d.c}"></div>
+        <span class="dash-stage-lbl">${d.l}</span>
+        <span class="dash-stage-cnt">${d.n} ${unit}</span>
+        <span class="dash-stage-ha">${fmtHa(d.ha)}</span>
+      </div>`
+    ).join('');
+    return`<div class="dash-stage-bar">${bar}</div><div class="dash-stage-legend">${leg}</div>`;
+  }
+
+  const mods=[
+    {nome:'Plantio',c:'var(--plantio)',i:'eco',
+     conc:concFazP,tot:FZ.length,haConc:haP.conc,haTot:haP.tot,
+     dist:stageBlock(distP,'faz')},
+    {nome:'Colheita',c:'var(--colheita)',i:'agriculture',
+     conc:concFazC,tot:FZ_C.length,haConc:haC.conc,haTot:haC.tot,
+     dist:stageBlock(distC,'tlh')},
+    {nome:'Preparo',c:'var(--preparo)',i:'construction',
+     conc:concFazPR,tot:FZ_P.length,haConc:haPR.conc,haTot:haPR.tot,
+     dist:stageBlock(distPR,'faz')},
+  ];
+  document.getElementById('dash-mod-grid').innerHTML=mods.map(m=>{
+    const pct=Math.round(m.conc/m.tot*100)||0;
+    return`<div class="dash-mod-card">
+      <div class="dash-mod-accent" style="background:${m.c}"></div>
+      <div class="dash-mod-body">
+        <div class="dash-mod-head">
+          <div class="dash-mod-ico" style="background:${m.c}"><span class="ico">${m.i}</span></div>
+          <div class="dash-mod-title">${m.nome}</div>
+          <span class="dash-mod-pct" style="background:${m.c}1a;color:${m.c}">${pct}%</span>
+        </div>
+        <div class="dash-mod-track" style="background:${m.c}18">
+          <div class="dash-mod-fill" style="width:${pct}%;background:${m.c}"></div>
+        </div>
+        <div class="dash-mod-stats">
+          <div class="dash-mod-stat"><div class="dash-mod-stat-v" style="color:${m.c}">${m.conc}/${m.tot}</div><div class="dash-mod-stat-l">Fazendas</div></div>
+          <div class="dash-mod-stat"><div class="dash-mod-stat-v" style="color:${m.c}">${fmtHa(m.haConc)}</div><div class="dash-mod-stat-l">Ha concluídos</div></div>
+          <div class="dash-mod-stat"><div class="dash-mod-stat-v">${fmtHa(m.haTot)}</div><div class="dash-mod-stat-l">Ha total</div></div>
+        </div>
+        ${m.dist}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────
+// PLANTIO
+// ─────────────────────────────────────────────────────────────
+function filtrarF(q){
+  fqP=q.toLowerCase();
+  const prev=ativa;
+  if(fqP)ativa=null;
+  rFaz();
+  if(prev!==ativa){
+    document.getElementById('dsh').style.visibility='hidden';
+    document.getElementById('dempty').style.display='block';
+    document.getElementById('dpanel').style.display='none';
+  }
+}
+function rFaz(){
+  const lista=FZ.filter(f=>!fqP||f.n.toLowerCase().includes(fqP)||f.cod.toLowerCase().includes(fqP));
+  if(!lista.length){
+    document.getElementById('flist').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
+  }
+  document.getElementById('flist').innerHTML=lista.map(f=>{
+    const gi=FZ.indexOf(f),e=ET[f.e];
+    return`<div class="fcard${ativa===gi?' on':''}" onclick="selF(${gi})" style="color:${e.c}">
+      <div class="fcard-bar" style="background:${e.c}"></div>
+      <div class="finfo">
+        <div class="fnome">${f.n}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·${f.t} talhões</div>
+      </div>
+      <div class="ebadge" style="background:${e.c}1a;color:${e.c}">${e.l}</div>
+    </div>`;
+  }).join('');
+}
+function selF(i){
+  ativa=i;rFaz();
+  document.getElementById('dsh').style.visibility='visible';
+  document.getElementById('dempty').style.display='none';
+  document.getElementById('dpanel').style.display='block';
+  rDet();
+}
+function rDet(){
+  if(ativa===null)return;
+  const f=FZ[ativa],e=ET[f.e],pct=f.e/(ET.length-1)*100;
+  const dots=ET.map((s,i)=>{
+    const done=i<f.e,act=i===f.e;
+    const ds=(done||act)?`background:${s.c};border-color:${s.c}`:'';
+    return`<div class="snode ${done?'done':act?'act':''}">
+      <div class="sdot" style="${ds}"><span class="ico">${done?'check':s.i}</span></div>
+      <div class="slbl" style="${act?`color:${s.c};font-weight:700`:''}">${s.l}</div>
+    </div>`;
+  }).join('');
+  let acao='';
+  if(e.a){
+    const fh=e.hint?`<div class="hint-file"><span class="ico" style="font-size:14px">info</span>Arquivo esperado: <code>${e.hint.replace('${cod}',f.cod)}</code></div>`:'';
+    const ni=ET[f.e+1]||{};
+    acao=`<div class="acao-head"><span class="acao-lbl">Próxima ação</span></div>
+    ${fh}
+    <button class="btn-acao" style="background:${e.c};box-shadow:0 6px 20px ${e.c}44" onclick="avc(${ativa})">
+      <span class="ico">${ni.i||'arrow_forward'}</span>${e.a}
+    </button>
+    ${f.e>0?`<button class="btn-roll" onclick="vlr(${ativa})">← Reverter etapa</button>`:''}`;
+  }else{
+    acao=`<div class="done-b" style="background:rgba(22,167,107,.1);color:var(--plantio)"><span class="ico">check_circle</span>Fazenda concluída</div>
+    <button class="btn-roll" onclick="vlr(${ativa})">← Reverter etapa</button>`;
+  }
+  document.getElementById('dpanel').innerHTML=`
+    <div class="dhead">
+      <div class="dhead-l"><div class="dnome">${f.n}</div><div class="dsub">${f.t} talhões · Safra 2025</div></div>
+      <span class="dhead-cod">${f.cod}</span>
+      <div class="ebadge" style="background:${e.c}1a;color:${e.c};font-size:11px;padding:4px 10px">${e.l}</div>
+    </div>
+    <div class="stp-w"><div class="stp-out">
+      <div class="stp-bg"></div>
+      <div class="stp-fill" style="background:${e.c};width:calc(17px + ${pct}% * (100% - 34px) / 100%)"></div>
+      <div class="stp-row">${dots}</div>
+    </div></div>
+    <div class="acao-w">${acao}</div>`;
+}
+function avc(i){if(FZ[i].e<4){FZ[i].e++;rFaz();rDet();rDash();}}
+function vlr(i){if(FZ[i].e>0){FZ[i].e--;rFaz();rDet();rDash();}}
+
+// ─────────────────────────────────────────────────────────────
+// PREPARO
+// ─────────────────────────────────────────────────────────────
+function filtrarP(q){
+  fqPr=q.toLowerCase();
+  ativaP=null;
+  document.getElementById('dsh-p').style.visibility='hidden';
+  document.getElementById('dempty-p').style.display='block';
+  document.getElementById('dpanel-p').style.display='none';
+  rFazP();
+}
+function rFazP(){
+  const lista=FZ_P.filter(f=>!fqPr||f.n.toLowerCase().includes(fqPr)||f.cod.toLowerCase().includes(fqPr));
+  if(!lista.length){
+    document.getElementById('flist-p').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
+  }
+  document.getElementById('flist-p').innerHTML=lista.map(f=>{
+    const i=FZ_P.indexOf(f),v=VOO[f.voo]||VOO.S;
+    const cur=f.ok.filter(x=>x).length,done=cur===4;
+    const bc=done?'var(--plantio)':cur>0?'var(--preparo)':'var(--t3)';
+    return`<div class="fcard${ativaP===i?' on':''}" onclick="selFP(${i})" style="color:${bc}">
+      <div class="fcard-bar" style="background:${bc}"></div>
+      <div class="voo-dot" style="background:${v.c}" title="Voo: ${v.l}"></div>
+      <div class="finfo">
+        <div class="fnome">${f.n}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·${f.ha} ha</div>
+      </div>
+      <div class="ebadge" style="background:${bc}1a;color:${bc}">${done?'Concluído':cur>0?cur+'/4':'Aguardando'}</div>
+    </div>`;
+  }).join('');
+}
+function selFP(i){
+  ativaP=i;rFazP();
+  document.getElementById('dsh-p').style.visibility='visible';
+  document.getElementById('dempty-p').style.display='none';
+  document.getElementById('dpanel-p').style.display='block';
+  rDetP();
+}
+function rDetP(){
+  if(ativaP===null)return;
+  const f=FZ_P[ativaP],v=VOO[f.voo]||VOO.S;
+  const curStage=f.ok.indexOf(false),done4=curStage===-1;
+  const pct=done4?100:curStage/ET_P.length*100;
+  const ac=done4?'var(--plantio)':'var(--preparo)';
+  const dots=ET_P.map((s,i)=>{
+    const done=f.ok[i],act=i===curStage;
+    const c=done?'#16a76b':act?'var(--preparo)':null;
+    return`<div class="snode ${done?'done':act?'act':''}">
+      <div class="sdot" style="${c?`background:${c};border-color:${c}`:''}"><span class="ico">${done?'check':s.i}</span></div>
+      <div class="slbl" style="${act?`color:${c};font-weight:700`:''}">${s.l}</div>
+    </div>`;
+  }).join('');
+  let acao='';
+  if(done4){
+    acao=`<div class="done-b" style="background:rgba(160,120,64,.1);color:var(--preparo)"><span class="ico">check_circle</span>Fazenda concluída</div>
+    <button class="btn-roll" onclick="reopP(${ativaP},3)">← Reverter última etapa</button>`;
+  }else{
+    const s=ET_P[curStage];
+    let extra='';
+    if(s.hint)extra=`<div class="hint-file"><span class="ico" style="font-size:14px">info</span>Arquivos esperados: <code>${s.hint.replace('${cod}',f.cod)}</code></div>`;
+    if(s.obs) extra=`<textarea class="prep-obs-area" id="obs-${ativaP}" placeholder="Descreva as observações recebidas…">${f.obs}</textarea>`;
+    acao=`<div class="acao-head"><span class="acao-lbl">Próxima ação</span></div>
+    ${extra}
+    <button class="btn-acao" style="background:var(--preparo);box-shadow:0 6px 20px #a0784044" onclick="okP(${ativaP},${curStage})">
+      <span class="ico">check</span>${s.a}
+    </button>
+    ${curStage>0?`<button class="btn-roll" onclick="reopP(${ativaP},${curStage-1})">← Reverter etapa</button>`:''}`;
+  }
+  const audit=ET_P.map((s,i)=>f.ok[i]?`<div class="prep-audit-row">
+    <div class="pad" style="background:var(--plantio)"></div>${s.l} — <strong>${f.usr[i]}</strong> — ${f.dt[i]}
+  </div>`:'').filter(Boolean).join('');
+  document.getElementById('dpanel-p').innerHTML=`
+    <div class="dhead">
+      <div class="dhead-l">
+        <div class="dnome">${f.n}</div>
+        <div class="dsub">${f.ha} ha · Voo: <span style="color:${v.c};font-weight:600">${v.l}</span></div>
+      </div>
+      <span class="dhead-cod">${f.cod}</span>
+      ${done4?`<div class="ebadge" style="background:rgba(22,167,107,.1);color:var(--plantio)">Concluído</div>`:''}
+    </div>
+    <div class="stp-w"><div class="stp-out">
+      <div class="stp-bg"></div>
+      <div class="stp-fill" style="background:${ac};width:calc(17px + ${pct}% * (100% - 34px) / 100%)"></div>
+      <div class="stp-row">${dots}</div>
+    </div></div>
+    <div class="acao-w">${acao}</div>
+    ${audit?`<div class="prep-audit"><div class="prep-audit-t">Histórico</div>${audit}</div>`:''}`;
+}
+function okP(fi,si){
+  const f=FZ_P[fi];
+  if(si===2){const ta=document.getElementById('obs-'+fi);if(ta)f.obs=ta.value;}
+  f.ok[si]=true;f.usr[si]='Você';f.dt[si]='agora';
+  rFazP();rDetP();rDash();
+}
+function reopP(fi,si){
+  FZ_P[fi].ok[si]=false;FZ_P[fi].usr[si]='';FZ_P[fi].dt[si]='';
+  rFazP();rDetP();rDash();
+}
+
+// ─────────────────────────────────────────────────────────────
+// COLHEITA
+// ─────────────────────────────────────────────────────────────
+function filtrarC(q){
+  fqC=q.toLowerCase();ativaC=null;selTals=[];
+  document.getElementById('dsh-c').style.visibility='hidden';
+  document.getElementById('dempty-c').style.display='block';
+  document.getElementById('dpanel-c').style.display='none';
+  rFazC();
+}
+function rFazC(){
+  const lista=FZ_C.filter(f=>!fqC||f.n.toLowerCase().includes(fqC)||f.cod.toLowerCase().includes(fqC));
+  if(!lista.length){
+    document.getElementById('flist-c').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
+  }
+  document.getElementById('flist-c').innerHTML=lista.map(f=>{
+    const gi=FZ_C.indexOf(f);
+    const conc=f.tals.filter(t=>t.st==='CONCLUIDO').length,tot=f.tals.length;
+    const pct=Math.round(conc/tot*100);
+    const bc=pct===100?'var(--plantio)':pct>0?'var(--colheita)':'var(--t3)';
+    return`<div class="fcard${ativaC===gi?' on':''}" onclick="selFC(${gi})" style="color:${bc}">
+      <div class="fcard-bar" style="background:${bc}"></div>
+      <div class="finfo">
+        <div class="fnome">${f.n}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${f.fr}·${tot} talhões</div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+function selFC(i){
+  ativaC=i;selTals=[];rFazC();
+  document.getElementById('dsh-c').style.visibility='visible';
+  document.getElementById('dempty-c').style.display='none';
+  document.getElementById('dpanel-c').style.display='block';
+  rDetC();
+}
+function togTal(idx){const p=selTals.indexOf(idx);p>=0?selTals.splice(p,1):selTals.push(idx);rDetC();}
+function selTodos(){if(ativaC===null)return;selTals=FZ_C[ativaC].tals.map((_,i)=>i);rDetC();}
+function selRestantes(){
+  if(ativaC===null)return;
+  selTals=FZ_C[ativaC].tals.reduce((a,t,i)=>{if(t.st!=='CONCLUIDO'&&t.st!=='SEM LINHAS')a.push(i);return a;},[]);
+  rDetC();
+}
+function rDetC(){
+  if(ativaC===null)return;
+  const f=FZ_C[ativaC],ciclo=getCiclo();
+  const chips=f.tals.map((t,i)=>{
+    const s=ST_COL[t.st]||ST_COL['A FAZER'];
+    return`<div class="tal-chip ${s.cls}${selTals.includes(i)?' sel':''}" onclick="togTal(${i})">
+      <span class="tn">Tal ${String(t.id).padStart(2,'0')}</span>
+      <span class="te">${t.est}</span>
+      <span class="tha">${t.ha} ha</span>
+    </div>`;
+  }).join('');
+  const nSel=selTals.length;
+  const pending=f.tals.filter(t=>t.st!=='CONCLUIDO'&&t.st!=='SEM LINHAS').length;
+  const legend=Object.entries(ST_COL).map(([k,v])=>`<div class="col-leg-item"><div class="col-leg-dot" style="background:${v.c}"></div>${k}</div>`).join('');
+  const form=nSel>0?`
+    <div class="col-form-wrap">
+      <div class="col-form-t">${nSel} talhão(ões) selecionado(s)</div>
+      <div class="col-ciclo-chip"><span class="ico">autorenew</span>Ciclo ${ciclo} · automático</div>
+      <div class="col-fields">
+        <div class="col-field"><label>Tipo de Linha</label>
+          <select class="col-sel" id="col-tipo"><option>VANT</option><option>PROJETO</option><option>SEM LINHAS</option></select>
+        </div>
+        <div class="col-field"><label>Status</label>
+          <select class="col-sel" id="col-st"><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option></select>
+        </div>
+      </div>
+      <button class="btn-reg" onclick="regC()"><span class="ico" style="font-size:16px">save</span>Registrar ${nSel} talhão(ões)</button>
+    </div>`:`<div class="col-sel-hint">Selecione os talhões para registrar</div>`;
+  document.getElementById('dpanel-c').innerHTML=`
+    <div class="dhead">
+      <div class="dhead-l"><div class="dnome">${f.n}</div><div class="dsub">Frente ${f.fr} · ${f.tals.length} talhões</div></div>
+      <span class="dhead-cod">${f.cod}</span>
+    </div>
+    <div style="padding:14px 20px">
+      <div class="col-legend">${legend}</div>
+      <div class="tal-actions">
+        <button class="btn-tal-action" onclick="selTodos()"><span class="ico" style="font-size:14px">select_all</span>Selecionar Todos</button>
+        ${pending>0?`<button class="btn-tal-action" onclick="selRestantes()"><span class="ico" style="font-size:14px">pending_actions</span>Restantes (${pending})</button>`:''}
+        ${nSel>0?`<button class="btn-tal-action" onclick="selTals=[];rDetC()" style="color:var(--t3)">Limpar</button>`:''}
+      </div>
+      <div class="tal-chips">${chips}</div>
+      ${form}
+    </div>`;
+}
+function regC(){
+  if(ativaC===null||!selTals.length)return;
+  const st=document.getElementById('col-st')?.value||'CONCLUIDO';
+  selTals.forEach(i=>{FZ_C[ativaC].tals[i].st=st;});
+  selTals=[];rFazC();rDetC();rDash();
+}
+
+// ─────────────────────────────────────────────────────────────
+// PORTAL
+// ─────────────────────────────────────────────────────────────
+const TC={ZIP:['rgba(37,102,232,.12)','#2566e8'],DWG:['rgba(160,120,64,.12)','#a07840'],PDF:['rgba(224,82,82,.12)','#e05252']};
+function rPhone(){
+  const m=PORTAL_MODS[pMod];
+  const tabs=PORTAL_MODS.map((x,i)=>`<button class="ph-tab${i===pMod?' on':''}" style="${i===pMod?`background:${x.c}`:'color:#9895a2'}" onclick="selPMod(${i})">
+    <span class="ico" style="font-size:15px">${x.i}</span>${x.m}</button>`).join('');
+  const files=m.files.map(f=>{
+    const[bg,clr]=TC[f.tp]||['#edf0f8','#9895a2'];
+    return`<div class="ph-file">
+      <div class="ph-ftype" style="background:${bg};color:${clr}">${f.tp}</div>
+      <div class="ph-finfo"><div class="ph-fname">${f.nome}</div><div class="ph-fmeta">${f.sz} · ${m.dt}</div></div>
+      <button class="ph-btn-dl" style="background:${m.c}"><span class="ico">download</span></button>
+    </div>`;
+  }).join('');
+  document.getElementById('phone-screen').innerHTML=`
+    <div class="ph-header">
+      <div class="ph-brand"><div class="ph-bmark">HG</div><span class="ph-bname">hub geotech</span></div>
+      <div class="ph-title">Downloads</div><div class="ph-sub">Selecione o módulo</div>
+    </div>
+    <div style="background:#fff;border-bottom:1px solid #eee;padding:6px 10px;flex-shrink:0"><div class="ph-tabs">${tabs}</div></div>
+    <div class="ph-body">
+      <div class="ph-rel-header"><span class="ph-rel-name">Release ${m.rel}</span><span class="ph-rel-date">${m.dt}</span></div>
+      ${files}
+    </div>`;
+}
+function selPMod(i){pMod=i;rPhone();}
+
+// ─────────────────────────────────────────────────────────────
+// HUB GEOTECH
+// ─────────────────────────────────────────────────────────────
+const GT_TOOLS=[
+  {
+    id:'geomap',
+    nome:'Geomap',
+    desc:'Visualização de mapas, polígonos e ortomosaicos processados. Acesse os projetos georreferenciados de todas as fazendas.',
+    ico:'map',
+    cor:'#2566e8',
+    url:'#',
+    status:'config', // 'active' | 'config' | 'coming'
+  },
+  {
+    id:'kronos',
+    nome:'Kronos',
+    desc:'Gestão de frota e hardware agrícola. Rastreie monitores, receptores e bordos instalados em cada máquina por unidade.',
+    ico:'memory',
+    cor:'#5b6ee8',
+    url:'#',
+    status:'config',
+  },
+  {
+    id:'coming1',
+    nome:'Em breve',
+    desc:'Nova ferramenta de geotecnologia a ser integrada ao Hub Geotech.',
+    ico:'add_circle',
+    cor:'#9895a2',
+    url:'#',
+    status:'coming',
+  },
+];
+function rGeotech(){
+  const el=document.getElementById('gt-grid');
+  if(!el)return;
+  const statusInfo={
+    active: {dot:'#16a76b', txt:'Ativo',        btnTxt:'Acessar', btnDis:false},
+    config: {dot:'#d4890a', txt:'URL não configurada', btnTxt:'Configurar URL', btnDis:false},
+    coming: {dot:'#9895a2', txt:'Em breve',      btnTxt:'Em breve', btnDis:true},
+  };
+  el.innerHTML=GT_TOOLS.map(t=>{
+    const si=statusInfo[t.status];
+    const isConfig=t.status==='config';
+    const isComing=t.status==='coming';
+    if(isComing)return`<div class="gt-card coming">
+      <div class="gt-card-accent" style="background:var(--bd)"></div>
+      <div class="gt-add"><div class="gt-add-inner"><span class="ico">add_circle</span><span>Adicionar ferramenta</span></div></div>
+    </div>`;
+    return`<div class="gt-card">
+      <div class="gt-card-accent" style="background:${t.cor}"></div>
+      <div class="gt-ico-wrap" style="background:${t.cor}"><span class="ico">${t.ico}</span></div>
+      <div class="gt-name">${t.nome}</div>
+      <div class="gt-desc">${t.desc}</div>
+      <div class="gt-footer">
+        <div class="gt-status" style="color:${si.dot}">
+          <div class="gt-dot" style="background:${si.dot}"></div>
+          ${si.txt}
+        </div>
+        <button class="btn-gt" style="background:${t.cor}" onclick="${isConfig?'irCfgExtras()':`abrirGT('${t.id}')`}" ${si.btnDis?'disabled':''}>
+          <span class="ico">${isConfig?'settings':'open_in_new'}</span>${si.btnTxt}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function abrirGT(id){
+  const t=GT_TOOLS.find(x=>x.id===id);
+  if(!t)return;
+  if(t.url&&t.url!=='#')window.open(t.url,'_blank');
+  else showToast(`URL do ${t.nome} não configurada — acesse Configurações > Hub Geotech`);
+}
+function irCfgExtras(){
+  const btnCfg=document.querySelector('.ni[onclick*="config"]');
+  if(btnCfg){trocar('config',btnCfg);}
+  const btnExtras=document.querySelector('.cfg-cat[onclick*="extras"]');
+  if(btnExtras){cfgTab('extras',btnExtras);}
+}
+const LABELS={dash:'Dashboard',plantio:'Plantio',colheita:'Colheita',preparo:'Preparo',portal:'Portal Mobile',geotech:'Ferramentas'};
+const MOD_AC={plantio:'var(--plantio)',colheita:'var(--colheita)',preparo:'var(--preparo)',dash:'var(--plantio)',portal:'var(--t2)',geotech:'#5b6ee8'};
+function trocar(v,el){
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  if(el)el.classList.add('on');
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  const tbMod=document.getElementById('tb-mod');
+  tbMod.textContent=LABELS[v]||v;
+  tbMod.style.background=`${MOD_AC[v]||'var(--plantio)'}1a`;
+  tbMod.style.color=MOD_AC[v]||'var(--plantio)';
+  document.getElementById('tb-tit').textContent='Visão geral';
+  // Sync search input focus color
+  const inp=document.querySelector(`#v-${v} .search-inp`);
+  if(inp){
+    inp.style.setProperty('--focus-c',MOD_AC[v]||'var(--plantio)');
+    // Apply focus ring via class trick
+    inp.onfocus=()=>inp.style.borderColor=MOD_AC[v]||'var(--plantio)';
+    inp.onblur=()=>inp.style.borderColor='';
+  }
+  if(v==='consultas')rConsFilters();
+}
+function entrar(){
+  document.getElementById('login').classList.add('off');
+  document.getElementById('hub').classList.remove('off');
+}
+function sair(){
+  document.getElementById('hub').classList.add('off');
+  document.getElementById('login').classList.remove('off');
+}
+
+// ─────────────────────────────────────────────────────────────
+// CONFIGURAÇÕES
+// ─────────────────────────────────────────────────────────────
+function cfgTab(id,el){
+  document.querySelectorAll('.cfg-cat').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.cfg-panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('cfg-'+id).classList.add('on');
+}
+function salvarCfg(){showToast('Configurações salvas');}
+function testExt(inputId){
+  const url=document.getElementById(inputId)?.value;
+  if(url&&url.startsWith('http'))window.open(url,'_blank');
+  else showToast('Insira uma URL válida antes de testar');
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+function initCfgChips(){
+  const ciclo=getCiclo();
+  const el=document.getElementById('cfg-ciclo-chip');
+  if(el)el.textContent=ciclo;
+}
+function toggleKey(id){
+  const inp=document.getElementById(id);
+  if(!inp)return;
+  inp.type=inp.type==='password'?'text':'password';
+}
+
+// ─────────────────────────────────────────────────────────────
+// USUÁRIOS
+// ─────────────────────────────────────────────────────────────
+const USUARIOS=[
+  {id:'lmalerbo', nome:'Leonardo Malerbo', role:'editor',  admin:true,  perms:{plantio:true, colheita:true, preparo:true, portal:true, config:true}},
+  {id:'igabriel', nome:'Igor Gabriel',     role:'editor',  admin:false, perms:{plantio:true, colheita:true, preparo:true, portal:true, config:false}},
+  {id:'jcamilo',  nome:'João Camilo',      role:'editor',  admin:false, perms:{plantio:true, colheita:true, preparo:true, portal:true, config:false}},
+  {id:'tferri',   nome:'T. Ferri',         role:'leitura', admin:false, perms:{plantio:true, colheita:true, preparo:true, portal:true, config:false}},
+  {id:'lucaso',   nome:'Lucas O.',         role:'leitura', admin:false, perms:{plantio:true, colheita:false, preparo:false, portal:true, config:false}},
+  {id:'luizvf',   nome:'Luiz V. F.',       role:'leitura', admin:false, perms:{plantio:true, colheita:false, preparo:false, portal:true, config:false}},
+];
+const ROLE_LABELS={editor:'Editor',leitura:'Leitura'};
+const ROLE_CLASSES={editor:'rc-a',leitura:'rc-dash'};
+const PERMS=[
+  {key:'plantio',  label:'Plantio',        sub:'Acesso ao módulo de plantio'},
+  {key:'colheita', label:'Colheita',       sub:'Acesso ao módulo de colheita'},
+  {key:'preparo',  label:'Preparo',        sub:'Acesso ao módulo de preparo'},
+  {key:'portal',   label:'Portal Mobile',  sub:'Acesso ao portal de downloads'},
+  {key:'config',   label:'Configurações',  sub:'Acesso ao painel de configuração'},
+];
+let selUsrIdx=null;
+function rUsrList(){
+  const el=document.getElementById('usr-list');
+  if(!el)return;
+  el.innerHTML=USUARIOS.map((u,i)=>`
+    <div class="usr-card ${selUsrIdx===i?'sel':''}" onclick="selUsr(${i})">
+      <div class="usr-av">${u.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome}</div>
+        <div style="font-size:11px;color:var(--t3)">${u.id}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:120px">
+        <span class="role-chip ${ROLE_CLASSES[u.role]}">${ROLE_LABELS[u.role]}</span>
+        ${u.admin?'<span class="role-chip rc-admin">Admin</span>':''}
+      </div>
+    </div>`).join('');
+}
+function updRole(i,val){
+  if(val==='Editor'||val==='Leitura')USUARIOS[i].role=val.toLowerCase();
+  rUsrList();
+  selUsr(i);
+}
+function selUsr(i){
+  if(i===-1){showToast('Em breve: criar novo usuário');return;}
+  selUsrIdx=i;
+  rUsrList();
+  const u=USUARIOS[i];
+  document.getElementById('dsh-u').style.visibility='visible';
+  document.getElementById('dempty-u').style.display='none';
+  const panel=document.getElementById('dpanel-u');
+  panel.style.display='';
+  panel.innerHTML=`
+    <div class="cfg-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div class="usr-av" style="width:48px;height:48px;font-size:16px">${u.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${u.nome}</div>
+          <div style="font-size:12px;color:var(--t3)">${u.id}</div>
+        </div>
+        ${u.admin?'<span class="role-chip rc-admin" style="margin-left:auto">Admin</span>':''}
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-row-l"><div class="cfg-row-lbl">Acesso</div><div class="cfg-row-sub">Editor pode registrar e avançar etapas; Leitura só visualiza</div></div>
+        <select class="cfg-sel" onchange="updRole(${i},this.value)">
+          <option ${u.role==='editor'?'selected':''}>Editor</option>
+          <option ${u.role==='leitura'?'selected':''}>Leitura</option>
+        </select>
+      </div>
+    </div>
+    <div class="cfg-card">
+      <div class="cfg-card-t"><span class="ico">lock</span>Permissões de acesso</div>
+      <div class="usr-perm-grid">
+        ${PERMS.map((p,pi)=>`
+          <div class="cfg-row" style="${pi<PERMS.length-1?'border-bottom:1px solid var(--bd)':''}">
+            <div class="cfg-row-l"><div class="cfg-row-lbl">${p.label}</div><div class="cfg-row-sub">${p.sub}</div></div>
+            <label class="toggle"><input type="checkbox" ${u.perms[p.key]?'checked':''} onchange="USUARIOS[${i}].perms['${p.key}']=this.checked"><span class="tgl-tr"></span><span class="tgl-th"></span></label>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button class="btn-cfg-save" onclick="showToast('Permissões salvas — ${u.nome}')">Salvar permissões</button>
+      ${!u.admin?`<button style="padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t3);font-size:12px;cursor:pointer" onclick="showToast('Funcionalidade em desenvolvimento')">Remover usuário</button>`:''}
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// CONSULTAS
+// ─────────────────────────────────────────────────────────────
+const CONS_PAGE=20;
+let cMod='plantio', cSel=new Set(), cPage=0, cExpanded=new Set();
+let cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:''};
+const prStepColors=['#8898c0','#d4890a','#7c5de8','var(--preparo)'];
+
+function consRowsAll(){
+  if(cMod==='plantio'){
+    return FZ.map((f,i)=>{
+      const e=ET[f.e];
+      return{_key:'p'+i,_fi:i,cod:f.cod,n:f.n,ha:f.ha,mes:f.mes,ciclo:getCiclo(),
+             etapa:e.l,_etapaC:e.c,_etapaIdx:f.e};
+    }).filter(r=>{
+      if(cFilters.etapa!==''&&r._etapaIdx!==parseInt(cFilters.etapa))return false;
+      if(cFilters.mes&&r.mes!==cFilters.mes)return false;
+      if(cFilters.q&&!r.n.toLowerCase().includes(cFilters.q)&&!r.cod.toLowerCase().includes(cFilters.q))return false;
+      return true;
+    });
+  }
+  if(cMod==='colheita'){
+    return FZ_C.map((f,fi)=>{
+      const tals=f.tals.filter(t=>{
+        if(cFilters.status&&t.st!==cFilters.status)return false;
+        if(cFilters.mes&&t.mes!==cFilters.mes)return false;
+        return true;
+      });
+      if(!tals.length&&(cFilters.status||cFilters.mes))return null;
+      if(cFilters.faz&&f.n!==cFilters.faz)return null;
+      if(cFilters.q&&!f.n.toLowerCase().includes(cFilters.q)&&!f.cod.toLowerCase().includes(cFilters.q))return null;
+      const concT=f.tals.filter(t=>t.st==='CONCLUIDO').length;
+      const haT=f.tals.reduce((s,t)=>s+t.ha,0);
+      return{_key:'c'+fi,_fi:fi,cod:f.cod,n:f.n,ha:haT,ciclo:getCiclo(),
+             tals:f.tals,_talsFilter:tals,conc:concT,tot:f.tals.length};
+    }).filter(Boolean);
+  }
+  if(cMod==='preparo'){
+    return FZ_P.map((f,i)=>{
+      if(cFilters.mes&&f.mes!==cFilters.mes)return null;
+      if(cFilters.voo&&f.voo!==cFilters.voo)return null;
+      if(cFilters.q&&!f.n.toLowerCase().includes(cFilters.q)&&!f.cod.toLowerCase().includes(cFilters.q))return null;
+      const done=f.ok.every(x=>x);
+      const si=f.ok.indexOf(false);
+      if(cFilters.etapa!==''&&((cFilters.etapa==='-1'&&!done)||(cFilters.etapa!=='-1'&&(done||si!==parseInt(cFilters.etapa)))))return null;
+      const etapa=done?'Entregue':ET_P[si]?ET_P[si].l:'—';
+      const etapaC=done?'var(--plantio)':prStepColors[si]||'var(--t3)';
+      return{_key:'pr'+i,_fi:i,cod:f.cod,n:f.n,ha:f.ha,mes:f.mes,ciclo:getCiclo(),
+             voo:VOO[f.voo]?.l||f.voo,_vooC:VOO[f.voo]?.c||'var(--t3)',
+             etapa,_etapaC:etapaC,_done:done,_si:si,
+             steps:ET_P.map((e,ei)=>({l:e.l,ok:f.ok[ei],usr:f.usr[ei],dt:f.dt[ei]}))};
+    }).filter(Boolean);
+  }
+  return[];
+}
+
+function rCons(pg){
+  if(pg!==undefined)cPage=pg;
+  const all=consRowsAll();
+  const total=all.length;
+  const totalPages=Math.max(1,Math.ceil(total/CONS_PAGE));
+  cPage=Math.min(cPage,totalPages-1);
+  const rows=all.slice(cPage*CONS_PAGE,(cPage+1)*CONS_PAGE);
+  const totalHa=all.reduce((s,r)=>s+(r.ha||0),0);
+
+  // Header cols
+  let thHtml='<th style="width:32px"><input type="checkbox" class="cons-cb" onchange="consSelAll(this,event)"></th>';
+  if(cMod==='plantio')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
+  if(cMod==='colheita') thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
+  if(cMod==='preparo')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Voo</th><th>Etapa</th>';
+  document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`;
+
+  // Body rows
+  let tbHtml='';
+  if(!rows.length){
+    const span=cMod==='plantio'?8:cMod==='colheita'?7:9;
+    tbHtml=`<tr><td colspan="${span}" style="padding:40px;text-align:center;color:var(--t3)"><span class="ico" style="font-size:28px;display:block;margin-bottom:6px;opacity:.25">search_off</span>Nenhum resultado</td></tr>`;
+  } else {
+    rows.forEach(r=>{
+      const sel=cSel.has(r._key);
+      const exp=cExpanded.has(r._key);
+      let cells='';
+      const expIco=`<span class="cons-exp-ico${exp?' open':''}">▶</span>`;
+      if(cMod==='plantio'){
+        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
+      } else if(cMod==='colheita'){
+        const concC=r._talsFilter.filter(t=>t.st==='CONCLUIDO').length;
+        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td style="font-variant-numeric:tabular-nums">${concC}/${r._talsFilter.length}</td><td style="font-variant-numeric:tabular-nums">${r.ha.toFixed(1)} ha</td>`;
+      } else {
+        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._vooC}18;color:${r._vooC}">${r.voo}</span></td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
+      }
+      tbHtml+=`<tr class="cons-faz-row${sel?' sel':''}${exp?' exp':''}" onclick="consExpand('${r._key}',event)">
+        <td onclick="event.stopPropagation()"><input type="checkbox" class="cons-cb" ${sel?'checked':''} onchange="consSel('${r._key}',this)"></td>
+        ${cells}</tr>`;
+      // detail row
+      if(exp){
+        const span=cMod==='plantio'?8:cMod==='colheita'?7:9;
+        tbHtml+=`<tr class="cons-detail-row"><td colspan="${span}"><div class="cons-detail-inner">${consDetail(r)}</div></td></tr>`;
+      }
+    });
+  }
+  document.getElementById('cons-tbody').innerHTML=tbHtml;
+
+  // Footer
+  document.getElementById('cons-count').innerHTML=
+    `<strong>${total}</strong> ${cMod==='colheita'?'fazendas':'fazendas'} &nbsp;·&nbsp; <strong>${totalHa.toFixed(1)} ha</strong>`;
+  updExpBtn();
+
+  // Pagination
+  const pgn=totalPages>1?`<div class="cons-pgn">
+    <button class="cons-pgn-btn" onclick="rCons(${cPage-1})" ${cPage===0?'disabled':''}>← Anterior</button>
+    <span class="cons-pgn-info">Pág. ${cPage+1} / ${totalPages}</span>
+    <button class="cons-pgn-btn" onclick="rCons(${cPage+1})" ${cPage>=totalPages-1?'disabled':''}>Próxima →</button>
+  </div>`:'';
+  const wrap=document.getElementById('cons-table-wrap-pgn');
+  if(wrap)wrap.innerHTML=pgn;
+}
+
+function consDetail(r){
+  if(cMod==='plantio'){
+    // show etapa info (in real system would show talhões)
+    return`<p style="font-size:12px;color:var(--t3);padding:6px 0">Talhões: <strong style="color:var(--t1)">${r._fi!==undefined?FZ[r._fi]?.t:'—'}</strong> &nbsp;·&nbsp; Etapa atual: <strong style="color:${r._etapaC}">${r.etapa}</strong></p>`;
+  }
+  if(cMod==='colheita'){
+    const tals=r._talsFilter.length?r._talsFilter:r.tals;
+    return`<table class="cons-detail-table"><thead><tr><th>Talhão</th><th>Estágio</th><th>Ha</th><th>Mês</th><th>Status</th></tr></thead><tbody>`+
+      tals.map(t=>{const sc=COL_ST[t.st]||{c:'var(--t3)',bg:'var(--s2)'};
+        return`<tr><td style="font-weight:700">T${t.id}</td><td>${t.est}</td><td style="font-variant-numeric:tabular-nums">${t.ha.toFixed(1)}</td><td>${t.mes}</td><td><span class="cons-badge" style="background:${sc.c}18;color:${sc.c}">${t.st.replace('_',' ')}</span></td></tr>`;
+      }).join('')+`</tbody></table>`;
+  }
+  if(cMod==='preparo'){
+    return`<table class="cons-detail-table"><thead><tr><th>Etapa</th><th>Status</th><th>Responsável</th><th>Data</th></tr></thead><tbody>`+
+      r.steps.map((s,i)=>`<tr><td>${s.l}</td><td><span class="cons-badge" style="background:${s.ok?'rgba(22,167,107,.12)':'var(--s2)'};color:${s.ok?'var(--plantio)':'var(--t3)'}">${s.ok?'Concluído':'Pendente'}</span></td><td>${s.usr||'—'}</td><td style="font-family:monospace;font-size:11px">${s.dt||'—'}</td></tr>`).join('')+
+      `</tbody></table>`;
+  }
+  return'';
+}
+
+function consExpand(key,e){
+  if(e.target.tagName==='INPUT')return;
+  if(cExpanded.has(key))cExpanded.delete(key);else{cExpanded.clear();cExpanded.add(key);}
+  rCons();
+}
+
+function consSel(key,cb){
+  if(cb.checked)cSel.add(key);else cSel.delete(key);
+  rCons();
+}
+
+function consSelAll(cb,e){
+  const all=consRowsAll();
+  if(cb.checked)all.forEach(r=>cSel.add(r._key));else cSel.clear();
+  rCons();
+}
+
+function rConsFilters(){
+  cSel.clear();cExpanded.clear();cPage=0;
+  let html='';
+  if(cMod==='plantio'){
+    const meses=[...new Set(FZ.map(f=>f.mes))];
+    html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todas as etapas</option>${ET.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}</select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+  } else if(cMod==='colheita'){
+    const meses=[...new Set(FZ_C.flatMap(f=>f.tals.map(t=>t.mes)))];
+    html+=`<select class="cons-sel" onchange="cFilters.status=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todos os status</option><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option></select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.faz=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${f.n}</option>`).join('')}</select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+  } else {
+    const meses=[...new Set(FZ_P.map(f=>f.mes))];
+    const voos=[...new Set(FZ_P.map(f=>f.voo))];
+    html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todas as etapas</option>${ET_P.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}<option value="-1">Entregue</option></select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.voo=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todos os voos</option>${voos.map(v=>`<option value="${v}">${VOO[v]?.l||v}</option>`).join('')}</select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+  }
+  html+=`<button class="cons-sel" style="cursor:pointer;color:var(--t3)" onclick="limparCons()">Limpar</button>`;
+  html+=`<input class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
+  document.getElementById('cons-filters').innerHTML=html;
+  cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:''};
+  rCons();
+}
+
+function limparCons(){
+  cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:''};
+  cPage=0;
+  document.querySelectorAll('#cons-filters .cons-sel').forEach(s=>{if(s.tagName==='SELECT'){s.value='';s.classList.remove('active');}});
+  const inp=document.querySelector('#cons-filters .cons-search');if(inp)inp.value='';
+  rCons();
+}
+
+function consMod(mod,el){
+  cMod=mod;
+  document.querySelectorAll('.cons-mod-tab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  rConsFilters();
+}
+
+function updExpBtn(){
+  const n=cSel.size;
+  const on=n>0;
+  const btn=document.getElementById('btn-export');
+  const cnt=document.getElementById('exp-cnt');
+  btn.disabled=!on;cnt.style.display=on?'':'none';if(on)cnt.textContent=n;
+  const wpp=document.getElementById('btn-wpp');
+  const wc=document.getElementById('wpp-cnt');
+  wpp.disabled=!on;wc.style.display=on?'':'none';if(on)wc.textContent=n;
+}
+
+function exportWpp(){
+  const all=consRowsAll();
+  const rows=all.filter(r=>cSel.has(r._key));
+  if(!rows.length)return;
+  // monta cabeçalho com filtros ativos
+  const partes=[];
+  if(cMod==='plantio'){
+    partes.push('Plantio');
+    if(cFilters.etapa!=='')partes.push(ET[parseInt(cFilters.etapa)]?.l||'');
+    if(cFilters.mes)partes.push(cFilters.mes);
+  } else if(cMod==='colheita'){
+    partes.push('Colheita');
+    if(cFilters.status)partes.push(cFilters.status.replace('_',' '));
+    if(cFilters.mes)partes.push(cFilters.mes);
+    if(cFilters.faz)partes.push(cFilters.faz);
+  } else {
+    partes.push('Preparo');
+    if(cFilters.etapa!=='')partes.push(cFilters.etapa==='-1'?'Entregue':ET_P[parseInt(cFilters.etapa)]?.l||'');
+    if(cFilters.voo)partes.push(VOO[cFilters.voo]?.l||cFilters.voo);
+    if(cFilters.mes)partes.push(cFilters.mes);
+  }
+  const titulo=partes.filter(Boolean).join(' · ');
+  const totalHa=rows.reduce((s,r)=>s+(r.ha||0),0);
+  const resumo=`${rows.length} fazenda${rows.length!==1?'s':''} · ${totalHa.toFixed(0)} ha`;
+  let lista='';
+  if(cMod==='colheita'){
+    lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — ${r.ha.toFixed(1)} ha · ${r.conc}/${r.tot} talhões`).join('\n');
+  } else {
+    lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — ${r.ha} ha · ${r.etapa}`).join('\n');
+  }
+  const msg=`📋 *${titulo}*\n${resumo}\n\n${lista}\n\n_Hub Geotech_`;
+  navigator.clipboard.writeText(msg).then(()=>{
+    showToast('Copiado — cole direto na conversa do WhatsApp');
+  }).catch(()=>{
+    const w=window.open('','_blank','width=500,height=360');
+    if(w)w.document.write('<pre style="font-family:sans-serif;font-size:14px;padding:20px;white-space:pre-wrap">'+msg+'</pre>');
+  });
+}
+
+function exportCons(){
+  const all=consRowsAll();
+  const rows=all.filter(r=>cSel.has(r._key));
+  let header,body;
+  if(cMod==='plantio'){
+    header='Fazenda\tCódigo\tCiclo\tMês\tHa\tEtapa';
+    body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.mes}\t${r.ha}\t${r.etapa}`).join('\n');
+  } else if(cMod==='colheita'){
+    header='Fazenda\tCódigo\tCiclo\tTalhões Conc.\tTalhões Total\tHa Total';
+    body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.conc}\t${r.tot}\t${r.ha.toFixed(1)}`).join('\n');
+  } else {
+    header='Fazenda\tCódigo\tCiclo\tMês\tHa\tVoo\tEtapa';
+    body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.mes}\t${r.ha}\t${r.voo}\t${r.etapa}`).join('\n');
+  }
+  navigator.clipboard.writeText(header+'\n'+body).then(()=>{
+    showToast(`${rows.length} fazendas copiadas — cole direto no Excel`);
+  }).catch(()=>{
+    const w=window.open('','_blank','width=640,height=400');
+    if(w)w.document.write('<pre style="font-family:monospace;font-size:13px;padding:16px">'+header+'\n'+body+'</pre>');
+  });
+}
+
+// Init
+// ─────────────────────────────────────────────────────────────
+const _me=USUARIOS[0];document.getElementById('sb-urole').textContent=ROLE_LABELS[_me.role]+(_me.admin?' · Admin':'');
+rDash();rFaz();rFazC();rFazP();rPhone();rUsrList();rGeotech();initCfgChips();
+LABELS['config']='Configurações';
+LABELS['usuarios']='Usuários';
+LABELS['consultas']='Consultas';
+MOD_AC['config']='var(--t2)';
+MOD_AC['usuarios']='var(--t2)';
+MOD_AC['consultas']='var(--t2)';
+</script>

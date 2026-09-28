@@ -1,0 +1,11 @@
+# Credenciais (chave service_role, senha do banco) — nunca versionar
+*.env
+.env
+.env.*
+!.env.example
+
+# Lista real de usuários (e-mails da equipe) — o repositório é público.
+# Modelo do formato em ingestao/usuarios_hub.example.json
+ingestao/usuarios_hub.json
+
+__pycache__/

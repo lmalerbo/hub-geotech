@@ -1,0 +1,5 @@
+requests
+dbfread
+openpyxl
+pg8000
+truststore
