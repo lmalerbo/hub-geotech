@@ -190,10 +190,18 @@ async function carregar(){
   const conteudo=document.getElementById('conteudo');
   conteudo.innerHTML='<div class="carregando"><div class="giro"></div>Carregando projetos...</div>';
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/rpc/portal_arquivos`,{method:'POST',
-      headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'Content-Type':'application/json'},body:'{}'});
-    if(!r.ok)throw new Error(`o servidor respondeu ${r.status}`);
-    agrupar(await r.json());
+    // O Supabase devolve no máximo 1000 linhas por resposta: lê em páginas,
+    // com ordem fixa (senão linhas se repetem ou somem entre as páginas).
+    const linhas=[];
+    for(let pag=0;pag<50;pag++){
+      const r=await fetch(`${SB_URL}/rest/v1/rpc/portal_arquivos?order=modulo,cod_faz,documento,nome_arquivo&limit=1000&offset=${pag*1000}`,{method:'POST',
+        headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'Content-Type':'application/json'},body:'{}'});
+      if(!r.ok)throw new Error(`o servidor respondeu ${r.status}`);
+      const lote=await r.json();
+      linhas.push(...lote);
+      if(lote.length<1000)break;
+    }
+    agrupar(linhas);
     render();
   }catch(e){
     conteudo.innerHTML=`<div class="erro"><span class="ico">wifi_off</span>
