@@ -83,3 +83,13 @@ def test_muitos_talhoes_vao_para_paginas_seguintes(tmp_path):
 def test_retrato_com_30_talhoes_ganha_pagina_da_tabela(tmp_path):
     orient, b = _pdf(tmp_path, _talhoes_n(30, largura=False))
     assert orient == 'retrato' and _paginas(b) >= 2
+
+
+def test_safra_do_mapa_usa_a_do_projeto_quando_informada():
+    from drone.mapa_pdf import safra_do_mapa
+    t = _talhoes(1000, 500)
+    d = DadosMapa(cod_faz=1, nome='X', tipo='normal', revisao=0, talhoes=t,
+                  recorte=recortar(t, uniao_buffers({}, {})), gerado_em=datetime.date(2026, 9, 29))
+    assert safra_do_mapa(d) == '26/27'
+    d.safra = '24/25'
+    assert safra_do_mapa(d) == '24/25'

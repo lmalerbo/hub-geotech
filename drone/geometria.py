@@ -67,7 +67,12 @@ def recortar(talhoes: gpd.GeoDataFrame, buffers: BaseGeometry,
     area = so_poligonos(make_valid(base.difference(buffers)))
     if area.is_empty:
         raise ErroGeracao('A área de aplicação ficou vazia: confira a infestação e os obstáculos desta fazenda.')
+    return resumir(talhoes, area)
 
+
+def resumir(talhoes: gpd.GeoDataFrame, area: MultiPolygon) -> Recorte:
+    """Área de aplicação já pronta → Recorte com o aplicável de cada talhão da Base."""
+    geoms = [make_valid(g) for g in talhoes.geometry]
     por_talhao, sem_area = [], []
     for (_, t), g in sorted(zip(talhoes.iterrows(), geoms), key=lambda x: int(x[0][1]['TALHAO'])):
         area_prod = t['AREA_PROD']

@@ -1,3 +1,4 @@
+import pytest
 import pandas as pd
 
 from drone.importar_legado import classe_do_legado, selecionar_obstaculos, selecionar_projetos
@@ -66,3 +67,35 @@ def test_crs_do_legado_sem_prj_pela_faixa_das_coordenadas():
     assert crs_pela_faixa((200000, 7550000, 210000, 7560000)) == 31983
     assert crs_pela_faixa((0, 0, 10, 10)) is None   # nem graus do Brasil, nem UTM 23S: não adivinha
     assert crs_pela_faixa((5_000_000, 0, 5_000_100, 10)) is None
+
+
+def test_safra_curta():
+    from drone.importar_legado import safra_curta
+    assert safra_curta('2024-2025') == '24/25'
+    assert safra_curta(None) is None
+
+
+def _base_dois_talhoes():
+    import geopandas as gpd
+    from shapely.geometry import box
+    return gpd.GeoDataFrame({'TALHAO': [1, 2], 'AREA_PROD': [1.0, 1.0]},
+                            geometry=[box(0, 0, 100, 100), box(100, 0, 200, 100)], crs=31983)
+
+
+def test_recorte_legado_mantem_a_geometria_antiga_e_reparte_por_talhao():
+    from shapely.geometry import MultiPolygon, box
+    from drone.importar_legado import recorte_legado
+    area = MultiPolygon([box(50, 0, 150, 100)])            # meio talhão 1 + meio talhão 2
+    r = recorte_legado(_base_dois_talhoes(), area)
+    assert r.aplicacao_ha == pytest.approx(1.0)
+    assert [t['aplicavel_ha'] for t in r.por_talhao] == pytest.approx([0.5, 0.5])
+    assert r.area_total_ha == pytest.approx(2.0)
+
+
+def test_divergencia_com_a_base_atual():
+    from shapely.geometry import MultiPolygon, box
+    from drone.importar_legado import divergencia
+    # 1/4 da área antiga caiu fora dos talhões de hoje; cobre 3/4 de 1 dos 2 ha
+    d = divergencia(_base_dois_talhoes(), MultiPolygon([box(-25, 0, 75, 100)]))
+    assert d['fora_da_base_pct'] == pytest.approx(25.0)
+    assert d['cobertura_base_pct'] == pytest.approx(37.5)

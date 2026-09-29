@@ -32,6 +32,7 @@ class DadosMapa:
     talhoes: gpd.GeoDataFrame
     recorte: Recorte
     gerado_em: datetime.date
+    safra: str | None = None      # legado: safra original do projeto (ex.: '24/25')
 
 
 def orientacao(talhoes) -> str:
@@ -42,6 +43,10 @@ def orientacao(talhoes) -> str:
 def safra_de(data: datetime.date) -> str:
     ano = data.year if data.month >= 4 else data.year - 1
     return f'{ano % 100:02d}/{(ano + 1) % 100:02d}'
+
+
+def safra_do_mapa(d: 'DadosMapa') -> str:
+    return d.safra or safra_de(d.gerado_em)
 
 
 def br(v: float) -> str:
@@ -203,7 +208,7 @@ def _carimbo(pg: Pagina, d: DadosMapa, x, y, w, escala):
     pg.caixa(x, y, w, 10)
     celula = (w - 14) / 3
     for i, (titulo, valor) in enumerate([('ESCALA', f'1:{escala:,}'.replace(',', '.')),
-                                         ('SAFRA', safra_de(d.gerado_em)), ('REVISÃO', f'Rev{d.revisao}')]):
+                                         ('SAFRA', safra_do_mapa(d)), ('REVISÃO', f'Rev{d.revisao}')]):
         cx = x + i * celula
         if i:
             pg.ret(cx, y + 1.5, 0.25, 7, LINHA)

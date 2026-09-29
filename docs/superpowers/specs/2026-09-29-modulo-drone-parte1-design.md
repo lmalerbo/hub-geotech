@@ -52,7 +52,7 @@ Todo o geoprocessamento é feito em **SIRGAS 2000 / UTM 23S (EPSG:31983)**, e s�
 
 **Normal:** `área_aplicação = talhões − buffers`
 
-**Catação:** `área_aplicação = (buffer(infestação, margem) ∩ talhões) − buffers`, com margem inicial de **10 m**.
+**Catação:** `área_aplicação = (blocos(infestação) ∩ talhões) − buffers`. *Revisado em 29/09 após o ensaio da 10372:* manchas a até **20 m** umas das outras viram um grupo; cada grupo vira o contorno convexo das suas manchas + **5 m** de folga, com cantos retos e poucos vértices (desenho voável pelo drone, como o feito à mão). Todas as manchas entram, sem tamanho mínimo; o usuário carrega as camadas de infestação que quiser usar.
 
 **Números calculados** (vão para o PDF e para o resumo da geração)
 - Por talhão: `AREA_PROD` (atributo da Base) e aplicável (área da intersecção do talhão com a área de aplicação, em ha).
@@ -65,7 +65,8 @@ Todo o geoprocessamento é feito em **SIRGAS 2000 / UTM 23S (EPSG:31983)**, e s�
 | Chave | Valor inicial |
 |---|---|
 | `taxa_l_ha` | 10 |
-| `margem_infestacao_m` | 10 |
+| `agrupar_infestacao_m` | 20 |
+| `folga_infestacao_m` | 5 |
 | `alerta_aproveitamento_min` | 0,30 (fração do AREA_PROD abaixo da qual o talhão gera alerta) |
 | `alerta_obstaculos_meses` | 24 |
 
@@ -222,7 +223,7 @@ qualquer status antes de ok → devolvido | cancelado
 **Projetos:** para cada fazenda, o **Normal mais recente** e a **Catação mais recente**, de qualquer safra.
 - "Mais recente" = maior safra, depois maior revisão, depois data de modificação mais recente.
 - O shapefile é regravado no padrão da seção 4: mesma geometria, 1 feição, WGS84, `Taxa l/ha` = 10 e `Área Apli` recalculada.
-- Se existir um `.pdf` na pasta do projeto ou na pasta-mãe, ele vai **como está**. Não é gerado PDF novo para o legado.
+- *Revisado em 29/09:* todo projeto do legado ganha **PDF novo, no layout novo**, com a **safra original** do projeto. A geometria antiga é mantida; a tabela por talhão usa a Base de Talhões atual.
 - É publicado como **Rev0**, com motivo "Importado do legado" e com a origem no `G:\` registrada, e ganha uma solicitação `origem = 'legado'`, `status = 'ok'`.
 
 **Obstáculos:** para cada fazenda e classe, o arquivo de restrição mais recente vira a **versão 1** (`origem = 'legado'`).
@@ -233,7 +234,7 @@ qualquer status antes de ok → devolvido | cancelado
   - Alta tensão, Sede, Casa → 50 m.
   - Entram na mesma versão da classe, fazendo a união.
 
-**Relatório** (CSV + resumo no terminal): o que entrou; o que ficou de fora, com o motivo (fazenda fora da Base, arquivo ilegível, sem `.prj`, sem projeto); e os avisos (PDF ausente, área recalculada diferindo mais de 2% do valor antigo).
+**Relatório** (CSV + resumo no terminal): o que entrou; o que ficou de fora, com o motivo (fazenda fora da Base, arquivo ilegível, sem `.prj`, sem projeto); e os avisos (`.prj` deduzido pela faixa das coordenadas, área recalculada diferindo mais de 2% do valor antigo). Colunas `diverge` (mais de 5% do projeto fora dos talhões de hoje, ou Normal cobrindo menos de 85% da fazenda) e `tem_obstaculos`, para decidir onde gerar um projeto atualizado pelo sistema.
 
 **Idempotência:** rodar de novo não duplica nada. Uma fazenda que já tem Rev0 importada, ou versão de obstáculo de legado, é pulada. `--simular` só produz o relatório.
 
@@ -243,7 +244,7 @@ qualquer status antes de ok → devolvido | cancelado
   - talhão sem obstáculos;
   - talhão menos árvore (15 m);
   - talhão menos rede em linha (25 m);
-  - catação com margem de 10 m cortada pela borda do talhão;
+  - catação: manchas a até 20 m viram um bloco só, folga de 5 m, poucos vértices, cortada pela borda do talhão;
   - buracos e multipartes;
   - geometria inválida;
   - resultado vazio → erro.
@@ -256,7 +257,7 @@ qualquer status antes de ok → devolvido | cancelado
 ## 10. Decisões registradas
 
 1. **Normal é sempre a fazenda inteira.** A exceção é o projeto personalizado.
-2. **Catação = infestação expandida 10 m, recortada pelos talhões, menos as restrições.** Um projeto de catação por fazenda, e cada levantamento é uma revisão.
+2. **Catação = blocos da infestação (agrupar 20 m + contorno + folga 5 m), recortados pelos talhões, menos as restrições.** Um projeto de catação por fazenda, e cada levantamento é uma revisão.
 3. **Obstáculos são desenhados no QGIS** e enviados como 3 arquivos, um por classe (15/25/50 m). Não há editor no navegador.
 4. **Experimento fica fora do sistema.**
 5. **Fluxo:** Solicitado → (Aguardando obstáculos / infestação) → Em elaboração → OK, sem etapa de aceite. A Geo **confere a prévia antes de publicar**.
