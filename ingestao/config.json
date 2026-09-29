@@ -19,5 +19,12 @@
   "conservacao": {
     "arquivo": "//lnxpdc/work/AG/PLANEJAMENTO E CONTROLE DE DADOS/CONTROLE OPERACIONAL/2026-2027/PREPARO DE SOLO/PREPARO 2026-2027.xlsx",
     "aba": "CONSERVAÇÃO"
+  },
+  "drone": {
+    "base_talhoes_pasta": "//lnxfs3/work3/Projetos/SHAPES_RPA",
+    "base_talhoes_padrao": "Talhoes_da_Pedra_*_fme.shp",
+    "arquivos_repo": "lmalerbo/hub-geotech-arquivos",
+    "intervalo_s": 30,
+    "catalogo_legado": "C:/Users/lmalerbo/Documents/catalogo_drone.xlsx"
   }
 }
