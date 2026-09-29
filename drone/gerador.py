@@ -52,9 +52,7 @@ def processar(geracao: dict, banco, base: tuple, pasta: Path, hoje: datetime.dat
         fora = not unary_union(infest).buffer(margem).difference(unary_union(list(talhoes.geometry))).is_empty
 
     recorte = recortar(talhoes, uniao_buffers(obst, distancias), infestacao=infest, margem=margem)
-    projeto = banco.projeto_individual(cod, faz['nome'])
-    vigente = banco.revisao_vigente(projeto, tipo)
-    revisao = vigente['numero'] + 1 if vigente else 0
+    revisao = banco.proximo_numero(cod, tipo)   # só leitura: o projeto nasce na publicação
 
     saida = Path(pasta) / f"geracao-{geracao['id']}"
     shp = gravar_aplicacao(recorte.area, int(params['taxa_l_ha']), saida / 'shape', cod)

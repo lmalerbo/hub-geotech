@@ -4,6 +4,7 @@ import unicodedata
 from pathlib import Path
 
 import geopandas as gpd
+from shapely import force_2d
 from shapely.validation import make_valid
 
 from drone.config import CRS_TRABALHO
@@ -20,7 +21,7 @@ def ler_shapefile(caminho: Path) -> list:
     if gdf.crs is None:
         raise ErroGeracao(f'O arquivo {caminho.name} tem um sistema de coordenadas desconhecido.')
     gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty].to_crs(CRS_TRABALHO)
-    return [make_valid(g) for g in gdf.geometry]
+    return [make_valid(force_2d(g)) for g in gdf.geometry]   # PolygonZ (QGIS/GPS/DJI) → 2D, como o banco
 
 
 def classe_pelo_nome(nome: str) -> int | None:

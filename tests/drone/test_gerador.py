@@ -42,11 +42,8 @@ class BancoFalso:
     def infestacao(self, id_):
         return self.infest
 
-    def revisao_vigente(self, projeto_id, documento):
-        return None
-
-    def projeto_individual(self, cod, nome):
-        return 1
+    def proximo_numero(self, cod_faz, documento):
+        return 2
 
     def subir_previa(self, caminho, destino):
         self.previas.append((caminho.name, destino))
@@ -60,6 +57,7 @@ def test_normal_gera_zip_pdf_e_resumo(base, tmp_path):
     assert r['status'] == 'pronta' and r['orientacao'] == 'paisagem'
     assert r['resumo']['area_total_ha'] == pytest.approx(2.0)
     assert r['insumos']['base_talhoes'] == 'Talhoes_da_Pedra_01_10_2026_fme.shp'
+    assert r['insumos']['revisao_prevista'] == 2
     assert r['previa_zip'] == 'geracao-3/10156.zip' and r['previa_pdf'] == 'geracao-3/10156.pdf'
     with zipfile.ZipFile(tmp_path / 'w' / 'geracao-3' / '10156.zip') as z:
         assert '10156.shp' in z.namelist()

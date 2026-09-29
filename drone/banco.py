@@ -1,4 +1,5 @@
 """Chamadas do módulo Drone ao schema hub (service_role) e ao Supabase Storage."""
+import datetime
 import sys
 from pathlib import Path
 
@@ -100,35 +101,34 @@ class DroneBanco(Hub):
             'p_wkts': [g.wkt for g in geoms]})
 
     # ── projeto e revisões (tabelas existentes do Hub) ──────────────
-    def projeto_individual(self, cod_faz, nome) -> int:
-        r = self.selecionar('projetos', 'id', {'modulo_id': 'eq.drone', 'tipo': 'eq.individual',
+    def proximo_numero(self, cod_faz, documento) -> int:
+        """Número que a próxima revisão receberá (só leitura; o projeto nasce em drone_publicar)."""
+        p = self.selecionar('projetos', 'id', {'modulo_id': 'eq.drone', 'tipo': 'eq.individual',
                                                'cod_faz': f'eq.{cod_faz}'})
-        if r:
-            return r[0]['id']
-        return self.inserir('projetos', {'modulo_id': 'drone', 'tipo': 'individual',
-                                         'cod_faz': cod_faz, 'nome': nome})['id']
+        if not p:
+            return 0
+        r = self.selecionar('projeto_revisoes', 'numero', {'projeto_id': f"eq.{p[0]['id']}",
+                                                           'documento': f'eq.{documento}',
+                                                           'order': 'numero.desc', 'limit': '1'})
+        return r[0]['numero'] + 1 if r else 0
 
-    def revisao_vigente(self, projeto_id, documento):
-        r = self.selecionar('projeto_revisoes', 'id,numero,motivo',
-                            {'projeto_id': f'eq.{projeto_id}', 'documento': f'eq.{documento}', 'vigente': 'is.true'})
-        return r[0] if r else None
+    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False) -> int:
+        """Revisão + arquivos + conclusão da geração/solicitação numa transação (hub.drone_publicar)."""
+        return self.rpc('drone_publicar', {
+            'p_cod_faz': cod_faz, 'p_documento': documento, 'p_motivo': motivo, 'p_numero': numero,
+            'p_arquivos': arquivos, 'p_geracao_id': geracao_id, 'p_legado': legado})
 
-    def nova_revisao(self, projeto_id, documento, motivo) -> dict:
-        rev_id = self.rpc('nova_revisao', {'p_projeto_id': projeto_id, 'p_documento': documento,
-                                            'p_motivo': motivo, 'p_origens': None})
-        return self.selecionar('projeto_revisoes', 'id,numero', {'id': f'eq.{rev_id}'})[0]
+    def previas_para_apagar(self) -> list:
+        limite = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        return self.selecionar('drone_geracoes', 'id,status,previa_zip,previa_pdf', {
+            'previa_zip': 'not.is.null',
+            'or': f'(status.in.(publicada,descartada),and(status.eq.pronta,concluido_em.lt.{limite}))'})
 
-    def arquivos_da_revisao(self, revisao_id) -> list:
-        return [a['nome_arquivo'] for a in self.selecionar('revisao_arquivos', 'nome_arquivo',
-                                                           {'revisao_id': f'eq.{revisao_id}'})]
-
-    def registrar_arquivo(self, revisao_id, nome, url, tamanho):
-        self.upsert('revisao_arquivos', [{'revisao_id': revisao_id, 'nome_arquivo': nome,
-                                          'release_url': url, 'tamanho_bytes': tamanho}],
-                    'revisao_id,nome_arquivo')
-
-    def concluir_publicacao(self, geracao_id, revisao_id):
-        self.rpc('drone_concluir_publicacao', {'p_geracao_id': geracao_id, 'p_revisao_id': revisao_id})
+    def limpar_previa(self, geracao_id, descartar=False):
+        valores = {'previa_zip': None, 'previa_pdf': None}
+        if descartar:
+            valores['status'] = 'descartada'
+        self.atualizar('drone_geracoes', {'id': f'eq.{geracao_id}'}, valores)
 
     # ── Storage (prévias) ───────────────────────────────────────────
     def _storage_headers(self):

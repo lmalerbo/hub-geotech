@@ -84,10 +84,9 @@ def main():
     banco = DroneBanco()
     gh = None if simular else GitHubReleases(carregar_env()['GH_TOKEN'], c['arquivos_repo'])
     fazendas = {f['cod_faz'] for f in banco.selecionar('fazendas', 'cod_faz')}
-    legado = banco.selecionar('drone_solicitacoes', 'id,cod_faz,tipo,revisao_id', {'origem': 'eq.legado'})
-    ja_legado = {(s['cod_faz'], s['tipo']) for s in legado if s['revisao_id']}
-    # solicitação criada numa execução que caiu antes de publicar: reaproveita
-    pendentes = {(s['cod_faz'], s['tipo']): s['id'] for s in legado if not s['revisao_id']}
+    # a solicitação de legado nasce na mesma transação da revisão (hub.drone_publicar)
+    ja_legado = {(s['cod_faz'], s['tipo']) for s in banco.selecionar('drone_solicitacoes', 'cod_faz,tipo',
+                                                                     {'origem': 'eq.legado'})}
     obst_legado = {(v['cod_faz'], v['classe_m']) for v in banco.selecionar('drone_obstaculo_versoes',
                                                                             'cod_faz,classe_m', {'origem': 'eq.legado'})}
     relatorio = []
@@ -131,10 +130,8 @@ def main():
             if not simular:
                 pasta = PASTA_TRABALHO / 'legado' / f'{cod}-{tipo}'
                 zip_ = montar_zip(gravar_aplicacao(area, 10, pasta / 'shape', cod), pasta / f'{cod}.zip')
-                sol_id = pendentes.get((cod, tipo)) or banco.criar_solicitacao(cod, tipo, 'legado', status='ok')['id']
-                # publicar() continua uma revisão interrompida, então repetir não cria Rev1
-                rev = publicar(banco, gh, cod, tipo, f'{MOTIVO} ({shp})', {'zip': zip_, 'pdf': pdf})
-                banco.atualizar('drone_solicitacoes', {'id': f'eq.{sol_id}'}, {'revisao_id': rev})
+                publicar(banco, gh, cod, tipo, f'{MOTIVO} ({shp})', {'zip': zip_, 'pdf': pdf}, numero_esperado=0,
+                         legado=True)
             rel(cod, item, 'ok', '; '.join(avisos) + f' | origem: {shp}')
         except Exception as e:
             rel(cod, item, 'erro', str(e))

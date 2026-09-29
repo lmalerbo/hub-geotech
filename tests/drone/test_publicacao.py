@@ -35,37 +35,30 @@ def test_subir_reaproveita_asset_existente(monkeypatch, tmp_path):
 
 
 class _BancoFalso:
-    """Revisões de um único projeto/documento; a última é a vigente."""
+    """Imita hub.drone_publicar: abre a revisão, confere o número e registra os arquivos numa transação só."""
     def __init__(self):
-        self.revisoes, self.arquivos = [], []   # revisoes: [{'id', 'numero', 'motivo'}]
+        self.revisoes = []   # [{'id', 'numero', 'motivo', 'arquivos', 'geracao_id', 'legado'}]
 
     def fazenda(self, cod):
         return {'cod_faz': cod, 'nome': 'POSSES'}
 
-    def projeto_individual(self, cod, nome):
-        return 7
+    def proximo_numero(self, cod_faz, documento):
+        return len(self.revisoes)
 
-    def revisao_vigente(self, projeto_id, documento):
-        return self.revisoes[-1] if self.revisoes else None
-
-    def nova_revisao(self, projeto_id, documento, motivo):
-        if self.revisoes and not motivo:
+    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False):
+        if numero != len(self.revisoes):
+            raise RuntimeError('número da revisão mudou')
+        if numero > 0 and not motivo:
             raise RuntimeError('motivo obrigatório')
-        rev = {'id': 11 + len(self.revisoes), 'numero': len(self.revisoes), 'motivo': motivo}
+        rev = {'id': 11 + numero, 'numero': numero, 'motivo': motivo, 'geracao_id': geracao_id, 'legado': legado,
+               'arquivos': [a['nome'] for a in arquivos]}
         self.revisoes.append(rev)
-        return rev
-
-    def arquivos_da_revisao(self, revisao_id):
-        return [nome for r, nome in self.arquivos if r == revisao_id]
-
-    def registrar_arquivo(self, revisao_id, nome, url, tamanho):   # upsert, como o real
-        if (revisao_id, nome) not in self.arquivos:
-            self.arquivos.append((revisao_id, nome))
+        return rev['id']
 
 
 class _GhFalso:
     def __init__(self, falhar_em=None):
-        self.falhar_em = falhar_em
+        self.falhar_em, self.enviados = falhar_em, []
 
     def release(self, tag, titulo):
         assert tag == 'drone-10156'
@@ -74,6 +67,7 @@ class _GhFalso:
     def subir(self, rel, caminho, nome):
         if self.falhar_em and nome.endswith(self.falhar_em):
             raise RuntimeError('GitHub fora')
+        self.enviados.append(nome)
         return f'https://x/{nome}', 1
 
 
@@ -86,9 +80,10 @@ def _arquivos(tmp_path, pdf=True):
 
 def test_publicar_cria_rev0_e_registra_zip_e_pdf(tmp_path):
     b = _BancoFalso()
-    rev = publicar(b, _GhFalso(), 10156, 'normal', None, _arquivos(tmp_path))
+    rev = publicar(b, _GhFalso(), 10156, 'normal', None, _arquivos(tmp_path), geracao_id=3)
     assert rev == 11
-    assert b.arquivos == [(11, '10156_POSSES_Rev0-Normal.zip'), (11, '10156_POSSES_Rev0-Normal.pdf')]
+    assert b.revisoes[0]['arquivos'] == ['10156_POSSES_Rev0-Normal.zip', '10156_POSSES_Rev0-Normal.pdf']
+    assert b.revisoes[0]['geracao_id'] == 3
 
 
 def test_catacao_nova_revisao_usa_motivo_padrao(tmp_path):
@@ -99,17 +94,34 @@ def test_catacao_nova_revisao_usa_motivo_padrao(tmp_path):
     assert b.revisoes[-1]['numero'] == 1
 
 
-def test_normal_nova_revisao_sem_motivo_da_erro(tmp_path):
+def test_normal_nova_revisao_sem_motivo_da_erro_sem_subir_nada(tmp_path):
     b = _BancoFalso()
     publicar(b, _GhFalso(), 10156, 'normal', None, _arquivos(tmp_path))
+    gh = _GhFalso()
     with pytest.raises(RuntimeError, match='motivo'):
-        publicar(b, _GhFalso(), 10156, 'normal', None, _arquivos(tmp_path))
+        publicar(b, gh, 10156, 'normal', None, _arquivos(tmp_path))
+    assert gh.enviados == []
 
 
-def test_repetir_depois_de_falha_no_github_reaproveita_a_revisao(tmp_path):
+def test_falha_no_github_nao_mexe_no_banco_e_repetir_publica_uma_vez(tmp_path):
     b = _BancoFalso()
     with pytest.raises(RuntimeError, match='GitHub'):
         publicar(b, _GhFalso(falhar_em='.pdf'), 10156, 'normal', None, _arquivos(tmp_path))
+    assert b.revisoes == []            # portal continua mostrando a revisão anterior
     rev = publicar(b, _GhFalso(), 10156, 'normal', None, _arquivos(tmp_path))
-    assert len(b.revisoes) == 1 and rev == 11
-    assert sorted(b.arquivos_da_revisao(11)) == ['10156_POSSES_Rev0-Normal.pdf', '10156_POSSES_Rev0-Normal.zip']
+    assert rev == 11 and len(b.revisoes) == 1
+
+
+def test_revisao_prevista_diferente_recusa_antes_de_subir(tmp_path):
+    b = _BancoFalso()
+    publicar(b, _GhFalso(), 10156, 'catacao', None, _arquivos(tmp_path))
+    gh = _GhFalso()
+    with pytest.raises(RuntimeError, match='Rev0.*Rev1'):
+        publicar(b, gh, 10156, 'catacao', None, _arquivos(tmp_path), numero_esperado=0)
+    assert gh.enviados == [] and len(b.revisoes) == 1
+
+
+def test_legado_vai_marcado_para_o_banco(tmp_path):
+    b = _BancoFalso()
+    publicar(b, _GhFalso(), 10156, 'normal', 'Importado do legado', _arquivos(tmp_path, pdf=False), legado=True)
+    assert b.revisoes[0]['legado'] is True and b.revisoes[0]['arquivos'] == ['10156_POSSES_Rev0-Normal.zip']

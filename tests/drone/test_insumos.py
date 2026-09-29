@@ -1,5 +1,5 @@
 import pytest
-from shapely.geometry import LineString, Point, box
+from shapely.geometry import LineString, Point, Polygon, box
 
 from drone.erros import ErroGeracao
 from drone.insumos import classe_pelo_nome, ler_shapefile
@@ -35,3 +35,10 @@ def test_descarta_vazias(grava_shp):
 ])
 def test_classe_pelo_nome(nome, classe):
     assert classe_pelo_nome(nome) == classe
+
+
+def test_geometria_com_z_vira_2d(grava_shp):
+    # QGIS/GPS/DJI costumam gravar PolygonZ; a coluna do banco é 2D
+    poly_z = Polygon([(0, 0, 500), (10, 0, 501), (10, 10, 502), (0, 0, 500)])
+    geoms = ler_shapefile(grava_shp('z', [poly_z]))
+    assert not any(g.has_z for g in geoms)

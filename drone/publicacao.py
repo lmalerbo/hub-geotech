@@ -46,28 +46,24 @@ class GitHubReleases:
         return a['browser_download_url'], a['size']
 
 
-def _nomes(cod_faz, nome, numero, documento, arquivos) -> dict:
-    return {ext: nome_arquivo(cod_faz, nome, numero, documento, ext) for ext in ('zip', 'pdf') if arquivos.get(ext)}
-
-
-def publicar(banco, gh, cod_faz, documento, motivo, arquivos: dict) -> int:
+def publicar(banco, gh, cod_faz, documento, motivo, arquivos: dict, numero_esperado=None,
+             geracao_id=None, legado=False) -> int:
+    """Sobe os arquivos no GitHub e só depois grava a revisão (hub.drone_publicar, uma transação).
+    Falha no GitHub não mexe no banco; repetir reaproveita os assets já enviados (mesmo nome)."""
     faz = banco.fazenda(cod_faz)
-    projeto = banco.projeto_individual(cod_faz, faz['nome'])
-    vigente = banco.revisao_vigente(projeto, documento)
-    rev = None
-    if vigente:
-        # publicação anterior interrompida (revisão aberta, arquivos faltando): continua nela
-        ja = set(banco.arquivos_da_revisao(vigente['id']))
-        if ja < set(_nomes(cod_faz, faz['nome'], vigente['numero'], documento, arquivos).values()):
-            rev = vigente
-        elif not (motivo or '').strip():
-            motivo = MOTIVO_PADRAO.get(documento)
-            if not motivo:
-                raise RuntimeError('Informe o motivo da nova revisão do projeto Normal.')
-    if rev is None:
-        rev = banco.nova_revisao(projeto, documento, motivo)
+    numero = banco.proximo_numero(cod_faz, documento)
+    if numero_esperado is not None and numero != numero_esperado:
+        raise RuntimeError(f'O mapa foi gerado como Rev{numero_esperado}, mas a próxima revisão é a Rev{numero}: '
+                           'gere o projeto de novo.')
+    if numero > 0 and not (motivo or '').strip():
+        motivo = MOTIVO_PADRAO.get(documento)
+        if not motivo:
+            raise RuntimeError('Informe o motivo da nova revisão do projeto Normal.')
     release = gh.release(f'drone-{cod_faz}', f'{faz["nome"]} — drone')
-    for ext, nome in _nomes(cod_faz, faz['nome'], rev['numero'], documento, arquivos).items():
-        url, tamanho = gh.subir(release, arquivos[ext], nome)
-        banco.registrar_arquivo(rev['id'], nome, url, tamanho)   # upsert: repetir não duplica
-    return rev['id']
+    enviados = []
+    for ext in ('zip', 'pdf'):
+        if arquivos.get(ext):
+            nome = nome_arquivo(cod_faz, faz['nome'], numero, documento, ext)
+            url, tamanho = gh.subir(release, arquivos[ext], nome)
+            enviados.append({'nome': nome, 'url': url, 'tamanho': tamanho})
+    return banco.publicar_revisao(cod_faz, documento, motivo, numero, enviados, geracao_id, legado)

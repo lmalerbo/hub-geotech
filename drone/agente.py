@@ -47,9 +47,8 @@ def publicar_uma(banco, gh) -> bool:
         pasta = PASTA_TRABALHO / f"publicacao-{g['id']}"
         arquivos = {'zip': banco.baixar_previa(g['previa_zip'], pasta / 'p.zip'),
                     'pdf': banco.baixar_previa(g['previa_pdf'], pasta / 'p.pdf')}
-        rev = publicar(banco, gh, sol['cod_faz'], sol['tipo'], g.get('publicar_motivo'), arquivos)
-        banco.concluir_publicacao(g['id'], rev)
-        banco.apagar_previas([g['previa_zip'], g['previa_pdf']])
+        rev = publicar(banco, gh, sol['cod_faz'], sol['tipo'], g.get('publicar_motivo'), arquivos,
+                       numero_esperado=(g.get('insumos') or {}).get('revisao_prevista'), geracao_id=g['id'])
         _log(f'  publicada (revisão {rev})')
     except Exception as e:
         banco.erro_publicacao(g['id'], str(e))
@@ -57,8 +56,19 @@ def publicar_uma(banco, gh) -> bool:
     return True
 
 
+def limpar_previas(banco):
+    """Prévias de gerações publicadas, descartadas ou prontas há mais de 30 dias saem do Storage."""
+    for g in banco.previas_para_apagar():
+        banco.apagar_previas([g['previa_zip'], g['previa_pdf']])
+        banco.limpar_previa(g['id'], descartar=g['status'] == 'pronta')
+
+
 def ciclo(banco, gh, c) -> bool:
     banco.batimento()
+    try:
+        limpar_previas(banco)
+    except Exception as e:   # Storage fora não pode travar a fila
+        _log(f'limpeza de prévias falhou: {e}')
     trabalhou = gerar_uma(banco, c)
     return publicar_uma(banco, gh) or trabalhou
 

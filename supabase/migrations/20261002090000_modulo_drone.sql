@@ -159,6 +159,23 @@ create trigger drone_solicitacao_status_inicial before insert on hub.drone_solic
 create trigger drone_solicitacao_log after insert or update of status on hub.drone_solicitacoes
   for each row execute function hub.drone_log_solicitacao();
 
+create or replace function hub.drone_log_geracao()
+returns trigger language plpgsql security definer set search_path = hub as $$
+begin
+  if tg_op = 'INSERT' or new.status is distinct from old.status then
+    insert into hub.log_auditoria (modulo_id, entidade_tipo, entidade_id, campo,
+                                   valor_anterior, valor_novo, usuario_id, origem)
+    select 'drone', 'fazenda', s.cod_faz, 'geracao ' || new.id || ' (solicitacao ' || s.id || ')',
+           case when tg_op = 'UPDATE' then old.status end, new.status, auth.uid(),
+           case when auth.role() = 'service_role' then 'agente_drone' else 'usuario' end
+      from hub.drone_solicitacoes s where s.id = new.solicitacao_id;
+  end if;
+  return new;
+end $$;
+
+create trigger drone_geracao_log after insert or update of status on hub.drone_geracoes
+  for each row execute function hub.drone_log_geracao();
+
 -- ── insumos ────────────────────────────────────────────────────────────
 create or replace function hub.drone_gravar_obstaculos(
   p_cod_faz int, p_classe_m int, p_origem text, p_arquivo text, p_wkts text[], p_usuario uuid default null)
@@ -174,7 +191,7 @@ begin
   values (p_cod_faz, p_classe_m, v_versao, p_origem, p_arquivo, coalesce(array_length(p_wkts, 1), 0), p_usuario)
   returning id into v_id;
   insert into hub.drone_obstaculo_feicoes (versao_id, geom)
-  select v_id, ST_GeomFromText(w, 31983) from unnest(p_wkts) w;
+  select v_id, ST_Force2D(ST_GeomFromText(w, 31983)) from unnest(p_wkts) w;
   update hub.drone_solicitacoes set status = 'solicitado'
    where cod_faz = p_cod_faz and tipo = 'normal' and status = 'aguardando_obstaculos';
   return v_id;
@@ -193,7 +210,7 @@ begin
   values (v_sol.cod_faz, v_sol.id, p_empresa, p_arquivo, coalesce(array_length(p_wkts, 1), 0), p_usuario)
   returning id into v_id;
   insert into hub.drone_infestacao_feicoes (infestacao_id, geom)
-  select v_id, ST_GeomFromText(w, 31983) from unnest(p_wkts) w;
+  select v_id, ST_Force2D(ST_GeomFromText(w, 31983)) from unnest(p_wkts) w;
   update hub.drone_solicitacoes set status = 'solicitado'
    where id = v_sol.id and status = 'aguardando_infestacao';
   return v_id;
@@ -240,16 +257,52 @@ begin
   returning g.*;
 end $$;
 
-create or replace function hub.drone_concluir_publicacao(p_geracao_id bigint, p_revisao_id bigint)
-returns void language plpgsql security definer set search_path = hub as $$
-declare v_sol bigint;
+-- ── publicação (uma transação: revisão + arquivos + geração + solicitação) ──
+-- O agente sobe os arquivos no GitHub ANTES de chamar esta função, já com o
+-- nome da revisão p_numero. Se o número mudou nesse meio tempo, nada é gravado.
+create or replace function hub.drone_publicar(
+  p_cod_faz int, p_documento text, p_motivo text, p_numero int, p_arquivos jsonb,
+  p_geracao_id bigint default null, p_legado boolean default false)
+returns bigint language plpgsql security definer set search_path = hub as $$
+declare v_proj bigint; v_rev bigint; v_num int; v_sol bigint;
 begin
-  update hub.drone_geracoes set status = 'publicada', concluido_em = now()
-   where id = p_geracao_id returning solicitacao_id into v_sol;
-  update hub.drone_geracoes set status = 'descartada'
-   where solicitacao_id = v_sol and id <> p_geracao_id and status in ('fila', 'pronta', 'erro');
-  update hub.drone_solicitacoes set status = 'ok', revisao_id = p_revisao_id, concluido_em = now()
-   where id = v_sol;
+  insert into hub.projetos (modulo_id, tipo, cod_faz, nome)
+  select 'drone', 'individual', f.cod_faz, f.nome from hub.fazendas f where f.cod_faz = p_cod_faz
+  on conflict (modulo_id, cod_faz) where tipo = 'individual' do nothing;
+  select id into v_proj from hub.projetos
+   where modulo_id = 'drone' and tipo = 'individual' and cod_faz = p_cod_faz;
+  if v_proj is null then
+    raise exception 'Fazenda % não existe em hub.fazendas', p_cod_faz;
+  end if;
+
+  v_rev := hub.nova_revisao(v_proj, p_documento, p_motivo);
+  select numero into v_num from hub.projeto_revisoes where id = v_rev;
+  if v_num <> p_numero then
+    raise exception 'A revisão mudou: arquivos enviados como Rev%, mas a próxima é Rev%. Gere o projeto de novo.',
+      p_numero, v_num;
+  end if;
+
+  insert into hub.revisao_arquivos (revisao_id, nome_arquivo, release_url, tamanho_bytes)
+  select v_rev, a.nome, a.url, a.tamanho
+    from jsonb_to_recordset(p_arquivos) as a (nome text, url text, tamanho bigint);
+
+  if p_geracao_id is not null then
+    update hub.drone_geracoes set status = 'publicada', concluido_em = now()
+     where id = p_geracao_id and status = 'pronta' returning solicitacao_id into v_sol;
+    if v_sol is null then
+      raise exception 'Geração % não está pronta para publicar', p_geracao_id;
+    end if;
+    update hub.drone_geracoes set status = 'descartada'
+     where solicitacao_id = v_sol and id <> p_geracao_id and status in ('fila', 'pronta', 'erro');
+    update hub.drone_solicitacoes set status = 'ok', revisao_id = v_rev, concluido_em = now()
+     where id = v_sol;
+  end if;
+
+  if p_legado then
+    insert into hub.drone_solicitacoes (cod_faz, tipo, origem, status, revisao_id, concluido_em)
+    values (p_cod_faz, p_documento, 'legado', 'ok', v_rev, now());
+  end if;
+  return v_rev;
 end $$;
 
 -- ── segurança ──────────────────────────────────────────────────────────
@@ -274,7 +327,7 @@ begin
     'hub.drone_gravar_infestacao(bigint, text, text, text[], uuid)',
     'hub.drone_obstaculos_vigentes(int)', 'hub.drone_infestacao_wkt(bigint)',
     'hub.drone_pegar_geracao()', 'hub.drone_pegar_publicacao()',
-    'hub.drone_concluir_publicacao(bigint, bigint)'] loop
+    'hub.drone_publicar(int, text, text, int, jsonb, bigint, boolean)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);
   end loop;
