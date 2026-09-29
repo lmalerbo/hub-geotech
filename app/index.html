@@ -271,6 +271,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .btn-reg:disabled{opacity:.4;cursor:default;transform:none}
 .tal-chip .tt{font-size:9.5px;font-weight:700;letter-spacing:.2px}
 .tal-chip .tdes{font-size:12px;vertical-align:-2px}
+.porte{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 5px;background:var(--s2);color:var(--t2);margin-top:2px;width:fit-content}
+.porte.pronto{background:rgba(212,137,10,.18);color:#9a6200}
 .col-tipos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
 .col-tipo{height:44px;border-radius:10px;border:2px solid var(--bd2);background:var(--sf);font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all var(--tf)}
 .col-tipo:hover{border-color:var(--colheita);background:rgba(212,137,10,.06)}
@@ -969,6 +971,22 @@ let SAFRA_C='';
 const TIPO_C={VANT:{l:'Linha de Vant',s:'Vant'},PROJETO:{l:'Desdobra de Plantio',s:'Desdobra'},'SEM LINHAS':{l:'Sem Linhas',s:'S/ linhas'}};
 let ativaC=null, selTals=[], fqC='';
 function getCiclo(){return SAFRA_C||'—';}
+// Tag de porte: dias desde o corte, nos talhões Sem Linhas cortados dentro da
+// safra atual (abril a março) e fora da "A Plantar". Com 100 dias o talhão
+// atinge o porte para voar (Regra B) e a tag muda de cor.
+const DIAS_PORTE=100;
+function janelaSafra(){const a=2000+parseInt(SAFRA_C);return[new Date(a,3,1),new Date(a+1,3,1)];}
+function tagPorte(t){
+  if(t.st!=='SEM LINHAS'||!t.corte||String(t.est).toUpperCase().trim()==='A PLANTAR'||!SAFRA_C)return null;
+  const d=new Date(t.corte+'T00:00:00'),[ini,fim]=janelaSafra();
+  if(isNaN(d)||d<ini||d>=fim)return null;
+  return Math.floor((Date.now()-d.getTime())/864e5);
+}
+function porteHtml(t){
+  const d=tagPorte(t);if(d===null)return'';
+  const pronto=d>=DIAS_PORTE;
+  return`<span class="porte${pronto?' pronto':''}" title="${d} dias desde o corte${pronto?' — já passou de '+DIAS_PORTE+' dias':''}">${d}d</span>`;
+}
 
 // ─────────────────────────────────────────────────────────────
 // DADOS — Portal
@@ -1397,7 +1415,7 @@ function rFazC(){
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas" style="${f.porte>=DIAS_PORTE?'color:#9a6200;font-weight:700':''}">${f.porte}d</span>`:''}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
     </div>`;
@@ -1428,6 +1446,7 @@ function rDetC(){
       <span class="tt">${esc(tipo)}</span>
       <span class="te">${esc(t.est||'')}</span>
       <span class="tha">${fmtNum(t.ha)} ha${t.cortado?' · cortado':''}</span>
+      ${porteHtml(t)}
     </div>`;
   }).join('');
   const nSel=selTals.length;
@@ -2081,7 +2100,7 @@ async function carregarDados(){
       'id,documento,numero,motivo,vigente,criado_em,projetos(id,modulo_id,tipo,cod_faz,nome),'
       +'revisao_arquivos(nome_arquivo,release_url),revisao_origens!revisao_origens_revisao_id_fkey(origem_revisao_id)')
       .order('numero',{ascending:false}).order('id')),
-    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status').order('layer')),
+    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status').order('layer')),
     lerTudo(()=>sb.from('fazendas').select('cod_faz,nome').order('cod_faz')),
     sb.rpc('safra_colheita').then(({data,error})=>{if(error)throw error;return data;}),
     lerTudo(()=>sb.from('avisos').select('id,modulo_id,tipo,cod_faz,titulo,texto,atualizado_em').is('resolvido_em',null).order('atualizado_em',{ascending:false})),
@@ -2159,13 +2178,14 @@ async function carregarDados(){
     let f=porFazC.get(r.cod_faz);
     if(!f){f={n:nomeFaz[r.cod_faz]||String(r.cod_faz),cod:String(r.cod_faz),fr:'',per:'',desat:false,tals:[],_fr:{}};porFazC.set(r.cod_faz,f);}
     f.tals.push({layer:r.layer,id:r.talhao_num,ha:r.area_ha||0,est:r.estagio||'',st:r.status,tipo:r.tipo_linha,
-                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,
+                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,corte:r.data_ultimo_corte,
                  mes:r.periodo_op?'Período '+r.periodo_op:''});
     if(r.frente)f._fr[r.frente]=(f._fr[r.frente]||0)+1;
     if(r.periodo_op&&!f.per)f.per=String(r.periodo_op);
     if(r.projeto_desatualizado)f.desat=true;
   }
   FZ_C.length=0;
+  for(const f of porFazC.values())f.porte=Math.max(-1,...f.tals.map(t=>tagPorte(t)??-1));
   [...porFazC.values()].sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(f=>{
     f.fr=Object.entries(f._fr).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).join(', ')||'—';
     f.tals.sort((a,b)=>a.id-b.id);FZ_C.push(f);

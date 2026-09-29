@@ -21,7 +21,7 @@ Roteiro do dia em que a equipe para de usar o Expo_safra e passa a fazer a Colhe
 - **Saem do sistema:** o Plano da Semana e o ranking de hectares.
 - **Novo, a Regra A:** quando o Plantio fecha um talhão como Ok, a Colheita marca o projeto como "desatualizado · replantado" e avisa no sininho.
 - **A demanda vem do ICOL todo dia, sozinha.** Entram todos os talhões de cada fazenda do ICOL, e a frente é texto, então `BIS - 3` e `FOCA - 22` não se perdem mais.
-- **Sai a tag de voo da Falha Soca** (a "tag de porte"). Sem Linhas é avaliação do analista, e os talhões até o 3º corte já têm voo automático do setor. O acompanhamento de voo volta com a Regra B, só para talhões Sem Linhas e para os apontados com problema, no projeto **Linhas de Colheita**.
+- **Tag de porte:** nos talhões Sem Linhas cortados na safra atual, mostra os dias desde o corte e muda de cor ao passar de 100 dias. Não mostra mais a situação de voo da Falha Soca. Com a Regra B, a tag vale também para os talhões apontados com problema, e o revoo é agendado no projeto **Linhas de Colheita**.
 
 ## Antes de marcar a data
 
