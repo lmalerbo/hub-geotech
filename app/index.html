@@ -1122,8 +1122,9 @@ function rDash(){
     return`<div class="dash-stage-bar">${bar}</div><div class="dash-stage-legend">${leg}</div>`;
   }
 
-  const concC=FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO'||t.st==='SEM LINHAS'));
-  const haC={tot:allTals.reduce((s,t)=>s+t.ha,0),conc:allTals.filter(t=>t.st==='CONCLUIDO'||t.st==='SEM LINHAS').reduce((s,t)=>s+t.ha,0)};
+  // Sem Linhas é categoria própria (aguarda voo), não conta como concluído.
+  const concC=FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO'));
+  const haC={tot:allTals.reduce((s,t)=>s+t.ha,0),conc:allTals.filter(t=>t.st==='CONCLUIDO').reduce((s,t)=>s+t.ha,0)};
   const mods=[
     {nome:'Plantio',c:'var(--plantio)',i:'eco',
      conc:concFazP,tot:FZ.length,haConc:haP.conc,haTot:haP.tot,
@@ -1415,14 +1416,16 @@ function rFazC(){
   }
   document.getElementById('flist-c').innerHTML=lista.map(f=>{
     const gi=FZ_C.indexOf(f);
-    const conc=f.tals.filter(t=>t.st==='CONCLUIDO'||t.st==='SEM LINHAS').length,tot=f.tals.length;
+    // Sem Linhas NÃO é concluído: o talhão ainda precisa de voo para ganhar linhas.
+    const conc=f.tals.filter(t=>t.st==='CONCLUIDO').length,tot=f.tals.length;
+    const semL=f.tals.filter(t=>t.st==='SEM LINHAS').length;
     const pct=Math.round(conc/tot*100);
     const bc=pct===100?'var(--plantio)':pct>0?'var(--colheita)':'var(--t3)';
     return`<div class="fcard${ativaC===gi?' on':''}" onclick="selFC(${gi})" style="color:${bc}">
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas">✈ ${f.porte}d</span>`:''}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas">✈ ${f.porte}d</span>`:''}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
     </div>`;
