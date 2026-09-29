@@ -119,6 +119,21 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .tb-mod{font-size:11.5px;font-weight:700;background:rgba(22,167,107,.1);color:var(--plantio);padding:3px 10px;border-radius:20px}
 .tb-sep{color:var(--bd)}
 .tb-tit{font-size:13.5px;font-weight:500;color:var(--t2)}
+.tb-dir{display:flex;align-items:center;gap:12px}
+.sino{position:relative;width:38px;height:38px;border-radius:50%;border:none;background:var(--s2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2)}
+.sino-n{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#e05252;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.sino-lista{position:absolute;top:70px;right:20px;width:360px;max-height:70vh;overflow-y:auto;background:var(--sf);border-radius:14px;box-shadow:var(--sh-lg);z-index:50;padding:8px}
+.sino-cab{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 8px;font-size:13px;font-weight:700}
+.sino-cab button{background:none;border:none;font-family:'Poppins',sans-serif;font-size:11.5px;color:var(--t3);cursor:pointer}
+.aviso-it{display:flex;gap:10px;padding:10px;border-radius:10px;cursor:pointer}
+.aviso-it:hover{background:var(--s2)}
+.aviso-it.novo{background:rgba(212,137,10,.07)}
+.aviso-ico{width:30px;height:30px;border-radius:50%;background:rgba(212,137,10,.14);color:var(--colheita);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.aviso-ico .ico{font-size:17px}
+.aviso-tit{font-size:12.5px;font-weight:600}
+.aviso-txt{font-size:11.5px;color:var(--t2);margin-top:1px}
+.aviso-dt{font-size:10.5px;color:var(--t3);margin-top:2px}
+.sino-vazio{padding:22px 10px;text-align:center;font-size:12.5px;color:var(--t3)}
 .uchip{display:flex;align-items:center;gap:7px;background:var(--s2);border-radius:20px;padding:5px 12px 5px 7px;font-size:12px;font-weight:500;color:var(--t2)}
 .hub-body{flex:1;overflow-y:auto;padding:14px 20px 20px 0}
 /* View transitions */
@@ -254,6 +269,14 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .btn-reg{width:100%;height:42px;background:var(--colheita);color:#fff;border:none;border-radius:var(--r-md);font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 6px 20px rgba(212,137,10,.28);transition:transform var(--tf),opacity var(--tb)}
 .btn-reg:hover{transform:translateY(-1px)}
 .btn-reg:disabled{opacity:.4;cursor:default;transform:none}
+.tal-chip .tt{font-size:9.5px;font-weight:700;letter-spacing:.2px}
+.tal-chip .tdes{font-size:12px;vertical-align:-2px}
+.col-tipos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.col-tipo{height:44px;border-radius:10px;border:2px solid var(--bd2);background:var(--sf);font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all var(--tf)}
+.col-tipo:hover{border-color:var(--colheita);background:rgba(212,137,10,.06)}
+.col-tipo:disabled{opacity:.5;cursor:default}
+.col-desfazer{background:none;border:none;font-family:'Poppins',sans-serif;font-size:11.5px;color:var(--t3);cursor:pointer;text-decoration:underline}
+.col-desat{display:flex;gap:8px;align-items:flex-start;background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.25);color:#b43c3c;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px}
 .col-sel-hint{font-size:12px;color:var(--t3);text-align:center;padding:14px 0}
 
 /* ── PORTAL ──────────────────────────────────────────────── */
@@ -534,7 +557,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
     <nav class="sb-nav">
       <button class="ni on" onclick="trocar('dash',this)"><span class="ico ni-ico">home</span><span class="ni-lbl">Dashboard</span></button>
       <button class="ni" onclick="trocar('plantio',this)"><span class="ico ni-ico">eco</span><span class="ni-lbl">Plantio</span></button>
-      <button class="ni dim"><span class="ico ni-ico">agriculture</span><span class="ni-lbl">Colheita<span class="soon">em breve</span></span></button>
+      <button class="ni" onclick="trocar('colheita',this)"><span class="ico ni-ico">agriculture</span><span class="ni-lbl">Colheita</span></button>
       <button class="ni" onclick="trocar('preparo',this)"><span class="ico ni-ico">construction</span><span class="ni-lbl">Preparo</span></button>
       <button class="ni dim"><span class="ico ni-ico">phone_iphone</span><span class="ni-lbl">Portal Mobile<span class="soon">em breve</span></span></button>
       <button class="ni" onclick="trocar('consultas',this)"><span class="ico ni-ico">table_view</span><span class="ni-lbl">Consultas</span></button>
@@ -561,7 +584,10 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
         <span class="tb-sep">/</span>
         <span class="tb-tit" id="tb-tit">Visão geral</span>
       </div>
-      <div class="uchip"><div class="av sm" id="tb-av"></div><span id="tb-uname"></span></div>
+      <div class="tb-dir">
+        <button class="sino" id="sino" onclick="alternarSino(event)" aria-label="Avisos"><span class="ico">notifications</span></button>
+        <div class="uchip"><div class="av sm" id="tb-av"></div><span id="tb-uname"></span></div>
+      </div>
     </header>
     <div class="hub-body">
 
@@ -638,6 +664,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
           <div class="cons-mod-tabs">
             <button class="cons-mod-tab on" onclick="consMod('plantio',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">eco</span>Plantio</button>
             <button class="cons-mod-tab" onclick="consMod('preparo',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">construction</span>Preparo</button>
+            <button class="cons-mod-tab" id="cons-tab-colheita" onclick="consMod('colheita',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">agriculture</span>Colheita</button>
           </div>
           <button class="btn-export" id="btn-export" onclick="exportCons()" disabled>
             <span class="ico">content_copy</span>Excel
@@ -936,14 +963,12 @@ const ST_COL={
   'SEM LINHAS': {c:'#9895a2',bg:'rgba(152,149,162,.1)', cls:'SEM_LINHAS'},
   'REAVALIAR':  {c:'#e05252',bg:'rgba(224,82,82,.1)',    cls:'REAVALIAR'},
 };
-// Colheita entra no Hub no corte seguinte (Expo_safra).
+// Preenchido por carregarDados() a partir de hub.colheita_talhoes.
 const FZ_C=[];
+let SAFRA_C='';
+const TIPO_C={VANT:{l:'Linha de Vant',s:'Vant'},PROJETO:{l:'Desdobra de Plantio',s:'Desdobra'},'SEM LINHAS':{l:'Sem Linhas',s:'S/ linhas'}};
 let ativaC=null, selTals=[], fqC='';
-function getCiclo(){
-  const now=new Date(),yr=now.getFullYear(),mo=now.getMonth()+1;
-  const a=mo>=4?yr:yr-1;
-  return`${String(a).slice(2)}/${String(a+1).slice(2)}`;
-}
+function getCiclo(){return SAFRA_C||'—';}
 
 // ─────────────────────────────────────────────────────────────
 // DADOS — Portal
@@ -1069,6 +1094,8 @@ function rDash(){
     return`<div class="dash-stage-bar">${bar}</div><div class="dash-stage-legend">${leg}</div>`;
   }
 
+  const concC=FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO'||t.st==='SEM LINHAS'));
+  const haC={tot:allTals.reduce((s,t)=>s+t.ha,0),conc:allTals.filter(t=>t.st==='CONCLUIDO'||t.st==='SEM LINHAS').reduce((s,t)=>s+t.ha,0)};
   const mods=[
     {nome:'Plantio',c:'var(--plantio)',i:'eco',
      conc:concFazP,tot:FZ.length,haConc:haP.conc,haTot:haP.tot,
@@ -1076,6 +1103,9 @@ function rDash(){
     {nome:'Preparo',c:'var(--preparo)',i:'construction',
      conc:concFazPR,tot:FZ_P.length,haConc:haPR.conc,haTot:haPR.tot,
      dist:stageBlock(distPR,'faz')},
+    ...(FZ_C.length&&(!EU||EU.perms.colheita)?[{nome:'Colheita',c:'var(--colheita)',i:'agriculture',
+     conc:concC.length,tot:FZ_C.length,haConc:haC.conc,haTot:haC.tot,
+     dist:stageBlock(distC,'tlh')}]:[]),
   ];
   document.getElementById('dash-mod-grid').innerHTML=mods.map(m=>{
     const pct=Math.round(m.conc/m.tot*100)||0;
@@ -1357,14 +1387,14 @@ function rFazC(){
   }
   document.getElementById('flist-c').innerHTML=lista.map(f=>{
     const gi=FZ_C.indexOf(f);
-    const conc=f.tals.filter(t=>t.st==='CONCLUIDO').length,tot=f.tals.length;
+    const conc=f.tals.filter(t=>t.st==='CONCLUIDO'||t.st==='SEM LINHAS').length,tot=f.tals.length;
     const pct=Math.round(conc/tot*100);
     const bc=pct===100?'var(--plantio)':pct>0?'var(--colheita)':'var(--t3)';
     return`<div class="fcard${ativaC===gi?' on':''}" onclick="selFC(${gi})" style="color:${bc}">
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${f.fr}·${tot} talhões</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
     </div>`;
@@ -1381,58 +1411,67 @@ function togTal(idx){const p=selTals.indexOf(idx);p>=0?selTals.splice(p,1):selTa
 function selTodos(){if(ativaC===null)return;selTals=FZ_C[ativaC].tals.map((_,i)=>i);rDetC();}
 function selRestantes(){
   if(ativaC===null)return;
-  selTals=FZ_C[ativaC].tals.reduce((a,t,i)=>{if(t.st!=='CONCLUIDO'&&t.st!=='SEM LINHAS')a.push(i);return a;},[]);
+  selTals=FZ_C[ativaC].tals.reduce((a,t,i)=>{if(t.st==='A FAZER'||t.st==='REAVALIAR')a.push(i);return a;},[]);
   rDetC();
 }
 function rDetC(){
   if(ativaC===null)return;
-  const f=FZ_C[ativaC],ciclo=getCiclo();
+  const f=FZ_C[ativaC],edita=podeEditar('colheita');
   const chips=f.tals.map((t,i)=>{
     const s=ST_COL[t.st]||ST_COL['A FAZER'];
-    return`<div class="tal-chip ${s.cls}${selTals.includes(i)?' sel':''}" onclick="togTal(${i})">
-      <span class="tn">Tal ${String(t.id).padStart(2,'0')}</span>
-      <span class="te">${t.est}</span>
-      <span class="tha">${t.ha} ha</span>
+    const tipo=t.tipo?`${TIPO_C[t.tipo]?.s||t.tipo} · ${t.ciclo||'—'}`:'sem tipo';
+    return`<div class="tal-chip ${s.cls}${selTals.includes(i)?' sel':''}" ${edita?`onclick="togTal(${i})"`:''} title="${esc(t.st)}${t.desat?' · replantado no Plantio':''}">
+      <span class="tn">Tal ${String(t.id).padStart(2,'0')}${t.desat?' <span class="ico tdes">warning</span>':''}</span>
+      <span class="tt">${esc(tipo)}</span>
+      <span class="te">${esc(t.est||'')}</span>
+      <span class="tha">${fmtNum(t.ha)} ha${t.cortado?' · cortado':''}</span>
     </div>`;
   }).join('');
   const nSel=selTals.length;
-  const pending=f.tals.filter(t=>t.st!=='CONCLUIDO'&&t.st!=='SEM LINHAS').length;
+  const pending=f.tals.filter(t=>t.st==='A FAZER'||t.st==='REAVALIAR').length;
   const legend=Object.entries(ST_COL).map(([k,v])=>`<div class="col-leg-item"><div class="col-leg-dot" style="background:${v.c}"></div>${k}</div>`).join('');
-  const form=nSel>0?`
+  const desat=f.tals.filter(t=>t.desat).length;
+  const aviso=desat?`<div class="col-desat"><span class="ico" style="font-size:18px">warning</span>
+    <div><strong>${desat} talhão(ões) replantado(s) no Plantio.</strong> O projeto de colheita desses talhões está desatualizado — sugestão: Desdobra de Plantio.</div></div>`:'';
+  const form=!edita?'':nSel>0?`
     <div class="col-form-wrap">
       <div class="col-form-t">${nSel} talhão(ões) selecionado(s)</div>
-      <div class="col-ciclo-chip"><span class="ico">autorenew</span>Ciclo ${ciclo} · automático</div>
-      <div class="col-fields">
-        <div class="col-field"><label>Tipo de Linha</label>
-          <select class="col-sel" id="col-tipo"><option>VANT</option><option>PROJETO</option><option>SEM LINHAS</option></select>
-        </div>
-        <div class="col-field"><label>Status</label>
-          <select class="col-sel" id="col-st"><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option></select>
-        </div>
-      </div>
-      <button class="btn-reg" onclick="regC()"><span class="ico" style="font-size:16px">save</span>Registrar ${nSel} talhão(ões)</button>
-    </div>`:`<div class="col-sel-hint">Selecione os talhões para registrar</div>`;
+      <div class="col-ciclo-chip"><span class="ico">autorenew</span>Ciclo ${esc(getCiclo())} · automático</div>
+      <div class="col-tipos">${Object.entries(TIPO_C).map(([k,v])=>
+        `<button class="col-tipo" onclick="marcarTipoC(this,'${k}')">${v.l}</button>`).join('')}</div>
+      <button class="col-desfazer" onclick="marcarTipoC(this,null)">Desfazer (voltar para A Fazer)</button>
+    </div>`:`<div class="col-sel-hint">Selecione os talhões e escolha o tipo de linha</div>`;
+  const podeArq=edita;
+  const envio=podeArq?`<div class="acao-w" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      ${botaoEnvio('var(--colheita)','upload_file','Enviar Exp1L / Exp2L',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA})}
+      ${botaoEnvio('var(--t2)','map','Enviar Mapa de partes',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA_MAPA})}
+    </div>`:'';
   document.getElementById('dpanel-c').innerHTML=`
     <div class="dhead">
-      <div class="dhead-l"><div class="dnome">${f.n}</div><div class="dsub">Frente ${f.fr} · ${f.tals.length} talhões</div></div>
+      <div class="dhead-l"><div class="dnome">${esc(f.n)}</div><div class="dsub">Frente ${esc(f.fr)}${f.per?` · Período ${esc(f.per)}`:''} · ${f.tals.length} talhões</div></div>
       <span class="dhead-cod">${f.cod}</span>
     </div>
     <div style="padding:14px 20px">
+      ${aviso}
       <div class="col-legend">${legend}</div>
-      <div class="tal-actions">
+      ${edita?`<div class="tal-actions">
         <button class="btn-tal-action" onclick="selTodos()"><span class="ico" style="font-size:14px">select_all</span>Selecionar Todos</button>
-        ${pending>0?`<button class="btn-tal-action" onclick="selRestantes()"><span class="ico" style="font-size:14px">pending_actions</span>Restantes (${pending})</button>`:''}
+        ${pending>0?`<button class="btn-tal-action" onclick="selRestantes()"><span class="ico" style="font-size:14px">pending_actions</span>Pendentes (${pending})</button>`:''}
         ${nSel>0?`<button class="btn-tal-action" onclick="selTals=[];rDetC()" style="color:var(--t3)">Limpar</button>`:''}
-      </div>
+      </div>`:''}
       <div class="tal-chips">${chips}</div>
       ${form}
+      ${arquivosHtml('colheita',f.cod)}
+      ${envio}
     </div>`;
 }
-function regC(){
+async function marcarTipoC(btn,tipo){
   if(ativaC===null||!selTals.length)return;
-  const st=document.getElementById('col-st')?.value||'CONCLUIDO';
-  selTals.forEach(i=>{FZ_C[ativaC].tals[i].st=st;});
-  selTals=[];rFazC();rDetC();rDash();
+  const layers=selTals.map(i=>FZ_C[ativaC].tals[i].layer);
+  document.querySelectorAll('.col-tipo,.col-desfazer').forEach(b=>b.disabled=true);
+  selTals=[];
+  await rpcAcao(null,'colheita_marcar_tipo',{p_layers:layers,p_tipo:tipo},
+    tipo?`${TIPO_C[tipo].l} · ciclo ${getCiclo()}`:'Tipo de linha desfeito');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1590,7 +1629,7 @@ async function abrirHub(){
   catch(e){return falhar('Não foi possível carregar os dados: '+(e.message||e));}
   if(!EU)return falhar('Sua conta não tem acesso ao Hub. Fale com o administrador.');
   aplicarUsuario();
-  rDash();rFaz();rFazP();rUsrList();rGeotech();initCfgChips();
+  rDash();rFaz();rFazP();rFazC();rSino();rUsrList();rGeotech();initCfgChips();
   car.classList.add('off');
   document.getElementById('login').classList.add('off');
   document.getElementById('hub').classList.remove('off');
@@ -1880,7 +1919,7 @@ function rConsFilters(){
     html+=`<select class="cons-sel" onchange="cFilters.faz=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${f.n}</option>`).join('')}</select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+      <option value="">Todos os períodos</option>${meses.filter(Boolean).sort((a,b)=>parseInt(a.slice(8))-parseInt(b.slice(8))).map(m=>`<option>${m}</option>`).join('')}</select>`;
   } else {
     const meses=[...new Set(FZ_P.map(f=>f.mes))];
     const voos=[...new Set(FZ_P.map(f=>f.voo))];
@@ -1993,7 +2032,7 @@ const SB_KEY='sb_publishable_3xv0R1kmhSXkoUh3i4vN0A_Q5oLBbVL';   // chave públi
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'hub'}});
 let EU=null;
 // Frescor dos dados: a importação mais antiga entre as fontes diárias.
-const FONTES_DIARIAS=['base_fazendas','planagri','conservacao'];
+const FONTES_DIARIAS=['base_fazendas','planagri','conservacao','icol'];
 let ATUALIZADO={txt:'—',lbl:'Dados atualizados',atrasado:false};
 
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2011,6 +2050,8 @@ function modulosTxt(u){
 }
 
 // O PostgREST devolve no máximo 1000 linhas por chamada: pagina sempre.
+// Lê em páginas de 1000. A consulta PRECISA ter .order() por uma chave única:
+// sem ordem fixa o banco pode repetir ou pular linhas entre as páginas.
 async function lerTudo(consulta){
   const linhas=[];
   for(let ini=0;;ini+=1000){
@@ -2023,12 +2064,12 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
-    lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))')),
-    lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))')),
+    lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
+    lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
-    lerTudo(()=>sb.from('etapa_status').select('etapa_id,entidade_id,ok,usuario_id,concluido_em,observacao')),
+    lerTudo(()=>sb.from('etapa_status').select('etapa_id,entidade_id,ok,usuario_id,concluido_em,observacao').order('etapa_id').order('entidade_id')),
     sb.from('execucoes_ingestao').select('fonte,finalizado_em').eq('status','ok')
       .in('fonte',FONTES_DIARIAS).order('finalizado_em',{ascending:false}).limit(60)
       .then(({data,error})=>{if(error)throw error;return data;}),
@@ -2036,7 +2077,12 @@ async function carregarDados(){
     lerTudo(()=>sb.from('projeto_revisoes').select(
       'id,documento,numero,motivo,vigente,criado_em,projetos(id,modulo_id,tipo,cod_faz,nome),'
       +'revisao_arquivos(nome_arquivo,release_url),revisao_origens!revisao_origens_revisao_id_fkey(origem_revisao_id)')
-      .order('numero',{ascending:false})),
+      .order('numero',{ascending:false}).order('id')),
+    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status').order('layer')),
+    lerTudo(()=>sb.from('fazendas').select('cod_faz,nome').order('cod_faz')),
+    sb.rpc('safra_colheita').then(({data,error})=>{if(error)throw error;return data;}),
+    lerTudo(()=>sb.from('avisos').select('id,modulo_id,tipo,cod_faz,titulo,texto,atualizado_em').is('resolvido_em',null).order('atualizado_em',{ascending:false})),
+    lerTudo(()=>sb.from('avisos_lidos').select('aviso_id').order('aviso_id')),
   ]);
 
   // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
@@ -2102,6 +2148,28 @@ async function carregarDados(){
     f.ha=Math.round(f.ha*10)/10;f.tals.sort((a,b)=>a.num-b.num);FZ.push(f);
   });
 
+  // Colheita: talhões do ICOL por fazenda; status vem calculado do banco.
+  SAFRA_C=safra||'';
+  const nomeFaz=Object.fromEntries(fazendas.map(f=>[f.cod_faz,f.nome]));
+  const porFazC=new Map();
+  for(const r of colheita){
+    let f=porFazC.get(r.cod_faz);
+    if(!f){f={n:nomeFaz[r.cod_faz]||String(r.cod_faz),cod:String(r.cod_faz),fr:'',per:'',desat:false,tals:[],_fr:{}};porFazC.set(r.cod_faz,f);}
+    f.tals.push({layer:r.layer,id:r.talhao_num,ha:r.area_ha||0,est:r.estagio||'',st:r.status,tipo:r.tipo_linha,
+                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,
+                 mes:r.periodo_op?'Período '+r.periodo_op:''});
+    if(r.frente)f._fr[r.frente]=(f._fr[r.frente]||0)+1;
+    if(r.periodo_op&&!f.per)f.per=String(r.periodo_op);
+    if(r.projeto_desatualizado)f.desat=true;
+  }
+  FZ_C.length=0;
+  [...porFazC.values()].sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(f=>{
+    f.fr=Object.entries(f._fr).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).join(', ')||'—';
+    f.tals.sort((a,b)=>a.id-b.id);FZ_C.push(f);
+  });
+  const lidosSet=new Set(lidos.map(l=>l.aviso_id));
+  AVISOS=avisos.map(a=>({...a,lido:lidosSet.has(a.id)}));
+
   // Preparo: fazendas da demanda + etapas concluídas (escopo fazenda).
   const idsEtapa=new Set(etapas.map(e=>e.id));
   const st=new Map(status.filter(s=>idsEtapa.has(s.etapa_id)).map(s=>[s.etapa_id+'|'+s.entidade_id,s]));
@@ -2149,6 +2217,13 @@ const ENVIO_PREPARO={
   exportacao:    {doc:'exportacao',    ext:'zip',rotulo:'Exportação (.zip)',              nomeCurto:'Exportação'},
   sistematizacao:{doc:'sistematizacao',ext:'pdf',rotulo:'Mapa de Sistematização (.pdf)', nomeCurto:'Sistematização'},
 };
+const ENVIO_COLHEITA=[
+  {doc:'exp1l',ext:'dwg',rotulo:'Exp1L (.dwg)',nomeCurto:'Exp1L .dwg'},
+  {doc:'exp1l',ext:'zip',rotulo:'Exp1L (.zip)',nomeCurto:'Exp1L .zip'},
+  {doc:'exp2l',ext:'dwg',rotulo:'Exp2L (.dwg)',nomeCurto:'Exp2L .dwg'},
+  {doc:'exp2l',ext:'zip',rotulo:'Exp2L (.zip)',nomeCurto:'Exp2L .zip'},
+];
+const ENVIO_COLHEITA_MAPA=[{doc:'mapa',ext:'pdf',rotulo:'Mapa de partes (.pdf)',nomeCurto:'Mapa'}];
 // modulo|cod → {docs:{doc:[revisões, a vigente primeiro]}, blocos:[projetos personalizados]}
 const ARQ={};
 let DOC_TIPOS=[];
@@ -2194,10 +2269,14 @@ let ENVIO=null;
 // Cada item vira revisão nova quando a vigente já tem arquivo daquele tipo
 // (ou quando forcarNova); senão completa a vigente (ou abre a Rev0).
 function abrirEnvio(cfg){
+  const abertas={};
   const itens=cfg.itens.map(it=>{
+    if(abertas[it.doc]!==undefined)return{...it,nova:false,numero:abertas[it.doc],feito:false};
     const revs=revisoesDe(cfg.modulo,cfg.cod,it.doc),vig=revs.find(r=>r.vigente);
-    const nova=!!cfg.forcarNova||(!!vig&&vig.arquivos.some(a=>a.nome_arquivo.toLowerCase().endsWith('.'+it.ext)));
+    const nova=!!cfg.forcarNova||(!!vig&&cfg.itens.filter(x=>x.doc===it.doc)
+      .some(x=>vig.arquivos.some(a=>a.nome_arquivo.toLowerCase().endsWith('.'+x.ext))));
     const numero=vig?(nova?vig.numero+1:vig.numero):0;
+    abertas[it.doc]=numero;
     return{...it,nova,numero,feito:false};
   });
   ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.nova&&it.numero>0)};
@@ -2255,6 +2334,56 @@ async function confirmarEnvio(){
   await recarregar();
 }
 
+// ─────────────────────────────────────────────────────────────
+// AVISOS — sininho. Fica tudo no banco (hub.avisos + avisos_lidos): recarregar
+// a página não perde nada; o aviso some sozinho quando a pendência é resolvida.
+// ─────────────────────────────────────────────────────────────
+let AVISOS=[];
+function avisosVisiveis(){return AVISOS.filter(a=>!EU||EU.admin||EU.perms[a.modulo_id]);}
+function rSino(){
+  const n=avisosVisiveis().filter(a=>!a.lido).length;
+  const b=document.getElementById('sino');
+  b.querySelector('.sino-n')?.remove();
+  if(n)b.insertAdjacentHTML('beforeend',`<span class="sino-n">${n}</span>`);
+  const aberta=document.getElementById('sino-lista');
+  if(aberta)aberta.innerHTML=listaSinoHtml();
+}
+function listaSinoHtml(){
+  const vs=avisosVisiveis();
+  return`<div class="sino-cab"><span>Avisos</span>${vs.some(a=>!a.lido)?'<button onclick="lerTodosAvisos(event)">Marcar todos como lidos</button>':''}</div>`
+    +(vs.length?vs.map(a=>`<div class="aviso-it${a.lido?'':' novo'}" onclick="abrirAviso(${a.id})">
+        <div class="aviso-ico"><span class="ico">${a.modulo_id==='colheita'?'agriculture':'notifications'}</span></div>
+        <div><div class="aviso-tit">${esc(a.titulo)}</div><div class="aviso-txt">${esc(a.texto||'')}</div>
+        <div class="aviso-dt">${fmtDataHora(a.atualizado_em)}</div></div></div>`).join('')
+      :'<div class="sino-vazio">Nenhum aviso pendente.</div>');
+}
+function alternarSino(ev){
+  ev.stopPropagation();
+  const aberta=document.getElementById('sino-lista');
+  if(aberta){aberta.remove();return;}
+  document.body.insertAdjacentHTML('beforeend',`<div class="sino-lista" id="sino-lista" onclick="event.stopPropagation()">${listaSinoHtml()}</div>`);
+}
+document.addEventListener('click',()=>document.getElementById('sino-lista')?.remove());
+async function marcarLidos(ids){
+  if(!ids.length)return;
+  const {error}=await sb.rpc('avisos_marcar_lidos',{p_ids:ids});
+  if(error){showToast('Não foi possível marcar: '+error.message);return;}
+  AVISOS.forEach(a=>{if(ids.includes(a.id))a.lido=true;});
+  rSino();
+}
+function lerTodosAvisos(ev){ev.stopPropagation();marcarLidos(avisosVisiveis().filter(a=>!a.lido).map(a=>a.id));}
+async function abrirAviso(id){
+  const a=AVISOS.find(x=>x.id===id);
+  document.getElementById('sino-lista')?.remove();
+  if(!a)return;
+  if(!a.lido)marcarLidos([id]);
+  if(a.modulo_id==='colheita'&&a.cod_faz){
+    trocar('colheita',document.querySelector(`.ni[onclick*="'colheita'"]`));
+    const i=FZ_C.findIndex(f=>f.cod===String(a.cod_faz));
+    if(i>=0)selFC(i);
+  }
+}
+
 // Mesma regra do banco (hub.pode_editar): o botão só aparece pra quem pode;
 // quem decide de verdade é a função no banco.
 function podeEditar(mod){return !!EU&&(EU.admin||(EU.role==='editor'&&EU.perms[mod]));}
@@ -2274,10 +2403,12 @@ async function rpcAcao(btn,fn,args,msgOk){
 async function recarregar(){
   const codP=ativa!==null?FZ[ativa]?.cod:null;
   const codPr=ativaP!==null?FZ_P[ativaP]?.cod:null;
+  const codC=ativaC!==null?FZ_C[ativaC]?.cod:null;
   await carregarDados();
+  ativaC=codC?FZ_C.findIndex(f=>f.cod===codC):null; if(ativaC===-1)ativaC=null;
   ativa=codP?FZ.findIndex(f=>f.cod===codP):null;   if(ativa===-1)ativa=null;
   ativaP=codPr?FZ_P.findIndex(f=>f.cod===codPr):null; if(ativaP===-1)ativaP=null;
-  rDash();rFaz();rDet();rFazP();rDetP();
+  rDash();rFaz();rDet();rFazP();rDetP();rFazC();rDetC();rSino();
 }
 
 // Nome/papel na barra e módulos visíveis conforme o acesso de quem entrou.
@@ -2289,10 +2420,11 @@ function aplicarUsuario(){
   document.getElementById('sb-uname').textContent=primeiro;
   document.getElementById('tb-uname').textContent=primeiro;
   document.getElementById('sb-urole').textContent=ROLE_LABELS[EU.role]+(EU.admin?' · Admin':'');
-  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['config','config']]){
+  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['colheita','colheita'],['config','config']]){
     const btn=document.querySelector(`.ni[onclick*="'${alvo}'"]`);
     if(btn)btn.style.display=EU.perms[mod]?'':'none';
   }
+  document.getElementById('cons-tab-colheita').style.display=EU.perms.colheita?'':'none';
 }
 
 // Init
