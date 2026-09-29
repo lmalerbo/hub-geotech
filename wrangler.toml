@@ -1,0 +1,13 @@
+# Configuração do Worker de envio de arquivos (Cloudflare Workers).
+# O Worker está conectado a este repositório: cada push publica de novo.
+name = "hub-geotech-arquivos"
+main = "worker/arquivos.js"
+compatibility_date = "2026-09-01"
+
+# Valores públicos. O segredo GH_TOKEN NÃO fica aqui: só na Cloudflare
+# (Settings → Variables and Secrets), e é mantido entre as publicações.
+[vars]
+SUPABASE_URL = "https://dpvsivypabmvmrrpgmhc.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_3xv0R1kmhSXkoUh3i4vN0A_Q5oLBbVL"
+GH_REPO = "lmalerbo/hub-geotech-arquivos"
+ORIGENS = "http://127.0.0.1:8765,https://lmalerbo.github.io"
