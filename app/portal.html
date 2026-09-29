@@ -16,12 +16,13 @@
 :root{
   --bg:#eff3f7;--sf:#fff;--s2:#edf0f8;--bd:#e5e9ec;--bd2:#dde1f0;
   --t1:#20262e;--t2:#4d4a57;--t3:#8a8794;
-  --plantio:#16a76b;--preparo:#a07840;--ac:var(--plantio);
+  --plantio:#16a76b;--preparo:#a07840;--colheita:#d4890a;--ac:var(--plantio);
   --zip:#2566e8;--dwg:#a07840;--pdf:#d64545;
   --sh:0 4px 20px rgb(0 0 0/.05);--sh-lg:0 20px 60px rgb(0 0 0/.18);
   --r:14px;--sp:cubic-bezier(.16,1,.3,1);
 }
 body[data-mod="preparo"]{--ac:var(--preparo)}
+body[data-mod="colheita"]{--ac:var(--colheita)}
 html{-webkit-text-size-adjust:100%}
 body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
 button{font-family:inherit;color:inherit}
@@ -41,6 +42,7 @@ header{background:var(--sf);border-bottom:1px solid var(--bd);position:sticky;to
 .tab.on{color:#fff;border-color:transparent}
 .tab[data-m="plantio"].on{background:var(--plantio)}
 .tab[data-m="preparo"].on{background:var(--preparo)}
+.tab[data-m="colheita"].on{background:var(--colheita)}
 .busca{position:relative}
 .busca .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:20px;pointer-events:none}
 .busca input{width:100%;height:46px;border-radius:12px;border:1.5px solid var(--bd2);background:var(--s2);padding:0 44px 0 42px;font-family:inherit;font-size:15px;color:var(--t1);outline:none;transition:border-color .2s,box-shadow .2s}
@@ -124,6 +126,7 @@ footer{text-align:center;font-size:11px;color:var(--t3);padding:16px 16px max(16
     <div class="tabs" role="tablist">
       <button class="tab on" data-m="plantio" role="tab" onclick="trocarModulo('plantio')"><span class="ico">eco</span>Plantio</button>
       <button class="tab" data-m="preparo" role="tab" onclick="trocarModulo('preparo')"><span class="ico">construction</span>Preparo</button>
+      <button class="tab" data-m="colheita" role="tab" onclick="trocarModulo('colheita')"><span class="ico">agriculture</span>Colheita</button>
     </div>
     <div class="busca">
       <span class="ico">search</span>
@@ -157,8 +160,8 @@ const SB_KEY='sb_publishable_3xv0R1kmhSXkoUh3i4vN0A_Q5oLBbVL';   // chave públi
 const WORKER_URL='https://hub-geotech-arquivos.leonardo-malerbo.workers.dev';
 const WHATSAPP='5516996427394';
 
-const MODULOS={plantio:'Plantio',preparo:'Preparo'};
-let modulo='plantio', fazendas={plantio:[],preparo:[]}, abertas=new Set(), modoTecnico=false;
+const MODULOS={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita'};
+let modulo='plantio', fazendas={plantio:[],preparo:[],colheita:[]}, abertas=new Set(), modoTecnico=false;
 
 // Nome que o campo usa pra cada arquivo (o .zip do Plantio sempre foi o "Projeto").
 function rotulo(mod,doc,ext){
@@ -172,9 +175,14 @@ function rotulo(mod,doc,ext){
     if(doc==='escoamento')return ext==='pdf'?'Mapa de Escoamento':'Escoamento';
     if(doc==='sistematizacao')return'Sistematização';
   }
+  if(mod==='colheita'){
+    if(doc==='exp1l')return'Exp1L';
+    if(doc==='exp2l')return'Exp2L';
+    if(doc==='mapa')return'Mapa de partes';
+  }
   return doc;
 }
-const ORDEM={plantio:['exportacao','projeto'],preparo:['projeto','exportacao','escoamento','sistematizacao']};
+const ORDEM={plantio:['exportacao','projeto'],preparo:['projeto','exportacao','escoamento','sistematizacao'],colheita:['exp1l','exp2l','mapa']};
 const ORDEM_EXT={zip:0,pdf:1,dwg:2};
 
 // ── Dados ────────────────────────────────────────────
@@ -195,7 +203,7 @@ async function carregar(){
 }
 
 function agrupar(linhas){
-  const mapa={plantio:new Map(),preparo:new Map()};
+  const mapa={plantio:new Map(),preparo:new Map(),colheita:new Map()};
   for(const l of linhas){
     if(!mapa[l.modulo])continue;
     const m=mapa[l.modulo];
