@@ -1,11 +1,12 @@
 # Agendamento no servidor Geo
 
-Duas tarefas do Agendador de Tarefas do Windows mantêm o Hub atualizado:
+Três tarefas do Agendador de Tarefas do Windows mantêm o Hub atualizado:
 
 | Tarefa | Quando | O que faz |
 |---|---|---|
 | Hub Geotech - Rodada diaria | todo dia, 07:00 | Base Fazendas → PLANAGRI → Conservação → regras (`ingestao/rodar_diario.py`) |
 | Hub Geotech - Sincronizar usuarios | a cada hora | contas e senhas do GeoMap → Hub (`ingestao/sincronizar_usuarios.py`) |
+| Hub Geotech - Agente Drone | a cada 10 min (fica rodando; se já estiver no ar, a chamada é ignorada) | gera e publica os projetos de drone da fila (`python -m drone.agente`) |
 
 A exportação da Base Fazendas (FME) chega por volta das 06:02, então às 07:00 o arquivo do dia já está lá.
 
@@ -22,6 +23,7 @@ No PowerShell do servidor Geo, logado como `geotecnologia`. O Python e o git já
    git clone https://github.com/lmalerbo/hub-geotech.git
    cd hub-geotech
    pip install -r ingestao/requirements.txt
+   pip install -r drone/requirements.txt
    ```
 
 2. Copiar os dois arquivos secretos, que **não estão no GitHub**, do PC do Leo para as mesmas posições no servidor:
@@ -35,6 +37,12 @@ No PowerShell do servidor Geo, logado como `geotecnologia`. O Python e o git já
    ```
 
    O arquivo precisa terminar com uma quebra de linha antes de você colar a linha nova.
+
+   Para o agente do Drone, acrescente também o token do GitHub com permissão de escrita em `lmalerbo/hub-geotech-arquivos` (o mesmo usado pelo worker):
+
+   ```text
+   GH_TOKEN=github_pat_...
+   ```
 
 4. Testar na mão:
 
