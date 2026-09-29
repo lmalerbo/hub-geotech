@@ -56,3 +56,30 @@ def test_pdf_com_muitos_talhoes_nao_quebra(tmp_path):
                          geometry=[box(i * 100, 0, i * 100 + 100, 100) for i in range(60)], crs=31983)
     orient, b = _pdf(tmp_path, t)
     assert b.startswith(b'%PDF')
+
+
+def _paginas(pdf_bytes):
+    return len(re.findall(rb'/Type\s*/Page(?!s)', pdf_bytes))
+
+
+def _talhoes_n(n, largura=True):
+    lado = 100
+    geoms = [box(i * lado, 0, i * lado + lado, 50) if largura else box(0, i * lado, 50, i * lado + lado)
+             for i in range(n)]
+    return gpd.GeoDataFrame({'TALHAO': list(range(1, n + 1)), 'AREA_PROD': [5.0] * n}, geometry=geoms, crs=31983)
+
+
+def test_poucos_talhoes_cabem_numa_pagina(tmp_path):
+    _, b = _pdf(tmp_path, _talhoes_n(5))
+    assert _paginas(b) == 1
+
+
+def test_muitos_talhoes_vao_para_paginas_seguintes(tmp_path):
+    # 10008 tem 208 talhões: a tabela inteira na página 1 fica ilegível
+    _, b = _pdf(tmp_path, _talhoes_n(208))
+    assert _paginas(b) >= 2
+
+
+def test_retrato_com_30_talhoes_ganha_pagina_da_tabela(tmp_path):
+    orient, b = _pdf(tmp_path, _talhoes_n(30, largura=False))
+    assert orient == 'retrato' and _paginas(b) >= 2

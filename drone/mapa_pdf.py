@@ -9,6 +9,7 @@ matplotlib.use('Agg')
 import matplotlib.image as mpimg  # noqa: E402
 import matplotlib.patheffects as pe  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.backends.backend_pdf import PdfPages  # noqa: E402
 from matplotlib.patches import FancyBboxPatch, Polygon as MplPolygon, Rectangle  # noqa: E402
 
 from drone.config import LOGO  # noqa: E402
@@ -108,33 +109,75 @@ def _mapa(pg: Pagina, d: DadosMapa, x, y, w, h):
     return round(1000 / s / 500) * 500 or 500
 
 
-def _tabela(pg: Pagina, d: DadosMapa, x, y, w, h):
-    preenche, borda, _, _ = CORES[d.tipo]
-    linhas = d.recorte.por_talhao
-    alt = min(4.2, (h - 22) / (len(linhas) + 2))
-    tam = max(4.0, alt * 1.55)
-    pg.texto(x, y, 'ÁREAS POR TALHÃO', 5.5, CINZA, 'semibold')
-    cols = [('SEÇÃO', 0.02, 'left'), ('TALHÃO', 0.30, 'right'), ('ÁREA PROD. (ha)', 0.66, 'right'),
-            ('APLICÁVEL (ha)', 0.98, 'right')]
-    y0 = y + 5
-    for nome, fx, ha in cols:
-        pg.texto(x + fx * w, y0, nome, 5, MARCA, 'bold', ha=ha)
-    pg.ret(x, y0 + 3.4, w, 0.35, GRAFITE)
-    yy = y0 + 4.2
+ALT_MIN = 3.2   # mm por linha: abaixo disso a tabela fica ilegível e vai para as páginas seguintes
+COLS = [('SEÇÃO', 0.02, 'left'), ('TALHÃO', 0.30, 'right'), ('ÁREA PROD. (ha)', 0.66, 'right'),
+        ('APLICÁVEL (ha)', 0.98, 'right')]
+
+
+def _cabe(n, h) -> bool:
+    return (h - 22) / (n + 2) >= ALT_MIN
+
+
+def _grade(pg: Pagina, d: DadosMapa, linhas, x, y, w, alt, total=True):
+    """Cabeçalho + linhas (+ total) a partir de y; devolve o y logo abaixo."""
+    tam = max(4.0, min(alt * 1.55, 6.5))
+    for nome, fx, ha in COLS:
+        pg.texto(x + fx * w, y, nome, 5, MARCA, 'bold', ha=ha)
+    pg.ret(x, y + 3.4, w, 0.35, GRAFITE)
+    yy = y + 4.2
     for i, t in enumerate(linhas):
         if i % 2:
             pg.ret(x, yy, w, alt, '#f4f6f5')
-        for valor, (_, fx, ha) in zip([str(d.cod_faz), str(t['talhao']), br(t['area_prod']), br(t['aplicavel_ha'])], cols):
+        for valor, (_, fx, ha) in zip([str(d.cod_faz), str(t['talhao']), br(t['area_prod']), br(t['aplicavel_ha'])], COLS):
             pg.texto(x + fx * w, yy + alt * 0.15, valor, tam, ha=ha)
         yy += alt
-    pg.ret(x, yy + 0.3, w, 0.35, GRAFITE)
-    for valor, (_, fx, ha) in zip(['Total', '', br(d.recorte.area_total_ha), br(d.recorte.aplicacao_ha)], cols):
-        pg.texto(x + fx * w, yy + 1.2, valor, tam, peso='bold', ha=ha)
-    yy += alt + 3
+    if total:
+        pg.ret(x, yy + 0.3, w, 0.35, GRAFITE)
+        for valor, (_, fx, ha) in zip(['Total', '', br(d.recorte.area_total_ha), br(d.recorte.aplicacao_ha)], COLS):
+            pg.texto(x + fx * w, yy + 1.2, valor, tam, peso='bold', ha=ha)
+        yy += alt + 1
+    return yy
+
+
+def _tabela(pg: Pagina, d: DadosMapa, x, y, w, h):
+    preenche, borda, _, _ = CORES[d.tipo]
+    linhas = d.recorte.por_talhao
+    pg.texto(x, y, 'ÁREAS POR TALHÃO', 5.5, CINZA, 'semibold')
+    if _cabe(len(linhas), h):
+        yy = _grade(pg, d, linhas, x, y + 5, w, min(4.2, (h - 22) / (len(linhas) + 2)))
+    else:
+        pg.texto(x, y + 4.5, f'{len(linhas)} talhões: tabela completa a partir da página 2.', 6, GRAFITE)
+        yy = _grade(pg, d, [], x, y + 10, w, 4.2)
+    yy += 2
     pg.ret(x, yy, 5, 3, 'white'), pg.caixa(x, yy, 5, 3, GRAFITE, 'white', 0.3, 0.4)
     pg.texto(x + 6.5, yy - 0.2, 'Talhão', 5.5, CINZA)
     pg.caixa(x + 22, yy, 5, 3, borda, preenche, 0.3, 0.4)
     pg.texto(x + 28.5, yy - 0.2, 'Área de aplicação', 5.5, CINZA)
+
+
+def _paginas_tabela(pdf, d: DadosMapa, W, H):
+    """Tabela completa em colunas, nas páginas seguintes (fazendas com muitos talhões)."""
+    M, alt, gut = 10, 4.2, 8
+    ncol = 3 if W > H else 2
+    cw = (W - 2 * M - (ncol - 1) * gut) / ncol
+    por_col = int((H - 2 * M - 30) / alt)
+    linhas = d.recorte.por_talhao
+    por_pag = por_col * ncol
+    paginas = [linhas[i:i + por_pag] for i in range(0, len(linhas), por_pag)]
+    for k, pag in enumerate(paginas):
+        fig = plt.figure(figsize=(W * MM, H * MM))
+        pg = Pagina(fig, W, H)
+        pg.ret(0, 0, W, 4, MARCA)
+        pg.texto(M, M, f'{d.cod_faz} · {d.nome}', 12, peso='bold')
+        pg.texto(M, M + 7, f'ÁREAS POR TALHÃO · Rev{d.revisao}', 5.5, CINZA, 'semibold')
+        pg.texto(W - M, M + 7, f'Página {k + 2} de {len(paginas) + 1}', 5.5, CINZA, ha='right')
+        for c in range(ncol):
+            fatia = pag[c * por_col:(c + 1) * por_col]
+            if fatia:
+                ultima = k == len(paginas) - 1 and (c + 1) * por_col >= len(pag)
+                _grade(pg, d, fatia, M + c * (cw + gut), M + 14, cw, alt, total=ultima)
+        pdf.savefig(fig)
+        plt.close(fig)
 
 
 def _carimbo(pg: Pagina, d: DadosMapa, x, y, w, escala):
@@ -199,6 +242,10 @@ def gerar_pdf(d: DadosMapa, destino) -> str:
         cw = (W - 2 * M - 8) / 2
         _tabela(pg, d, M, M + mh + 8, cw, ALTURA_CARIMBO)
         _carimbo(pg, d, M + cw + 8, M + mh + 8, cw, escala)
-    fig.savefig(destino, format='pdf')
-    plt.close(fig)
+    area_tabela = (H - 2 * M - ALTURA_CARIMBO - 6) if orient == 'paisagem' else ALTURA_CARIMBO
+    with PdfPages(destino) as pdf:
+        pdf.savefig(fig)
+        plt.close(fig)
+        if not _cabe(len(d.recorte.por_talhao), area_tabela):
+            _paginas_tabela(pdf, d, W, H)
     return orient
