@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import geopandas as gpd
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.geometry.base import BaseGeometry
+from shapely import STRtree
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
@@ -31,6 +32,21 @@ def uniao_buffers(obstaculos: dict, distancias: dict) -> BaseGeometry:
     return unary_union(partes) if partes else Polygon()
 
 
+def blocos_catacao(manchas: list, agrupar: float, folga: float, tolerancia: float = 3.0) -> BaseGeometry:
+    """Manchas a até `agrupar` m viram um grupo; cada grupo vira o contorno das suas manchas
+    + `folga` m, com cantos retos e poucos vértices (desenho que o drone consegue voar)."""
+    manchas = [make_valid(m) for m in manchas if not m.is_empty]
+    if not manchas:
+        return Polygon()
+    grupos = unary_union([m.buffer(agrupar / 2) for m in manchas])
+    arvore = STRtree(manchas)
+    blocos = []
+    for g in getattr(grupos, 'geoms', [grupos]):
+        contorno = unary_union([manchas[i] for i in arvore.query(g, predicate='intersects')]).convex_hull
+        blocos.append(contorno.buffer(folga, join_style='mitre').simplify(tolerancia))
+    return unary_union(blocos)
+
+
 @dataclass
 class Recorte:
     area: MultiPolygon
@@ -41,14 +57,13 @@ class Recorte:
 
 
 def recortar(talhoes: gpd.GeoDataFrame, buffers: BaseGeometry,
-             infestacao: list | None = None, margem: float = 0.0) -> Recorte:
+             infestacao: list | None = None, agrupar: float = 20.0, folga: float = 5.0) -> Recorte:
     geoms = [make_valid(g) for g in talhoes.geometry]
     uniao = unary_union(geoms)
     if infestacao is None:
         base = uniao
     else:
-        mancha = unary_union([make_valid(g) for g in infestacao if not g.is_empty])
-        base = mancha.buffer(margem).intersection(uniao)
+        base = blocos_catacao(infestacao, agrupar, folga).intersection(uniao)
     area = so_poligonos(make_valid(base.difference(buffers)))
     if area.is_empty:
         raise ErroGeracao('A área de aplicação ficou vazia: confira a infestação e os obstáculos desta fazenda.')

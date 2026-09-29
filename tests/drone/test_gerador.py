@@ -23,7 +23,7 @@ class BancoFalso:
         self.tipo, self.obst, self.infest, self.previas = tipo, obstaculos or {}, infestacao, []
 
     def parametros(self):
-        return {'taxa_l_ha': '10', 'margem_infestacao_m': '10', 'alerta_aproveitamento_min': '0.30',
+        return {'taxa_l_ha': '10', 'agrupar_infestacao_m': '20', 'folga_infestacao_m': '5', 'alerta_aproveitamento_min': '0.30',
                 'alerta_obstaculos_meses': '24'}
 
     def distancias(self):

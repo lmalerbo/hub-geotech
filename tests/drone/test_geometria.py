@@ -28,12 +28,31 @@ def test_rede_em_linha_de_25m_vira_faixa(talhoes):
     assert r.aplicacao_ha == pytest.approx(2.0 - 200 * 50 / 1e4, rel=1e-3)
 
 
-def test_catacao_expande_10m_e_recorta_no_talhao(talhoes):
-    # mancha de 10 x 10 m encostada na borda esquerda: a expansão não sai do talhão
-    r = recortar(talhoes, uniao_buffers({}, {}), infestacao=[box(0, 45, 10, 55)], margem=10)
-    esperado = (box(0, 45, 10, 55).buffer(10).intersection(box(0, 0, 200, 100)).area) / 1e4
-    assert r.aplicacao_ha == pytest.approx(esperado)
+def test_catacao_mancha_isolada_vira_bloco_com_folga_de_5m(talhoes):
+    # mancha de 10 x 10 m no meio do talhão 1: bloco = contorno + 5 m de folga (cantos retos)
+    r = recortar(talhoes, uniao_buffers({}, {}), infestacao=[box(40, 40, 50, 50)], agrupar=20, folga=5)
+    assert r.aplicacao_ha == pytest.approx(20 * 20 / 1e4, rel=0.02)
     assert r.por_talhao[1]['aplicavel_ha'] == pytest.approx(0.0)
+
+
+def test_catacao_manchas_a_menos_de_20m_viram_um_bloco_so(talhoes):
+    perto = [box(10, 40, 12, 42), box(25, 40, 27, 42)]          # 13 m entre elas
+    r = recortar(talhoes, uniao_buffers({}, {}), infestacao=perto, agrupar=20, folga=5)
+    assert len(r.area.geoms) == 1
+    assert r.aplicacao_ha == pytest.approx(27 * 12 / 1e4, rel=0.02)   # (17+10) x (2+10)
+
+
+def test_catacao_manchas_a_mais_de_20m_ficam_separadas(talhoes):
+    longe = [box(10, 40, 12, 42), box(40, 40, 42, 42)]          # 28 m entre elas
+    r = recortar(talhoes, uniao_buffers({}, {}), infestacao=longe, agrupar=20, folga=5)
+    assert len(r.area.geoms) == 2
+
+
+def test_catacao_bloco_tem_poucos_vertices(talhoes):
+    # nuvem de 40 manchinhas espalhadas num trecho de 60 x 60 m
+    manchas = [box(20 + (i * 7) % 60, 20 + (i * 13) % 60, 21 + (i * 7) % 60, 21 + (i * 13) % 60) for i in range(40)]
+    r = recortar(talhoes, uniao_buffers({}, {}), infestacao=manchas, agrupar=20, folga=5)
+    assert all(len(p.exterior.coords) - 1 <= 12 for p in r.area.geoms)
 
 
 def test_resultado_vazio_da_erro_em_portugues(talhoes):
@@ -44,7 +63,7 @@ def test_resultado_vazio_da_erro_em_portugues(talhoes):
 
 def test_infestacao_fora_dos_talhoes_da_erro(talhoes):
     with pytest.raises(ErroGeracao, match='vazia'):
-        recortar(talhoes, uniao_buffers({}, {}), infestacao=[box(1000, 1000, 1010, 1010)], margem=10)
+        recortar(talhoes, uniao_buffers({}, {}), infestacao=[box(1000, 1000, 1010, 1010)], agrupar=20, folga=5)
 
 
 def test_geometria_invalida_e_corrigida(talhoes):
