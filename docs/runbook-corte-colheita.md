@@ -21,7 +21,7 @@ Roteiro do dia em que a equipe para de usar o Expo_safra e passa a fazer a Colhe
 - **Saem do sistema:** o Plano da Semana e o ranking de hectares.
 - **Novo, a Regra A:** quando o Plantio fecha um talhão como Ok, a Colheita marca o projeto como "desatualizado · replantado" e avisa no sininho.
 - **A demanda vem do ICOL todo dia, sozinha.** Entram todos os talhões de cada fazenda do ICOL, e a frente é texto, então `BIS - 3` e `FOCA - 22` não se perdem mais.
-- **A tag de voo da Falha Soca** continua igual, só para leitura. O agendamento de voos (Regra B) vem depois.
+- **Sai a tag de voo da Falha Soca** (a "tag de porte"). Sem Linhas é avaliação do analista, e os talhões até o 3º corte já têm voo automático do setor. O acompanhamento de voo volta com a Regra B, só para talhões Sem Linhas e para os apontados com problema, no projeto **Linhas de Colheita**.
 
 ## Antes de marcar a data
 
@@ -29,7 +29,7 @@ Roteiro do dia em que a equipe para de usar o Expo_safra e passa a fazer a Colhe
 |---|---|
 | Branch `colheita` juntado na `main` e publicado | O menu do Hub mostra "Colheita" sem "em breve" |
 | Migrations da Colheita aplicadas | `20261003090000`, `20261003100000` e `20261003110000`, já aplicadas em 29/09 |
-| Servidor Geo atualizado | `git pull` + `.\agendamento\instalar_tarefas.cmd`, que cria a tarefa "Sincronizar voos" |
+| Servidor Geo atualizado | `git pull` (a rodada diária passa a importar o ICOL) |
 | ICOL na rodada diária | O card "Dados atualizados" inclui o ICOL. `agendamento\logs\diario.log` mostra `=== icol.py ===` |
 | **Acesso à Colheita** | O `usuario_antigo` e o módulo `colheita` estão no `usuarios_hub.json`, no PC e no servidor, para quem trabalha na Colheita. Depois, rodar `sincronizar_usuarios.py`. |
 | Ensaio passa | `python migracao/migrar_colheita.py --ensaio` termina com "✓ Tudo confere" |
@@ -79,10 +79,10 @@ Enquanto ninguém tiver trabalhado na Colheita do Hub, rode a migração de novo
 - **O que foi feito no Hub nesse meio-tempo** está no histórico (`hub.log_auditoria`, módulo `colheita`, origem `usuario`).
 - **Portal:** reverter o commit do redirecionamento no `portal-safra`.
 
-## O que NÃO desligar
+## Expo_safra depois do corte
 
-- **A GitHub Action "Atualizar status de voo" do repositório Expo_safra.** É ela que traz os voos do Drone MGMT de hora em hora, e o Hub lê daí para a tag da Falha Soca (`ingestao/voos_colheita.py`). Só sai quando a Regra B (agendamento) ligar o Hub direto ao Drone MGMT.
-- **O banco do Expo_safra (Supabase `wewicqysphguehqnyjdh`)**, pelo mesmo motivo.
+- O Hub não depende de nada do Expo_safra. A GitHub Action "Atualizar status de voo" de lá pode ser desligada quando ninguém mais consultar o sistema antigo.
+- O Expo_safra fica aberto só para consulta durante a primeira semana, como plano de volta.
 
 ## Depois do corte (primeira semana)
 
