@@ -977,7 +977,8 @@ function getCiclo(){return SAFRA_C||'—';}
 // Tag de voo da Falha Soca (igual ao Expo_safra): só em talhão Sem Linhas, fora
 // da "A Plantar", cortado dentro da safra → dias desde o corte. A cor vem do
 // voo mais recente no Drone MGMT (hub.voo_falha_soca_atual).
-function janelaSafra(){const a=2000+parseInt(SAFRA_C);return[new Date(a,2,1),new Date(a+1,2,1)];}
+// Safra 26-27 = abril/2026 a março/2027 (todas as safras seguem esse ciclo).
+function janelaSafra(){const a=2000+parseInt(SAFRA_C);return[new Date(a,3,1),new Date(a+1,3,1)];}
 function tagPorte(t){
   if(t.st!=='SEM LINHAS'||!t.corte||String(t.est).toUpperCase().trim()==='A PLANTAR'||!SAFRA_C)return null;
   const d=new Date(t.corte+'T00:00:00'),[ini,fim]=janelaSafra();
