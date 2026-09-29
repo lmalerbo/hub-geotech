@@ -1,11 +1,12 @@
 # Agendamento no servidor Geo
 
-Duas tarefas do Agendador de Tarefas do Windows mantêm o Hub atualizado:
+Três tarefas do Agendador de Tarefas do Windows mantêm o Hub atualizado:
 
 | Tarefa | Quando | O que faz |
 |---|---|---|
 | Hub Geotech - Rodada diaria | todo dia, 07:00 | Base Fazendas → PLANAGRI → Conservação → ICOL → regras (`ingestao/rodar_diario.py`) |
 | Hub Geotech - Sincronizar usuarios | a cada hora | contas e senhas do GeoMap → Hub (`ingestao/sincronizar_usuarios.py`) |
+| Hub Geotech - Sincronizar voos | a cada hora | situação dos voos do Drone MGMT → Hub, para a tag da Falha Soca (`ingestao/voos_colheita.py`; temporário, lê o banco do Expo_safra) |
 
 A exportação da Base Fazendas (FME) chega por volta das 06:02, então às 07:00 o arquivo do dia já está lá.
 
