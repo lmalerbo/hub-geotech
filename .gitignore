@@ -10,3 +10,6 @@ ingestao/usuarios_hub.json
 
 __pycache__/
 agendamento/logs/
+
+# maquetes do brainstorming (companheiro visual)
+.superpowers/
