@@ -5,11 +5,14 @@ Roda na máquina com acesso ao G:\\ e ao catálogo. Rodar de novo não duplica n
 import csv
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+from shapely import force_2d
 from shapely.ops import unary_union
+from shapely.validation import make_valid
 
 from drone.banco import DroneBanco, carregar_env
 from drone.config import CRS_TRABALHO, PASTA_TRABALHO, cfg
@@ -67,6 +70,42 @@ def selecionar_obstaculos(catalogo: pd.DataFrame) -> dict:
     return saida
 
 
+def area_antiga(atributos: dict):
+    """Área gravada no shape antigo, achada pelo nome do campo (área/aplicável), nunca pelo código."""
+    for campo, valor in atributos.items():
+        nome = unicodedata.normalize('NFD', str(campo)).encode('ascii', 'ignore').decode().lower()
+        if re.search(r'area|apli', nome):
+            v = pd.to_numeric(valor, errors='coerce')
+            if pd.notna(v):
+                return float(v)
+    return None
+
+
+def crs_pela_faixa(bounds):
+    """Legado sem .prj: graus dentro do Brasil → WGS84; metros na faixa da UTM 23S → SIRGAS 2000."""
+    minx, miny, maxx, maxy = bounds
+    if -75 <= minx <= maxx <= -30 and -35 <= miny <= maxy <= 6:
+        return 4326
+    if 100_000 <= minx <= maxx <= 900_000 and 7_000_000 <= miny <= maxy <= 8_500_000:
+        return CRS_TRABALHO
+    return None
+
+
+def ler_legado(caminho: Path):
+    """Como ler_shapefile, mas aceita arquivo antigo sem .prj quando a faixa das coordenadas é inequívoca.
+    Devolve (geometrias em 31983, aviso ou '')."""
+    caminho = Path(caminho)
+    if caminho.with_suffix('.prj').exists():
+        return ler_shapefile(caminho), ''
+    gdf = gpd.read_file(caminho)
+    gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
+    epsg = crs_pela_faixa(gdf.total_bounds)
+    if epsg is None:
+        raise ValueError(f'{caminho.name} sem .prj e com coordenadas que não dá para identificar')
+    gdf = gdf.set_crs(epsg).to_crs(CRS_TRABALHO)
+    return [make_valid(force_2d(g)) for g in gdf.geometry], f'{caminho.name} sem .prj: assumido EPSG:{epsg}'
+
+
 def _pdf_do_projeto(shp: Path):
     for pasta in (shp.parent, shp.parent.parent):
         pdfs = sorted(pasta.glob('*.pdf'), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -101,10 +140,12 @@ def main():
         if (cod, classe) in obst_legado:
             rel(cod, item, 'pulado', 'já importado'); continue
         try:
-            geoms = [g for p in caminhos for g in ler_shapefile(Path(p))]
+            lidos = [ler_legado(Path(p)) for p in caminhos]
+            geoms = [g for gs, _ in lidos for g in gs]
+            avisos = '; '.join(a for _, a in lidos if a)
             if not simular:
                 banco.gravar_obstaculos(cod, classe, 'legado', ' + '.join(Path(p).name for p in caminhos), geoms)
-            rel(cod, item, 'ok', f'{len(geoms)} feições de {len(caminhos)} arquivo(s)')
+            rel(cod, item, 'ok', f'{len(geoms)} feições de {len(caminhos)} arquivo(s)' + (f' | {avisos}' if avisos else ''))
         except Exception as e:
             rel(cod, item, 'erro', str(e))
 
@@ -117,14 +158,13 @@ def main():
             rel(cod, item, 'pulado', 'já importado'); continue
         try:
             shp = Path(l['caminho'])
-            orig = gpd.read_file(shp)
-            if orig.crs is None:
-                raise ValueError('shape sem .prj')
-            area = so_poligonos(unary_union(list(orig.to_crs(CRS_TRABALHO).geometry)))
-            antigo = pd.to_numeric(orig.drop(columns='geometry').iloc[0], errors='coerce').dropna()
-            antigo = [v for v in antigo if v != 10]      # o outro campo é a taxa (sempre 10)
+            geoms, aviso_crs = ler_legado(shp)
+            area = so_poligonos(unary_union(geoms))
+            orig = gpd.read_file(shp, ignore_geometry=True)
+            valores = [area_antiga(l) for l in orig.to_dict('records')]
+            antigo = [sum(valores)] if valores and None not in valores else []
             pdf = _pdf_do_projeto(shp)
-            avisos = [] if pdf else ['sem PDF']
+            avisos = ([] if pdf else ['sem PDF']) + ([aviso_crs] if aviso_crs else [])
             if antigo and abs(area.area / 1e4 - antigo[0]) > 0.02 * antigo[0]:
                 avisos.append(f'área recalculada {area.area / 1e4:.2f} ha x antiga {antigo[0]:.2f} ha')
             if not simular:

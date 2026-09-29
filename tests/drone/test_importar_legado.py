@@ -51,3 +51,18 @@ def test_safra_ou_revisao_vazias_contam_como_mais_antigas():
     ])
     c = c.astype(object).where(c.notna(), float('nan'))
     assert selecionar_projetos(c)['caminho'].tolist() == ['COM_SAFRA']
+
+
+def test_area_antiga_pelo_nome_do_campo():
+    from drone.importar_legado import area_antiga
+    assert area_antiga({'SECAO': 10624, 'Taxa l/ha': 10, 'Área Apli': 18.91}) == 18.91
+    assert area_antiga({'COD': 10624, 'aplicavel': 5.5}) == 5.5
+    assert area_antiga({'id': 1, 'SECAO': 10624}) is None
+
+
+def test_crs_do_legado_sem_prj_pela_faixa_das_coordenadas():
+    from drone.importar_legado import crs_pela_faixa
+    assert crs_pela_faixa((-47.7, -21.3, -47.6, -21.2)) == 4326
+    assert crs_pela_faixa((200000, 7550000, 210000, 7560000)) == 31983
+    assert crs_pela_faixa((0, 0, 10, 10)) is None   # nem graus do Brasil, nem UTM 23S: não adivinha
+    assert crs_pela_faixa((5_000_000, 0, 5_000_100, 10)) is None
