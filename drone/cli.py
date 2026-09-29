@@ -12,7 +12,7 @@ def main():
     s = p.add_subparsers(dest='cmd', required=True)
     a = s.add_parser('solicitar'); a.add_argument('cod_faz', type=int); a.add_argument('tipo', choices=['normal', 'catacao']); a.add_argument('--data')
     a = s.add_parser('obstaculos'); a.add_argument('cod_faz', type=int); a.add_argument('arquivo'); a.add_argument('--classe', type=int, choices=[15, 25, 50])
-    a = s.add_parser('infestacao'); a.add_argument('solicitacao_id', type=int); a.add_argument('arquivo'); a.add_argument('--empresa')
+    a = s.add_parser('infestacao'); a.add_argument('solicitacao_id', type=int); a.add_argument('arquivos', nargs='+'); a.add_argument('--empresa')
     a = s.add_parser('gerar'); a.add_argument('solicitacao_id', type=int)
     a = s.add_parser('publicar'); a.add_argument('geracao_id', type=int); a.add_argument('--motivo')
     a = s.add_parser('status'); a.add_argument('solicitacao_id', type=int)
@@ -30,9 +30,11 @@ def main():
         print(f'versão {b.gravar_obstaculos(args.cod_faz, classe, "upload", Path(args.arquivo).name, geoms)} '
               f'da classe {classe} m ({len(geoms)} feições)')
     elif args.cmd == 'infestacao':
-        geoms = ler_shapefile(Path(args.arquivo))
-        print(f'infestação {b.gravar_infestacao(args.solicitacao_id, args.empresa, Path(args.arquivo).name, geoms)} '
-              f'({len(geoms)} feições)')
+        # a empresa entrega um shapefile por tipo de erva: todos entram na mesma infestação
+        geoms = [g for a in args.arquivos for g in ler_shapefile(Path(a))]
+        nomes = ' + '.join(Path(a).name for a in args.arquivos)
+        print(f'infestação {b.gravar_infestacao(args.solicitacao_id, args.empresa, nomes, geoms)} '
+              f'({len(geoms)} feições de {len(args.arquivos)} arquivo(s))')
     elif args.cmd == 'gerar':
         sol = b.solicitacao(args.solicitacao_id)
         if sol['status'] not in ('solicitado', 'em_elaboracao'):
