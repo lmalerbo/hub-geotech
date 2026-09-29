@@ -6,16 +6,15 @@ Roteiro do dia em que a equipe para de usar os sistemas antigos de Plantio e de 
 - **Duração da janela:** cerca de 1 hora. A migração em si leva menos de 1 minuto.
 - **Colheita (Expo_safra) fica de fora:** continua no sistema antigo até o corte dela.
 
+## Portal de download do campo
+
+- **Portal novo:** https://lmalerbo.github.io/hub-geotech/portal.html. É público, sem login, igual aos antigos. Tem as abas Plantio e Preparo e o link direto `?m=plantio` ou `?m=preparo`.
+- **Por que o portal troca no corte:** os portais antigos (`portal.html` de `project-plantio` e `project-preparo`) só leem as releases antigas. Os arquivos enviados pelo Hub vão para `hub-geotech-arquivos`, que eles não enxergam.
+- **O que o portal novo mostra:** só a revisão vigente de cada documento, incluindo os arquivos antigos migrados, que continuam nas releases onde sempre estiveram.
+- **No corte, os portais antigos passam a redirecionar para o novo** (passo H+30). Os links que o campo tem salvos continuam funcionando, e ninguém precisa receber link novo.
+- **Antes do corte, o portal novo fica vazio:** ele só enxerga o que está no Hub, e os dados entram na migração.
+
 ## Antes de marcar a data
-
-**Resolver primeiro: como o pessoal de campo vai baixar os arquivos novos.**
-- O portal de download antigo (`portal.html` do Plantio e do Preparo) lê as releases de `project-plantio` e `project-preparo`.
-- Depois do corte, os arquivos novos vão para `hub-geotech-arquivos`, e o portal antigo não os vê. Os arquivos antigos continuam aparecendo normalmente.
-- Opções:
-  1. **Colocar no ar o Portal Mobile do Hub (frente B) antes do corte** e trocar o link que o campo usa, no mesmo dia. Recomendado.
-  2. Cortar antes do portal novo e, enquanto ele não sai, mandar ao campo, por fora, os mapas e projetos novos.
-
-Conferir também:
 
 | Item | Como conferir |
 |---|---|
@@ -66,9 +65,12 @@ Se der erro, nada foi gravado, porque a migração roda numa transação só. Le
 - Todos entram no Hub. A partir daqui, qualquer mudança é feita só no Hub.
 - Cada pessoa faz uma ação real simples e confere que funcionou.
 
-**H+30: campo**
-- Se o Portal Mobile estiver pronto, mandar o link novo para gestores e operadores.
-- Senão, avisar que arquivos novos serão enviados por fora até ele sair (opção 2 acima).
+**H+30: portal do campo**
+- Abrir https://lmalerbo.github.io/hub-geotech/portal.html no celular e conferir:
+  - 2 ou 3 fazendas do Plantio: o mapa abre e o projeto baixa;
+  - 2 ou 3 fazendas do Preparo.
+- Redirecionar os portais antigos para o novo: o Claude troca o `portal.html` de `project-plantio` para `?m=plantio` e o de `project-preparo` para `?m=preparo`, depois dá push.
+- Esperar cerca de 1 minuto e abrir os links antigos no celular. Eles precisam cair no portal novo, na aba certa.
 
 ## Se alguém mexeu no sistema antigo depois do congelamento
 
@@ -104,4 +106,4 @@ Isso também apaga o que a equipe fez no Hub. Use só antes de ela começar a tr
 - [ ] Depois de uma semana sem problemas:
   - apagar a função da migração: `drop function hub.migrar_sistema_antigo(jsonb, boolean);`
   - apagar a conta `teste-automatizado@hub.local`.
-- [ ] Desligar os Workers antigos de envio (`project-plantio-proxy` e `project-preparo-proxy`) quando ninguém mais usar os sistemas antigos.
+- [ ] **Não desligar** os Workers antigos (`project-plantio-proxy` e `project-preparo-proxy`). O do Preparo também atende os relatórios `/report/*`, usados por Power BI e planilhas, e o disparo da atualização de voos. Desligar só depois de migrar esses usos.

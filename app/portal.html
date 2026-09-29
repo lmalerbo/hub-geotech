@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Downloads · Hub Geotech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<style>
+/* Portal de download do Hub Geotech: público, sem login, pensado pro celular
+   no campo. Mesmos tokens visuais do app (app/index.html). */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eff3f7;--sf:#fff;--s2:#edf0f8;--bd:#e5e9ec;--bd2:#dde1f0;
+  --t1:#20262e;--t2:#4d4a57;--t3:#8a8794;
+  --plantio:#16a76b;--preparo:#a07840;--ac:var(--plantio);
+  --zip:#2566e8;--dwg:#a07840;--pdf:#d64545;
+  --sh:0 4px 20px rgb(0 0 0/.05);--sh-lg:0 20px 60px rgb(0 0 0/.18);
+  --r:14px;--sp:cubic-bezier(.16,1,.3,1);
+}
+body[data-mod="preparo"]{--ac:var(--preparo)}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+button{font-family:inherit;color:inherit}
+.ico{font-family:'Material Symbols Outlined';font-style:normal;font-size:20px;line-height:1;display:inline-block;white-space:nowrap;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;user-select:none}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--ac) 45%,transparent);outline-offset:2px}
+
+/* ── Topo ───────────────────────────────────────────── */
+header{background:var(--sf);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5;padding:14px 16px 12px;padding-top:max(14px,env(safe-area-inset-top))}
+.top{max-width:720px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.bmark{width:30px;height:30px;border-radius:8px;background:var(--ac);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:background .3s}
+.bname{font-size:13px;font-weight:700;letter-spacing:-.1px}
+.bsub{font-size:11px;color:var(--t3);margin-left:auto}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:40px;border-radius:12px;border:1.5px solid var(--bd);background:var(--sf);font-size:13px;font-weight:600;color:var(--t3);cursor:pointer;transition:all .25s var(--sp)}
+.tab .ico{font-size:18px}
+.tab.on{color:#fff;border-color:transparent}
+.tab[data-m="plantio"].on{background:var(--plantio)}
+.tab[data-m="preparo"].on{background:var(--preparo)}
+.busca{position:relative}
+.busca .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:20px;pointer-events:none}
+.busca input{width:100%;height:46px;border-radius:12px;border:1.5px solid var(--bd2);background:var(--s2);padding:0 44px 0 42px;font-family:inherit;font-size:15px;color:var(--t1);outline:none;transition:border-color .2s,box-shadow .2s}
+.busca input:focus{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 14%,transparent);background:var(--sf)}
+.busca input::placeholder{color:var(--t3)}
+.busca input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.limpar{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:none;background:none;border-radius:50%;color:var(--t3);cursor:pointer;display:none;align-items:center;justify-content:center}
+.limpar.on{display:flex}
+
+/* ── Conteúdo ───────────────────────────────────────── */
+main{flex:1;width:100%;max-width:720px;margin:0 auto;padding:14px 16px 24px}
+.resumo{font-size:12px;color:var(--t3);margin-bottom:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.resumo strong{color:var(--t2);font-weight:600}
+.rot{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin:4px 0 8px}
+.recentes{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px}
+.recentes::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--bd);background:var(--sf);font-size:12px;font-weight:500;color:var(--t2);cursor:pointer;white-space:nowrap}
+.lista{display:flex;flex-direction:column;gap:8px}
+
+.faz{background:var(--sf);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.faz-cab{width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;border:none;background:none;cursor:pointer;text-align:left}
+.faz-cod{font-size:11px;font-weight:700;color:var(--ac);background:color-mix(in srgb,var(--ac) 10%,transparent);border-radius:7px;padding:3px 7px;font-variant-numeric:tabular-nums;flex-shrink:0}
+.faz-txt{flex:1;min-width:0}
+.faz-nome{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.faz-meta{font-size:11.5px;color:var(--t3);margin-top:1px}
+.faz-seta{color:var(--t3);transition:transform .3s var(--sp)}
+.faz.aberta .faz-seta{transform:rotate(180deg)}
+.faz-corpo{display:none;border-top:1px solid var(--bd)}
+.faz.aberta .faz-corpo{display:block}
+
+.arq{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid #f1f2f5}
+.arq:last-child{border-bottom:none}
+.tipo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
+.tipo.zip{background:color-mix(in srgb,var(--zip) 12%,transparent);color:var(--zip)}
+.tipo.dwg{background:color-mix(in srgb,var(--dwg) 14%,transparent);color:var(--dwg)}
+.tipo.pdf{background:color-mix(in srgb,var(--pdf) 12%,transparent);color:var(--pdf)}
+.arq-txt{flex:1;min-width:0}
+.arq-rot{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rev{font-size:10px;font-weight:700;color:var(--t2);background:var(--s2);border-radius:6px;padding:1px 6px}
+.bloco{font-size:10px;font-weight:600;color:#6b4fbb;background:#efeafd;border-radius:6px;padding:1px 6px}
+.arq-meta{font-size:11px;color:var(--t3);margin-top:1px}
+.acoes{display:flex;gap:6px;flex-shrink:0}
+.btn{width:42px;height:42px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:transform .15s}
+.btn:active{transform:scale(.92)}
+.btn.baixar{background:var(--ac);color:#fff}
+.btn.ver{background:var(--s2);color:var(--t1)}
+
+.vazio,.erro,.carregando{background:var(--sf);border-radius:var(--r);box-shadow:var(--sh);padding:28px 20px;text-align:center;color:var(--t2);font-size:13.5px;line-height:1.55}
+.vazio .ico,.erro .ico{font-size:34px;color:var(--t3);display:block;margin:0 auto 8px}
+.erro .ico{color:var(--pdf)}
+.acao-sec{display:inline-flex;align-items:center;gap:7px;margin-top:14px;height:42px;padding:0 16px;border-radius:21px;border:none;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
+.zap{background:#25d366;color:#fff}
+.tentar{background:var(--t1);color:#fff}
+.giro{width:26px;height:26px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;margin:0 auto 10px;animation:g 0.8s linear infinite}
+@keyframes g{to{transform:rotate(360deg)}}
+
+footer{text-align:center;font-size:11px;color:var(--t3);padding:16px 16px max(16px,env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+
+/* ── Visualizador de PDF ────────────────────────────── */
+.visor{position:fixed;inset:0;background:rgb(15 18 25/.72);z-index:20;display:none;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}
+.visor.on{display:flex}
+.visor-caixa{flex:1;background:var(--sf);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;max-width:1000px;margin:0 auto;box-shadow:var(--sh-lg)}
+.visor-cab{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 14px;border-bottom:1px solid var(--bd)}
+.visor-nome{flex:1;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.visor iframe{flex:1;width:100%;border:none;background:#f3f4f6}
+.fechar{width:40px;height:40px;border:none;background:var(--s2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+.aviso{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--t1);color:#fff;font-size:12.5px;padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:all .3s var(--sp);z-index:30}
+.aviso.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body data-mod="plantio">
+
+<header>
+  <div class="top">
+    <div class="brand">
+      <div class="bmark">HG</div>
+      <span class="bname">Hub Geotech · Downloads</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-m="plantio" role="tab" onclick="trocarModulo('plantio')"><span class="ico">eco</span>Plantio</button>
+      <button class="tab" data-m="preparo" role="tab" onclick="trocarModulo('preparo')"><span class="ico">construction</span>Preparo</button>
+    </div>
+    <div class="busca">
+      <span class="ico">search</span>
+      <input id="busca" type="search" inputmode="search" autocomplete="off" placeholder="Nome ou código da fazenda" aria-label="Buscar fazenda">
+      <button class="limpar" id="limpar" type="button" aria-label="Limpar busca" onclick="limparBusca()"><span class="ico">close</span></button>
+    </div>
+  </div>
+</header>
+
+<main id="conteudo">
+  <div class="carregando"><div class="giro"></div>Carregando projetos...</div>
+</main>
+
+<footer id="rodape">Hub Geotech · Geotecnologia</footer>
+
+<div class="visor" id="visor" onclick="if(event.target===this)fecharVisor()">
+  <div class="visor-caixa">
+    <div class="visor-cab">
+      <span class="visor-nome" id="visor-nome"></span>
+      <a class="btn baixar" id="visor-baixar" href="#" download aria-label="Baixar"><span class="ico">download</span></a>
+      <button class="fechar" type="button" onclick="fecharVisor()" aria-label="Fechar"><span class="ico">close</span></button>
+    </div>
+    <iframe id="visor-quadro" title="Visualizador de PDF"></iframe>
+  </div>
+</div>
+<div class="aviso" id="aviso"></div>
+
+<script>
+const SB_URL='https://dpvsivypabmvmrrpgmhc.supabase.co';
+const SB_KEY='sb_publishable_3xv0R1kmhSXkoUh3i4vN0A_Q5oLBbVL';   // chave pública; o portal só lê a função pública portal_arquivos
+const WORKER_URL='https://hub-geotech-arquivos.leonardo-malerbo.workers.dev';
+const WHATSAPP='5516996427394';
+
+const MODULOS={plantio:'Plantio',preparo:'Preparo'};
+let modulo='plantio', fazendas={plantio:[],preparo:[]}, abertas=new Set(), modoTecnico=false;
+
+// Nome que o campo usa pra cada arquivo (o .zip do Plantio sempre foi o "Projeto").
+function rotulo(mod,doc,ext){
+  if(mod==='plantio'){
+    if(doc==='exportacao')return'Projeto';
+    if(doc==='projeto')return ext==='pdf'?'Mapa de Plantio':'Projeto DWG';
+  }
+  if(mod==='preparo'){
+    if(doc==='projeto')return'Projeto';
+    if(doc==='exportacao')return'Exportação';
+    if(doc==='escoamento')return ext==='pdf'?'Mapa de Escoamento':'Escoamento';
+    if(doc==='sistematizacao')return'Sistematização';
+  }
+  return doc;
+}
+const ORDEM={plantio:['exportacao','projeto'],preparo:['projeto','exportacao','escoamento','sistematizacao']};
+const ORDEM_EXT={zip:0,pdf:1,dwg:2};
+
+// ── Dados ────────────────────────────────────────────
+async function carregar(){
+  const conteudo=document.getElementById('conteudo');
+  conteudo.innerHTML='<div class="carregando"><div class="giro"></div>Carregando projetos...</div>';
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/portal_arquivos`,{method:'POST',
+      headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'Content-Type':'application/json'},body:'{}'});
+    if(!r.ok)throw new Error(`o servidor respondeu ${r.status}`);
+    agrupar(await r.json());
+    render();
+  }catch(e){
+    conteudo.innerHTML=`<div class="erro"><span class="ico">wifi_off</span>
+      Não foi possível carregar os projetos (${esc(e.message)}).<br>Confira a internet e tente de novo.<br>
+      <button class="acao-sec tentar" onclick="carregar()"><span class="ico">refresh</span>Tentar de novo</button></div>`;
+  }
+}
+
+function agrupar(linhas){
+  const mapa={plantio:new Map(),preparo:new Map()};
+  for(const l of linhas){
+    if(!mapa[l.modulo])continue;
+    const m=mapa[l.modulo];
+    if(!m.has(l.cod_faz))m.set(l.cod_faz,{cod:l.cod_faz,nome:l.fazenda,arquivos:[],atualizado:l.publicado_em});
+    const f=m.get(l.cod_faz);
+    const ext=(l.nome_arquivo.split('.').pop()||'').toLowerCase();
+    f.arquivos.push({...l,ext});
+    if(l.publicado_em>f.atualizado)f.atualizado=l.publicado_em;
+  }
+  for(const k in mapa){
+    fazendas[k]=[...mapa[k].values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    for(const f of fazendas[k])f.arquivos.sort((a,b)=>
+      ORDEM[k].indexOf(a.documento)-ORDEM[k].indexOf(b.documento)||(ORDEM_EXT[a.ext]??9)-(ORDEM_EXT[b.ext]??9));
+  }
+}
+
+// ── Tela ─────────────────────────────────────────────
+function visiveis(f){
+  // DWG do Plantio só no modo técnico (5 toques no rodapé), como no portal antigo.
+  return f.arquivos.filter(a=>!(modulo==='plantio'&&a.ext==='dwg'&&!modoTecnico));
+}
+
+function render(){
+  const conteudo=document.getElementById('conteudo');
+  const lista=fazendas[modulo];
+  const q=document.getElementById('busca').value.trim().toLowerCase();
+  if(!lista.length){
+    conteudo.innerHTML=`<div class="vazio"><span class="ico">folder_open</span>Nenhum projeto de ${MODULOS[modulo]} publicado ainda.</div>`;
+    return;
+  }
+  const achadas=q?lista.filter(f=>f.nome.toLowerCase().includes(q)||String(f.cod).includes(q)):lista;
+  const ultima=lista.reduce((m,f)=>f.atualizado>m?f.atualizado:m,'');
+  let html=`<div class="resumo"><span><strong>${lista.length}</strong> fazenda${lista.length!==1?'s':''} com projeto</span><span>atualizado em ${data(ultima)}</span></div>`;
+  if(!q){
+    const recentes=[...lista].sort((a,b)=>b.atualizado.localeCompare(a.atualizado)).slice(0,6);
+    html+=`<div class="rot">Atualizados recentemente</div><div class="recentes">${recentes.map(f=>
+      `<button class="pill" onclick="buscar('${f.cod}')">${esc(f.nome)}</button>`).join('')}</div>
+      <div class="rot">Todas as fazendas</div>`;
+  }
+  if(!achadas.length){
+    const txt=document.getElementById('busca').value.trim();
+    const msg=encodeURIComponent(`Olá! Gostaria de solicitar o projeto de ${MODULOS[modulo].toLowerCase()} da fazenda "${txt}", que ainda não está no portal de downloads.`);
+    html+=`<div class="vazio"><span class="ico">search_off</span>Nenhum projeto de ${MODULOS[modulo]} para "${esc(txt)}".<br>
+      <a class="acao-sec zap" href="https://wa.me/${WHATSAPP}?text=${msg}" target="_blank" rel="noreferrer"><span class="ico">chat</span>Solicitar via WhatsApp</a></div>`;
+  }else{
+    // Uma fazenda só na busca: já abre.
+    const abrirSozinha=q&&achadas.length===1;
+    html+=`<div class="lista">${achadas.map(f=>cartao(f,abrirSozinha||abertas.has(modulo+f.cod))).join('')}</div>`;
+  }
+  conteudo.innerHTML=html;
+}
+
+function cartao(f,aberta){
+  const arqs=visiveis(f);
+  return`<div class="faz${aberta?' aberta':''}" data-cod="${f.cod}">
+    <button class="faz-cab" onclick="alternar(${f.cod})" aria-expanded="${aberta}">
+      <span class="faz-cod">${f.cod}</span>
+      <span class="faz-txt"><span class="faz-nome" style="display:block">${esc(f.nome)}</span>
+        <span class="faz-meta">${arqs.length} arquivo${arqs.length!==1?'s':''} · ${data(f.atualizado)}</span></span>
+      <span class="ico faz-seta">expand_more</span>
+    </button>
+    <div class="faz-corpo">${arqs.map(arquivo).join('')}</div>
+  </div>`;
+}
+
+function arquivo(a){
+  const ver=a.ext==='pdf'?`<button class="btn ver" type="button" aria-label="Ver ${esc(rotulo(modulo,a.documento,a.ext))}"
+      onclick="abrirVisor('${escJs(a.url)}','${escJs(a.nome_arquivo)}')"><span class="ico">visibility</span></button>`:'';
+  return`<div class="arq">
+    <div class="tipo ${a.ext}">${esc(a.ext.toUpperCase())}</div>
+    <div class="arq-txt">
+      <div class="arq-rot">${esc(rotulo(modulo,a.documento,a.ext))}<span class="rev">${esc(a.marcador)}${a.revisao}</span>${a.bloco?`<span class="bloco">${esc(a.bloco)}</span>`:''}</div>
+      <div class="arq-meta">${tamanho(a.tamanho_bytes)} · ${data(a.publicado_em)}</div>
+    </div>
+    <div class="acoes">${ver}<a class="btn baixar" href="${esc(a.url)}" download="${esc(a.nome_arquivo)}" rel="noreferrer" aria-label="Baixar ${esc(a.nome_arquivo)}"><span class="ico">download</span></a></div>
+  </div>`;
+}
+
+// ── Ações ────────────────────────────────────────────
+function trocarModulo(m){
+  modulo=m;
+  document.body.dataset.mod=m;
+  document.querySelectorAll('.tab').forEach(t=>{t.classList.toggle('on',t.dataset.m===m);t.setAttribute('aria-selected',t.dataset.m===m)});
+  const u=new URL(location.href);u.searchParams.set('m',m);history.replaceState(null,'',u);
+  try{localStorage.setItem('portal-modulo',m)}catch(_){}
+  render();
+}
+function alternar(cod){
+  const k=modulo+cod;
+  abertas.has(k)?abertas.delete(k):abertas.add(k);
+  const el=document.querySelector(`.faz[data-cod="${cod}"]`);
+  el.classList.toggle('aberta');
+  el.querySelector('.faz-cab').setAttribute('aria-expanded',el.classList.contains('aberta'));
+}
+function buscar(txt){const b=document.getElementById('busca');b.value=txt;b.dispatchEvent(new Event('input'));}
+function limparBusca(){buscar('');document.getElementById('busca').focus();}
+document.getElementById('busca').addEventListener('input',e=>{
+  document.getElementById('limpar').classList.toggle('on',!!e.target.value);
+  render();
+});
+
+function abrirVisor(url,nome){
+  document.getElementById('visor-nome').textContent=nome;
+  const baixar=document.getElementById('visor-baixar');baixar.href=url;baixar.download=nome;
+  document.getElementById('visor-quadro').src=`${WORKER_URL}/ver?url=${encodeURIComponent(url)}`;
+  document.getElementById('visor').classList.add('on');
+}
+function fecharVisor(){
+  document.getElementById('visor').classList.remove('on');
+  document.getElementById('visor-quadro').src='about:blank';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharVisor()});
+
+// 5 toques no rodapé em 1,5 s: liga/desliga o modo técnico (mostra o DWG do Plantio).
+let toques=0,tempo=null;
+document.getElementById('rodape').addEventListener('click',()=>{
+  toques++;clearTimeout(tempo);tempo=setTimeout(()=>toques=0,1500);
+  if(toques>=5){toques=0;modoTecnico=!modoTecnico;aviso(modoTecnico?'Modo técnico ligado: DWG visível':'Modo técnico desligado');render();}
+});
+function aviso(t){const a=document.getElementById('aviso');a.textContent=t;a.classList.add('on');setTimeout(()=>a.classList.remove('on'),2200);}
+
+// ── Utilitários ──────────────────────────────────────
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escJs(s){return esc(String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
+function data(iso){return iso?new Date(iso).toLocaleDateString('pt-BR'):'-'}
+function tamanho(b){if(!b)return'';return b<1048576?`${Math.max(1,Math.round(b/1024))} KB`:`${(b/1048576).toFixed(1)} MB`}
+
+// Módulo inicial: ?m= do link (os links antigos redirecionam com ele), senão o último usado.
+(function(){
+  let m=new URLSearchParams(location.search).get('m');
+  if(!MODULOS[m]){try{m=localStorage.getItem('portal-modulo')}catch(_){m=null}}
+  if(MODULOS[m]&&m!=='plantio')trocarModulo(m);
+  carregar();
+})();
+</script>
+</body>
+</html>
