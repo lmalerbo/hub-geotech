@@ -1,8 +1,8 @@
 {
-  "_comentario": "Copie para usuarios_hub.json (fora do git) com os e-mails reais. Quem tem acesso ao Hub e com qual papel. A senha vem do GeoMap (mesmo e-mail). Quem não está aqui não entra no Hub, mesmo tendo GeoMap.",
+  "_comentario": "Copie para usuarios_hub.json (fora do git) com os e-mails reais. usuario_antigo (opcional) = login da pessoa nos sistemas antigos de Plantio/Preparo, usado só pela migração. Quem tem acesso ao Hub e com qual papel. A senha vem do GeoMap (mesmo e-mail). Quem não está aqui não entra no Hub, mesmo tendo GeoMap.",
   "usuarios": [
     {"email": "admin@empresa.com.br",   "papel": "editor",  "admin": true,  "modulos": ["colheita", "preparo", "plantio", "voo"]},
-    {"email": "analista@empresa.com.br", "papel": "editor",  "admin": false, "modulos": ["plantio", "preparo"]},
+    {"email": "analista@empresa.com.br", "papel": "editor",  "admin": false, "modulos": ["plantio", "preparo"], "usuario_antigo": "analista"},
     {"email": "gestor@empresa.com.br",   "papel": "leitura", "admin": false, "modulos": ["plantio"]}
   ]
 }

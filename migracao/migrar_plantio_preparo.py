@@ -10,15 +10,22 @@ O que é trazido:
     de documento com sua numeração; a maior revisão é a vigente. O arquivo
     fica onde está, só é referenciado.
 
-Ordem de gravação: arquivos ANTES dos status — anexar um .pdf dispara o
-"mapa → Ok", mas o status que vale é o do sistema antigo.
+A gravação é feita pela função hub.migrar_sistema_antigo, numa transação só:
+ou entra tudo, ou nada. Arquivos entram ANTES dos status (anexar um .pdf
+dispara o "mapa → Ok", mas o status que vale é o do sistema antigo).
 
-Uso:  python migracao/migrar_plantio_preparo.py [--simular]
+Uso:
+  python migracao/migrar_plantio_preparo.py --simular   só lê e mostra o plano
+  python migracao/migrar_plantio_preparo.py --ensaio    grava, confere e desfaz
+  python migracao/migrar_plantio_preparo.py             grava de verdade (corte)
+
+O login antigo de cada pessoa vem do campo usuario_antigo em
+ingestao/usuarios_hub.json (fora do git).
 """
 
 import argparse
 import collections
-import datetime
+import json
 import os
 import re
 import sys
@@ -26,7 +33,8 @@ import sys
 import requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ingestao'))
-from comum import Hub, carregar_config  # noqa: E402
+from comum import RAIZ, Hub, carregar_config  # noqa: E402
+from sincronizar_usuarios import AuthAdmin  # noqa: E402
 
 MOTIVO_LEGADO = 'Revisão feita no sistema anterior (motivo não registrado)'
 USUARIOS_IGNORADOS = {'teste-diagnostico-rpc'}
@@ -136,9 +144,64 @@ def planejar_arquivos(cfg, fazendas_hub):
     return revisoes, fazendas_bloco, sem_padrao, sem_fazenda
 
 
+def ids_dos_usuarios_antigos(usados):
+    """login antigo → id da conta no Hub (pelo e-mail em usuarios_hub.json)."""
+    with open(os.path.join(RAIZ, 'ingestao', 'usuarios_hub.json'), encoding='utf-8') as f:
+        email_de = {u['usuario_antigo']: u['email'].lower()
+                    for u in json.load(f)['usuarios'] if u.get('usuario_antigo')}
+    contas = AuthAdmin().por_email()
+    faltando = sorted(u for u in usados if email_de.get(u) not in contas)
+    if faltando:
+        sys.exit(f'Sem conta no Hub para o login antigo {faltando}: preencha usuario_antigo em '
+                 'ingestao/usuarios_hub.json e rode sincronizar_usuarios.py.')
+    return {u: contas[email_de[u]]['id'] for u in usados}
+
+
+def montar_projetos(revisoes, fazendas_bloco):
+    projetos = collections.defaultdict(list)                  # (modulo, dono) → revisões
+    for (modulo, dono, documento), numeros in revisoes.items():
+        maior = max(numeros)
+        for numero, assets in numeros.items():
+            projetos[(modulo, dono)].append({
+                'documento': documento,
+                'numero': numero,
+                'motivo': MOTIVO_LEGADO if numero > 0 else None,
+                'vigente': numero == maior,
+                'criado_em': min(a['created_at'] for a in assets.values()),
+                'origens': sorted(fazendas_bloco.get((modulo, dono), [])) if isinstance(dono, str) else [],
+                'arquivos': [{'nome': nome, 'url': a['browser_download_url'], 'tamanho': a['size'],
+                              'publicado_em': a['created_at']} for nome, a in sorted(assets.items())],
+            })
+    return [{'modulo': modulo,
+             'tipo': 'personalizado' if isinstance(dono, str) else 'individual',
+             'cod_faz': None if isinstance(dono, str) else dono,
+             'nome': dono if isinstance(dono, str) else str(dono),
+             'criado_em': min(r['criado_em'] for r in revs),
+             'revisoes': revs}
+            for (modulo, dono), revs in projetos.items()]
+
+
+def montar_log(log_antigo, ids):
+    """Cada registro antigo é uma "foto" do talhão (mapeamento + projeto):
+    vira uma linha de log por campo que mudou em relação à foto anterior."""
+    linhas, ultimo = [], {}
+    quando = lambda r: r['registrado_em'] or r['data_consolidacao']   # parte dos registros antigos só tem a 2ª
+    for r in sorted(log_antigo, key=lambda r: (r['layer'], quando(r), r['id'])):
+        anterior = ultimo.get(r['layer'], {'mapeamento': 'Não', 'projeto': None})
+        for campo in ('mapeamento', 'projeto'):
+            if r[campo] and r[campo] != anterior[campo]:
+                linhas.append({'layer': r['layer'], 'campo': campo, 'anterior': anterior[campo],
+                               'novo': r[campo], 'usuario_id': ids[r['usuario']],
+                               'criado_em': quando(r)})
+        ultimo[r['layer']] = {c: r[c] or anterior[c] for c in ('mapeamento', 'projeto')}
+    return linhas
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument('--simular', action='store_true', help='lê tudo e mostra o plano, sem gravar')
+    modo = ap.add_mutually_exclusive_group()
+    modo.add_argument('--simular', action='store_true', help='lê tudo e mostra o plano, sem gravar')
+    modo.add_argument('--ensaio', action='store_true', help='grava, confere e desfaz (nada fica gravado)')
     args = ap.parse_args()
 
     cfg = carregar_config()['sistema_antigo']
@@ -150,7 +213,7 @@ def main():
     plantio_hub = {t['layer'] for t in hub.selecionar('talhao_plantio', 'layer')}
 
     # ── Plantio: status por talhão ──────────────────────────────────────────
-    antigos = antigo.ler('programacao', 'plantio', 'layer,mes_plantio,seq_plantio,mapeamento,projeto')
+    antigos = antigo.ler('programacao', 'plantio', 'layer,mes_plantio,seq_plantio,ambiente,mapeamento,projeto')
     atualizar = [a for a in antigos if a['layer'] in plantio_hub]
     criar = [a for a in antigos if a['layer'] in base and a['layer'] not in plantio_hub]
     guardar = [a for a in antigos if a['layer'] not in base]
@@ -159,7 +222,7 @@ def main():
           f'| {len(guardar)} fora da Base (status guardado)')
     print('  status que vão ficar:', dict(C(a['projeto'] for a in antigos)))
 
-    log_antigo = [l for l in antigo.ler('log_exportacoes', 'plantio', 'layer,usuario,projeto,mapeamento,registrado_em,data_consolidacao')
+    log_antigo = [l for l in antigo.ler('log_exportacoes', 'plantio', 'id,layer,usuario,projeto,mapeamento,registrado_em,data_consolidacao')
                   if l['usuario'] not in USUARIOS_IGNORADOS]
     print(f'  histórico: {len(log_antigo)} registros', dict(C(l['usuario'] for l in log_antigo)))
 
@@ -194,7 +257,46 @@ def main():
     if args.simular:
         print('\nSimulação: nada foi gravado.')
         return
-    sys.exit('Gravação ainda desativada: primeiro criar as contas dos usuários no Hub.')
+
+    ids = ids_dos_usuarios_antigos(usuarios_antigos)
+    carga = {
+        'projetos': montar_projetos(revisoes, fazendas_bloco),
+        'plantio': [{'layer': a['layer'], 'mes_plantio': a['mes_plantio'], 'seq_plantio': a['seq_plantio'] or None,
+                     'ambiente': a['ambiente'] or None, 'mapeamento': a['mapeamento'], 'projeto': a['projeto']}
+                    for a in antigos],
+        'log': montar_log(log_antigo, ids),
+        'preparo': [{'cod_faz': f['cod_faz'], 'ordem': i + 1, 'usuario_id': ids.get(f.get(f'{e}_usuario')),
+                     'concluido_em': f.get(f'{e}_data')} for f, i, e in etapas_ok],
+    }
+    print(f"\nCarga: {len(carga['projetos'])} projetos, {len(carga['plantio'])} talhões, "
+          f"{len(carga['log'])} linhas de histórico, {len(carga['preparo'])} etapas do Preparo")
+
+    if not args.ensaio:
+        if input('\nGRAVAR DE VERDADE no Hub? Digite MIGRAR para confirmar: ').strip() != 'MIGRAR':
+            sys.exit('Cancelado: nada foi gravado.')
+    r = requests.post(f'{hub.url}/rpc/migrar_sistema_antigo', headers=hub.headers,
+                      json={'p': carga, 'p_ensaio': args.ensaio}, timeout=300)
+    if r.ok:
+        resumo = r.json()
+    else:
+        # O ensaio termina com erro de propósito (é o que desfaz tudo); o
+        # resumo conferido vem na mensagem.
+        mensagem = r.json().get('message', '') if 'json' in r.headers.get('Content-Type', '') else r.text
+        if not (args.ensaio and mensagem.startswith('ENSAIO ')):
+            sys.exit(f'✗ Migração recusada pelo banco (nada foi gravado): HTTP {r.status_code} {mensagem}')
+        resumo = json.loads(mensagem[len('ENSAIO '):])
+    print('\nResultado conferido no banco:', json.dumps(resumo, ensure_ascii=False, indent=2))
+
+    esperado = {'plantio_divergentes': 0,
+                'plantio_guardados': len(guardar),
+                'preparo_etapas': len(carga['preparo']),
+                'log': len(carga['log']),
+                'arquivos': n_arq,
+                'revisoes': n_rev}
+    erradas = {k: (resumo.get(k), v) for k, v in esperado.items() if resumo.get(k) != v}
+    if erradas:
+        sys.exit(f'⚠ Diferente do esperado (banco, esperado): {erradas}')
+    print('\n✓ Tudo confere.', 'ENSAIO: nada ficou gravado.' if args.ensaio else 'Migração GRAVADA.')
 
 
 if __name__ == '__main__':
