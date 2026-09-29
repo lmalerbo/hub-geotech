@@ -1,10 +1,10 @@
 {
   "base_fazendas": {
-    "pasta": "I:/Projetos/SHAPES_RPA",
+    "pasta": "//lnxfs3/work3/Projetos/SHAPES_RPA",
     "padrao": "Talhoes_da_Pedra_*_fme.dbf"
   },
   "planagri": {
-    "arquivo": "N:/AG/DEPTO. DE PRODUÇÃO E COLHEITA/1 - DADOS/PLANTIO PEDRA 2026/PLANAGRI/PLANAGRI 26-27.xlsx",
+    "arquivo": "//lnxpdc/work/AG/DEPTO. DE PRODUÇÃO E COLHEITA/1 - DADOS/PLANTIO PEDRA 2026/PLANAGRI/PLANAGRI 26-27.xlsx",
     "aba": "Planagri"
   },
   "geomap_env": "C:/Users/lmalerbo/Documents/GitHub/geomap/backend/.env",
@@ -17,7 +17,7 @@
     }
   },
   "conservacao": {
-    "arquivo": "N:/AG/PLANEJAMENTO E CONTROLE DE DADOS/CONTROLE OPERACIONAL/2026-2027/PREPARO DE SOLO/PREPARO 2026-2027.xlsx",
+    "arquivo": "//lnxpdc/work/AG/PLANEJAMENTO E CONTROLE DE DADOS/CONTROLE OPERACIONAL/2026-2027/PREPARO DE SOLO/PREPARO 2026-2027.xlsx",
     "aba": "CONSERVAÇÃO"
   }
 }

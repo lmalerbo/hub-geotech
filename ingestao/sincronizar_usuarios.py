@@ -26,9 +26,19 @@ from comum import RAIZ, Hub, carregar_config, carregar_env
 BLOQUEIO = '876000h'   # ~100 anos: "bloqueado até alguém desbloquear"
 
 
-def usuarios_geomap(caminho_env):
-    url = next(linha.split('=', 1)[1].strip().strip('"').strip("'")
-               for linha in open(caminho_env, encoding='utf-8') if linha.startswith('DATABASE_URL='))
+def url_banco_geomap():
+    # No servidor Geo a conexão fica no próprio .env do Hub (GEOMAP_DATABASE_URL);
+    # no PC de desenvolvimento, cai no .env do backend do GeoMap.
+    url = carregar_env().get('GEOMAP_DATABASE_URL')
+    if url:
+        return url
+    return next(linha.split('=', 1)[1].strip().strip('"').strip("'")
+                for linha in open(carregar_config()['geomap_env'], encoding='utf-8')
+                if linha.startswith('DATABASE_URL='))
+
+
+def usuarios_geomap():
+    url = url_banco_geomap()
     u = urllib.parse.urlparse(url)
     # Certificados do Windows: a rede da empresa tem um firewall que inspeciona
     # TLS com certificado próprio, que só o repositório do Windows conhece.
@@ -87,7 +97,7 @@ def main():
     if args.apenas:
         desejados = [d for d in desejados if d['email'].lower() == args.apenas.lower()]
 
-    geomap = usuarios_geomap(carregar_config()['geomap_env'])
+    geomap = usuarios_geomap()
     auth, hub = AuthAdmin(), Hub()
     contas = auth.por_email()
 
