@@ -472,6 +472,24 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .btn-retro{font-family:'Poppins',sans-serif;font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;transition:border-color var(--tb),color var(--tb)}
 .btn-retro:hover{border-color:var(--t2);color:var(--t1)}
 .btn-acao:disabled{cursor:wait}
+.arq-w{padding:12px 20px;border-bottom:1px solid var(--bd)}
+.arq-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:5px 0;font-size:12px}
+.arq-doc{min-width:110px;font-weight:600;color:var(--t1)}
+.arq-links{display:flex;gap:4px}
+.arq-link{font-size:11px;font-weight:600;color:#2566e8;background:rgba(37,102,232,.08);padding:2px 8px;border-radius:10px;text-decoration:none}
+.arq-link:hover{background:rgba(37,102,232,.16)}
+.arq-motivo{font-size:11px;color:var(--t3);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arq-hist{width:100%;font-size:11px;color:var(--t3);padding-left:118px}
+.arq-hist summary{cursor:pointer}
+.arq-hist-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:3px 0}
+.arq-bloco{font-size:10.5px;font-weight:700;color:var(--preparo);margin-top:6px;text-transform:uppercase;letter-spacing:.5px}
+.modal-fundo{position:fixed;inset:0;background:rgba(20,24,30,.45);display:flex;align-items:center;justify-content:center;z-index:250}
+.modal-fundo.off{display:none}
+.modal-caixa{background:var(--sf);border-radius:16px;box-shadow:var(--sh-lg);padding:22px 24px;width:min(460px,92vw);display:flex;flex-direction:column;gap:12px}
+.modal-t{font-size:16px;font-weight:700}
+.envio-item{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.envio-rot{font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px}
+.modal-botoes{display:flex;justify-content:flex-end;gap:10px;align-items:center}
 .flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -491,6 +509,18 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       <div class="login-erro" id="login-erro"></div>
       <button class="btn-in" id="btn-entrar" onclick="entrar()">Entrar</button>
       <p class="lsub" style="margin:4px 0 0;font-size:12px">Use o mesmo e-mail e senha do GeoMap.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fundo off" id="modal-envio">
+  <div class="modal-caixa">
+    <div class="modal-t" id="envio-titulo"></div>
+    <div id="envio-corpo"></div>
+    <div class="login-erro" id="envio-erro"></div>
+    <div class="modal-botoes">
+      <button class="btn-retro" onclick="fecharEnvio()">Cancelar</button>
+      <button class="btn-acao" id="envio-ok" style="width:auto;padding:0 22px;background:var(--t1)" onclick="confirmarEnvio()">Enviar</button>
     </div>
   </div>
 </div>
@@ -1146,6 +1176,7 @@ function rDet(){
       <thead><tr><th>Talhão</th><th>Área</th><th>Conservação</th><th>Mês plantio</th><th>Mapeamento</th><th>Etapa</th></tr></thead>
       <tbody>${linhas}</tbody>
     </table></div>
+    ${arquivosHtml('plantio',f.cod)}
     <div class="acao-w">${acaoPlantio(f)}</div>`;
 }
 
@@ -1163,9 +1194,19 @@ function acaoPlantio(f){
                         +botao('plantio_mapeamento_concluido',ET[1].c,'check','Mapeamento concluído');
   else if(f.e===1) html+=info(`${qtd(1)} talhão(ões) prontos para iniciar.`)
                         +botao('plantio_iniciar',ET[2].c,'play_arrow','Iniciar projeto');
-  else if(f.e===2) html+=info('Projeto em andamento. Ao concluir, anexe a exportação (.zip) — o envio de arquivos chega na próxima versão.');
-  else if(f.e===3) html+=info('Aguardando o Mapa de Plantio do outro setor. Ao receber, anexe o .pdf — o envio de arquivos chega na próxima versão.');
+  else if(f.e===2) html+=info('Projeto em andamento. Ao concluir, envie a exportação e o projeto — a fazenda passa para Ag. Mapa.')
+                        +botaoEnvio(ET[3].c,'upload_file','Enviar exportação e projeto',{modulo:'plantio',cod,
+                           itens:ENVIO_PLANTIO_PROJETO,depois:['plantio_exportacao_enviada',{p_cod_faz:cod}]});
+  else if(f.e===3) html+=info('Aguardando o Mapa de Plantio do outro setor. Ao receber, envie o .pdf — a fazenda fica Ok.')
+                        +botaoEnvio(ET[4].c,'map','Enviar Mapa de Plantio',{modulo:'plantio',cod,itens:ENVIO_PLANTIO_MAPA});
   else html='<div class="done-b" style="background:rgba(22,167,107,.1);color:var(--plantio)"><span class="ico">check_circle</span>Fazenda concluída</div>';
+  // Revisões: não mudam a etapa, só versionam os arquivos (com motivo).
+  if(f.e>=3)
+    html+=`<div class="retro">↻ Nova revisão:
+      <button class="btn-retro" onclick='abrirEnvio(${JSON.stringify({modulo:'plantio',cod,itens:ENVIO_PLANTIO_PROJETO,forcarNova:true})})'>Exportação + projeto</button>
+      ${f.e===4&&!temArquivoVigente('plantio',cod,'projeto','pdf')
+        ?`<button class="btn-retro" onclick='abrirEnvio(${JSON.stringify({modulo:'plantio',cod,itens:ENVIO_PLANTIO_MAPA})})'>Mapa da revisão vigente</button>`:''}
+    </div>`;
   const maisAvancada=Math.max(...f.tals.map(t=>t.e));
   if(maisAvancada>0)
     html+=`<div class="retro">↩ Retroceder para:${ET.slice(0,maisAvancada).map(s=>
@@ -1248,6 +1289,7 @@ function rDetP(){
       <div class="stp-fill" style="background:${ac};width:calc(17px + ${pct}% * (100% - 34px) / 100%)"></div>
       <div class="stp-row">${dots}</div>
     </div></div>
+    ${arquivosHtml('preparo',f.cod)}
     <div class="acao-w">${acao}</div>
     ${audit?`<div class="prep-audit"><div class="prep-audit-t">Histórico</div>${audit}</div>`:''}`;
 }
@@ -1266,11 +1308,21 @@ function acaoPreparo(f,cur,done4){
   else {
     html=`<div class="acao-head"><span class="acao-lbl">Próxima ação — ${ET_P[cur].l}</span></div>`;
     if(cur===0)      html+=info('Confirme que a fazenda foi identificada no ortomosaico processado.')+concluir(1,'Confirmar identificação');
-    else if(cur===1) html+=info('Anexe o Mapa de Escoamento (.pdf) — o envio de arquivos chega na próxima versão.');
+    else if(cur===1) html+=info('Envie o Mapa de Escoamento (.pdf) — a etapa conclui junto com o envio.')
+                          +botaoEnvio('var(--preparo)','water','Enviar Mapa de Escoamento',{modulo:'preparo',cod,
+                             itens:[ENVIO_PREPARO.escoamento],depois:['preparo_concluir_etapa',{p_cod_faz:cod,p_ordem:2}]});
     else if(cur===2) html+=`<textarea class="prep-obs-area" id="obs-prep" placeholder="Observações recebidas (opcional)…">${esc(f.obs)}</textarea>`
                           +concluir(3,'Confirmar observações');
-    else             html+=obs+info('Anexe os 3 arquivos: Projeto (.dwg), Exportação (.zip) e Mapa de Sistematização (.pdf) — o envio de arquivos chega na próxima versão.');
+    else             html+=obs+info('Envie os 3 arquivos obrigatórios — a etapa conclui junto com o envio.')
+                          +botaoEnvio('var(--preparo)','construction','Enviar projeto, exportação e sistematização',{modulo:'preparo',cod,
+                             itens:[ENVIO_PREPARO.projeto,ENVIO_PREPARO.exportacao,ENVIO_PREPARO.sistematizacao],
+                             depois:['preparo_concluir_etapa',{p_cod_faz:cod,p_ordem:4}]});
   }
+  // Revisão de um documento que já tem arquivo (não muda a etapa).
+  const revisaveis=Object.entries(ENVIO_PREPARO).filter(([doc,it])=>temArquivoVigente('preparo',cod,doc,it.ext));
+  if(revisaveis.length)
+    html+=`<div class="retro">↻ Nova revisão:${revisaveis.map(([doc,it])=>
+      `<button class="btn-retro" onclick='abrirEnvio(${JSON.stringify({modulo:'preparo',cod,itens:[it],forcarNova:true})})'>${it.nomeCurto}</button>`).join('')}</div>`;
   const feitas=ET_P.map((s,i)=>f.ok[i]?i:-1).filter(i=>i>=0);
   if(feitas.length)
     html+=`<div class="retro">↩ Reabrir:${feitas.map(i=>
@@ -1971,7 +2023,7 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))')),
@@ -1980,7 +2032,34 @@ async function carregarDados(){
     sb.from('execucoes_ingestao').select('fonte,finalizado_em').eq('status','ok')
       .in('fonte',FONTES_DIARIAS).order('finalizado_em',{ascending:false}).limit(60)
       .then(({data,error})=>{if(error)throw error;return data;}),
+    lerTudo(()=>sb.from('documento_tipos').select('modulo_id,codigo,nome,marcador,ordem').order('ordem')),
+    lerTudo(()=>sb.from('projeto_revisoes').select(
+      'id,documento,numero,motivo,vigente,criado_em,projetos(id,modulo_id,tipo,cod_faz,nome),'
+      +'revisao_arquivos(nome_arquivo,release_url),revisao_origens!revisao_origens_revisao_id_fkey(origem_revisao_id)')
+      .order('numero',{ascending:false})),
   ]);
+
+  // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
+  // em cada fazenda de onde vieram as revisões de origem.
+  DOC_TIPOS=tipos;
+  const projetos=new Map(), codDaRevisao=new Map();
+  for(const r of revisoes){
+    const p=r.projetos;
+    if(!projetos.has(p.id))projetos.set(p.id,{...p,docs:{},origens:new Set()});
+    const pr=projetos.get(p.id);
+    (pr.docs[r.documento]??=[]).push({id:r.id,doc:r.documento,modulo:p.modulo_id,numero:r.numero,motivo:r.motivo,
+      vigente:r.vigente,criado_em:r.criado_em,arquivos:r.revisao_arquivos||[]});
+    (r.revisao_origens||[]).forEach(o=>pr.origens.add(o.origem_revisao_id));
+    if(p.tipo==='individual')codDaRevisao.set(r.id,p.cod_faz);
+  }
+  for(const k in ARQ)delete ARQ[k];
+  const entrada=(mod,cod)=>(ARQ[mod+'|'+cod]??={docs:{},blocos:[]});
+  for(const p of projetos.values()){
+    Object.values(p.docs).forEach(rs=>rs.sort((a,b)=>(b.vigente-a.vigente)||(b.numero-a.numero)));
+    if(p.tipo==='individual')entrada(p.modulo_id,p.cod_faz).docs=p.docs;
+    else new Set([...p.origens].map(id=>codDaRevisao.get(id)).filter(Boolean))
+      .forEach(cod=>entrada(p.modulo_id,cod).blocos.push(p));
+  }
 
   const ultima=Object.fromEntries(FONTES_DIARIAS.map(f=>[f,execucoes.find(e=>e.fonte===f)?.finalizado_em]));
   const faltando=FONTES_DIARIAS.filter(f=>!ultima[f]);
@@ -2051,6 +2130,129 @@ async function carregarDados(){
     }
     FZ_P.push(f);
   });
+}
+
+// ─────────────────────────────────────────────────────────────
+// ARQUIVOS — revisões por documento, envio pelo Worker
+// ─────────────────────────────────────────────────────────────
+// Endereço do Worker de envio (worker/arquivos.js), preenchido depois do deploy.
+const WORKER_URL='__WORKER_URL__';
+// O que cada ação pede. doc = documento no banco (hub.documento_tipos).
+const ENVIO_PLANTIO_PROJETO=[
+  {doc:'exportacao',ext:'zip',rotulo:'Exportação (.zip)',nomeCurto:'Exportação'},
+  {doc:'projeto',   ext:'dwg',rotulo:'Projeto (.dwg)',   nomeCurto:'Projeto'},
+];
+const ENVIO_PLANTIO_MAPA=[{doc:'projeto',ext:'pdf',rotulo:'Mapa de Plantio (.pdf)',nomeCurto:'Mapa'}];
+const ENVIO_PREPARO={
+  escoamento:    {doc:'escoamento',    ext:'pdf',rotulo:'Mapa de Escoamento (.pdf)',      nomeCurto:'Escoamento'},
+  projeto:       {doc:'projeto',       ext:'dwg',rotulo:'Projeto (.dwg)',                 nomeCurto:'Projeto'},
+  exportacao:    {doc:'exportacao',    ext:'zip',rotulo:'Exportação (.zip)',              nomeCurto:'Exportação'},
+  sistematizacao:{doc:'sistematizacao',ext:'pdf',rotulo:'Mapa de Sistematização (.pdf)', nomeCurto:'Sistematização'},
+};
+// modulo|cod → {docs:{doc:[revisões, a vigente primeiro]}, blocos:[projetos personalizados]}
+const ARQ={};
+let DOC_TIPOS=[];
+
+function revisoesDe(modulo,cod,doc){return ARQ[modulo+'|'+cod]?.docs?.[doc]||[];}
+function temArquivoVigente(modulo,cod,doc,ext){
+  const v=revisoesDe(modulo,cod,doc).find(r=>r.vigente);
+  return !!v&&v.arquivos.some(a=>a.nome_arquivo.toLowerCase().endsWith('.'+ext));
+}
+function rotuloRev(r){return (DOC_TIPOS.find(t=>t.codigo===r.doc&&t.modulo_id===r.modulo)?.marcador||'Rev')+r.numero;}
+
+function linhasDocs(modulo,docs){
+  return DOC_TIPOS.filter(t=>t.modulo_id===modulo&&docs[t.codigo]?.length).map(t=>{
+    const revs=docs[t.codigo],vig=revs.find(r=>r.vigente)||revs[0],antigas=revs.filter(r=>r!==vig);
+    const links=vig.arquivos.map(a=>`<a class="arq-link" href="${esc(a.release_url)}" target="_blank" rel="noopener">.${esc(a.nome_arquivo.split('.').pop())}</a>`).join('');
+    const hist=antigas.length?`<details class="arq-hist"><summary>${antigas.length} revisão(ões) anterior(es)</summary>${antigas.map(r=>
+      `<div class="arq-hist-row"><strong>${rotuloRev(r)}</strong> · ${fmtDataHora(r.criado_em)}${r.motivo?` · ${esc(r.motivo)}`:''}
+        ${r.arquivos.map(a=>`<a class="arq-link" href="${esc(a.release_url)}" target="_blank" rel="noopener">.${esc(a.nome_arquivo.split('.').pop())}</a>`).join('')}</div>`).join('')}</details>`:'';
+    return`<div class="arq-row">
+      <span class="arq-doc">${esc(t.nome.replace(/ \(.*/,''))}</span>
+      <span class="ebadge" style="background:var(--s2);color:var(--t2)">${rotuloRev(vig)}</span>
+      <span class="arq-links">${links||'<span style="color:var(--t3)">sem arquivo</span>'}</span>
+      ${vig.motivo?`<span class="arq-motivo" title="${esc(vig.motivo)}">${esc(vig.motivo)}</span>`:''}
+      ${hist}
+    </div>`;
+  }).join('');
+}
+function arquivosHtml(modulo,cod){
+  const a=ARQ[modulo+'|'+cod];
+  if(!a)return'';
+  const proprios=linhasDocs(modulo,a.docs);
+  const blocos=(a.blocos||[]).map(b=>`<div class="arq-bloco">Bloco ${esc(b.nome)}</div>${linhasDocs(modulo,b.docs)}`).join('');
+  if(!proprios&&!blocos)return'';
+  return`<div class="arq-w"><div class="acao-lbl" style="margin-bottom:6px">Arquivos</div>${proprios}${blocos}</div>`;
+}
+
+function botaoEnvio(cor,ico,txt,cfg){
+  return`<button class="btn-acao" style="background:${cor};box-shadow:0 6px 20px rgba(0,0,0,.12)"
+    onclick='abrirEnvio(${JSON.stringify(cfg)})'><span class="ico">${ico}</span>${txt}</button>`;
+}
+
+let ENVIO=null;
+// Cada item vira revisão nova quando a vigente já tem arquivo daquele tipo
+// (ou quando forcarNova); senão completa a vigente (ou abre a Rev0).
+function abrirEnvio(cfg){
+  const itens=cfg.itens.map(it=>{
+    const revs=revisoesDe(cfg.modulo,cfg.cod,it.doc),vig=revs.find(r=>r.vigente);
+    const nova=!!cfg.forcarNova||(!!vig&&vig.arquivos.some(a=>a.nome_arquivo.toLowerCase().endsWith('.'+it.ext)));
+    const numero=vig?(nova?vig.numero+1:vig.numero):0;
+    return{...it,nova,numero,feito:false};
+  });
+  ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.nova&&it.numero>0)};
+  const marc=it=>(DOC_TIPOS.find(t=>t.codigo===it.doc&&t.modulo_id===cfg.modulo)?.marcador||'Rev')+it.numero;
+  document.getElementById('envio-titulo').textContent=cfg.forcarNova?'Nova revisão':'Enviar arquivos';
+  document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>`
+    <label class="envio-item">
+      <span class="envio-rot">${it.rotulo} <span class="ebadge" style="background:var(--s2);color:var(--t2)">${marc(it)}</span></span>
+      <input type="file" id="envio-arq-${i}" accept=".${it.ext}">
+    </label>`).join('')
+    +(ENVIO.precisaMotivo?`<label class="envio-item"><span class="envio-rot">Motivo da revisão (obrigatório)</span>
+      <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas no talhão 12"></textarea></label>`:'');
+  document.getElementById('envio-erro').textContent='';
+  const ok=document.getElementById('envio-ok');ok.disabled=false;ok.textContent='Enviar';
+  document.getElementById('modal-envio').classList.remove('off');
+}
+function fecharEnvio(){document.getElementById('modal-envio').classList.add('off');ENVIO=null;}
+
+async function confirmarEnvio(){
+  const erro=document.getElementById('envio-erro'),ok=document.getElementById('envio-ok');
+  erro.textContent='';
+  if(WORKER_URL.startsWith('__')){erro.textContent='O serviço de envio de arquivos ainda não foi configurado.';return;}
+  const pend=ENVIO.itens.map((it,i)=>({it,arq:document.getElementById('envio-arq-'+i).files[0]})).filter(x=>!x.it.feito);
+  if(pend.some(x=>!x.arq)){erro.textContent='Selecione todos os arquivos.';return;}
+  const errado=pend.find(x=>!x.arq.name.toLowerCase().endsWith('.'+x.it.ext));
+  if(errado){erro.textContent=`${errado.it.rotulo}: selecione um arquivo .${errado.it.ext}.`;return;}
+  const motivo=document.getElementById('envio-motivo')?.value.trim()||'';
+  if(ENVIO.precisaMotivo&&!motivo){erro.textContent='Informe o motivo da revisão.';return;}
+  ok.disabled=true;ok.textContent='Enviando…';
+  const token=(await sb.auth.getSession()).data.session?.access_token;
+  try{
+    // Um envio por item; se um falhar, os que já foram não são reenviados
+    // (reenviar criaria outra revisão).
+    for(const {it,arq} of pend){
+      const fd=new FormData();
+      fd.append('modulo',ENVIO.modulo);fd.append('cod_faz',ENVIO.cod);fd.append('documento',it.doc);
+      fd.append('nova',it.nova?'1':'0');if(motivo)fd.append('motivo',motivo);fd.append('arquivo',arq);
+      ok.textContent=`Enviando ${it.nomeCurto}…`;
+      const r=await fetch(WORKER_URL+'/enviar',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd});
+      const corpo=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(`${it.rotulo}: ${corpo.erro||'erro '+r.status}`);
+      it.feito=true;
+    }
+    if(ENVIO.depois){
+      const [fn,args]=ENVIO.depois;
+      const {error}=await sb.rpc(fn,args);
+      if(error)throw new Error(error.message);
+    }
+  }catch(e){
+    erro.textContent=e.message;ok.disabled=false;ok.textContent='Tentar de novo';
+    return;
+  }
+  fecharEnvio();
+  showToast('Arquivos enviados');
+  await recarregar();
 }
 
 // Mesma regra do banco (hub.pode_editar): o botão só aparece pra quem pode;
