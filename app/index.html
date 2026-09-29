@@ -271,11 +271,6 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .btn-reg:disabled{opacity:.4;cursor:default;transform:none}
 .tal-chip .tt{font-size:9.5px;font-weight:700;letter-spacing:.2px}
 .tal-chip .tdes{font-size:12px;vertical-align:-2px}
-.porte{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 5px;background:var(--s2);color:var(--t2);margin-top:2px;width:fit-content}
-.porte .ico{font-size:11px}
-.porte.agendado{background:rgba(212,137,10,.16);color:#9a6200}
-.porte.voado{background:rgba(37,102,232,.12);color:#2566e8}
-.porte.divulgado{background:rgba(22,167,107,.14);color:var(--plantio)}
 .col-tipos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
 .col-tipo{height:44px;border-radius:10px;border:2px solid var(--bd2);background:var(--sf);font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all var(--tf)}
 .col-tipo:hover{border-color:var(--colheita);background:rgba(212,137,10,.06)}
@@ -974,30 +969,6 @@ let SAFRA_C='';
 const TIPO_C={VANT:{l:'Linha de Vant',s:'Vant'},PROJETO:{l:'Desdobra de Plantio',s:'Desdobra'},'SEM LINHAS':{l:'Sem Linhas',s:'S/ linhas'}};
 let ativaC=null, selTals=[], fqC='';
 function getCiclo(){return SAFRA_C||'—';}
-// Tag de voo da Falha Soca (igual ao Expo_safra): só em talhão Sem Linhas, fora
-// da "A Plantar", cortado dentro da safra → dias desde o corte. A cor vem do
-// voo mais recente no Drone MGMT (hub.voo_falha_soca_atual).
-// Safra 26-27 = abril/2026 a março/2027 (todas as safras seguem esse ciclo).
-function janelaSafra(){const a=2000+parseInt(SAFRA_C);return[new Date(a,3,1),new Date(a+1,3,1)];}
-function tagPorte(t){
-  if(t.st!=='SEM LINHAS'||!t.corte||String(t.est).toUpperCase().trim()==='A PLANTAR'||!SAFRA_C)return null;
-  const d=new Date(t.corte+'T00:00:00'),[ini,fim]=janelaSafra();
-  if(isNaN(d)||d<ini||d>=fim)return null;
-  return Math.floor((Date.now()-d.getTime())/864e5);
-}
-function vooBucket(t){
-  const v=t.voo;if(!v)return'sem';
-  if(v.control_status===10)return'divulgado';
-  if(v.control_status===3||v.control_status===8)return'voado';
-  if(v.verify_flight_size===5)return'agendado';
-  return'sem';
-}
-const VOO_TXT={sem:'sem voo',agendado:'voo agendado',voado:'voado',divulgado:'divulgado'};
-function porteHtml(t){
-  const d=tagPorte(t);if(d===null)return'';
-  const b=vooBucket(t);
-  return`<span class="porte ${b}" title="Falha Soca: ${VOO_TXT[b]}${t.voo?.n_voos>1?` (${t.voo.n_voos} voos)`:''}"><span class="ico">flight</span>${d}d</span>`;
-}
 
 // ─────────────────────────────────────────────────────────────
 // DADOS — Portal
@@ -1426,7 +1397,7 @@ function rFazC(){
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas">✈ ${f.porte}d</span>`:''}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
     </div>`;
@@ -1457,7 +1428,6 @@ function rDetC(){
       <span class="tt">${esc(tipo)}</span>
       <span class="te">${esc(t.est||'')}</span>
       <span class="tha">${fmtNum(t.ha)} ha${t.cortado?' · cortado':''}</span>
-      ${porteHtml(t)}
     </div>`;
   }).join('');
   const nSel=selTals.length;
@@ -2097,7 +2067,7 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voos]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
@@ -2111,12 +2081,11 @@ async function carregarDados(){
       'id,documento,numero,motivo,vigente,criado_em,projetos(id,modulo_id,tipo,cod_faz,nome),'
       +'revisao_arquivos(nome_arquivo,release_url),revisao_origens!revisao_origens_revisao_id_fkey(origem_revisao_id)')
       .order('numero',{ascending:false}).order('id')),
-    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status').order('layer')),
+    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status').order('layer')),
     lerTudo(()=>sb.from('fazendas').select('cod_faz,nome').order('cod_faz')),
     sb.rpc('safra_colheita').then(({data,error})=>{if(error)throw error;return data;}),
     lerTudo(()=>sb.from('avisos').select('id,modulo_id,tipo,cod_faz,titulo,texto,atualizado_em').is('resolvido_em',null).order('atualizado_em',{ascending:false})),
     lerTudo(()=>sb.from('avisos_lidos').select('aviso_id').order('aviso_id')),
-    lerTudo(()=>sb.from('voo_falha_soca_atual').select('layer,control_status,verify_flight_size,n_voos').order('layer')),
   ]);
 
   // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
@@ -2185,20 +2154,18 @@ async function carregarDados(){
   // Colheita: talhões do ICOL por fazenda; status vem calculado do banco.
   SAFRA_C=safra||'';
   const nomeFaz=Object.fromEntries(fazendas.map(f=>[f.cod_faz,f.nome]));
-  const vooDe=new Map(voos.map(v=>[v.layer,v]));
   const porFazC=new Map();
   for(const r of colheita){
     let f=porFazC.get(r.cod_faz);
     if(!f){f={n:nomeFaz[r.cod_faz]||String(r.cod_faz),cod:String(r.cod_faz),fr:'',per:'',desat:false,tals:[],_fr:{}};porFazC.set(r.cod_faz,f);}
     f.tals.push({layer:r.layer,id:r.talhao_num,ha:r.area_ha||0,est:r.estagio||'',st:r.status,tipo:r.tipo_linha,
-                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,corte:r.data_ultimo_corte,voo:vooDe.get(r.layer),
+                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,
                  mes:r.periodo_op?'Período '+r.periodo_op:''});
     if(r.frente)f._fr[r.frente]=(f._fr[r.frente]||0)+1;
     if(r.periodo_op&&!f.per)f.per=String(r.periodo_op);
     if(r.projeto_desatualizado)f.desat=true;
   }
   FZ_C.length=0;
-  for(const f of porFazC.values())f.porte=Math.max(-1,...f.tals.map(t=>tagPorte(t)??-1));
   [...porFazC.values()].sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(f=>{
     f.fr=Object.entries(f._fr).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).join(', ')||'—';
     f.tals.sort((a,b)=>a.id-b.id);FZ_C.push(f);
