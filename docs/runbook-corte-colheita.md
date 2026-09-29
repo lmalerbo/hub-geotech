@@ -59,7 +59,6 @@ Digitar `MIGRAR` quando pedir. Tem que terminar com **"✓ Tudo confere. Migraç
   - uma com talhões de 25-26 (devem aparecer como **Reavaliar**);
   - uma de bloco (`10531` e `10627`);
   - uma com mapa de partes.
-- **Tag de voo:** aparece nos talhões Sem Linhas.
 
 **H+20: liberar a equipe**
 - Todos entram no Hub. A partir daqui, a Colheita é feita só no Hub.
