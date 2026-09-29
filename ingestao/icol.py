@@ -2,8 +2,11 @@
 hub.talhao_colheita.
 
 Lê a aba "BASE PARA PLANEJAMENTO" (1 linha por talhão; cabeçalho achado pelo
-nome). Grava só o que o ICOL é dono: frente, período operacional e se o
-talhão já foi cortado. Tipo de linha e ciclo (trabalho da equipe) não são
+nome). A demanda são TODOS os talhões (da Base Fazendas) de cada fazenda que
+aparece no ICOL — a equipe faz as linhas da fazenda inteira, porque o projeto
+de exportação é por fazenda (decisão de 29/09/2026, igual ao Expo_safra).
+Talhão listado no ICOL recebe frente, período operacional e se já foi
+cortado; os outros talhões da fazenda entram com esses campos vazios. Tipo de linha e ciclo (trabalho da equipe) não são
 tocados; talhão novo nasce sem tipo (A FAZER). Estágio, data de corte e área
 vêm da Base Fazendas.
 
@@ -78,6 +81,11 @@ def main():
     fora = sorted(layer for layer in talhoes if layer not in existentes)
     print(f'  {len(validos)} na Base Fazendas, {len(fora)} fora dela (ignorados)'
           + (f': {fora[:10]}' if fora else ''))
+    fazendas = {layer // 1000 for layer in talhoes}
+    resto = [{'layer': l, 'frente': None, 'periodo_op': None, 'cortado': None}
+             for l in sorted(existentes) if l // 1000 in fazendas and l not in talhoes]
+    print(f'  + {len(resto)} talhões das mesmas fazendas que o ICOL não lista (entram sem frente)'
+          f' → demanda: {len(validos) + len(resto)} talhões')
 
     if args.simular:
         print('Simulação: nada foi gravado.')
@@ -85,8 +93,8 @@ def main():
 
     with Execucao(hub, 'icol') as execucao:
         execucao.linhas_lidas = len(talhoes)
-        hub.upsert('talhao_colheita', validos, 'layer')
-        execucao.linhas_gravadas = len(validos)
+        hub.upsert('talhao_colheita', validos + resto, 'layer')
+        execucao.linhas_gravadas = len(validos) + len(resto)
         execucao.detalhes = {'fora_da_base_fazendas': fora}
     print('Gravado no Hub.')
 

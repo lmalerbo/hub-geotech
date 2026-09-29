@@ -23,5 +23,9 @@
   "icol": {
     "arquivo": "//lnxpdc/work/AG/DEPTO. DE PRODUÇÃO E COLHEITA/1 - DADOS/SAFRA PEDRA 2026/GERENCIAMENTO DE COLHEITA/ICOL/MAPA DE COLHEITABILIDADE PEDRA 2026.xlsm",
     "aba": "BASE PARA PLANEJAMENTO"
+  },
+  "colheita_antiga": {
+    "formulario": "C:/Users/lmalerbo/Documents/GitHub/Expo_safra/sistema_preenchimento/formulario.html",
+    "releases": "lmalerbo/Expo_safra"
   }
 }
