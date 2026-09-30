@@ -165,6 +165,9 @@ const WHATSAPP='5516996427394';
 
 const MODULOS={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',drone:'Drone'};
 let modulo='plantio', fazendas={plantio:[],preparo:[],colheita:[],drone:[]}, abertas=new Set(), modoTecnico=false;
+// Módulos em que o .dwg só aparece no modo técnico (igual aos portais antigos).
+const DWG_TECNICO=new Set(['plantio','colheita']);
+try{modoTecnico=localStorage.getItem('portal-modo-tecnico')==='1'}catch(_){}
 
 // Nome que o campo usa pra cada arquivo (o .zip do Plantio sempre foi o "Projeto").
 function rotulo(mod,doc,ext){
@@ -237,8 +240,8 @@ function agrupar(linhas){
 
 // ── Tela ─────────────────────────────────────────────
 function visiveis(f){
-  // DWG do Plantio só no modo técnico (5 toques no rodapé), como no portal antigo.
-  return f.arquivos.filter(a=>!(modulo==='plantio'&&a.ext==='dwg'&&!modoTecnico));
+  // DWG do Plantio e da Colheita só no modo técnico (5 toques no rodapé), como nos portais antigos.
+  return f.arquivos.filter(a=>!(DWG_TECNICO.has(modulo)&&a.ext==='dwg'&&!modoTecnico));
 }
 
 function render(){
@@ -332,11 +335,13 @@ function fecharVisor(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharVisor()});
 
-// 5 toques no rodapé em 1,5 s: liga/desliga o modo técnico (mostra o DWG do Plantio).
+// 5 toques no rodapé em 1,5 s: liga/desliga o modo técnico (mostra o DWG do Plantio e da
+// Colheita). A escolha fica salva no aparelho, como no portal antigo da Colheita.
 let toques=0,tempo=null;
 document.getElementById('rodape').addEventListener('click',()=>{
   toques++;clearTimeout(tempo);tempo=setTimeout(()=>toques=0,1500);
-  if(toques>=5){toques=0;modoTecnico=!modoTecnico;aviso(modoTecnico?'Modo técnico ligado: DWG visível':'Modo técnico desligado');render();}
+  if(toques>=5){toques=0;modoTecnico=!modoTecnico;try{localStorage.setItem('portal-modo-tecnico',modoTecnico?'1':'0')}catch(_){}
+    aviso(modoTecnico?'Modo técnico ligado: DWG visível':'Modo técnico desligado');render();}
 });
 function aviso(t){const a=document.getElementById('aviso');a.textContent=t;a.classList.add('on');setTimeout(()=>a.classList.remove('on'),2200);}
 

@@ -62,6 +62,29 @@ async function ver(url, env) {
   });
 }
 
+// Sobe um arquivo pra release em fluxo (sem uma segunda cópia na memória: os
+// .dwg/.zip da Colheita passam de 50 MB). Tenta de novo uma vez se o GitHub
+// devolver erro 5xx; o erro final traz o que o GitHub respondeu.
+async function subirAsset(env, releaseId, nome, arq) {
+  const url = `https://uploads.github.com/repos/${env.GH_REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(nome)}`;
+  let ultimo = '';
+  for (let tentativa = 1; tentativa <= 2; tentativa++) {
+    const { readable, writable } = new FixedLengthStream(arq.size);
+    arq.stream().pipeTo(writable);
+    const up = await github(env, url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(arq.size) },
+      body: readable,
+    });
+    if (up.ok) return up.json();
+    ultimo = `${up.status} ${(await up.text()).slice(0, 160)}`;
+    if (up.status < 500) break;
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  const mb = (arq.size / 1048576).toFixed(1);
+  throw falha(`GitHub: falha ao subir ${nome} (${mb} MB): ${ultimo}`, 502);
+}
+
 function json(obj, status, headers) {
   return new Response(JSON.stringify(obj), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
 }
@@ -163,11 +186,7 @@ async function enviar(req, env) {
     // Reenvio depois de uma falha: o arquivo com esse nome já é desta revisão.
     let asset = (release.assets || []).find(a => a.name === nome);
     if (!asset) {
-      const up = await github(env,
-        `https://uploads.github.com/repos/${env.GH_REPO}/releases/${release.id}/assets?name=${encodeURIComponent(nome)}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: await arq.arrayBuffer() });
-      if (!up.ok) throw falha(`GitHub: falha ao subir ${nome} (${up.status})`, 502);
-      asset = await up.json();
+      asset = await subirAsset(env, release.id, nome, arq);
     }
     await banco(env, token, 'rpc/registrar_arquivo', {
       metodo: 'POST',
