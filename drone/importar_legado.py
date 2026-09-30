@@ -26,6 +26,7 @@ from drone.saida import gravar_aplicacao, montar_zip
 
 MOTIVO = 'Importado do legado'
 TIPOS = {'Normal': 'normal', 'Catação': 'catacao'}
+LIMIAR = {'normal': 0.3, 'catacao': 0.0}   # quanto do talhão o projeto precisa cobrir para valer nele
 OBSTACULO_CLASSE = {'Árvores': 15, 'Rede elétrica': 25, 'Sede': 50}
 
 
@@ -47,6 +48,33 @@ def selecionar_projetos(catalogo: pd.DataFrame) -> pd.DataFrame:
     ap['_k'] = ap.apply(chave_recencia, axis=1)
     return (ap.sort_values('_k').groupby(['cod_fazenda', 'subtipo'], as_index=False).tail(1)
             .drop(columns='_k').reset_index(drop=True))
+
+
+def projetos_por_fazenda(catalogo: pd.DataFrame) -> dict:
+    """(cod_faz, tipo) → todos os projetos Normal/Catação da fazenda, do mais antigo ao mais novo."""
+    ap = catalogo[(catalogo['categoria'] == 'Aplicação') & catalogo['subtipo'].isin(TIPOS)].copy()
+    ap['_k'] = ap.apply(chave_recencia, axis=1)
+    return {(int(cod), TIPOS[sub]): [l for _, l in g.sort_values('_k').iterrows()]
+            for (cod, sub), g in ap.groupby(['cod_fazenda', 'subtipo'])}
+
+
+def consolidar(talhoes, areas: list, limiar: float):
+    """Projetos parciais (do mais antigo ao mais novo) → uma área só, talhão a talhão: cada talhão da
+    Base de hoje vem do projeto mais novo que cobre ao menos `limiar` dele (Normal 0,3; Catação 0 =
+    qualquer mancha). Sem nenhum acima do limiar, vale o mais novo que tenha algo no talhão.
+    Devolve (área em 31983, índices dos projetos usados)."""
+    pedacos, usados = [], set()
+    for g in talhoes.geometry:
+        g = make_valid(g)
+        partes = [(i, a.intersection(g)) for i, a in enumerate(areas)]
+        partes = [(i, p) for i, p in partes if p.area > 1]
+        if not partes:
+            continue
+        acima = [(i, p) for i, p in partes if p.area >= limiar * g.area]
+        i, p = (acima or partes)[-1]
+        pedacos.append(p)
+        usados.add(i)
+    return so_poligonos(make_valid(unary_union(pedacos))), usados
 
 
 def classe_do_legado(l) -> int | None:
@@ -167,37 +195,43 @@ def main():
         except Exception as e:
             rel(cod, item, 'erro', str(e))
 
-    for _, l in selecionar_projetos(cat).iterrows():
-        cod, tipo = int(l['cod_fazenda']), TIPOS[l['subtipo']]
-        item = f'projeto {tipo} ({l["safra"]} {l["revisao"]})'
+    for (cod, tipo), projetos in sorted(projetos_por_fazenda(cat).items()):
+        item = f'projeto {tipo} ({len(projetos)} no G:)'
         if cod not in fazendas:
             rel(cod, item, 'fora', 'fazenda não está na Base Fazendas'); continue
         if (cod, tipo) in ja_legado:
             rel(cod, item, 'pulado', 'já importado'); continue
         try:
-            shp = Path(l['caminho'])
-            geoms, aviso_crs = ler_legado(shp)
-            area = so_poligonos(unary_union(geoms))
-            orig = gpd.read_file(shp, ignore_geometry=True)
-            valores = [area_antiga(l) for l in orig.to_dict('records')]
-            antigo = [sum(valores)] if valores and None not in valores else []
-            avisos = [aviso_crs] if aviso_crs else []
-            if antigo and abs(area.area / 1e4 - antigo[0]) > 0.02 * antigo[0]:
-                avisos.append(f'área recalculada {area.area / 1e4:.2f} ha x antiga {antigo[0]:.2f} ha')
+            lidos, avisos = [], []
+            for l in projetos:
+                try:
+                    geoms, aviso_crs = ler_legado(Path(l['caminho']))
+                    lidos.append((l, so_poligonos(unary_union(geoms))))
+                    if aviso_crs:
+                        avisos.append(aviso_crs)
+                except Exception as e:   # um parcial ilegível não derruba os outros
+                    avisos.append(f"ignorado {l['safra']} {l['revisao']}: {e}")
+            if not lidos:
+                raise ValueError('nenhum projeto legível')
             talhoes = talhoes_da_fazenda(base, cod)
+            area, usados = consolidar(talhoes, [a for _, a in lidos], LIMIAR[tipo])
+            if area.is_empty:
+                raise ValueError('nenhum projeto cai nos talhões de hoje')
+            usados = [lidos[k][0] for k in sorted(usados)]
+            mais_novo = usados[-1]
             div = divergencia(talhoes, area)
-            # talhões mudaram desde o projeto (ou Normal que não cobre a fazenda): candidato a projeto novo
-            diverge = div['fora_da_base_pct'] > 5 or (tipo == 'normal' and div['cobertura_base_pct'] < 85)
-            avisos.append(f"fora da Base {div['fora_da_base_pct']:.0f}%, cobre {div['cobertura_base_pct']:.0f}% da fazenda")
+            diverge = tipo == 'normal' and div['cobertura_base_pct'] < 85   # Normal que não cobre a fazenda
+            avisos.append(f"cobre {div['cobertura_base_pct']:.0f}% da fazenda")
+            fontes = ', '.join(f"{safra_curta(l['safra'])} {_texto(l['revisao'])}" for l in usados)
             if not simular:
                 pasta = PASTA_TRABALHO / 'legado' / f'{cod}-{tipo}'
                 zip_ = montar_zip(gravar_aplicacao(area, 10, pasta / 'shape', cod), pasta / f'{cod}.zip')
                 pdf = pasta / f'{cod}.pdf'
                 gerar_pdf(DadosMapa(cod, fazendas[cod], tipo, 0, talhoes, recorte_legado(talhoes, area), hoje,
-                                    safra=safra_curta(l['safra'])), pdf)
-                publicar(banco, gh, cod, tipo, f'{MOTIVO} ({shp})', {'zip': zip_, 'pdf': pdf}, numero_esperado=0,
-                         legado=True)
-            rel(cod, item, 'ok', '; '.join(avisos) + f' | origem: {shp}',
+                                    safra=safra_curta(mais_novo['safra'])), pdf)
+                publicar(banco, gh, cod, tipo, f'{MOTIVO} (consolidado: {fontes})', {'zip': zip_, 'pdf': pdf},
+                         numero_esperado=0, legado=True)
+            rel(cod, item, 'ok', f'{area.area / 1e4:.2f} ha de {len(usados)} projeto(s): {fontes} | ' + '; '.join(avisos),
                 'sim' if diverge else 'não', 'sim' if cod in com_obstaculos else 'não')
         except Exception as e:
             rel(cod, item, 'erro', str(e))

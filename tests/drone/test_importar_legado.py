@@ -107,3 +107,60 @@ def test_normal_com_muitos_obstaculos_ainda_cobre_a_fazenda():
     # Normal da fazenda inteira com 40% de cada talhão tirado por obstáculos
     area = MultiPolygon([box(0, 0, 100, 60), box(100, 0, 200, 60)])
     assert divergencia(_base_dois_talhoes(), area)['cobertura_base_pct'] == pytest.approx(100.0)
+
+
+def _base_tres_talhoes():
+    import geopandas as gpd
+    from shapely.geometry import box
+    return gpd.GeoDataFrame({'TALHAO': [1, 2, 3], 'AREA_PROD': [1.0, 1.0, 1.0]},
+                            geometry=[box(0, 0, 100, 100), box(100, 0, 200, 100), box(200, 0, 300, 100)], crs=31983)
+
+
+def test_consolidar_pega_o_projeto_mais_recente_de_cada_talhao():
+    from shapely.geometry import box
+    from drone.importar_legado import consolidar
+    antigo = box(0, 0, 200, 100)                 # Rev0: talhões 1 e 2 inteiros
+    novo = box(100, 0, 300, 50)                  # Rev1: metade de baixo dos talhões 2 e 3
+    area, usados = consolidar(_base_tres_talhoes(), [antigo, novo], limiar=0.3)
+    assert area.area == pytest.approx(100 * 100 + 100 * 50 + 100 * 50)   # t1 do antigo; t2 e t3 do novo
+    assert usados == {0, 1}
+
+
+def test_consolidar_descarta_o_que_ficou_fora_dos_talhoes_de_hoje():
+    from shapely.geometry import box
+    from drone.importar_legado import consolidar
+    area, _ = consolidar(_base_tres_talhoes(), [box(-50, 0, 100, 100)], limiar=0.3)
+    assert area.area == pytest.approx(100 * 100)
+
+
+def test_consolidar_catacao_usa_o_levantamento_mais_recente_que_tem_mancha_no_talhao():
+    from shapely.geometry import box
+    from drone.importar_legado import consolidar
+    antigo = box(10, 10, 20, 20).union(box(210, 10, 220, 20))   # manchas nos talhões 1 e 3
+    novo = box(110, 10, 115, 15)                                 # só no talhão 2
+    area, usados = consolidar(_base_tres_talhoes(), [antigo, novo], limiar=0)
+    assert area.area == pytest.approx(100 + 25 + 100)
+    assert usados == {0, 1}
+
+
+def test_consolidar_normal_ignora_projeto_que_so_encosta_no_talhao():
+    from shapely.geometry import box
+    from drone.importar_legado import consolidar
+    antigo = box(0, 0, 100, 100)                 # talhão 1 inteiro
+    novo = box(95, 0, 200, 100)                  # talhão 2 + 5% do talhão 1
+    area, _ = consolidar(_base_tres_talhoes(), [antigo, novo], limiar=0.3)
+    assert area.area == pytest.approx(100 * 100 + 100 * 100)     # talhão 1 continua vindo do antigo
+
+
+def test_projetos_por_fazenda_ordena_do_mais_antigo_ao_mais_novo():
+    from drone.importar_legado import projetos_por_fazenda
+    c = _cat([
+        ['10156', 'Aplicação', 'Normal', '2025-2026', 'Rev1', 'b.shp', '2025-06-01', 'B'],
+        ['10156', 'Aplicação', 'Normal', '2024-2025', 'Rev3', 'a.shp', '2024-09-01', 'A'],
+        ['10156', 'Aplicação', 'Catação', '2024-2025', 'Rev0', 'c.shp', '2024-03-01', 'C'],
+        ['10156', 'Aplicação', 'Experimento', '2026-2027', 'Rev0', 'e.shp', '2026-06-01', 'E'],
+    ])
+    g = projetos_por_fazenda(c)
+    assert [l['caminho'] for l in g[(10156, 'normal')]] == ['A', 'B']
+    assert [l['caminho'] for l in g[(10156, 'catacao')]] == ['C']
+    assert (10156, 'experimento') not in g
