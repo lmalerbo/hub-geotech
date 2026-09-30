@@ -273,6 +273,21 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .tal-chip .tdes{font-size:12px;vertical-align:-2px}
 .porte{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 5px;background:var(--s2);color:var(--t2);margin-top:2px;width:fit-content}
 .porte.pronto{background:rgba(212,137,10,.18);color:#9a6200}
+.tal-chip.REVOO{background:rgba(124,93,232,.1);color:#6a4fd0}
+.voo-tag{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 5px;margin-top:2px;width:fit-content;background:rgba(37,102,232,.1);color:#2566e8}
+.voo-tag.pronto{background:rgba(22,167,107,.14);color:var(--plantio)}
+.voo-tag.erro{background:rgba(224,82,82,.12);color:#c23b3b}
+.voo-tag.espera{background:var(--s2);color:var(--t2)}
+.voo-opcoes{display:flex;gap:8px}
+.voo-opcao{flex:1;border:2px solid var(--bd2);border-radius:10px;padding:10px;cursor:pointer;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.voo-opcao input{display:none}
+.voo-opcao:has(input:checked){border-color:var(--colheita);background:rgba(212,137,10,.06)}
+.voo-opcao small{color:var(--t3);font-size:11px}
+.voo-inp{width:100%;height:38px;border:2px solid var(--bd2);border-radius:8px;padding:0 12px;font-family:'Poppins',sans-serif;font-size:12.5px;background:var(--s2);color:var(--t1);outline:none}
+.fila-tab{width:100%;border-collapse:collapse;font-size:12px}
+.fila-tab th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:6px 8px;border-bottom:1px solid var(--bd)}
+.fila-tab td{padding:7px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+.fila-scroll{max-height:60vh;overflow:auto}
 .col-tipos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
 .col-tipo{height:44px;border-radius:10px;border:2px solid var(--bd2);background:var(--sf);font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all var(--tf)}
 .col-tipo:hover{border-color:var(--colheita);background:rgba(212,137,10,.06)}
@@ -550,6 +565,35 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
   </div>
 </div>
 
+<div class="modal-fundo off" id="modal-voo">
+  <div class="modal-caixa">
+    <div class="modal-t">Pedir voo de Linhas de Colheita</div>
+    <div id="voo-resumo" style="font-size:12.5px;color:var(--t2);margin-bottom:10px"></div>
+    <div class="voo-opcoes">
+      <label class="voo-opcao"><input type="radio" name="voo-tipo" value="voar" onchange="vooTipoMudou()"><strong>Voar</strong><small>Talhão Sem Linhas, a partir do 4º corte</small></label>
+      <label class="voo-opcao"><input type="radio" name="voo-tipo" value="revoar" onchange="vooTipoMudou()"><strong>Revoar</strong><small>Linhas com problema, qualquer estágio</small></label>
+    </div>
+    <label class="envio-item" id="voo-problema-w" style="margin-top:10px;display:none"><span class="envio-rot">O que está errado nas linhas (obrigatório)</span>
+      <textarea class="prep-obs-area" id="voo-problema" placeholder="Ex.: linhas deslocadas na cabeceira"></textarea></label>
+    <label class="envio-item" style="margin-top:10px"><span class="envio-rot">Quem pediu (gestor)</span>
+      <input class="voo-inp" id="voo-pedido-por" placeholder="Nome do gestor"></label>
+    <div style="font-size:11.5px;color:var(--t3);margin-top:8px">O voo é agendado sozinho no Drone MGMT quando o talhão completar 100 dias do corte.</div>
+    <div class="login-erro" id="voo-erro"></div>
+    <div class="modal-botoes">
+      <button class="btn-retro" onclick="fecharVoo()">Cancelar</button>
+      <button class="btn-acao" id="voo-ok" style="width:auto;padding:0 22px;background:var(--colheita)" onclick="confirmarVoo()">Pedir voo</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-fundo off" id="modal-fila">
+  <div class="modal-caixa" style="width:min(920px,94vw)">
+    <div class="modal-t">Fila de voos — Linhas de Colheita</div>
+    <div class="fila-scroll" id="fila-corpo"></div>
+    <div class="modal-botoes"><button class="btn-retro" onclick="document.getElementById('modal-fila').classList.add('off')">Fechar</button></div>
+  </div>
+</div>
+
 <div class="carregando off" id="carregando"><span class="ico">progress_activity</span><span id="carregando-msg">Carregando dados do Hub…</span></div>
 
 <!-- HUB -->
@@ -630,6 +674,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
               <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarC(this.value)"
                 style="--focus-c:var(--colheita)">
             </div>
+            <button class="btn-tal-action" style="margin:0 0 8px" onclick="abrirFila()"><span class="ico" style="font-size:14px">flight</span>Fila de voos <span id="fila-n"></span></button>
             <div class="flist" id="flist-c"></div>
           </div>
           <div>
@@ -964,6 +1009,7 @@ const ST_COL={
   'A FAZER':    {c:'#b57200',bg:'rgba(212,137,10,.08)',  cls:'A_FAZER'},
   'SEM LINHAS': {c:'#9895a2',bg:'rgba(152,149,162,.1)', cls:'SEM_LINHAS'},
   'REAVALIAR':  {c:'#e05252',bg:'rgba(224,82,82,.1)',    cls:'REAVALIAR'},
+  'REVOO':      {c:'#6a4fd0',bg:'rgba(124,93,232,.1)',   cls:'REVOO'},
 };
 // Preenchido por carregarDados() a partir de hub.colheita_talhoes.
 const FZ_C=[];
@@ -977,7 +1023,7 @@ function getCiclo(){return SAFRA_C||'—';}
 const DIAS_PORTE=100;
 function janelaSafra(){const a=2000+parseInt(SAFRA_C);return[new Date(a,3,1),new Date(a+1,3,1)];}
 function tagPorte(t){
-  if(t.st!=='SEM LINHAS'||!t.corte||String(t.est).toUpperCase().trim()==='A PLANTAR'||!SAFRA_C)return null;
+  if((t.st!=='SEM LINHAS'&&t.voo?.tipo!=='revoar')||!t.corte||String(t.est).toUpperCase().trim()==='A PLANTAR'||!SAFRA_C)return null;
   const d=new Date(t.corte+'T00:00:00'),[ini,fim]=janelaSafra();
   if(isNaN(d)||d<ini||d>=fim)return null;
   return Math.floor((Date.now()-d.getTime())/864e5);
@@ -1082,6 +1128,7 @@ function rDash(){
     {st:'A FAZER',   l:'A Fazer',   c:'#b57200'},
     {st:'SEM LINHAS',l:'Sem Linhas',c:'var(--t3)'},
     {st:'REAVALIAR', l:'Reavaliar', c:'#e05252'},
+    {st:'REVOO',     l:'Revoo',     c:'#6a4fd0'},
   ];
   const distC=stC.map(s=>{
     const tls=allTals.filter(t=>t.st===s.st);
@@ -1400,6 +1447,7 @@ function filtrarC(q){
   rFazC();
 }
 function rFazC(){
+  const fn=document.getElementById('fila-n');if(fn)fn.textContent=VOOS_C.length?`(${VOOS_C.length})`:'';
   const lista=FZ_C.filter(f=>!fqC||f.n.toLowerCase().includes(fqC)||f.cod.toLowerCase().includes(fqC));
   if(!lista.length){
     document.getElementById('flist-c').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
@@ -1446,7 +1494,7 @@ function rDetC(){
       <span class="tt">${esc(tipo)}</span>
       <span class="te">${esc(t.est||'')}</span>
       <span class="tha">${fmtNum(t.ha)} ha${t.cortado?' · cortado':''}</span>
-      ${porteHtml(t)}
+      ${porteHtml(t)}${vooTagHtml(t)}
     </div>`;
   }).join('');
   const nSel=selTals.length;
@@ -1462,6 +1510,10 @@ function rDetC(){
       <div class="col-tipos">${Object.entries(TIPO_C).map(([k,v])=>
         `<button class="col-tipo" onclick="marcarTipoC(this,'${k}')">${v.l}</button>`).join('')}</div>
       <button class="col-desfazer" onclick="marcarTipoC(this,null)">Desfazer (voltar para A Fazer)</button>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn-tal-action" onclick="abrirVoo()"><span class="ico" style="font-size:14px">flight</span>Pedir voo</button>
+        ${selTals.some(i=>VOO_CANCELAVEL.has(f.tals[i].voo?.status))?`<button class="btn-tal-action" onclick="cancelarVoo()" style="color:#c23b3b">Cancelar pedido de voo</button>`:''}
+      </div>
     </div>`:`<div class="col-sel-hint">Selecione os talhões e escolha o tipo de linha</div>`;
   const podeArq=edita;
   const envio=podeArq?`<div class="acao-w" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
@@ -1487,6 +1539,75 @@ function rDetC(){
       ${envio}
     </div>`;
 }
+// ── Regra B: pedidos de voo de Linhas de Colheita ──
+let VOOS_C=[];
+const VOO_CANCELAVEL=new Set(['aguardando_corte','na_fila','erro']);
+const VOO_TXT={aguardando_corte:['espera','aguardando corte'],na_fila:['espera','na fila'],agendando:['','agendando'],
+  agendado:['','voo agendado'],voado:['','voado'],divulgado:['pronto','linhas prontas'],erro:['erro','erro no voo']};
+function dataCurta(iso){if(!iso)return'';const[a,m,d]=iso.slice(0,10).split('-');return`${d}/${m}`;}
+function vooTagHtml(t){
+  if(!t.voo)return'';
+  const [cls,txt]=VOO_TXT[t.voo.status]||['',t.voo.status];
+  const extra=t.voo.status==='na_fila'&&t.voo.liberar?` · voa ${dataCurta(t.voo.liberar)}`:'';
+  return`<span class="voo-tag ${cls}" title="${t.voo.tipo==='revoar'?'Revoo':'Voo'} de Linhas de Colheita">✈ ${txt}${extra}</span>`;
+}
+function abrirVoo(){
+  if(ativaC===null||!selTals.length)return;
+  const f=FZ_C[ativaC],tals=selTals.map(i=>f.tals[i]);
+  const semL=tals.filter(t=>t.st==='SEM LINHAS').length;
+  document.getElementById('voo-resumo').textContent=`${f.n} · ${tals.length} talhão(ões): ${tals.map(t=>String(t.id).padStart(2,'0')).join(', ')}`;
+  document.querySelectorAll('input[name="voo-tipo"]').forEach(r=>{r.checked=r.value===(semL===tals.length?'voar':'revoar');});
+  document.getElementById('voo-problema').value='';document.getElementById('voo-pedido-por').value='';
+  document.getElementById('voo-erro').textContent='';
+  const ok=document.getElementById('voo-ok');ok.disabled=false;ok.textContent='Pedir voo';
+  vooTipoMudou();
+  document.getElementById('modal-voo').classList.remove('off');
+}
+function vooTipoMudou(){
+  const tipo=document.querySelector('input[name="voo-tipo"]:checked')?.value;
+  document.getElementById('voo-problema-w').style.display=tipo==='revoar'?'':'none';
+}
+function fecharVoo(){document.getElementById('modal-voo').classList.add('off');}
+async function confirmarVoo(){
+  const tipo=document.querySelector('input[name="voo-tipo"]:checked')?.value;
+  const problema=document.getElementById('voo-problema').value.trim();
+  const pedidoPor=document.getElementById('voo-pedido-por').value.trim();
+  const erro=document.getElementById('voo-erro'),ok=document.getElementById('voo-ok');
+  if(!tipo){erro.textContent='Escolha Voar ou Revoar.';return;}
+  if(tipo==='revoar'&&!problema){erro.textContent='Descreva o que está errado nas linhas.';return;}
+  ok.disabled=true;ok.textContent='Enviando…';
+  const layers=selTals.map(i=>FZ_C[ativaC].tals[i].layer);
+  const {data,error}=await sb.rpc('colheita_pedir_voo',{p_layers:layers,p_tipo:tipo,p_problema:problema||null,p_pedido_por:pedidoPor||null});
+  if(error){erro.textContent=error.message;ok.disabled=false;ok.textContent='Tentar de novo';return;}
+  fecharVoo();selTals=[];
+  const ign=data.ignorados||[];
+  showToast(`${data.criados} pedido(s) de voo`+(ign.length?` · ${ign.length} ignorado(s): ${[...new Set(ign.map(x=>x.motivo))].join('; ')}`:''));
+  await recarregar();
+}
+async function cancelarVoo(){
+  const f=FZ_C[ativaC];
+  const layers=selTals.map(i=>f.tals[i]).filter(t=>VOO_CANCELAVEL.has(t.voo?.status)).map(t=>t.layer);
+  if(!layers.length||!confirm(`Cancelar o pedido de voo de ${layers.length} talhão(ões)?`))return;
+  selTals=[];
+  await rpcAcao(null,'colheita_cancelar_voo',{p_layers:layers},'Pedido de voo cancelado');
+}
+function abrirFila(){
+  const nomeU=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
+  const faz=Object.fromEntries(FZ_C.map(f=>[f.cod,f.n]));
+  const ordem={erro:0,agendando:1,divulgado:2,voado:3,agendado:4,na_fila:5,aguardando_corte:6};
+  const vs=[...VOOS_C].sort((a,b)=>(ordem[a.status]??9)-(ordem[b.status]??9)||String(a.liberar_em||'9').localeCompare(String(b.liberar_em||'9')));
+  document.getElementById('fila-corpo').innerHTML=vs.length?`<table class="fila-tab"><thead><tr>
+      <th>Fazenda</th><th>Talhão</th><th>Pedido</th><th>Situação</th><th>Corte → voa</th><th>Quem pediu</th></tr></thead><tbody>${vs.map(v=>{
+      const cod=String(Math.floor(v.layer/1000)),[cls,txt]=VOO_TXT[v.status]||['',v.status];
+      return`<tr><td><strong>${cod}</strong> ${esc(faz[cod]||'')}</td><td>${v.layer%1000}</td>
+        <td>${v.tipo==='revoar'?'Revoar':'Voar'}${v.problema?`<div style="color:var(--t3);font-size:11px">${esc(v.problema)}</div>`:''}</td>
+        <td><span class="voo-tag ${cls}">${txt}</span>${v.erro?`<div style="color:#c23b3b;font-size:11px">${esc(v.erro)}</div>`:''}</td>
+        <td>${v.data_corte?dataCurta(v.data_corte):'—'} → ${v.liberar_em?dataCurta(v.liberar_em):'—'}</td>
+        <td>${esc(v.pedido_por||'')}<div style="color:var(--t3);font-size:11px">${esc(nomeU[v.apontado_por]||'')} · ${fmtDataHora(v.apontado_em)}</div></td></tr>`;}).join('')}</tbody></table>`
+    :'<div class="sino-vazio">Nenhum pedido de voo ativo.</div>';
+  document.getElementById('modal-fila').classList.remove('off');
+}
+
 async function marcarTipoC(btn,tipo){
   if(ativaC===null||!selTals.length)return;
   const layers=selTals.map(i=>FZ_C[ativaC].tals[i].layer);
@@ -1937,7 +2058,7 @@ function rConsFilters(){
   } else if(cMod==='colheita'){
     const meses=[...new Set(FZ_C.flatMap(f=>f.tals.map(t=>t.mes)))];
     html+=`<select class="cons-sel" onchange="cFilters.status=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todos os status</option><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option></select>`;
+      <option value="">Todos os status</option><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option><option>REVOO</option></select>`;
     html+=`<select class="cons-sel" onchange="cFilters.faz=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${f.n}</option>`).join('')}</select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
@@ -2086,7 +2207,7 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
@@ -2100,11 +2221,12 @@ async function carregarDados(){
       'id,documento,numero,motivo,vigente,criado_em,projetos(id,modulo_id,tipo,cod_faz,nome),'
       +'revisao_arquivos(nome_arquivo,release_url),revisao_origens!revisao_origens_revisao_id_fkey(origem_revisao_id)')
       .order('numero',{ascending:false}).order('id')),
-    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status').order('layer')),
+    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status,voo_id,voo_tipo,voo_status,voo_liberar_em').order('layer')),
     lerTudo(()=>sb.from('fazendas').select('cod_faz,nome').order('cod_faz')),
     sb.rpc('safra_colheita').then(({data,error})=>{if(error)throw error;return data;}),
     lerTudo(()=>sb.from('avisos').select('id,modulo_id,tipo,cod_faz,titulo,texto,atualizado_em').is('resolvido_em',null).order('atualizado_em',{ascending:false})),
     lerTudo(()=>sb.from('avisos_lidos').select('aviso_id').order('aviso_id')),
+    lerTudo(()=>sb.from('colheita_voos').select('id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro').not('status','in','(concluido,cancelado)').order('id')),
   ]);
 
   // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
@@ -2178,7 +2300,7 @@ async function carregarDados(){
     let f=porFazC.get(r.cod_faz);
     if(!f){f={n:nomeFaz[r.cod_faz]||String(r.cod_faz),cod:String(r.cod_faz),fr:'',per:'',desat:false,tals:[],_fr:{}};porFazC.set(r.cod_faz,f);}
     f.tals.push({layer:r.layer,id:r.talhao_num,ha:r.area_ha||0,est:r.estagio||'',st:r.status,tipo:r.tipo_linha,
-                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,corte:r.data_ultimo_corte,
+                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,corte:r.data_ultimo_corte,voo:r.voo_id?{tipo:r.voo_tipo,status:r.voo_status,liberar:r.voo_liberar_em}:null,
                  mes:r.periodo_op?'Período '+r.periodo_op:''});
     if(r.frente)f._fr[r.frente]=(f._fr[r.frente]||0)+1;
     if(r.periodo_op&&!f.per)f.per=String(r.periodo_op);
@@ -2190,6 +2312,7 @@ async function carregarDados(){
     f.fr=Object.entries(f._fr).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).join(', ')||'—';
     f.tals.sort((a,b)=>a.id-b.id);FZ_C.push(f);
   });
+  VOOS_C=voosC;
   const lidosSet=new Set(lidos.map(l=>l.aviso_id));
   AVISOS=avisos.map(a=>({...a,lido:lidosSet.has(a.id)}));
 
