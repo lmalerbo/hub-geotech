@@ -10,7 +10,8 @@
 // Também serve GET /ver?url=...: devolve um .pdf das releases com
 // "Content-Disposition: inline", pro portal de download mostrar o mapa num
 // <iframe> (o GitHub força download e não tem CORS). Só aceita .pdf dos
-// repositórios de arquivos do Hub e dos sistemas antigos.
+// repositórios de arquivos do Hub e dos sistemas antigos (Plantio, Preparo e
+// Expo_safra/Colheita).
 //
 // Guarda só o token do GitHub (secret GH_TOKEN) — nenhuma chave do banco com
 // poder especial. Variáveis: SUPABASE_URL, SUPABASE_ANON_KEY (pública),
@@ -45,7 +46,7 @@ function corsHeaders(req, env) {
 
 async function ver(url, env) {
   const alvo = url.searchParams.get('url') || '';
-  const repos = [env.GH_REPO, 'lmalerbo/project-plantio', 'lmalerbo/project-preparo'];
+  const repos = [env.GH_REPO, 'lmalerbo/project-plantio', 'lmalerbo/project-preparo', 'lmalerbo/Expo_safra'];
   const permitido = repos.some(r => alvo.startsWith(`https://github.com/${r}/releases/download/`))
     && /\.pdf$/i.test(alvo) && !alvo.includes('..');
   if (!permitido) return new Response('Endereço não permitido', { status: 400 });
