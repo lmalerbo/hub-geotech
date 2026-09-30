@@ -53,25 +53,37 @@ def main():
     print(f'Fila atualizada ({mudou} pedido(s) mudaram de situação).')
 
     devidos = hub.rpc('colheita_voos_pegar_devidos', {'p_limite': 100}) or []
+    falhou = False
     if devidos:
         print(f'Agendando {len(devidos)} voo(s) de Linhas de Colheita...')
-        por_chave = {(d['section'], d['land_plot']): d for d in devidos}
-        try:
-            resultados = geomap(env, '/integracao/dronemgmt/linhas-colheita/agendar', {
-                'harvest': devidos[0]['harvest'],
-                'itens': [{'section': d['section'], 'landPlot': d['land_plot']} for d in devidos]})
-        except Exception as e:
-            # Não sabemos o que chegou a ser criado: ficam em "agendando" para conferência.
-            print(f'  ✗ falha ao chamar o GeoMap: {e}')
-            print('  Os pedidos ficaram em "agendando". Confira no Drone MGMT antes de liberar de novo.')
-            sys.exit(1)
-        for res in resultados:
-            d = por_chave.get((res['section'], res['landPlot']))
-            if not d:
+        # Lotes pequenos: se uma chamada cair, só o lote volta para a fila. Voltar
+        # é seguro porque o GeoMap não duplica: se o talhão já tem voo de Linhas de
+        # Colheita ativo na safra (inclusive agendado à mão), devolve o existente.
+        for i in range(0, len(devidos), 10):
+            lote = devidos[i:i + 10]
+            por_chave = {(d['section'], d['land_plot']): d for d in lote}
+            try:
+                resultados = geomap(env, '/integracao/dronemgmt/linhas-colheita/agendar', {
+                    'harvest': lote[0]['harvest'],
+                    'itens': [{'section': d['section'], 'landPlot': d['land_plot']} for d in lote]})
+            except Exception as e:
+                falhou = True
+                print(f'  ✗ falha ao chamar o GeoMap ({e}); {len(lote)} pedido(s) voltam para a fila')
+                requests.patch(f'{hub.url}/colheita_voos', params={'id': f"in.({','.join(str(d['id']) for d in lote)})",
+                               'status': 'eq.agendando'}, headers=hub.headers, json={'status': 'na_fila'}, timeout=60)
                 continue
-            hub.rpc('colheita_voo_agendado', {'p_id': d['id'], 'p_dronemgmt_id': res.get('id'),
-                                              'p_erro': res.get('erro')})
-            print(f"  {d['layer']}: " + (f"agendado ({res['id']})" if not res.get('erro') else f"✗ {res['erro']}"))
+            for res in resultados:
+                d = por_chave.get((res['section'], res['landPlot']))
+                if not d:
+                    continue
+                hub.rpc('colheita_voo_agendado', {'p_id': d['id'], 'p_dronemgmt_id': res.get('id'),
+                                                  'p_erro': res.get('erro')})
+                if res.get('erro'):
+                    print(f"  {d['layer']}: ✗ {res['erro']}")
+                elif res.get('existente'):
+                    print(f"  {d['layer']}: já tinha voo de Linhas de Colheita no Drone MGMT ({res['id']}), ligado ao pedido")
+                else:
+                    print(f"  {d['layer']}: agendado ({res['id']})")
     else:
         print('Nenhum voo com porte para agendar agora.')
 
@@ -85,6 +97,8 @@ def main():
             if a and res.get('controlStatus') is not None:
                 hub.rpc('colheita_voo_situacao', {'p_id': a['id'], 'p_control_status': res['controlStatus']})
     print(f'Situação conferida de {len(ativos)} voo(s) agendado(s)/voado(s).')
+    if falhou:
+        sys.exit(1)
 
 
 if __name__ == '__main__':
