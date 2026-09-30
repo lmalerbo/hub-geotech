@@ -85,6 +85,25 @@ async function subirAsset(env, releaseId, nome, arq) {
   throw falha(`GitHub: falha ao subir ${nome} (${mb} MB): ${ultimo}`, 502);
 }
 
+// Troca um arquivo da release sem janela de perda: sobe o novo com nome
+// temporário, apaga o antigo e renomeia o novo pro nome original (o link
+// público continua o mesmo). Se falhar no meio, o antigo continua lá.
+async function substituirAsset(env, releaseId, antigo, nome, arq) {
+  const novo = await subirAsset(env, releaseId, `novo-${Date.now()}-${nome}`, arq);
+  const del = await github(env, `/releases/assets/${antigo.id}`, { method: 'DELETE' });
+  if (!del.ok && del.status !== 404) {
+    await github(env, `/releases/assets/${novo.id}`, { method: 'DELETE' });
+    throw falha(`GitHub: não foi possível trocar ${nome} (${del.status})`, 502);
+  }
+  const ren = await github(env, `/releases/assets/${novo.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: nome }),
+  });
+  if (!ren.ok) throw falha(`GitHub: arquivo novo enviado mas não renomeado (${ren.status})`, 502);
+  return ren.json();
+}
+
 function json(obj, status, headers) {
   return new Response(JSON.stringify(obj), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
 }
@@ -176,35 +195,48 @@ async function enviar(req, env) {
     }
   }
 
+  // Colheita não tem controle de revisão: sempre a mesma (Rev0), e o arquivo
+  // novo substitui o anterior. O que fica registrado é a nota de cada envio.
+  const colheita = modulo === 'colheita';
   const [prep] = await banco(env, token, 'rpc/preparar_envio', {
     metodo: 'POST',
-    corpo: { p_modulo: modulo, p_cod_faz: codFaz, p_documento: documento, p_nova: nova, p_motivo: motivo },
+    corpo: { p_modulo: modulo, p_cod_faz: codFaz, p_documento: documento,
+             p_nova: colheita ? false : nova, p_motivo: colheita ? null : motivo },
   });
 
-  // Colheita mantém o nome que o campo sempre usou, sem a revisão no nome
+  // Colheita mantém o nome que o campo sempre usou, sem revisão no nome
   // (ex.: 10851_SAO.SEBASTIAO.100_Exp2L.dwg — o GitHub troca espaço por ponto,
-  // como já acontecia no Expo_safra). Como o nome se repete entre revisões,
-  // cada revisão da Colheita vai para uma release própria (colheita-10851,
-  // colheita-10851-rev1, ...) e o histórico não é sobrescrito.
-  const colheita = modulo === 'colheita';
+  // como já acontecia no Expo_safra).
   const base = colheita
     ? `${codFaz}_${nomeFazenda(prep.fazenda)}_${SUFIXO_COLHEITA[documento] || documento}`
     : `${codFaz}_${nomeFazenda(prep.fazenda)}_${prep.marcador}${prep.numero}${prep.sufixo}`;
-  const tag = colheita && prep.numero > 0 ? `${prep.tag}-rev${prep.numero}` : prep.tag;
-  const titulo = `${prep.fazenda} — ${modulo}` + (colheita && prep.numero > 0 ? ` (Rev${prep.numero})` : '');
-  const release = await releaseDaTag(env, tag, titulo);
+  const release = await releaseDaTag(env, prep.tag, `${prep.fazenda} — ${modulo}`);
+  const nomes = exts.map(ext => `${base}.${ext}`);
+  const existentes = nomes.map(n => (release.assets || []).find(a => a.name === n));
+  if (colheita && existentes.some(Boolean) && !(motivo || '').trim()) {
+    throw falha('Informe a nota explicando por que o arquivo está sendo atualizado');
+  }
   const enviados = [];
   for (const [i, arq] of arquivos.entries()) {
-    const nome = `${base}.${exts[i]}`;
-    // Reenvio depois de uma falha: o arquivo com esse nome já é desta revisão.
-    let asset = (release.assets || []).find(a => a.name === nome);
-    if (!asset) {
+    const nome = nomes[i];
+    let asset = existentes[i];
+    if (asset && colheita) {
+      asset = await substituirAsset(env, release.id, asset, nome, arq);
+    } else if (!asset) {
       asset = await subirAsset(env, release.id, nome, arq);
     }
+    // (Plantio/Preparo: asset existente com esse nome = reenvio depois de uma
+    // falha, o arquivo já é desta revisão.)
     await banco(env, token, 'rpc/registrar_arquivo', {
       metodo: 'POST',
       corpo: { p_revisao_id: prep.revisao_id, p_nome: nome, p_url: asset.browser_download_url, p_tamanho: asset.size },
     });
+    if (colheita) {
+      await banco(env, token, 'rpc/colheita_nota_arquivo', {
+        metodo: 'POST',
+        corpo: { p_cod_faz: codFaz, p_nome: nome, p_nota: existentes[i] ? motivo : (motivo || 'primeiro envio') },
+      });
+    }
     enviados.push({ nome, url: asset.browser_download_url });
   }
   return { revisao: `${prep.marcador}${prep.numero}`, arquivos: enviados };

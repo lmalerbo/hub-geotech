@@ -1535,12 +1535,20 @@ function rDetC(){
       </div>`:''}
       <div class="tal-chips">${chips}</div>
       ${form}
-      ${arquivosHtml('colheita',f.cod)}
+      ${arquivosHtml('colheita',f.cod)}${notasHtml(Number(f.cod))}
       ${envio}
     </div>`;
 }
 // ── Regra B: pedidos de voo de Linhas de Colheita ──
 let VOOS_C=[];
+let NOTAS_C={};   // cod_faz → notas de envio de arquivo da Colheita (mais recente primeiro)
+function notasHtml(cod){
+  const ns=NOTAS_C[cod]||[];
+  if(!ns.length)return'';
+  const nomeU=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
+  const linha=n=>`<div class="arq-hist-row">${fmtDataHora(n.criado_em)} · ${esc(nomeU[n.usuario_id]||'—')} · ${esc(n.valor_novo)}</div>`;
+  return`<details class="arq-hist" open><summary>Histórico de atualizações (${ns.length})</summary>${ns.slice(0,30).map(linha).join('')}</details>`;
+}
 const VOO_CANCELAVEL=new Set(['aguardando_corte','na_fila','erro']);
 const VOO_TXT={aguardando_corte:['espera','aguardando corte'],na_fila:['espera','na fila'],agendando:['','agendando'],
   agendado:['','voo agendado'],voado:['','voado'],divulgado:['pronto','linhas prontas'],erro:['erro','erro no voo']};
@@ -2207,7 +2215,7 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC,notasC]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
@@ -2227,6 +2235,7 @@ async function carregarDados(){
     lerTudo(()=>sb.from('avisos').select('id,modulo_id,tipo,cod_faz,titulo,texto,atualizado_em').is('resolvido_em',null).order('atualizado_em',{ascending:false})),
     lerTudo(()=>sb.from('avisos_lidos').select('aviso_id').order('aviso_id')),
     lerTudo(()=>sb.from('colheita_voos').select('id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro').not('status','in','(concluido,cancelado)').order('id')),
+    lerTudo(()=>sb.from('log_auditoria').select('id,entidade_id,valor_novo,usuario_id,criado_em').eq('modulo_id','colheita').eq('campo','arquivo').order('id',{ascending:false})),
   ]);
 
   // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
@@ -2313,6 +2322,8 @@ async function carregarDados(){
     f.tals.sort((a,b)=>a.id-b.id);FZ_C.push(f);
   });
   VOOS_C=voosC;
+  NOTAS_C={};
+  for(const n of notasC)(NOTAS_C[n.entidade_id]??=[]).push(n);
   const lidosSet=new Set(lidos.map(l=>l.aviso_id));
   AVISOS=avisos.map(a=>({...a,lido:lidosSet.has(a.id)}));
 
@@ -2416,6 +2427,25 @@ let ENVIO=null;
 // (ou quando forcarNova); senão completa a vigente (ou abre a Rev0).
 function abrirEnvio(cfg){
   const abertas={};
+  // Colheita não tem controle de revisão: o arquivo novo substitui o anterior
+  // (mesmo nome) e a nota explica o porquê.
+  if(cfg.modulo==='colheita'){
+    const itens=cfg.itens.map(it=>({...it,nova:false,numero:0,feito:false,
+      substitui:temArquivoVigente('colheita',cfg.cod,it.doc,it.ext)}));
+    ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.substitui),colheita:true};
+    document.getElementById('envio-titulo').textContent='Enviar arquivos';
+    document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>`
+      <label class="envio-item">
+        <span class="envio-rot">${it.rotulo}${it.substitui?' <span class="ebadge" style="background:rgba(212,137,10,.14);color:#9a6200">substitui o atual</span>':''}</span>
+        <input type="file" id="envio-arq-${i}" accept=".${it.ext}">
+      </label>`).join('')
+      +`<label class="envio-item"><span class="envio-rot">Nota da atualização${ENVIO.precisaMotivo?' (obrigatória)':' (opcional)'}</span>
+        <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas nos talhões 5 e 6, projeto refeito"></textarea></label>`;
+    document.getElementById('envio-erro').textContent='';
+    const okC=document.getElementById('envio-ok');okC.disabled=false;okC.textContent='Enviar';
+    document.getElementById('modal-envio').classList.remove('off');
+    return;
+  }
   const itens=cfg.itens.map(it=>{
     if(abertas[it.doc]!==undefined)return{...it,nova:false,numero:abertas[it.doc],feito:false};
     const revs=revisoesDe(cfg.modulo,cfg.cod,it.doc),vig=revs.find(r=>r.vigente);
@@ -2450,7 +2480,7 @@ async function confirmarEnvio(){
   const errado=pend.find(x=>!x.arq.name.toLowerCase().endsWith('.'+x.it.ext));
   if(errado){erro.textContent=`${errado.it.rotulo}: selecione um arquivo .${errado.it.ext}.`;return;}
   const motivo=document.getElementById('envio-motivo')?.value.trim()||'';
-  if(ENVIO.precisaMotivo&&!motivo){erro.textContent='Informe o motivo da revisão.';return;}
+  if(ENVIO.precisaMotivo&&!motivo){erro.textContent=ENVIO.colheita?'Escreva a nota explicando por que o arquivo está sendo atualizado.':'Informe o motivo da revisão.';return;}
   ok.disabled=true;ok.textContent='Enviando…';
   const token=(await sb.auth.getSession()).data.session?.access_token;
   try{
