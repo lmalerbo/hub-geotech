@@ -146,6 +146,9 @@ async function releaseDaTag(env, tag, titulo) {
   return r.json();
 }
 
+// Nome dos arquivos da Colheita, no padrão do Expo_safra.
+const SUFIXO_COLHEITA = { exp1l: 'Exp1L', exp2l: 'Exp2L', mapa: 'Exp.Mapa' };
+
 async function enviar(req, env) {
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) throw falha('Faça login no Hub para enviar arquivos', 401);
@@ -178,8 +181,18 @@ async function enviar(req, env) {
     corpo: { p_modulo: modulo, p_cod_faz: codFaz, p_documento: documento, p_nova: nova, p_motivo: motivo },
   });
 
-  const base = `${codFaz}_${nomeFazenda(prep.fazenda)}_${prep.marcador}${prep.numero}${prep.sufixo}`;
-  const release = await releaseDaTag(env, prep.tag, `${prep.fazenda} — ${modulo}`);
+  // Colheita mantém o nome que o campo sempre usou, sem a revisão no nome
+  // (ex.: 10851_SAO.SEBASTIAO.100_Exp2L.dwg — o GitHub troca espaço por ponto,
+  // como já acontecia no Expo_safra). Como o nome se repete entre revisões,
+  // cada revisão da Colheita vai para uma release própria (colheita-10851,
+  // colheita-10851-rev1, ...) e o histórico não é sobrescrito.
+  const colheita = modulo === 'colheita';
+  const base = colheita
+    ? `${codFaz}_${nomeFazenda(prep.fazenda)}_${SUFIXO_COLHEITA[documento] || documento}`
+    : `${codFaz}_${nomeFazenda(prep.fazenda)}_${prep.marcador}${prep.numero}${prep.sufixo}`;
+  const tag = colheita && prep.numero > 0 ? `${prep.tag}-rev${prep.numero}` : prep.tag;
+  const titulo = `${prep.fazenda} — ${modulo}` + (colheita && prep.numero > 0 ? ` (Rev${prep.numero})` : '');
+  const release = await releaseDaTag(env, tag, titulo);
   const enviados = [];
   for (const [i, arq] of arquivos.entries()) {
     const nome = `${base}.${exts[i]}`;
