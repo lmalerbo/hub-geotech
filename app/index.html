@@ -535,7 +535,34 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .envio-drop-log .ok{color:var(--plantio)}
 .envio-drop-log .nao{color:#c23b3b}
 .envio-rot{font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px}
-.modal-botoes{display:flex;justify-content:flex-end;gap:10px;align-items:center}
+.modal-botoes{display:flex;justify-content:flex-end;gap:10px;align-items:center;margin-top:4px}
+/* Botões das janelas: mesma altura para o secundário e o principal. */
+.modal-botoes .btn-retro{height:42px;padding:0 18px;font-size:13px;font-weight:600;border-radius:var(--r-md);border:1.5px solid var(--bd2);color:var(--t2)}
+.modal-botoes .btn-retro:hover{border-color:var(--t2);color:var(--t1);background:var(--s2)}
+.modal-botoes .btn-acao{height:42px;width:auto;padding:0 22px;border-radius:var(--r-md)}
+.modal-botoes button:focus{outline:none}
+.modal-botoes button:focus-visible{outline:3px solid rgba(32,38,46,.18);outline-offset:2px}
+#envio-corpo{display:flex;flex-direction:column;gap:8px}
+/* Cartão de arquivo (substitui o <input type=file> nativo) */
+.arq-slot{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1.5px dashed var(--bd2);border-radius:12px;background:var(--sf);cursor:pointer;transition:border-color var(--tf),background var(--tf)}
+.arq-slot:hover,.arq-slot.sobre{border-color:var(--colheita);background:rgba(212,137,10,.05)}
+.arq-slot.ok{border-style:solid;border-color:rgba(22,167,107,.45);background:rgba(22,167,107,.05)}
+.arq-slot input{display:none}
+.arq-tipo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
+.arq-tipo.dwg{background:rgba(160,120,64,.14);color:#a07840}
+.arq-tipo.zip{background:rgba(37,102,232,.12);color:#2566e8}
+.arq-tipo.pdf{background:rgba(224,82,82,.12);color:#d64545}
+.arq-slot-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.arq-slot-rot{font-size:12.5px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.arq-slot-nome{font-size:11.5px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arq-slot.ok .arq-slot-nome{color:var(--t2)}
+.arq-slot-btn{height:32px;padding:0 14px;border-radius:8px;border:1.5px solid var(--bd2);background:var(--sf);font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;flex-shrink:0;white-space:nowrap}
+.arq-slot-btn:hover{border-color:var(--t2);color:var(--t1)}
+.arq-slot-x{width:30px;height:30px;border-radius:50%;border:none;background:none;color:var(--t3);cursor:pointer;display:none;align-items:center;justify-content:center;flex-shrink:0}
+.arq-slot.ok .arq-slot-x{display:flex}
+.arq-slot-x:hover{background:var(--s2);color:#c23b3b}
+.envio-nota-rot{font-size:12.5px;font-weight:600;color:var(--t2);margin-top:4px}
+.confirma-txt{font-size:13px;color:var(--t2);line-height:1.55;white-space:pre-line}
 .flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -603,6 +630,17 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
     <div class="modal-t">Fila de voos — Linhas de Colheita</div>
     <div class="fila-scroll" id="fila-corpo"></div>
     <div class="modal-botoes"><button class="btn-retro" onclick="document.getElementById('modal-fila').classList.add('off')">Fechar</button></div>
+  </div>
+</div>
+
+<div class="modal-fundo off" id="modal-confirma">
+  <div class="modal-caixa" style="width:min(420px,92vw)">
+    <div class="modal-t" id="confirma-t">Confirmar</div>
+    <div class="confirma-txt" id="confirma-txt"></div>
+    <div class="modal-botoes">
+      <button class="btn-retro" id="confirma-nao">Cancelar</button>
+      <button class="btn-acao" id="confirma-sim" style="background:var(--t1)">Confirmar</button>
+    </div>
   </div>
 </div>
 
@@ -1321,9 +1359,9 @@ function acaoPlantio(f){
       `<button class="btn-retro" onclick="retroPlantio(this,${cod},'${s.l}')">${s.l}</button>`).join('')}</div>`;
   return html;
 }
-function retroPlantio(btn,cod,para){
+async function retroPlantio(btn,cod,para){
   const aviso=para==='Aguard. Map.'?'\n\nIsso também volta o mapeamento para "Não".':'';
-  if(!confirm(`Retroceder os talhões desta fazenda para "${para}"?${aviso}`))return;
+  if(!await confirmar(`Os talhões desta fazenda voltam para "${para}".${aviso}`,{titulo:'Retroceder etapa',ok:'Retroceder',perigo:true}))return;
   rpcAcao(btn,'plantio_retroceder',{p_cod_faz:cod,p_para:para},`Retrocedido para ${para}`);
 }
 
@@ -1443,8 +1481,8 @@ function concluirPreparo(btn,cod,ordem){
   if(ordem===3&&ta)args.p_observacao=ta.value;
   rpcAcao(btn,'preparo_concluir_etapa',args,`${ET_P[ordem-1].l} concluída`);
 }
-function reabrirPreparo(btn,cod,ordem,nome){
-  if(!confirm(`Reabrir "${nome}"? As etapas seguintes também voltam a ficar pendentes.`))return;
+async function reabrirPreparo(btn,cod,ordem,nome){
+  if(!await confirmar(`As etapas seguintes a "${nome}" também voltam a ficar pendentes.`,{titulo:`Reabrir "${nome}"`,ok:'Reabrir',perigo:true}))return;
   rpcAcao(btn,'preparo_reabrir_etapa',{p_cod_faz:cod,p_ordem:ordem},`${nome} reaberta`);
 }
 
@@ -1607,7 +1645,7 @@ async function confirmarVoo(){
 async function cancelarVoo(){
   const f=FZ_C[ativaC];
   const layers=selTals.map(i=>f.tals[i]).filter(t=>VOO_CANCELAVEL.has(t.voo?.status)).map(t=>t.layer);
-  if(!layers.length||!confirm(`Cancelar o pedido de voo de ${layers.length} talhão(ões)?`))return;
+  if(!layers.length||!await confirmar(`O pedido de voo de ${layers.length} talhão(ões) será cancelado.`,{titulo:'Cancelar pedido de voo',ok:'Cancelar pedido',perigo:true}))return;
   selTals=[];
   await rpcAcao(null,'colheita_cancelar_voo',{p_layers:layers},'Pedido de voo cancelado');
 }
@@ -2447,13 +2485,11 @@ function abrirEnvio(cfg){
       substitui:temArquivoVigente('colheita',cfg.cod,it.doc,it.ext)}));
     ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.substitui),colheita:true};
     document.getElementById('envio-titulo').textContent='Enviar arquivos';
-    document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>`
-      <label class="envio-item">
-        <span class="envio-rot">${it.rotulo}${it.substitui?' <span class="ebadge" style="background:rgba(212,137,10,.14);color:#9a6200">substitui o atual</span>':''}</span>
-        <input type="file" id="envio-arq-${i}" accept=".${it.ext}">
-      </label>`).join('')
-      +`<label class="envio-item"><span class="envio-rot">Nota da atualização${ENVIO.precisaMotivo?' (obrigatória)':' (opcional)'}</span>
-        <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas nos talhões 5 e 6, projeto refeito"></textarea></label>`;
+    document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i,
+        it.substitui?'<span class="ebadge" style="background:rgba(212,137,10,.14);color:#9a6200">substitui o atual</span>':'')).join('')
+      +`<div class="envio-nota-rot">Nota da atualização${ENVIO.precisaMotivo?' (obrigatória)':' (opcional)'}</div>
+        <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas nos talhões 5 e 6, projeto refeito"></textarea>`;
+    prepararSlots();
     document.getElementById('envio-erro').textContent='';
     const okC=document.getElementById('envio-ok');okC.disabled=false;okC.textContent='Enviar';
     document.getElementById('modal-envio').classList.remove('off');
@@ -2471,13 +2507,11 @@ function abrirEnvio(cfg){
   ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.nova&&it.numero>0)};
   const marc=it=>(DOC_TIPOS.find(t=>t.codigo===it.doc&&t.modulo_id===cfg.modulo)?.marcador||'Rev')+it.numero;
   document.getElementById('envio-titulo').textContent=cfg.forcarNova?'Nova revisão':'Enviar arquivos';
-  document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>`
-    <label class="envio-item">
-      <span class="envio-rot">${it.rotulo} <span class="ebadge" style="background:var(--s2);color:var(--t2)">${marc(it)}</span></span>
-      <input type="file" id="envio-arq-${i}" accept=".${it.ext}">
-    </label>`).join('')
-    +(ENVIO.precisaMotivo?`<label class="envio-item"><span class="envio-rot">Motivo da revisão (obrigatório)</span>
-      <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas no talhão 12"></textarea></label>`:'');
+  document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i,
+      `<span class="ebadge" style="background:var(--s2);color:var(--t2)">${marc(it)}</span>`)).join('')
+    +(ENVIO.precisaMotivo?`<div class="envio-nota-rot">Motivo da revisão (obrigatório)</div>
+      <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas no talhão 12"></textarea>`:'');
+  prepararSlots();
   document.getElementById('envio-erro').textContent='';
   const ok=document.getElementById('envio-ok');ok.disabled=false;ok.textContent='Enviar';
   document.getElementById('modal-envio').classList.remove('off');
@@ -2493,6 +2527,57 @@ function campoDoArquivo(nome){
   const n=nome.toUpperCase().replace(/\s+/g,'');
   return candidatos.find(x=>(x.it.doc==='exp1l'&&/1L\b|1L[._-]|EXP1L/.test(n))||(x.it.doc==='exp2l'&&/2L\b|2L[._-]|EXP2L/.test(n)));
 }
+function slotHtml(it,i,selo){
+  return`<div class="arq-slot" id="envio-slot-${i}" onclick="if(!event.target.closest('.arq-slot-x'))document.getElementById('envio-arq-${i}').click()">
+    <div class="arq-tipo ${it.ext}">${it.ext.toUpperCase()}</div>
+    <div class="arq-slot-txt">
+      <div class="arq-slot-rot">${esc(it.rotulo.replace(/\s*\(\.\w+\)$/,''))}${selo||''}</div>
+      <div class="arq-slot-nome" id="envio-nome-${i}">Nenhum arquivo · arraste aqui ou clique</div>
+    </div>
+    <button type="button" class="arq-slot-x" title="Remover" onclick="limparSlot(${i})"><span class="ico" style="font-size:18px">close</span></button>
+    <span class="arq-slot-btn">Escolher</span>
+    <input type="file" id="envio-arq-${i}" accept=".${it.ext}" onchange="atualizarSlot(${i})" onclick="event.stopPropagation()">
+  </div>`;
+}
+function atualizarSlot(i){
+  const f=document.getElementById('envio-arq-'+i).files[0];
+  document.getElementById('envio-slot-'+i).classList.toggle('ok',!!f);
+  document.querySelector('#envio-slot-'+i+' .arq-slot-btn').textContent=f?'Trocar':'Escolher';
+  document.getElementById('envio-nome-'+i).textContent=f?`${f.name} · ${(f.size/1048576).toFixed(1)} MB`:'Nenhum arquivo · arraste aqui ou clique';
+}
+function limparSlot(i){
+  document.getElementById('envio-arq-'+i).value='';
+  atualizarSlot(i);
+}
+// Soltar um arquivo direto num cartão: vale só para aquele campo.
+function prepararSlots(){
+  document.querySelectorAll('#envio-corpo .arq-slot').forEach((el,i)=>{
+    ['dragenter','dragover'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();el.classList.add('sobre');}));
+    ['dragleave','drop'].forEach(ev=>el.addEventListener(ev,()=>el.classList.remove('sobre')));
+    el.addEventListener('drop',e=>{
+      e.preventDefault();e.stopPropagation();
+      if(e.dataTransfer.files.length>1){distribuirArquivos(e.dataTransfer.files);return;}
+      const arq=e.dataTransfer.files[0];if(!arq)return;
+      if(!arq.name.toLowerCase().endsWith('.'+ENVIO.itens[i].ext)){
+        document.getElementById('envio-drop-log').innerHTML=`<span class="nao">✗ ${esc(arq.name)}: este campo pede .${ENVIO.itens[i].ext}</span>`;return;}
+      const dt=new DataTransfer();dt.items.add(arq);document.getElementById('envio-arq-'+i).files=dt.files;atualizarSlot(i);
+    });
+  });
+}
+// Confirmação no visual do Hub (no lugar do confirm() do navegador).
+function confirmar(texto,{titulo='Confirmar',ok='Confirmar',perigo=false}={}){
+  return new Promise(resolve=>{
+    const m=document.getElementById('modal-confirma');
+    document.getElementById('confirma-t').textContent=titulo;
+    document.getElementById('confirma-txt').textContent=texto;
+    const sim=document.getElementById('confirma-sim'),nao=document.getElementById('confirma-nao');
+    sim.textContent=ok;sim.style.background=perigo?'#c23b3b':'var(--t1)';
+    const fim=v=>{m.classList.add('off');sim.onclick=nao.onclick=null;resolve(v);};
+    sim.onclick=()=>fim(true);nao.onclick=()=>fim(false);
+    m.classList.remove('off');sim.focus();
+  });
+}
+
 function distribuirArquivos(lista){
   if(!ENVIO)return;
   const log=document.getElementById('envio-drop-log');
@@ -2503,7 +2588,7 @@ function distribuirArquivos(lista){
     const alvo=campoDoArquivo(arq.name);
     if(!alvo){linhas.push(`<span class="nao">✗ ${esc(arq.name)}: não corresponde a nenhum arquivo pedido aqui</span>`);continue;}
     const dt=new DataTransfer();dt.items.add(arq);
-    document.getElementById('envio-arq-'+alvo.i).files=dt.files;
+    document.getElementById('envio-arq-'+alvo.i).files=dt.files;atualizarSlot(alvo.i);
     linhas.push(`<span class="ok">✓ ${esc(arq.name)} → ${esc(alvo.it.rotulo)}</span>`);
   }
   log.innerHTML=linhas.join('');
