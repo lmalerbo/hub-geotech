@@ -59,7 +59,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .sb{position:fixed;top:20px;left:20px;bottom:20px;width:var(--sb-w);border-radius:18px;background:var(--sf);box-shadow:var(--sh-md);overflow:hidden;overflow-y:auto;transition:width .4s var(--sp);display:flex;flex-direction:column;z-index:50;will-change:width}
 .sb:hover{width:246px}
 .sb::-webkit-scrollbar{display:none}
-.sb-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;flex-shrink:0}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px 15px;flex-shrink:0}
 .sb-bname{font-size:14px;font-weight:700;white-space:nowrap;opacity:0;transition:opacity var(--tf)}
 .sb:hover .sb-bname{opacity:1}
 .sb-nav{flex:1;display:flex;flex-direction:column;gap:3px;padding:0 10px;overflow:hidden;min-height:0}
@@ -102,10 +102,11 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .gt-add-inner .ico{font-size:32px;opacity:.3}
 .gt-add-inner span{font-size:12.5px;font-weight:500}
 .sb-bot{padding:10px;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
-.urow{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;background:var(--s2);overflow:hidden;flex-shrink:0}
+.urow{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 5px;border-radius:12px;background:var(--s2);overflow:hidden;flex-shrink:0}
 .av{width:30px;height:30px;border-radius:50%;background:var(--plantio);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .av.sm{width:24px;height:24px;font-size:10px}
-.uinfo{flex:1;min-width:0}
+.uinfo{flex:1;min-width:0;transition:opacity var(--tf)}
+.sb:not(:hover) .uinfo,.sb:not(:hover) .btn-out{opacity:0;pointer-events:none}
 .uname{font-size:12px;font-weight:600;white-space:nowrap}
 .urole{font-size:10.5px;color:var(--t3);white-space:nowrap}
 .btn-out{width:26px;height:26px;border-radius:7px;border:none;background:transparent;color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--tb),color var(--tb);flex-shrink:0}
@@ -154,6 +155,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .dash-greeting-sub{font-size:12px;color:var(--t3);margin-top:2px}
 .dash-meta-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .dash-meta-card{background:var(--sf);border-radius:var(--r-md);padding:13px 16px;box-shadow:var(--sh-sm)}
+.dash-meta-val small{font-size:.55em;font-weight:600;opacity:.7}
 .dash-meta-val{font-size:23px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:3px}
 .dash-meta-lbl{font-size:11px;color:var(--t3);font-weight:500}
 .dash-mod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -190,7 +192,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .fcard.on{border-color:currentColor}
 .finfo{flex:1;min-width:0}
 .fnome{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fsub{font-size:11px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:5px}
+.fsub{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsub .fcod{margin-right:2px}
 .fcod{font-size:10px;font-weight:700;letter-spacing:.6px;color:var(--t3)}
 .ebadge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;transition:background var(--tb),color var(--tb)}
 .dempty{background:var(--sf);border-radius:16px;padding:56px 20px;text-align:center;color:var(--t3);box-shadow:var(--sh-sm)}
@@ -294,6 +297,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .col-tipo:disabled{opacity:.5;cursor:default}
 .col-desfazer{background:none;border:none;font-family:'Poppins',sans-serif;font-size:11.5px;color:var(--t3);cursor:pointer;text-decoration:underline}
 .col-desat{display:flex;gap:8px;align-items:flex-start;background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.25);color:#b43c3c;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px}
+.acao-lado{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.acao-lado .btn-acao{width:auto;flex:1;min-width:220px;height:42px}
 .col-sel-hint{font-size:12px;color:var(--t3);text-align:center;padding:14px 0}
 
 /* ── PORTAL ──────────────────────────────────────────────── */
@@ -387,7 +392,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .usr-card{background:var(--sf);border-radius:12px;padding:13px 16px;box-shadow:var(--sh-sm);display:flex;align-items:center;gap:12px;cursor:pointer;transition:box-shadow var(--tb),border-color var(--tb),transform var(--tf);border:2px solid transparent;will-change:transform}
 .usr-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
 .usr-card.on{border-color:var(--plantio)}
-.usr-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0}
+.usr-av{background:var(--plantio);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0}
 .usr-info{flex:1;min-width:0}
 .usr-nome{font-size:13px;font-weight:600}
 .usr-email{font-size:11px;color:var(--t3);margin-top:1px}
@@ -441,6 +446,47 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .cfg-panel{display:none;flex-direction:column;gap:10px}
 .cfg-panel.on{display:flex;animation:fin .2s var(--sp)}
 .cfg-card{background:var(--sf);border-radius:14px;padding:18px 20px;box-shadow:var(--sh-sm)}
+.cfg-body{display:flex;flex-direction:column;gap:12px}
+.usr-txt{flex:1;min-width:0}
+.usr-nome{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.usr-mail{font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr-chips{display:flex;gap:4px;flex-shrink:0}
+.usr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.usr-dot.ok{background:var(--plantio)}.usr-dot.erro{background:#e05252}.usr-dot.espera{background:#d4890a}
+.usr-topo{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.usr-av.grande{width:48px;height:48px;font-size:16px}
+.usr-titulo{font-size:15px;font-weight:700;color:var(--t1)}
+.usr-sit{font-size:11.5px;font-weight:600}
+.usr-sit.ok{color:var(--plantio)}.usr-sit.erro{color:#c23b3b}.usr-sit.espera{color:#9a6200}
+.usr-form{display:flex;flex-direction:column;gap:12px}
+.usr-form>label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--t2)}
+.usr-form>label>span,.usr-admin span{font-size:11px;font-weight:400;color:var(--t3)}
+.usr-form .cfg-inp{width:100%}
+.seg{display:inline-flex;background:var(--s2);border-radius:10px;padding:3px;gap:2px;width:fit-content}
+.seg button{border:none;background:none;padding:6px 16px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;color:var(--t3);cursor:pointer}
+.seg button.on{background:var(--sf);color:var(--t1);box-shadow:var(--sh-sm)}
+.usr-mods{display:flex;gap:8px;flex-wrap:wrap}
+.usr-mod{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--bd2);border-radius:10px;font-size:12.5px;font-weight:500;color:var(--t1);cursor:pointer}
+.usr-mod:has(input:checked){border-color:var(--plantio);background:rgba(22,167,107,.06)}
+.usr-admin{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--t1)}
+.usr-nota{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:10px;padding:10px 12px;margin-top:12px}
+.usr-nota .ico{font-size:16px}
+.ferr-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ferr-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--t2)}
+.ferr-form label span{font-weight:400;color:var(--t3);font-size:11px}
+.ferr-form .largo{grid-column:1/-1}
+.ferr-form .cfg-inp{width:100%}
+.ferr-add{border:2px dashed var(--bd2);box-shadow:none;background:transparent;display:flex;align-items:center;gap:8px;color:var(--t3);font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;width:100%}
+.ferr-add:hover{color:var(--t1);border-color:var(--t3)}
+.gt-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:14px}
+.gt-nome{font-size:15px;font-weight:700;margin-bottom:6px}
+.gt-desc{font-size:12.5px;color:var(--t2);line-height:1.55;flex:1}
+.gt-rodape{margin-top:16px}
+.gt-abrir{height:40px;width:auto;padding:0 18px;display:inline-flex;text-decoration:none;color:#fff}
+.gt-semurl{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t3)}
+.gt-semurl .ico{font-size:16px}
+.gt-add{border:2px dashed var(--bd2);box-shadow:none;background:transparent;align-items:center;justify-content:center;gap:8px;color:var(--t3);font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;min-height:180px}
+.gt-add:hover{color:var(--t1);border-color:var(--t3)}
 .cfg-card-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .cfg-card-t .ico{font-size:15px}
 .cfg-sep{height:1px;background:var(--bd);margin:10px 0}
@@ -657,15 +703,15 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       <button class="ni" onclick="trocar('plantio',this)"><span class="ico ni-ico">eco</span><span class="ni-lbl">Plantio</span></button>
       <button class="ni" onclick="trocar('colheita',this)"><span class="ico ni-ico">agriculture</span><span class="ni-lbl">Colheita</span></button>
       <button class="ni" onclick="trocar('preparo',this)"><span class="ico ni-ico">construction</span><span class="ni-lbl">Preparo</span></button>
-      <button class="ni dim"><span class="ico ni-ico">phone_iphone</span><span class="ni-lbl">Portal Mobile<span class="soon">em breve</span></span></button>
+      <a class="ni" href="portal.html" target="_blank" rel="noopener" style="text-decoration:none"><span class="ico ni-ico">phone_iphone</span><span class="ni-lbl">Portal de downloads<span class="ico" style="font-size:14px">open_in_new</span></span></a>
       <button class="ni" onclick="trocar('consultas',this)"><span class="ico ni-ico">table_view</span><span class="ni-lbl">Consultas</span></button>
       <div class="sep"></div>
-      <button class="ni dim"><span class="ico ni-ico">water_drop</span><span class="ni-lbl">Irrigação<span class="soon">em breve</span></span></button>
       <button class="ni" onclick="trocar('drone',this)"><span class="ico ni-ico">flight</span><span class="ni-lbl">Drone</span></button>
       <div class="sep"></div>
       <button class="ni" onclick="trocar('geotech',this)"><span class="ico ni-ico">apps</span><span class="ni-lbl" style="display:flex;align-items:center;gap:6px">Ferramentas<span style="font-size:9px;font-weight:700;background:rgba(91,110,232,.12);color:#5b6ee8;border-radius:20px;padding:1px 6px;white-space:nowrap">BETA</span></span></button>
     </nav>
     <div class="sb-bot">
+      <button class="ni" onclick="trocar('usuarios',this)"><span class="ico ni-ico">group</span><span class="ni-lbl">Usuários</span></button>
       <button class="ni" onclick="trocar('config',this)"><span class="ico ni-ico">settings</span><span class="ni-lbl">Configurações</span></button>
       <div class="urow">
         <div class="av" id="sb-av"></div>
@@ -680,7 +726,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       <div class="tbl">
         <span class="tb-mod" id="tb-mod">Dashboard</span>
         <span class="tb-sep">/</span>
-        <span class="tb-tit" id="tb-tit">Visão geral</span>
+        <span class="tb-tit" id="tb-tit">Visão geral da safra</span>
       </div>
       <div class="tb-dir">
         <button class="sino" id="sino" onclick="alternarSino(event)" aria-label="Avisos"><span class="ico">notifications</span></button>
@@ -812,212 +858,52 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
         </div>
       </div>
 
-      <!-- HUB GEOTECH -->
+      <!-- FERRAMENTAS -->
       <div id="v-geotech" class="view">
         <div class="gt-header">
           <div>
             <div class="gt-title">Ferramentas</div>
-            <div class="gt-sub">Ferramentas de geotecnologia integradas ao fluxo agroindustrial</div>
+            <div class="gt-sub">Sistemas de geotecnologia usados junto com o Hub</div>
           </div>
         </div>
         <div class="gt-grid" id="gt-grid"></div>
       </div>
 
-      <!-- USUÁRIOS -->
+      <!-- USUÁRIOS (só admin) -->
       <div id="v-usuarios" class="view">
         <div class="pgrid">
           <div>
             <div class="usr-header">
-              <div class="sec-h" style="margin:0">Usuários</div>
-              <button class="btn-add-usr" onclick="selUsr(-1)"><span class="ico">person_add</span>Novo usuário</button>
+              <div class="sec-h" style="margin:0">Acessos ao Hub</div>
+              <button class="btn-add-usr" onclick="novoUsr()"><span class="ico">person_add</span>Novo acesso</button>
             </div>
-            <div class="usr-list" id="usr-list"></div>
+            <div class="usr-list" id="usr-list"><div class="col-sel-hint">Carregando…</div></div>
           </div>
           <div>
-            <div class="sec-h" id="dsh-u" style="visibility:hidden">Permissões</div>
-            <div id="dempty-u" class="dempty"><span class="ico">manage_accounts</span><p>Selecione um usuário para editar permissões</p></div>
+            <div class="sec-h" id="dsh-u" style="visibility:hidden">Acesso</div>
+            <div id="dempty-u" class="dempty"><span class="ico">manage_accounts</span><p>Selecione uma pessoa para ver ou alterar o acesso</p></div>
             <div id="dpanel-u" style="display:none"></div>
           </div>
         </div>
       </div>
 
-      <!-- CONFIGURAÇÕES -->
+      <!-- CONFIGURAÇÕES (só admin) -->
       <div id="v-config" class="view">
         <div class="cfg-layout">
-          <div class="cfg-nav">
-            <button class="cfg-cat on" onclick="cfgTab('geral',this)"><span class="ico">person</span>Geral</button>
-            <button class="cfg-cat" onclick="cfgTab('plantio',this)"><span class="ico" style="color:var(--plantio)">eco</span>Plantio<span class="cfg-dot" style="background:var(--plantio)"></span></button>
-            <button class="cfg-cat" onclick="cfgTab('colheita',this)"><span class="ico" style="color:var(--colheita)">agriculture</span>Colheita<span class="cfg-dot" style="background:var(--colheita)"></span></button>
-            <button class="cfg-cat" onclick="cfgTab('preparo',this)"><span class="ico" style="color:var(--preparo)">construction</span>Preparo<span class="cfg-dot" style="background:var(--preparo)"></span></button>
-            <button class="cfg-cat" onclick="cfgTab('portal',this)"><span class="ico">phone_iphone</span>Portal Mobile</button>
-            <button class="cfg-cat" onclick="cfgTab('extras',this)"><span class="ico" style="color:#5b6ee8">apps</span>Ferramentas</button>
+          <div class="cfg-side">
+            <button class="cfg-cat on" onclick="cfgTab('geral',this)"><span class="ico">tune</span>Geral</button>
+            <button class="cfg-cat" onclick="cfgTab('fontes',this)"><span class="ico">database</span>Fontes de dados</button>
+            <button class="cfg-cat" onclick="cfgTab('ferramentas',this)"><span class="ico">apps</span>Ferramentas</button>
+            <button class="cfg-cat" onclick="cfgTab('portal',this)"><span class="ico">phone_iphone</span>Portal de downloads</button>
           </div>
           <div class="cfg-body">
-
-            <!-- GERAL -->
-            <div id="cfg-geral" class="cfg-panel on">
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">person</span>Perfil</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Nome</div></div><input class="cfg-inp w-md" value="Leonardo Malerbo"></div>
-              </div>
-              <div class="cfg-card" style="padding-bottom:8px">
-                <div class="cfg-card-t"><span class="ico">manage_accounts</span>Acesso</div>
-                <div class="mgr-card" style="margin-bottom:0;box-shadow:none;padding:10px 2px;background:transparent">
-                  <div class="mgr-ico" style="background:#5b6ee8"><span class="ico">group</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Gerenciar Usuários</div><div class="mgr-desc">Perfis, papéis e permissões de todos os módulos</div></div>
-                  <button class="btn-mgr" style="background:var(--t1)" onclick="trocar('usuarios',null)"><span class="ico">arrow_forward</span>Acessar</button>
-                </div>
-              </div>
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">settings</span>Sistema</div>
-                <div class="cfg-row">
-                  <div class="cfg-row-l"><div class="cfg-row-lbl">Safra início</div><div class="cfg-row-sub">Compartilhado entre todos os módulos</div></div>
-                  <input class="cfg-inp w-md" value="01/03/2026" id="cfg-safra-ini">
-                </div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row">
-                  <div class="cfg-row-l"><div class="cfg-row-lbl">Safra fim</div></div>
-                  <input class="cfg-inp w-md" value="01/03/2027" id="cfg-safra-fim">
-                </div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row">
-                  <div class="cfg-row-l"><div class="cfg-row-lbl">Ciclo ativo</div></div>
-                  <span class="cfg-chip" style="background:rgba(22,167,107,.12);color:var(--plantio)" id="cfg-ciclo-chip">—</span>
-                </div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Rollback de etapas habilitado</div><div class="cfg-row-sub">Permite reverter etapas já concluídas</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Release automático ao concluir</div><div class="cfg-row-sub">Aplica-se a Plantio e Preparo</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-              </div>
-              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
-            </div>
-
-            <!-- PLANTIO -->
-            <div id="cfg-plantio" class="cfg-panel">
-              <div class="mgr-section">
-                <div class="mgr-section-lbl">Operações</div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:var(--plantio)"><span class="ico">download_for_offline</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Importar Demanda</div><div class="mgr-desc">Atualizar base de talhões a partir da Sequência de Plantio</div></div>
-                  <button class="btn-mgr" style="background:var(--plantio)" onclick="showToast('Importar Demanda — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
-                </div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:#2566e8"><span class="ico">sync</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Sincronizar Planilha</div><div class="mgr-desc">Instalar scripts e sincronizar com pasta de rede</div></div>
-                  <button class="btn-mgr" style="background:#2566e8" onclick="showToast('Sincronizar Planilha — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
-                </div>
-              </div>
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">tune</span>Configurações</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Excluir prefixo COD_FAZ</div><div class="cfg-row-sub">Fazendas administrativas excluídas da importação</div></div><input class="cfg-inp w-sm" value="20"></div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Sist. Conser. automático</div><div class="cfg-row-sub">Recebem mapeamento='Sim' sem aprovação manual</div></div><input class="cfg-inp w-lg" value="Base Larga, Livre"></div>
-              </div>
-              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
-            </div>
-
-            <!-- COLHEITA -->
-            <div id="cfg-colheita" class="cfg-panel">
-              <div class="mgr-section">
-                <div class="mgr-section-lbl">Operações</div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:var(--colheita)"><span class="ico">database</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Atualizar Base</div><div class="mgr-desc">Base ICOL e fazendas</div></div>
-                  <button class="btn-mgr" style="background:var(--colheita)" onclick="showToast('Atualizar Base — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
-                </div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:#2566e8"><span class="ico">upload_file</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Atualizar Projetos</div><div class="mgr-desc">Reenviar arquivos .dwg/.zip de fazendas já consolidadas</div></div>
-                  <button class="btn-mgr" style="background:#2566e8" onclick="showToast('Atualizar Projetos — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
-                </div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:#e05252"><span class="ico">flight</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Voo (dronemgmt)</div><div class="mgr-desc">Status de voo dos talhões Sem Linhas (Falha Soca)</div></div>
-                  <button class="btn-mgr" style="background:#e05252" onclick="showToast('Voo DroneMgmt — em breve no Hub Geotech')"><span class="ico">open_in_new</span>Abrir</button>
-                </div>
-              </div>
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">tune</span>Configurações</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Excluir prefixos COD_FAZ</div></div><input class="cfg-inp w-sm" value="20, 21"></div>
-              </div>
-              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
-            </div>
-
-            <!-- PREPARO -->
-            <div id="cfg-preparo" class="cfg-panel">
-              <div class="mgr-section">
-                <div class="mgr-section-lbl">Operações</div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:var(--preparo)"><span class="ico">database</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Atualizar Base</div><div class="mgr-desc">Base de preparo e fazendas</div></div>
-                  <button class="btn-mgr" style="background:var(--preparo)" onclick="showToast('Atualizar Base — em breve no Hub Geotech')"><span class="ico">play_arrow</span>Executar</button>
-                </div>
-                <div class="mgr-card">
-                  <div class="mgr-ico" style="background:#e05252"><span class="ico">flight</span></div>
-                  <div class="mgr-body"><div class="mgr-name">Voo (dronemgmt)</div><div class="mgr-desc">Status de voo dos talhões</div></div>
-                  <button class="btn-mgr" style="background:#e05252" onclick="showToast('Voo DroneMgmt — em breve no Hub Geotech')"><span class="ico">open_in_new</span>Abrir</button>
-                </div>
-              </div>
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">tune</span>Configurações</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Projetos de voo relevantes</div><div class="cfg-row-sub">PREPARO_PROJETOS — filtro aplicado no sync dronemgmt</div></div></div>
-                <div style="display:flex;flex-direction:column;gap:4px;padding:6px 0">
-                  <div class="cfg-row" style="padding:2px 0"><div class="cfg-row-l"><div class="cfg-row-lbl" style="font-size:12px">LEVANTAMENTO TOPOGRAFICO</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-                  <div class="cfg-row" style="padding:2px 0"><div class="cfg-row-l"><div class="cfg-row-lbl" style="font-size:12px">EXPANSOES</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-                  <div class="cfg-row" style="padding:2px 0"><div class="cfg-row-l"><div class="cfg-row-lbl" style="font-size:12px">SISTEMATIZACAO</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-                </div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Exigir observações</div><div class="cfg-row-sub">Obrigatório na etapa Observações antes de avançar</div></div><label class="toggle pre"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-              </div>
-              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
-            </div>
-
-            <!-- PORTAL -->
-            <div id="cfg-portal" class="cfg-panel">
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">link</span>Acesso</div>
-                <div class="cfg-row">
-                  <div class="cfg-row-l"><div class="cfg-row-lbl">URL do portal</div></div>
-                  <div class="cfg-inrow">
-                    <input class="cfg-inp w-lg" value="lmalerbo.github.io/project-plantio/portal.html" readonly>
-                    <button class="ico-btn" onclick="navigator.clipboard?.writeText('lmalerbo.github.io/project-plantio/portal.html');showToast('Link copiado!')"><span class="ico">content_copy</span></button>
-                  </div>
-                </div>
-              </div>
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">visibility</span>Módulos visíveis</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Plantio</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Colheita (Expo Safra)</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Preparo</div></div><label class="toggle"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-              </div>
-              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
-            </div>
-
-            <!-- EXTRAS / FERRAMENTAS -->
-            <div id="cfg-extras" class="cfg-panel">
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">map</span>Geomap</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">URL</div></div><div class="cfg-inrow"><input class="cfg-inp w-lg" placeholder="https://geomap.exemplo.com" id="cfg-geomap-url"><button class="ico-btn" onclick="testExt('cfg-geomap-url')"><span class="ico">open_in_new</span></button></div></div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Visível no sidebar</div></div><label class="toggle ext"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-              </div>
-              <div class="cfg-card">
-                <div class="cfg-card-t"><span class="ico">memory</span>Kronos</div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">URL</div></div><div class="cfg-inrow"><input class="cfg-inp w-lg" placeholder="https://kronos.exemplo.com" id="cfg-kronos-url"><button class="ico-btn" onclick="testExt('cfg-kronos-url')"><span class="ico">open_in_new</span></button></div></div>
-                <div class="cfg-sep"></div>
-                <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Visível no sidebar</div></div><label class="toggle ext"><input type="checkbox" checked><span class="tgl-tr"></span><span class="tgl-th"></span></label></div>
-              </div>
-              <div class="cfg-card" style="border:2px dashed var(--bd);box-shadow:none;background:transparent">
-                <div style="display:flex;align-items:center;gap:10px;color:var(--t3)"><span class="ico">add_circle</span><div><div style="font-size:13px;font-weight:500">Adicionar ferramenta</div><div style="font-size:11.5px;margin-top:2px">Conecte qualquer sistema interno via URL</div></div></div>
-              </div>
-              <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfg()">Salvar alterações</button></div>
-            </div>
-
-          </div><!-- end cfg-body -->
-        </div><!-- end cfg-layout -->
-      </div><!-- end v-config -->
+            <div id="cfg-geral" class="cfg-panel on"></div>
+            <div id="cfg-fontes" class="cfg-panel"></div>
+            <div id="cfg-ferramentas" class="cfg-panel"></div>
+            <div id="cfg-portal" class="cfg-panel"></div>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -1067,6 +953,7 @@ const ST_COL={
 // Preenchido por carregarDados() a partir de hub.colheita_talhoes.
 const FZ_C=[];
 let SAFRA_C='';
+const ST_NOME={'CONCLUIDO':'Concluído','A FAZER':'A fazer','SEM LINHAS':'Sem linhas','REAVALIAR':'Reavaliar','REVOO':'Revoo'};
 const TIPO_C={VANT:{l:'Linha de Vant',s:'Vant'},PROJETO:{l:'Desdobra de Plantio',s:'Desdobra'},'SEM LINHAS':{l:'Sem Linhas',s:'S/ linhas'}};
 let ativaC=null, selTals=[], fqC='';
 function getCiclo(){return SAFRA_C||'—';}
@@ -1143,10 +1030,6 @@ function rDash(){
     <div class="dash-greeting-name">${gr}, ${me.nome.split(' ')[0]}</div>
     <div class="dash-greeting-sub">Safra ${ciclo}&nbsp;·&nbsp;${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
 
-  const ativos=MOD_DATA.filter(m=>!m.coming);
-  const allU=ativos.reduce((s,m)=>s+m.totalTal(),0);
-  const concU=ativos.reduce((s,m)=>s+m.concTal(),0);
-  const pctG=Math.round(concU/allU*100)||0;
   const concFazP=FZ.filter(f=>f.e===4).length;
   const concFazPR=FZ_P.filter(f=>f.ok.every(x=>x)).length;
   // ha por módulo
@@ -1158,10 +1041,16 @@ function rDash(){
   const fazSafra=new Map();
   [...FZ,...FZ_P].forEach(f=>fazSafra.set(f.cod,f.ha));
   const haSafra=[...fazSafra.values()].reduce((s,v)=>s+v,0);
+  // Progresso geral = média do % de fazendas concluídas de cada módulo visível
+  // (antes somava talhões do Plantio com fazendas do Preparo).
+  const pcts=[FZ.length&&EU?.perms.plantio?concFazP/FZ.length:null,FZ_P.length&&EU?.perms.preparo?concFazPR/FZ_P.length:null,
+    FZ_C.length&&EU?.perms.colheita?FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO')).length/FZ_C.length:null].filter(x=>x!==null);
+  const pctG=pcts.length?Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length*100):0;
+  const haColheita=FZ_C.reduce((s,f)=>s+f.tals.reduce((a,t)=>a+t.ha,0),0);
   document.getElementById('dash-meta').innerHTML=[
-    {v:pctG+'%',l:'Progresso geral',c:'#2566e8'},
-    {v:fazSafra.size,l:'Fazendas na safra',c:'var(--plantio)'},
-    {v:fmtHa(haSafra),l:'Área da safra',c:'var(--t1)'},
+    {v:pctG+'%',l:'Progresso geral (média dos módulos)',c:'#2566e8'},
+    {v:`${fazSafra.size} <small>faz</small> · ${fmtHa(haSafra)}`,l:'Reforma (Plantio e Preparo)',c:'var(--plantio)'},
+    ...(FZ_C.length&&EU?.perms.colheita?[{v:`${FZ_C.length} <small>faz</small> · ${fmtHa(haColheita)}`,l:'Colheita',c:'var(--colheita)'}]:[]),
     {v:ATUALIZADO.txt,l:ATUALIZADO.lbl,c:ATUALIZADO.atrasado?'#dc3c3c':'var(--t2)'},
   ].map(k=>`<div class="dash-meta-card">
     <div class="dash-meta-val" style="color:${k.c}">${k.v}</div>
@@ -1275,7 +1164,7 @@ function rFaz(){
       <div class="fcard-bar" style="background:${e.c}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·${f.t} talhões · ${f.tals.filter(t=>t.e===4).length} Ok</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span> · ${f.t} talhões · ${f.tals.filter(t=>t.e===4).length} Ok</div>
       </div>
       <div class="ebadge" style="background:${e.c}1a;color:${e.c}">${e.l}</div>
     </div>`;
@@ -1390,10 +1279,9 @@ function rFazP(){
     const bc=done?'var(--plantio)':cur>0?'var(--preparo)':'var(--t3)';
     return`<div class="fcard${ativaP===i?' on':''}" onclick="selFP(${i})" style="color:${bc}">
       <div class="fcard-bar" style="background:${bc}"></div>
-      <div class="voo-dot" style="background:${v.c}" title="Voo: ${v.l}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·${f.ha} ha</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span> · ${f.ha} ha</div>
       </div>
       <div class="ebadge" style="background:${bc}1a;color:${bc}">${done?'Concluído':cur>0?cur+'/4':'Aguardando'}</div>
     </div>`;
@@ -1428,7 +1316,7 @@ function rDetP(){
     <div class="dhead">
       <div class="dhead-l">
         <div class="dnome">${f.n}</div>
-        <div class="dsub">${f.ha} ha · Voo: <span style="color:${v.c};font-weight:600">${v.l}</span></div>
+        <div class="dsub">${f.ha} ha</div>
       </div>
       <span class="dhead-cod">${f.cod}</span>
       ${done4?`<div class="ebadge" style="background:rgba(22,167,107,.1);color:var(--plantio)">Concluído</div>`:''}
@@ -1516,7 +1404,7 @@ function rFazC(){
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
         <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span>·Frente ${esc(f.fr)}·${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas" style="${f.porte>=DIAS_PORTE?'color:#9a6200;font-weight:700':''}">${f.porte}d</span>`:''}</div>
+        <div class="fsub"><span class="fcod">${f.cod}</span> · Frente ${esc(f.fr)} · ${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas" style="${f.porte>=DIAS_PORTE?'color:#9a6200;font-weight:700':''}">${f.porte}d</span>`:''}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
     </div>`;
@@ -1552,7 +1440,7 @@ function rDetC(){
   }).join('');
   const nSel=selTals.length;
   const pending=f.tals.filter(t=>t.st==='A FAZER'||t.st==='REAVALIAR').length;
-  const legend=Object.entries(ST_COL).map(([k,v])=>`<div class="col-leg-item"><div class="col-leg-dot" style="background:${v.c}"></div>${k}</div>`).join('');
+  const legend=Object.entries(ST_COL).map(([k,v])=>`<div class="col-leg-item"><div class="col-leg-dot" style="background:${v.c}"></div>${ST_NOME[k]||k}</div>`).join('');
   const desat=f.tals.filter(t=>t.desat).length;
   const aviso=desat?`<div class="col-desat"><span class="ico" style="font-size:18px">warning</span>
     <div><strong>${desat} talhão(ões) replantado(s) no Plantio.</strong> O projeto de colheita desses talhões está desatualizado — sugestão: Desdobra de Plantio.</div></div>`:'';
@@ -1569,9 +1457,9 @@ function rDetC(){
       </div>
     </div>`:`<div class="col-sel-hint">Selecione os talhões e escolha o tipo de linha</div>`;
   const podeArq=edita;
-  const envio=podeArq?`<div class="acao-w" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+  const envio=podeArq?`<div class="acao-lado">
       ${botaoEnvio('var(--colheita)','upload_file','Enviar Exp1L / Exp2L',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA})}
-      ${botaoEnvio('var(--t2)','map','Enviar Mapa de partes',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA_MAPA})}
+      ${botaoEnvio('#5f6b7a','map','Enviar Mapa de partes',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA_MAPA})}
     </div>`:'';
   document.getElementById('dpanel-c').innerHTML=`
     <div class="dhead">
@@ -1707,83 +1595,9 @@ function rPhone(){
 }
 function selPMod(i){pMod=i;rPhone();}
 
-// ─────────────────────────────────────────────────────────────
-// HUB GEOTECH
-// ─────────────────────────────────────────────────────────────
-const GT_TOOLS=[
-  {
-    id:'geomap',
-    nome:'Geomap',
-    desc:'Visualização de mapas, polígonos e ortomosaicos processados. Acesse os projetos georreferenciados de todas as fazendas.',
-    ico:'map',
-    cor:'#2566e8',
-    url:'#',
-    status:'config', // 'active' | 'config' | 'coming'
-  },
-  {
-    id:'kronos',
-    nome:'Kronos',
-    desc:'Gestão de frota e hardware agrícola. Rastreie monitores, receptores e bordos instalados em cada máquina por unidade.',
-    ico:'memory',
-    cor:'#5b6ee8',
-    url:'#',
-    status:'config',
-  },
-  {
-    id:'coming1',
-    nome:'Em breve',
-    desc:'Nova ferramenta de geotecnologia a ser integrada ao Hub Geotech.',
-    ico:'add_circle',
-    cor:'#9895a2',
-    url:'#',
-    status:'coming',
-  },
-];
-function rGeotech(){
-  const el=document.getElementById('gt-grid');
-  if(!el)return;
-  const statusInfo={
-    active: {dot:'#16a76b', txt:'Ativo',        btnTxt:'Acessar', btnDis:false},
-    config: {dot:'#d4890a', txt:'URL não configurada', btnTxt:'Configurar URL', btnDis:false},
-    coming: {dot:'#9895a2', txt:'Em breve',      btnTxt:'Em breve', btnDis:true},
-  };
-  el.innerHTML=GT_TOOLS.map(t=>{
-    const si=statusInfo[t.status];
-    const isConfig=t.status==='config';
-    const isComing=t.status==='coming';
-    if(isComing)return`<div class="gt-card coming">
-      <div class="gt-card-accent" style="background:var(--bd)"></div>
-      <div class="gt-add"><div class="gt-add-inner"><span class="ico">add_circle</span><span>Adicionar ferramenta</span></div></div>
-    </div>`;
-    return`<div class="gt-card">
-      <div class="gt-card-accent" style="background:${t.cor}"></div>
-      <div class="gt-ico-wrap" style="background:${t.cor}"><span class="ico">${t.ico}</span></div>
-      <div class="gt-name">${t.nome}</div>
-      <div class="gt-desc">${t.desc}</div>
-      <div class="gt-footer">
-        <div class="gt-status" style="color:${si.dot}">
-          <div class="gt-dot" style="background:${si.dot}"></div>
-          ${si.txt}
-        </div>
-        <button class="btn-gt" style="background:${t.cor}" onclick="${isConfig?'irCfgExtras()':`abrirGT('${t.id}')`}" ${si.btnDis?'disabled':''}>
-          <span class="ico">${isConfig?'settings':'open_in_new'}</span>${si.btnTxt}
-        </button>
-      </div>
-    </div>`;
-  }).join('');
-}
-function abrirGT(id){
-  const t=GT_TOOLS.find(x=>x.id===id);
-  if(!t)return;
-  if(t.url&&t.url!=='#')window.open(t.url,'_blank');
-  else showToast(`URL do ${t.nome} não configurada — acesse Configurações > Hub Geotech`);
-}
-function irCfgExtras(){
-  const btnCfg=document.querySelector('.ni[onclick*="config"]');
-  if(btnCfg){trocar('config',btnCfg);}
-  const btnExtras=document.querySelector('.cfg-cat[onclick*="extras"]');
-  if(btnExtras){cfgTab('extras',btnExtras);}
-}
+const SUBTITULO={dash:'Visão geral da safra',plantio:'Programação e projetos de plantio',colheita:'Projetos de linhas por talhão',
+  preparo:'Etapas do projeto de preparo',consultas:'Consulta e exportação',geotech:'Sistemas integrados',config:'Configurações do sistema',
+  usuarios:'Quem acessa o Hub',drone:'Projetos de voo por talhão'};
 const LABELS={drone:'Drone',dash:'Dashboard',plantio:'Plantio',colheita:'Colheita',preparo:'Preparo',portal:'Portal Mobile',geotech:'Ferramentas'};
 const MOD_AC={drone:'var(--drones)',plantio:'var(--plantio)',colheita:'var(--colheita)',preparo:'var(--preparo)',dash:'var(--plantio)',portal:'var(--t2)',geotech:'#5b6ee8'};
 function trocar(v,el){
@@ -1795,7 +1609,7 @@ function trocar(v,el){
   tbMod.textContent=LABELS[v]||v;
   tbMod.style.background=`${MOD_AC[v]||'var(--plantio)'}1a`;
   tbMod.style.color=MOD_AC[v]||'var(--plantio)';
-  document.getElementById('tb-tit').textContent='Visão geral';
+  document.getElementById('tb-tit').textContent=SUBTITULO[v]||'';
   // Sync search input focus color
   const inp=document.querySelector(`#v-${v} .search-inp`);
   if(inp){
@@ -1806,6 +1620,9 @@ function trocar(v,el){
   }
   if(v==='consultas')rConsFilters();
   if(v==='drone')droneIniciar();
+  if(v==='usuarios')carregarAcessos();
+  if(v==='config')rConfig();
+  if(v==='geotech')rGeotech();
 }
 async function entrar(){
   const email=document.getElementById('f-email').value.trim();
@@ -1846,110 +1663,238 @@ async function sair(){
 }
 
 // ─────────────────────────────────────────────────────────────
-// CONFIGURAÇÕES
+// FERRAMENTAS · USUÁRIOS · CONFIGURAÇÕES (dados reais; escrita só admin,
+// pelas funções hub.salvar_parametro / hub.acesso_salvar / hub.acesso_remover)
 // ─────────────────────────────────────────────────────────────
-function cfgTab(id,el){
-  document.querySelectorAll('.cfg-cat').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  document.querySelectorAll('.cfg-panel').forEach(p=>p.classList.remove('on'));
-  document.getElementById('cfg-'+id).classList.add('on');
-}
-function salvarCfg(){showToast('Configurações salvas');}
-function testExt(inputId){
-  const url=document.getElementById(inputId)?.value;
-  if(url&&url.startsWith('http'))window.open(url,'_blank');
-  else showToast('Insira uma URL válida antes de testar');
-}
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
-function initCfgChips(){
-  const ciclo=getCiclo();
-  const el=document.getElementById('cfg-ciclo-chip');
-  if(el)el.textContent=ciclo;
-}
-function toggleKey(id){
-  const inp=document.getElementById(id);
-  if(!inp)return;
-  inp.type=inp.type==='password'?'text':'password';
-}
-
-// ─────────────────────────────────────────────────────────────
-// USUÁRIOS
-// ─────────────────────────────────────────────────────────────
 // Preenchido por carregarDados() a partir de hub.usuarios / hub.usuario_modulos.
 const USUARIOS=[];
 const ROLE_LABELS={editor:'Editor',leitura:'Leitura',solicitante:'Solicitante'};
-const ROLE_CLASSES={editor:'rc-a',leitura:'rc-dash',solicitante:'rc-dash'};
-const PERMS=[
-  {key:'plantio',  label:'Plantio',        sub:'Acesso ao módulo de plantio'},
-  {key:'colheita', label:'Colheita',       sub:'Acesso ao módulo de colheita'},
-  {key:'preparo',  label:'Preparo',        sub:'Acesso ao módulo de preparo'},
-  {key:'portal',   label:'Portal Mobile',  sub:'Acesso ao portal de downloads'},
-  {key:'config',   label:'Configurações',  sub:'Acesso ao painel de configuração'},
-];
-let selUsrIdx=null;
+let PARAM={}, MODULOS=[];
+const PORTAL_URL=new URL('portal.html',location.href).href;
+function iniciais(nome){return String(nome||'?').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+function ferramentas(){try{return JSON.parse(PARAM.ferramentas||'[]')}catch(_){return[]}}
+async function salvarParametro(chave,valor,msg){
+  const {error}=await sb.rpc('salvar_parametro',{p_chave:chave,p_valor:valor});
+  if(error){showToast('Não foi possível salvar: '+error.message);return false;}
+  PARAM[chave]=valor;showToast(msg||'Salvo');return true;
+}
+
+// ── Ferramentas ──
+function rGeotech(){
+  const fs=ferramentas();
+  document.getElementById('gt-grid').innerHTML=fs.length?fs.map(f=>`
+    <div class="gt-card">
+      <div class="gt-ico" style="background:${esc(f.cor||'#5b6ee8')}"><span class="ico">${esc(f.icone||'apps')}</span></div>
+      <div class="gt-nome">${esc(f.nome)}</div>
+      <div class="gt-desc">${esc(f.descricao||'')}</div>
+      <div class="gt-rodape">
+        ${f.url?`<a class="btn-acao gt-abrir" href="${esc(f.url)}" target="_blank" rel="noopener" style="background:${esc(f.cor||'#5b6ee8')}"><span class="ico">open_in_new</span>Abrir</a>`
+          :`<span class="gt-semurl"><span class="ico">link_off</span>Sem endereço cadastrado</span>`}
+      </div>
+    </div>`).join('')
+    :'<div class="dempty"><span class="ico">apps</span><p>Nenhuma ferramenta cadastrada.</p></div>';
+  if(EU?.admin)document.getElementById('gt-grid').insertAdjacentHTML('beforeend',
+    `<button class="gt-card gt-add" onclick="irConfig('ferramentas')"><span class="ico">settings</span>Configurar ferramentas</button>`);
+}
+function irConfig(aba){
+  trocar('config',document.querySelector(`.ni[onclick*="'config'"]`));
+  cfgTab(aba,document.querySelector(`.cfg-cat[onclick*="'${aba}'"]`));
+}
+
+// ── Usuários (acessos) ──
+let ACESSOS=[], selEmail=null;
+const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone'};
+async function carregarAcessos(){
+  const {data,error}=await sb.rpc('acessos_situacao');
+  if(error){document.getElementById('usr-list').innerHTML=`<div class="col-sel-hint">Não foi possível carregar: ${esc(error.message)}</div>`;return;}
+  ACESSOS=data||[];rUsrList();
+  if(selEmail)selUsr(selEmail);
+}
+function situacaoAcesso(a){
+  if(!a.conta_criada)return['espera','Aguardando sincronização (até 1 h)'];
+  if(a.bloqueado)return['erro','Bloqueado: senha provisória ou inativo no GeoMap'];
+  return['ok',a.ultimo_login?'Último acesso '+fmtDataHora(a.ultimo_login):'Ainda não entrou'];
+}
 function rUsrList(){
-  const el=document.getElementById('usr-list');
-  if(!el)return;
-  el.innerHTML=USUARIOS.map((u,i)=>`
-    <div class="usr-card ${selUsrIdx===i?'sel':''}" onclick="selUsr(${i})">
-      <div class="usr-av">${u.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome}</div>
-        <div style="font-size:11px;color:var(--t3)">${modulosTxt(u)}</div>
+  const el=document.getElementById('usr-list');if(!el)return;
+  el.innerHTML=ACESSOS.map(a=>{
+    const [cls]=situacaoAcesso(a);
+    return`<div class="usr-card${selEmail===a.email?' on':''}" onclick="selUsr('${esc(a.email)}')">
+      <div class="usr-av">${esc(iniciais(a.nome))}</div>
+      <div class="usr-txt">
+        <div class="usr-nome">${esc(a.nome)}<span class="usr-dot ${cls}"></span></div>
+        <div class="usr-mail">${esc(a.email)}</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:120px">
-        <span class="role-chip ${ROLE_CLASSES[u.role]}">${ROLE_LABELS[u.role]}</span>
-        ${u.admin?'<span class="role-chip rc-admin">Admin</span>':''}
+      <div class="usr-chips">
+        <span class="role-chip ${a.papel==='editor'?'rc-a':'rc-dash'}">${ROLE_LABELS[a.papel]||a.papel}</span>
+        ${a.admin?'<span class="role-chip rc-admin">Admin</span>':''}
       </div>
-    </div>`).join('');
+    </div>`;}).join('')||'<div class="col-sel-hint">Nenhum acesso cadastrado.</div>';
 }
-function updRole(i,val){
-  if(val==='Editor'||val==='Leitura')USUARIOS[i].role=val.toLowerCase();
-  rUsrList();
-  selUsr(i);
+function formUsr(a,novo){
+  const [cls,txt]=novo?['espera','Novo acesso']:situacaoAcesso(a);
+  const mods=MODULOS.filter(m=>m.id!=='voo');
+  return`<div class="cfg-card">
+    <div class="usr-topo">
+      <div class="usr-av grande">${esc(iniciais(a.nome||'?'))}</div>
+      <div><div class="usr-titulo">${esc(a.nome||'Novo acesso')}</div>
+        <div class="usr-sit ${cls}">${esc(txt)}</div></div>
+    </div>
+    <div class="usr-form">
+      <label>E-mail<span>o mesmo do GeoMap</span>
+        <input class="cfg-inp" id="u-email" value="${esc(a.email||'')}" ${novo?'':'readonly'} placeholder="nome@pedraagroindustrial.com.br"></label>
+      <label>Nome<input class="cfg-inp" id="u-nome" value="${esc(a.nome||'')}" placeholder="Nome e sobrenome"></label>
+      <label>Papel
+        <div class="seg" id="u-papel">${['editor','leitura'].map(pp=>`<button type="button" class="${(a.papel||'leitura')===pp?'on':''}" onclick="segSel(this)" data-v="${pp}">${ROLE_LABELS[pp]}</button>`).join('')}</div>
+        <span>Editor faz ações e envia arquivos; Leitura só consulta.</span></label>
+      <label>Módulos
+        <div class="usr-mods" id="u-mods">${mods.map(m=>`<label class="usr-mod"><input type="checkbox" value="${m.id}" ${(a.modulos||[]).includes(m.id)?'checked':''}>${esc(MOD_ROTULO[m.id]||m.nome)}</label>`).join('')}</div></label>
+      <label class="usr-admin"><input type="checkbox" id="u-admin" ${a.admin?'checked':''}> Administrador <span>vê Configurações e Usuários</span></label>
+    </div>
+    <div class="login-erro" id="u-erro"></div>
+    <div class="modal-botoes">
+      ${novo||a.email===EU?.email?'':`<button class="btn-retro" style="color:#c23b3b" onclick="removerUsr('${esc(a.email)}')">Remover acesso</button>`}
+      <button class="btn-acao" style="background:var(--t1)" onclick="salvarUsr(${novo})">${novo?'Adicionar':'Salvar'}</button>
+    </div>
+    <div class="usr-nota"><span class="ico">info</span>A senha é a do GeoMap. Um acesso novo passa a funcionar na próxima sincronização (até 1 hora), se a pessoa já tiver conta no GeoMap.</div>
+  </div>`;
 }
-function selUsr(i){
-  if(i===-1){showToast('Em breve: criar novo usuário');return;}
-  selUsrIdx=i;
-  rUsrList();
-  const u=USUARIOS[i];
+function segSel(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
+function mostrarPainelUsr(html){
   document.getElementById('dsh-u').style.visibility='visible';
   document.getElementById('dempty-u').style.display='none';
-  const panel=document.getElementById('dpanel-u');
-  panel.style.display='';
-  panel.innerHTML=`
-    <div class="cfg-card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
-        <div class="usr-av" style="width:48px;height:48px;font-size:16px">${u.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:var(--t1)">${u.nome}</div>
-          <div style="font-size:12px;color:var(--t3)">${modulosTxt(u)}</div>
-        </div>
-        ${u.admin?'<span class="role-chip rc-admin" style="margin-left:auto">Admin</span>':''}
-      </div>
-      <div class="cfg-row">
-        <div class="cfg-row-l"><div class="cfg-row-lbl">Acesso</div><div class="cfg-row-sub">Editor pode registrar e avançar etapas; Leitura só visualiza</div></div>
-        <select class="cfg-sel" disabled onchange="updRole(${i},this.value)">
-          <option ${u.role==='editor'?'selected':''}>Editor</option>
-          <option ${u.role==='leitura'?'selected':''}>Leitura</option>
-        </select>
-      </div>
+  const p=document.getElementById('dpanel-u');p.style.display='';p.innerHTML=html;
+}
+function selUsr(email){
+  selEmail=email;rUsrList();
+  const a=ACESSOS.find(x=>x.email===email);if(a)mostrarPainelUsr(formUsr(a,false));
+}
+function novoUsr(){selEmail=null;rUsrList();mostrarPainelUsr(formUsr({papel:'leitura',modulos:[]},true));document.getElementById('u-email').focus();}
+async function salvarUsr(novo){
+  const erro=document.getElementById('u-erro');erro.textContent='';
+  const email=document.getElementById('u-email').value.trim().toLowerCase();
+  const nome=document.getElementById('u-nome').value.trim();
+  const papel=document.querySelector('#u-papel .on')?.dataset.v||'leitura';
+  const mods=[...document.querySelectorAll('#u-mods input:checked')].map(i=>i.value);
+  const admin=document.getElementById('u-admin').checked;
+  if(!/^[^@\s]+@[^@\s]+$/.test(email)){erro.textContent='Informe um e-mail válido.';return;}
+  if(!nome){erro.textContent='Informe o nome.';return;}
+  if(novo&&ACESSOS.some(a=>a.email===email)){erro.textContent='Esse e-mail já tem acesso.';return;}
+  const {error}=await sb.rpc('acesso_salvar',{p_email:email,p_nome:nome,p_papel:papel,p_admin:admin,p_modulos:mods});
+  if(error){erro.textContent=error.message;return;}
+  showToast(novo?'Acesso adicionado':'Acesso salvo');selEmail=email;await carregarAcessos();
+}
+async function removerUsr(email){
+  if(!await confirmar(`${email} deixa de entrar no Hub (a conta é bloqueada na próxima sincronização; o histórico continua).`,{titulo:'Remover acesso',ok:'Remover',perigo:true}))return;
+  const {error}=await sb.rpc('acesso_remover',{p_email:email});
+  if(error){showToast('Não foi possível: '+error.message);return;}
+  showToast('Acesso removido');selEmail=null;
+  document.getElementById('dpanel-u').style.display='none';document.getElementById('dempty-u').style.display='';
+  await carregarAcessos();
+}
+
+// ── Configurações ──
+function cfgTab(id,el){
+  document.querySelectorAll('.cfg-cat').forEach(b=>b.classList.remove('on'));
+  if(el)el.classList.add('on');
+  document.querySelectorAll('.cfg-panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('cfg-'+id).classList.add('on');
+  ({geral:rCfgGeral,fontes:rCfgFontes,ferramentas:rCfgFerramentas,portal:rCfgPortal})[id]?.();
+}
+function initCfgChips(){}
+function rConfig(){cfgTab(document.querySelector('.cfg-cat.on')?.getAttribute('onclick').match(/'(\w+)'/)[1]||'geral',document.querySelector('.cfg-cat.on'));}
+function rCfgGeral(){
+  document.getElementById('cfg-geral').innerHTML=`
+    <div class="cfg-card">
+      <div class="cfg-card-t"><span class="ico">person</span>Você</div>
+      <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">${esc(EU.nome)}</div><div class="cfg-row-sub">${esc(EU.email||'')}</div></div>
+        <span class="role-chip rc-a">${ROLE_LABELS[EU.role]}${EU.admin?' · Admin':''}</span></div>
     </div>
     <div class="cfg-card">
-      <div class="cfg-card-t"><span class="ico">lock</span>Permissões de acesso</div>
-      <div class="usr-perm-grid">
-        ${PERMS.map((p,pi)=>`
-          <div class="cfg-row" style="${pi<PERMS.length-1?'border-bottom:1px solid var(--bd)':''}">
-            <div class="cfg-row-l"><div class="cfg-row-lbl">${p.label}</div><div class="cfg-row-sub">${p.sub}</div></div>
-            <label class="toggle"><input type="checkbox" disabled ${u.perms[p.key]?'checked':''}><span class="tgl-tr"></span><span class="tgl-th"></span></label>
-          </div>`).join('')}
+      <div class="cfg-card-t"><span class="ico">agriculture</span>Colheita</div>
+      <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Safra atual</div>
+        <div class="cfg-row-sub">Ciclo gravado ao marcar o tipo de linha. A safra ${esc(PARAM.colheita_safra||'')} vai de abril a março; ao trocar, o que não for refeito vira Reavaliar.</div></div>
+        <input class="cfg-inp w-sm" id="cfg-safra" value="${esc(PARAM.colheita_safra||'')}" placeholder="26-27"></div>
+      <div class="cfg-sep"></div>
+      <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Dias de porte para voo</div>
+        <div class="cfg-row-sub">Pedido de voo/revoo é agendado quando o talhão completa esses dias depois do corte.</div></div>
+        <input class="cfg-inp w-sm" id="cfg-porte" value="${esc(PARAM.colheita_dias_porte||'100')}" inputmode="numeric"></div>
+      <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfgGeral()">Salvar</button></div>
+    </div>`;
+}
+async function salvarCfgGeral(){
+  const safra=document.getElementById('cfg-safra').value.trim(),porte=document.getElementById('cfg-porte').value.trim();
+  if(safra!==PARAM.colheita_safra){
+    if(!await confirmar(`A safra atual da Colheita passa de ${PARAM.colheita_safra} para ${safra}. Talhões marcados em safras anteriores aparecem como Reavaliar.`,{titulo:'Trocar a safra',ok:'Trocar safra',perigo:true}))return;
+    if(!await salvarParametro('colheita_safra',safra,'Safra atualizada'))return;
+  }
+  if(porte!==PARAM.colheita_dias_porte&&!await salvarParametro('colheita_dias_porte',porte,'Dias de porte atualizados'))return;
+  await recarregar();rCfgGeral();
+}
+const FONTE_INFO={base_fazendas:['Base Fazendas','Talhões, área, estágio e data de corte (exportação FME diária)'],
+  planagri:['PLANAGRI','Demanda de Plantio e Preparo (talhões liberados)'],
+  conservacao:['Controle de Conservação','Sistema de conservação por talhão'],
+  icol:['ICOL','Demanda da Colheita (frente, período, cortado)']};
+async function rCfgFontes(){
+  const el=document.getElementById('cfg-fontes');
+  el.innerHTML='<div class="cfg-card"><div class="col-sel-hint">Carregando…</div></div>';
+  const {data,error}=await sb.from('execucoes_ingestao').select('fonte,status,iniciado_em,finalizado_em,linhas_lidas,linhas_gravadas,detalhes,erro').order('iniciado_em',{ascending:false}).limit(80);
+  if(error){el.innerHTML=`<div class="cfg-card">Não foi possível carregar: ${esc(error.message)}</div>`;return;}
+  el.innerHTML=`<div class="cfg-card"><div class="cfg-card-t"><span class="ico">schedule</span>Importação diária (servidor Geo, 07:00)</div>`+
+    Object.entries(FONTE_INFO).map(([f,[nome,desc]],i)=>{
+      const u=data.find(x=>x.fonte===f),ok=data.find(x=>x.fonte===f&&x.status==='ok');
+      const fora=(ok?.detalhes?.fora_da_base_fazendas||[]).length;
+      const horas=ok?(Date.now()-new Date(ok.finalizado_em))/36e5:Infinity;
+      const [cls,txt]=!u?['erro','Nunca rodou']:u.status==='erro'?['erro','Erro na última execução']:horas>26?['erro','Atrasada']:['ok','Em dia'];
+      return`${i?'<div class="cfg-sep"></div>':''}<div class="cfg-row fonte-row"><div class="cfg-row-l">
+        <div class="cfg-row-lbl">${nome} <span class="usr-sit ${cls}" style="display:inline">${txt}</span></div>
+        <div class="cfg-row-sub">${desc}</div>
+        <div class="cfg-row-sub">${ok?`Última leitura: ${fmtDataHora(ok.finalizado_em)} · ${ok.linhas_gravadas??'—'} gravados de ${ok.linhas_lidas??'—'} lidos${fora?` · ${fora} fora da Base Fazendas`:''}`:''}
+        ${u?.status==='erro'?`<br><span style="color:#c23b3b">${esc(String(u.erro||'').slice(0,160))}</span>`:''}</div></div></div>`;
+    }).join('')+`<div class="usr-nota"><span class="ico">info</span>As planilhas são lidas sozinhas todo dia. Para forçar uma leitura agora, rode a tarefa "Hub Geotech - Rodada diaria" no servidor Geo.</div></div>`;
+}
+let FERR_ED=[];
+function rCfgFerramentas(){
+  FERR_ED=ferramentas().map(f=>({...f}));
+  desenharFerramentas();
+}
+function desenharFerramentas(){
+  document.getElementById('cfg-ferramentas').innerHTML=FERR_ED.map((f,i)=>`
+    <div class="cfg-card">
+      <div class="cfg-card-t"><span class="ico">${esc(f.icone||'apps')}</span>${esc(f.nome||'Nova ferramenta')}
+        <button class="btn-retro" style="margin-left:auto;color:#c23b3b" onclick="FERR_ED.splice(${i},1);desenharFerramentas()">Remover</button></div>
+      <div class="ferr-form">
+        <label>Nome<input class="cfg-inp" value="${esc(f.nome||'')}" oninput="FERR_ED[${i}].nome=this.value"></label>
+        <label>Endereço (URL)<input class="cfg-inp" value="${esc(f.url||'')}" placeholder="https://…" oninput="FERR_ED[${i}].url=this.value.trim()"></label>
+        <label class="largo">Descrição<input class="cfg-inp" value="${esc(f.descricao||'')}" oninput="FERR_ED[${i}].descricao=this.value"></label>
+        <label>Ícone <span>nome do Material Symbols, ex.: map</span><input class="cfg-inp" value="${esc(f.icone||'')}" oninput="FERR_ED[${i}].icone=this.value.trim()"></label>
+        <label>Cor<input class="cfg-inp" type="color" value="${esc(f.cor||'#5b6ee8')}" oninput="FERR_ED[${i}].cor=this.value" style="padding:2px 4px;width:70px"></label>
       </div>
-    </div>
-    <div class="aviso-leitura" style="margin-top:10px"><span class="ico">info</span>Login e senha são os do GeoMap (a troca de senha é feita lá). Editar papel e módulos pelo Hub chega na próxima versão.</div>`;
+    </div>`).join('')+`
+    <button class="cfg-card ferr-add" onclick="FERR_ED.push({id:'f'+Date.now(),nome:'',url:'',descricao:'',icone:'apps',cor:'#5b6ee8'});desenharFerramentas()">
+      <span class="ico">add_circle</span>Adicionar ferramenta</button>
+    <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarFerramentas()">Salvar ferramentas</button></div>`;
+}
+async function salvarFerramentas(){
+  const ruim=FERR_ED.find(f=>!f.nome?.trim()||(f.url&&!/^https?:\/\//.test(f.url)));
+  if(ruim){showToast(!ruim.nome?.trim()?'Toda ferramenta precisa de nome':'Endereço precisa começar com http:// ou https://');return;}
+  if(await salvarParametro('ferramentas',JSON.stringify(FERR_ED),'Ferramentas salvas'))rGeotech();
+}
+function rCfgPortal(){
+  document.getElementById('cfg-portal').innerHTML=`
+    <div class="cfg-card">
+      <div class="cfg-card-t"><span class="ico">phone_iphone</span>Portal de downloads</div>
+      <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Endereço</div>
+        <div class="cfg-row-sub">Público, sem login. Mostra Plantio, Preparo, Colheita e Drone — só a revisão vigente de cada arquivo. Os links antigos (project-plantio, project-preparo e portal-safra) redirecionam para cá.</div></div>
+        <div style="display:flex;gap:6px"><input class="cfg-inp w-lg" value="${esc(PORTAL_URL)}" readonly>
+          <button class="ico-btn" title="Copiar" onclick="navigator.clipboard?.writeText(PORTAL_URL);showToast('Link copiado')"><span class="ico">content_copy</span></button>
+          <a class="ico-btn" title="Abrir" href="${esc(PORTAL_URL)}" target="_blank" rel="noopener"><span class="ico">open_in_new</span></a></div></div>
+    </div>`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2020,15 +1965,15 @@ function rCons(pg){
 
   // Header cols
   let thHtml='<th style="width:32px"><input type="checkbox" class="cons-cb" onchange="consSelAll(this,event)"></th>';
-  if(cMod==='plantio')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
-  if(cMod==='colheita') thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
-  if(cMod==='preparo')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Voo</th><th>Etapa</th>';
+  if(cMod==='plantio')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
+  if(cMod==='colheita') thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
+  if(cMod==='preparo')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
   document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`;
 
   // Body rows
   let tbHtml='';
   if(!rows.length){
-    const span=cMod==='plantio'?8:cMod==='colheita'?7:9;
+    const span=cMod==='plantio'?7:cMod==='colheita'?6:7;
     tbHtml=`<tr><td colspan="${span}" style="padding:40px;text-align:center;color:var(--t3)"><span class="ico" style="font-size:28px;display:block;margin-bottom:6px;opacity:.25">search_off</span>Nenhum resultado</td></tr>`;
   } else {
     rows.forEach(r=>{
@@ -2042,14 +1987,14 @@ function rCons(pg){
         const concC=r._talsFilter.filter(t=>t.st==='CONCLUIDO').length;
         cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td style="font-variant-numeric:tabular-nums">${concC}/${r._talsFilter.length}</td><td style="font-variant-numeric:tabular-nums">${r.ha.toFixed(1)} ha</td>`;
       } else {
-        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._vooC}18;color:${r._vooC}">${r.voo}</span></td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
+        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
       }
       tbHtml+=`<tr class="cons-faz-row${sel?' sel':''}${exp?' exp':''}" onclick="consExpand('${r._key}',event)">
         <td onclick="event.stopPropagation()"><input type="checkbox" class="cons-cb" ${sel?'checked':''} onchange="consSel('${r._key}',this)"></td>
         ${cells}</tr>`;
       // detail row
       if(exp){
-        const span=cMod==='plantio'?8:cMod==='colheita'?7:9;
+        const span=cMod==='plantio'?7:cMod==='colheita'?6:7;
         tbHtml+=`<tr class="cons-detail-row"><td colspan="${span}"><div class="cons-detail-inner">${consDetail(r)}</div></td></tr>`;
       }
     });
@@ -2130,8 +2075,6 @@ function rConsFilters(){
     const voos=[...new Set(FZ_P.map(f=>f.voo))];
     html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option>${ET_P.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}<option value="-1">Entregue</option></select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.voo=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todos os voos</option>${voos.map(v=>`<option value="${v}">${VOO[v]?.l||v}</option>`).join('')}</select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
   }
@@ -2186,7 +2129,6 @@ function exportWpp(){
   } else {
     partes.push('Preparo');
     if(cFilters.etapa!=='')partes.push(cFilters.etapa==='-1'?'Entregue':ET_P[parseInt(cFilters.etapa)]?.l||'');
-    if(cFilters.voo)partes.push(VOO[cFilters.voo]?.l||cFilters.voo);
     if(cFilters.mes)partes.push(cFilters.mes);
   }
   const titulo=partes.filter(Boolean).join(' · ');
@@ -2218,8 +2160,8 @@ function exportCons(){
     header='Fazenda\tCódigo\tCiclo\tTalhões Conc.\tTalhões Total\tHa Total';
     body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.conc}\t${r.tot}\t${r.ha.toFixed(1)}`).join('\n');
   } else {
-    header='Fazenda\tCódigo\tCiclo\tMês\tHa\tVoo\tEtapa';
-    body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.mes}\t${r.ha}\t${r.voo}\t${r.etapa}`).join('\n');
+    header='Fazenda\tCódigo\tCiclo\tMês\tHa\tEtapa';
+    body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.mes}\t${r.ha}\t${r.etapa}`).join('\n');
   }
   navigator.clipboard.writeText(header+'\n'+body).then(()=>{
     showToast(`${rows.length} fazendas copiadas — cole direto no Excel`);
@@ -2269,7 +2211,7 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC,notasC]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC,notasC,params,modulos]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
@@ -2290,7 +2232,11 @@ async function carregarDados(){
     lerTudo(()=>sb.from('avisos_lidos').select('aviso_id').order('aviso_id')),
     lerTudo(()=>sb.from('colheita_voos').select('id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro').not('status','in','(concluido,cancelado)').order('id')),
     lerTudo(()=>sb.from('log_auditoria').select('id,entidade_id,valor_novo,usuario_id,criado_em').eq('modulo_id','colheita').eq('campo','arquivo').order('id',{ascending:false})),
+    lerTudo(()=>sb.from('parametros').select('chave,valor').order('chave')),
+    lerTudo(()=>sb.from('modulos').select('id,nome,ordem').order('ordem')),
   ]);
+  PARAM=Object.fromEntries(params.map(x=>[x.chave,x.valor]));
+  MODULOS=modulos;
 
   // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
   // em cada fazenda de onde vieram as revisões de origem.
@@ -2331,6 +2277,7 @@ async function carregarDados(){
       perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),drone:mods.has('drone')||u.admin,portal:false,config:u.admin}});
   }
   EU=USUARIOS.find(u=>u.id===user.id)||null;
+  if(EU)EU.email=user.email;
   const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
 
   // Plantio: agrupa os talhões por fazenda.
@@ -2450,12 +2397,12 @@ function linhasDocs(modulo,docs){
   return DOC_TIPOS.filter(t=>t.modulo_id===modulo&&docs[t.codigo]?.length).map(t=>{
     const revs=docs[t.codigo],vig=revs.find(r=>r.vigente)||revs[0],antigas=revs.filter(r=>r!==vig);
     const links=vig.arquivos.map(a=>`<a class="arq-link" href="${esc(a.release_url)}" target="_blank" rel="noopener">.${esc(a.nome_arquivo.split('.').pop())}</a>`).join('');
-    const hist=antigas.length?`<details class="arq-hist"><summary>${antigas.length} revisão(ões) anterior(es)</summary>${antigas.map(r=>
+    const hist=antigas.length&&modulo!=='colheita'?`<details class="arq-hist"><summary>${antigas.length} revisão(ões) anterior(es)</summary>${antigas.map(r=>
       `<div class="arq-hist-row"><strong>${rotuloRev(r)}</strong> · ${fmtDataHora(r.criado_em)}${r.motivo?` · ${esc(r.motivo)}`:''}
         ${r.arquivos.map(a=>`<a class="arq-link" href="${esc(a.release_url)}" target="_blank" rel="noopener">.${esc(a.nome_arquivo.split('.').pop())}</a>`).join('')}</div>`).join('')}</details>`:'';
     return`<div class="arq-row">
       <span class="arq-doc">${esc(t.nome.replace(/ \(.*/,''))}</span>
-      <span class="ebadge" style="background:var(--s2);color:var(--t2)">${rotuloRev(vig)}</span>
+      ${modulo==='colheita'?'':`<span class="ebadge" style="background:var(--s2);color:var(--t2)">${rotuloRev(vig)}</span>`}
       <span class="arq-links">${links||'<span style="color:var(--t3)">sem arquivo</span>'}</span>
       ${vig.motivo?`<span class="arq-motivo" title="${esc(vig.motivo)}">${esc(vig.motivo)}</span>`:''}
       ${hist}
@@ -2734,7 +2681,8 @@ function aplicarUsuario(){
   document.getElementById('sb-uname').textContent=primeiro;
   document.getElementById('tb-uname').textContent=primeiro;
   document.getElementById('sb-urole').textContent=ROLE_LABELS[EU.role]+(EU.admin?' · Admin':'');
-  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['colheita','colheita'],['drone','drone'],['config','config']]){
+  EU.perms.usuarios=EU.admin;
+  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['colheita','colheita'],['drone','drone'],['config','config'],['usuarios','usuarios']]){
     const btn=document.querySelector(`.ni[onclick*="'${alvo}'"]`);
     if(btn)btn.style.display=EU.perms[mod]?'':'none';
   }

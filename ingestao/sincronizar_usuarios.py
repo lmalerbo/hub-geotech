@@ -1,10 +1,14 @@
 """Sincroniza as contas do Hub com o GeoMap (mesmo e-mail, mesma senha).
 
-Para cada pessoa de ingestao/usuarios_hub.json:
+Para cada pessoa da lista de acessos (hub.acessos, administrada na tela
+Usuários do Hub; antes era o arquivo ingestao/usuarios_hub.json):
   - cria a conta no Supabase Auth, se não existir;
   - copia o hash da senha do GeoMap (o GeoMap é o dono da senha);
   - bloqueia no Hub quem está inativo no GeoMap, desbloqueia quem voltou;
-  - grava papel e módulos em hub.usuarios / hub.usuario_modulos.
+  - grava nome, papel e módulos em hub.usuarios / hub.usuario_modulos;
+  - bloqueia no Hub quem SAIU da lista (contas de teste @hub.local ficam de fora).
+Na primeira execução, se hub.acessos estiver vazia, importa o
+usuarios_hub.json antigo (uma vez só).
 
 Lê o banco do GeoMap só em modo leitura. Nunca imprime hash de senha.
 
@@ -92,13 +96,15 @@ def main():
     ap.add_argument('--simular', action='store_true', help='mostra o que faria, sem gravar')
     args = ap.parse_args()
 
-    with open(os.path.join(RAIZ, 'ingestao', 'usuarios_hub.json'), encoding='utf-8') as f:
-        desejados = json.load(f)['usuarios']
+    auth, hub = AuthAdmin(), Hub()
+    desejados = hub.selecionar('acessos', 'email,nome,papel,admin,modulos', {'order': 'email'})
+    if not desejados:
+        desejados = importar_arquivo_antigo(hub, args.simular)
+    lista_completa = {d['email'] for d in desejados}
     if args.apenas:
-        desejados = [d for d in desejados if d['email'].lower() == args.apenas.lower()]
+        desejados = [d for d in desejados if d['email'] == args.apenas.lower()]
 
     geomap = usuarios_geomap()
-    auth, hub = AuthAdmin(), Hub()
     contas = auth.por_email()
 
     for d in desejados:
@@ -126,13 +132,44 @@ def main():
         esta_bloqueado = bool(conta and conta.get('banned_until'))
         if not conta or esta_bloqueado == liberado:
             auth.bloquear(id_, not liberado)
-        hub.upsert('usuarios', [{'id': id_, 'nome': g['nome'], 'papel': d['papel'], 'admin': d['admin']}], 'id')
+        hub.upsert('usuarios', [{'id': id_, 'nome': d['nome'], 'papel': d['papel'], 'admin': d['admin']}], 'id')
         requests.delete(f'{hub.url}/usuario_modulos', params={'usuario_id': f'eq.{id_}'},
                         headers=hub.headers, timeout=60).raise_for_status()
         hub.upsert('usuario_modulos', [{'usuario_id': id_, 'modulo_id': m} for m in d['modulos']],
                    'usuario_id,modulo_id')
 
+    # Quem saiu da lista de acessos perde o acesso ao Hub (a conta fica
+    # bloqueada, não é apagada: o histórico continua com o nome da pessoa).
+    if not args.apenas:
+        for email, conta in contas.items():
+            if email in lista_completa or email.endswith('@hub.local') or conta.get('banned_until'):
+                continue
+            print(f'  {email}: fora da lista de acessos → bloqueado no Hub')
+            if args.simular:
+                continue
+            auth.bloquear(conta['id'], True)
+            requests.delete(f'{hub.url}/usuario_modulos', params={'usuario_id': f"eq.{conta['id']}"},
+                            headers=hub.headers, timeout=60).raise_for_status()
+            hub.atualizar('usuarios', {'id': f"eq.{conta['id']}"}, {'admin': False, 'papel': 'leitura'})
+
     print('Simulação: nada foi gravado.' if args.simular else 'Contas sincronizadas.')
+
+
+def importar_arquivo_antigo(hub, simular):
+    """Uma vez só: leva o usuarios_hub.json para hub.acessos (o nome vem do e-mail,
+    ex. leonardo.malerbo → Leonardo Malerbo; depois dá pra corrigir na tela)."""
+    caminho = os.path.join(RAIZ, 'ingestao', 'usuarios_hub.json')
+    if not os.path.exists(caminho):
+        return []
+    with open(caminho, encoding='utf-8') as f:
+        antigos = json.load(f)['usuarios']
+    linhas = [{'email': u['email'].lower(),
+               'nome': ' '.join(p.capitalize() for p in u['email'].split('@')[0].replace('_', '.').split('.')),
+               'papel': u['papel'], 'admin': bool(u.get('admin')), 'modulos': u['modulos']} for u in antigos]
+    print(f'  (primeira vez) importando {len(linhas)} acesso(s) do usuarios_hub.json para o banco')
+    if not simular:
+        hub.upsert('acessos', linhas, 'email')
+    return linhas
 
 
 if __name__ == '__main__':
