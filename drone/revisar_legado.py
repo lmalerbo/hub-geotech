@@ -73,8 +73,10 @@ def classificar(area, talhoes) -> str:
     return 'catacao' if cobertura < 0.4 and mediana_ha < 0.2 else 'normal'
 
 
-def precisa_refazer(usados: set, publicado: int, publicado_existe: bool) -> bool:
-    return not publicado_existe or usados != {publicado}
+def precisa_refazer(usados: set, publicado: int, publicado_existe: bool, ja_consolidado: bool = False) -> bool:
+    if not publicado_existe:
+        return True
+    return not ja_consolidado and usados != {publicado}
 
 
 # ── leitura ──────────────────────────────────────────────────────────────
@@ -103,7 +105,7 @@ def revisoes_do_documento(banco, cod, tipo) -> list:
     p = banco.selecionar('projetos', 'id', {'modulo_id': 'eq.drone', 'tipo': 'eq.individual', 'cod_faz': f'eq.{cod}'})
     if not p:
         return []
-    return banco.selecionar('projeto_revisoes', 'id,numero', {'projeto_id': f"eq.{p[0]['id']}",
+    return banco.selecionar('projeto_revisoes', 'id,numero,motivo', {'projeto_id': f"eq.{p[0]['id']}",
                                                               'documento': f'eq.{tipo}'})
 
 
@@ -191,7 +193,8 @@ def main():
                 linha['detalhe'] = f'{area.area / 1e4:.2f} ha de {len(usados_l)}: {fontes}'
                 linha['cobre_pct'] = round(divergencia(talhoes, area)['cobertura_base_pct'])
                 linha['zips_novos'] = len(novos)
-                if not precisa_refazer(usados, idx_pub, bool(revs)):
+                consolidado = any('consolidado' in (r['motivo'] or '') for r in revs)
+                if not precisa_refazer(usados, idx_pub, bool(revs), consolidado):
                     linha['resultado'] = 'igual'
                 elif any(r['numero'] > 0 for r in revs):
                     linha['resultado'] = 'tem revisão do sistema — não mexe'

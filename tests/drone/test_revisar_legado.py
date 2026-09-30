@@ -57,3 +57,7 @@ def test_precisa_refazer():
     assert precisa_refazer(usados={0, 2}, publicado=2, publicado_existe=True)
     # nada publicado ainda (fazenda nova ou carga que caiu) → publica
     assert precisa_refazer(usados={0}, publicado=0, publicado_existe=False)
+
+
+def test_nao_refaz_o_que_ja_foi_consolidado():
+    assert not precisa_refazer(usados={0, 2}, publicado=2, publicado_existe=True, ja_consolidado=True)
