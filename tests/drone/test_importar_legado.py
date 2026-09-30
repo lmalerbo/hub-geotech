@@ -98,4 +98,12 @@ def test_divergencia_com_a_base_atual():
     # 1/4 da área antiga caiu fora dos talhões de hoje; cobre 3/4 de 1 dos 2 ha
     d = divergencia(_base_dois_talhoes(), MultiPolygon([box(-25, 0, 75, 100)]))
     assert d['fora_da_base_pct'] == pytest.approx(25.0)
-    assert d['cobertura_base_pct'] == pytest.approx(37.5)
+    assert d['cobertura_base_pct'] == pytest.approx(50.0)     # talhão 1 coberto (75%), talhão 2 não
+
+
+def test_normal_com_muitos_obstaculos_ainda_cobre_a_fazenda():
+    from shapely.geometry import MultiPolygon, box
+    from drone.importar_legado import divergencia
+    # Normal da fazenda inteira com 40% de cada talhão tirado por obstáculos
+    area = MultiPolygon([box(0, 0, 100, 60), box(100, 0, 200, 60)])
+    assert divergencia(_base_dois_talhoes(), area)['cobertura_base_pct'] == pytest.approx(100.0)

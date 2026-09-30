@@ -86,8 +86,10 @@ def recorte_legado(talhoes, area):
 def divergencia(talhoes, area) -> dict:
     """Quanto do projeto antigo caiu fora dos talhões de hoje, e quanto da fazenda ele cobre."""
     uniao = unary_union(list(talhoes.geometry))
+    # talhão conta como coberto quando o projeto pega ao menos 30% dele (obstáculos não "descobrem" o talhão)
+    cobertos = sum(g.area for g in talhoes.geometry if g.intersection(area).area >= 0.3 * g.area)
     return {'fora_da_base_pct': 100 * area.difference(uniao).area / area.area,
-            'cobertura_base_pct': 100 * area.intersection(uniao).area / uniao.area}
+            'cobertura_base_pct': 100 * cobertos / sum(g.area for g in talhoes.geometry)}
 
 
 def area_antiga(atributos: dict):
