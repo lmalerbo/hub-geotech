@@ -528,6 +528,12 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .modal-caixa{background:var(--sf);border-radius:16px;box-shadow:var(--sh-lg);padding:22px 24px;width:min(460px,92vw);display:flex;flex-direction:column;gap:12px}
 .modal-t{font-size:16px;font-weight:700}
 .envio-item{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.envio-drop{border:2px dashed var(--bd2);border-radius:12px;padding:16px;text-align:center;font-size:12.5px;color:var(--t2);cursor:pointer;margin-bottom:12px;transition:all var(--tf)}
+.envio-drop:hover,.envio-drop.sobre{border-color:var(--colheita);background:rgba(212,137,10,.06);color:var(--t1)}
+.envio-drop .ico{font-size:26px;display:block;margin:0 auto 4px;color:var(--t3)}
+.envio-drop-log{font-size:11.5px;margin:-4px 0 10px;display:flex;flex-direction:column;gap:2px}
+.envio-drop-log .ok{color:var(--plantio)}
+.envio-drop-log .nao{color:#c23b3b}
 .envio-rot{font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px}
 .modal-botoes{display:flex;justify-content:flex-end;gap:10px;align-items:center}
 .flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
@@ -556,6 +562,12 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 <div class="modal-fundo off" id="modal-envio">
   <div class="modal-caixa">
     <div class="modal-t" id="envio-titulo"></div>
+    <label class="envio-drop" id="envio-drop">
+      <span class="ico">upload_file</span>
+      Arraste todos os arquivos aqui (ou clique para escolher vários de uma vez)
+      <input type="file" id="envio-drop-inp" multiple hidden onchange="distribuirArquivos(this.files);this.value=''">
+    </label>
+    <div class="envio-drop-log" id="envio-drop-log"></div>
     <div id="envio-corpo"></div>
     <div class="login-erro" id="envio-erro"></div>
     <div class="modal-botoes">
@@ -2426,6 +2438,7 @@ let ENVIO=null;
 // Cada item vira revisão nova quando a vigente já tem arquivo daquele tipo
 // (ou quando forcarNova); senão completa a vigente (ou abre a Rev0).
 function abrirEnvio(cfg){
+  document.getElementById('envio-drop-log').innerHTML='';
   const abertas={};
   // Colheita não tem controle de revisão: o arquivo novo substitui o anterior
   // (mesmo nome) e a nota explica o porquê.
@@ -2469,6 +2482,42 @@ function abrirEnvio(cfg){
   const ok=document.getElementById('envio-ok');ok.disabled=false;ok.textContent='Enviar';
   document.getElementById('modal-envio').classList.remove('off');
 }
+// Arrastar vários arquivos de uma vez (como no Expo_safra): cada arquivo vai
+// para o campo certo pela extensão e, quando há dois campos com a mesma
+// extensão (Exp1L/Exp2L), pelo "1L"/"2L" no nome. Arquivo cujo nome começa
+// com o código de OUTRA fazenda é recusado — evita subir o projeto errado.
+function campoDoArquivo(nome){
+  const ext=(nome.split('.').pop()||'').toLowerCase();
+  const candidatos=ENVIO.itens.map((it,i)=>({it,i})).filter(x=>x.it.ext===ext);
+  if(candidatos.length<=1)return candidatos[0];
+  const n=nome.toUpperCase().replace(/\s+/g,'');
+  return candidatos.find(x=>(x.it.doc==='exp1l'&&/1L\b|1L[._-]|EXP1L/.test(n))||(x.it.doc==='exp2l'&&/2L\b|2L[._-]|EXP2L/.test(n)));
+}
+function distribuirArquivos(lista){
+  if(!ENVIO)return;
+  const log=document.getElementById('envio-drop-log');
+  const linhas=[];
+  for(const arq of lista){
+    const cod=(arq.name.match(/^(\d{5})/)||[])[1];
+    if(cod&&cod!==String(ENVIO.cod)){linhas.push(`<span class="nao">✗ ${esc(arq.name)}: é da fazenda ${cod}, não da ${ENVIO.cod}</span>`);continue;}
+    const alvo=campoDoArquivo(arq.name);
+    if(!alvo){linhas.push(`<span class="nao">✗ ${esc(arq.name)}: não corresponde a nenhum arquivo pedido aqui</span>`);continue;}
+    const dt=new DataTransfer();dt.items.add(arq);
+    document.getElementById('envio-arq-'+alvo.i).files=dt.files;
+    linhas.push(`<span class="ok">✓ ${esc(arq.name)} → ${esc(alvo.it.rotulo)}</span>`);
+  }
+  log.innerHTML=linhas.join('');
+}
+(function(){
+  const zona=document.getElementById('envio-drop');
+  ['dragenter','dragover'].forEach(ev=>zona.addEventListener(ev,e=>{e.preventDefault();zona.classList.add('sobre');}));
+  ['dragleave','drop'].forEach(ev=>zona.addEventListener(ev,()=>zona.classList.remove('sobre')));
+  zona.addEventListener('drop',e=>{e.preventDefault();if(e.dataTransfer.files.length)distribuirArquivos(e.dataTransfer.files);});
+  // Soltar arquivo fora da área não abre o arquivo no navegador.
+  document.getElementById('modal-envio').addEventListener('dragover',e=>e.preventDefault());
+  document.getElementById('modal-envio').addEventListener('drop',e=>e.preventDefault());
+})();
+
 function fecharEnvio(){document.getElementById('modal-envio').classList.add('off');ENVIO=null;}
 
 async function confirmarEnvio(){
