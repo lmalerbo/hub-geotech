@@ -25,6 +25,17 @@ papel_orig = u['papel']
 tinha_drone = bool(b.selecionar('usuario_modulos', 'modulo_id', {'usuario_id': f"eq.{u['id']}", 'modulo_id': 'eq.drone'}))
 falhas = []
 
+# Nunca mexe em trabalho real: só roda com a 10974 sem solicitação aberta e a fila do agente vazia.
+FAZ = 10974
+abertas = b.selecionar('drone_solicitacoes', 'id', {'cod_faz': f'eq.{FAZ}', 'origem': 'neq.legado',
+                                                     'status': 'not.in.(ok,cancelado)'})
+fila = (b.selecionar('drone_geracoes', 'id', {'status': 'in.(fila,processando)'})
+        + b.selecionar('drone_geracoes', 'id', {'status': 'eq.pronta', 'publicar_pedido_em': 'not.is.null',
+                                                'publicacao_erro': 'is.null'})
+        + b.selecionar('drone_envios', 'id', {'status': 'in.(fila,processando)'}))
+if abertas or fila:
+    sys.exit(f'Teste NÃO rodou (nada foi alterado): solicitações abertas da {FAZ}: {abertas}; itens na fila: {fila}')
+
 
 def confere(cond, msg):
     print(('✓ ' if cond else '✗ ') + msg)
@@ -69,7 +80,9 @@ try:
             {p_solicitacao_id:s,p_escopo:{incluir:[{talhao:DR.geo.features[0].properties.talhao,fonte:'sistema'}],remover:[]}});
             return error?error.message:''}""", sol_criada)
         confere('prévia aberta' in dup, f'segunda geração da mesma fazenda é recusada ({dup[:60]})')
-        os.system(f'"{sys.executable}" -m drone.agente --uma-vez')
+        # processa só a geração deste teste (a fila estava vazia antes), sem envios nem publicações
+        os.system(f'"{sys.executable}" -c "from drone.agente import gerar_uma; from drone.banco import DroneBanco; '
+                  f'from drone.config import cfg; gerar_uma(DroneBanco(), cfg())"')
         pg.evaluate("drRecarregarFazenda()")
         pg.wait_for_selector('text=Prévia pronta', timeout=60000)
         pg.wait_for_selector('#dr-pdf iframe, #dr-pdf .dr-err', timeout=20000)

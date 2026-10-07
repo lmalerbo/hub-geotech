@@ -54,7 +54,7 @@ def processar(geracao: dict, banco, base: tuple, pasta: Path, hoje: datetime.dat
         escopo = geracao.get('escopo')
         envios = {i.get('envio_id') for i in (escopo or {}).get('incluir', []) if i.get('fonte') == 'shape'}
         ajuste = [g for e in envios if e for g in banco.ajuste(e)]
-        itens = montar_normal(vigentes, escopo, talhoes, buffers, ajuste, revisao)
+        itens = montar_normal(vigentes, escopo, talhoes, buffers, ajuste, revisao, avisos=extras)
         recorte = resumir(talhoes, uniao(itens))
         cob = cobertura(itens, talhoes)
         if cob < 99.95:

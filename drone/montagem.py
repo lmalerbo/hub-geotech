@@ -27,7 +27,7 @@ def dividir_por_talhao(area, talhoes, origem, desde_rev) -> dict:
     return itens
 
 
-def montar_normal(vigentes, escopo, talhoes, buffers, ajuste, nova_rev) -> dict:
+def montar_normal(vigentes, escopo, talhoes, buffers, ajuste, nova_rev, avisos=None) -> dict:
     base = _base(talhoes)
     if escopo is None:                                   # CLI / pedido antigo: fazenda inteira pelo sistema
         escopo = {'incluir': [{'talhao': n, 'fonte': 'sistema'} for n in base], 'remover': []}
@@ -38,7 +38,7 @@ def montar_normal(vigentes, escopo, talhoes, buffers, ajuste, nova_rev) -> dict:
         raise ErroGeracao(f"Talhões que não existem na Base de hoje: {', '.join(map(str, faltando))}.")
     itens = {k: v for k, v in vigentes.items() if k not in remover}
     shape = unary_union([make_valid(g) for g in ajuste]) if ajuste else None
-    vazios = []
+    vazios, tomados = [], []
     for i in incluir:
         n, fonte = int(i['talhao']), i.get('fonte', 'sistema')
         if fonte == 'shape':
@@ -48,12 +48,14 @@ def montar_normal(vigentes, escopo, talhoes, buffers, ajuste, nova_rev) -> dict:
         else:
             p = so_poligonos(make_valid(base[n].difference(buffers)))
         if p.area < MINIMO_M2:
-            vazios.append(n)
+            (vazios if fonte == 'shape' else tomados).append(n)   # sistema: obstáculo toma o talhão todo
             continue
         itens[n] = _item(p, fonte, nova_rev)
     if vazios:
-        raise ErroGeracao('Sem área de aplicação nos talhões ' + ', '.join(map(str, sorted(vazios)))
-                          + ' (o shape enviado não cobre o talhão, ou os obstáculos tomam o talhão inteiro).')
+        raise ErroGeracao('O shape enviado não cobre os talhões ' + ', '.join(map(str, sorted(vazios))) + '.')
+    if tomados and avisos is not None:
+        avisos.append('Talhões sem área de aplicação (os obstáculos tomam o talhão inteiro), ficaram fora: '
+                      + ', '.join(map(str, sorted(tomados))) + '.')
     if not itens:
         raise ErroGeracao('A área de aplicação ficou vazia: o projeto ficaria sem nenhum talhão.')
     return itens

@@ -204,6 +204,16 @@ function drAtualizarSelecaoMapa(){
   });
 }
 
+function drPodeGerarCatacao(sol){return !!sol&&['solicitado','em_elaboracao'].includes(sol.status);}
+function drNomeSeguro(nome){
+  return String(nome).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]/g,'_').replace(/\.\./g,'__');
+}
+function drClasseEscolhida(txt){
+  const t=String(txt??'').replace(/m/gi,'').trim();
+  if(!t)return null;                                   // vazio: classe pelo nome do arquivo
+  const n=Number(t);return [15,25,50].includes(n)?n:undefined;
+}
+
 function drAtual(){
   const tipo=DR.doc;
   const sol=DR.info.sols.find(s=>s.tipo===tipo)||null;
@@ -295,7 +305,7 @@ function drPainelLateral(){
       :`<button class="dr-btn2" onclick="drAbrirCatacao()"><span class="ico">add</span> Abrir Catação desta fazenda</button>`}
       <div class="dr-msg" style="margin-top:6px">Um levantamento novo substitui a Catação inteira.</div></div>
       ${drObstaculosHtml()}
-      <button class="dr-btn" ${sol&&sol.status==='solicitado'?'':'disabled'} onclick="drGerarCatacao()"><span class="ico">play_arrow</span> Gerar prévia</button>`;
+      <button class="dr-btn" ${drPodeGerarCatacao(sol)?'':'disabled'} onclick="drGerarCatacao()"><span class="ico">play_arrow</span> Gerar prévia</button>`;
   }else{
     h+=drObstaculosHtml()+`<div class="dr-msg">Somente consulta.</div>`;
   }
@@ -314,17 +324,24 @@ function drPainelLateral(){
 function drErro(e){const el=document.getElementById('dr-err');if(el)el.textContent=e.message||e;}
 
 function drEnviar(tipo){
+  let classe=null;
+  if(tipo==='obstaculos'){
+    const r=prompt('Classe dos obstáculos: 15, 25 ou 50 m.\nDeixe vazio para usar o nome de cada arquivo (ex.: restricoes15m).','');
+    if(r===null)return;
+    classe=drClasseEscolhida(r);
+    if(classe===undefined){alert('Classe inválida: use 15, 25 ou 50.');return;}
+  }
   const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.accept='.shp,.shx,.dbf,.prj,.cpg,.zip';
   inp.onchange=async()=>{
     try{
       const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];
       for(const f of inp.files){
-        const c=`${pasta}/${f.name}`;
+        const c=`${pasta}/${drNomeSeguro(f.name)}`;
         const {error}=await sb.storage.from('drone-envios').upload(c,f);
         if(error)throw error;caminhos.push(c);
       }
       const {sol}=drAtual();
-      const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:null,
+      const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:classe,
         p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
       if(tipo==='ajuste')DR.ajusteId=id;
       await drRecarregarFazenda();

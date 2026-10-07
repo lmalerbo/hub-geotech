@@ -78,3 +78,13 @@ def test_cobertura_fora_da_base_uniao_e_json(base):
     assert uniao(itens).area == pytest.approx(6000 + 100)
     j = itens_para_json(itens)
     assert {x['talhao'] for x in j} == {1, 9} and j[0]['wkt'].startswith('MULTIPOLYGON')
+
+
+def test_talhao_do_sistema_todo_coberto_por_obstaculo_e_pulado_com_aviso(base):
+    # Parte 1 pulava esse talhão; travar a geração inteira por ele é regressão (spec §4.1 só erra no shape)
+    avisos = []
+    tomado = box(-60, -60, 160, 160)                      # cobre o talhão 1 inteiro
+    itens = montar_normal({}, {'incluir': [{'talhao': 1, 'fonte': 'sistema'}, {'talhao': 3, 'fonte': 'sistema'}]},
+                          base, tomado, [], 0, avisos=avisos)
+    assert sorted(itens) == [3]
+    assert avisos and '1' in avisos[0]
