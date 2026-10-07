@@ -90,15 +90,32 @@ class DroneBanco(Hub):
         self.atualizar('drone_geracoes', {'id': f'eq.{id_}'},
                        {'publicacao_erro': msg[:1000], 'publicacao_iniciada_em': None})
 
-    def gravar_obstaculos(self, cod_faz, classe_m, origem, arquivo, geoms) -> int:
+    def gravar_obstaculos(self, cod_faz, classe_m, origem, arquivo, geoms, usuario=None) -> int:
         return self.rpc('drone_gravar_obstaculos', {
             'p_cod_faz': cod_faz, 'p_classe_m': classe_m, 'p_origem': origem, 'p_arquivo': arquivo,
-            'p_wkts': [g.wkt for g in geoms]})
+            'p_wkts': [g.wkt for g in geoms], 'p_usuario': usuario})
 
-    def gravar_infestacao(self, solicitacao_id, empresa, arquivo, geoms) -> int:
+    def gravar_infestacao(self, solicitacao_id, empresa, arquivo, geoms, usuario=None) -> int:
         return self.rpc('drone_gravar_infestacao', {
             'p_solicitacao_id': solicitacao_id, 'p_empresa': empresa, 'p_arquivo': arquivo,
-            'p_wkts': [g.wkt for g in geoms]})
+            'p_wkts': [g.wkt for g in geoms], 'p_usuario': usuario})
+
+    def pegar_envio(self):
+        r = self.rpc('drone_pegar_envio')
+        return r[0] if r else None
+
+    def concluir_envio(self, id_, status, erro=None):
+        self.rpc('drone_concluir_envio', {'p_id': id_, 'p_status': status, 'p_erro': erro})
+
+    def gravar_ajuste(self, envio_id, geoms):
+        self.rpc('drone_gravar_ajuste', {'p_envio_id': envio_id, 'p_wkts': [g.wkt for g in geoms]})
+
+    def baixar_envio(self, caminho: str, local: Path) -> Path:
+        r = requests.get(f'{self.storage}/object/drone-envios/{caminho}', headers=self._storage_headers(), timeout=120)
+        self._checar(r, 'storage')
+        Path(local).parent.mkdir(parents=True, exist_ok=True)
+        Path(local).write_bytes(r.content)
+        return Path(local)
 
     # ── projeto e revisões (tabelas existentes do Hub) ──────────────
     def proximo_numero(self, cod_faz, documento) -> int:
@@ -112,11 +129,25 @@ class DroneBanco(Hub):
                                                            'order': 'numero.desc', 'limit': '1'})
         return r[0]['numero'] + 1 if r else 0
 
-    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False) -> int:
-        """Revisão + arquivos + conclusão da geração/solicitação numa transação (hub.drone_publicar)."""
+    def talhoes_vigentes(self, cod_faz, documento):
+        linhas = self.rpc('drone_talhoes_vigentes', {'p_cod_faz': cod_faz, 'p_documento': documento}) or []
+        itens = {l['talhao_num']: {'geom': shapely_wkt.loads(l['wkt']), 'area_ha': float(l['area_ha']),
+                                   'origem': l['origem'], 'desde_rev': l['desde_rev']} for l in linhas}
+        return itens, (linhas[0]['revisao_em'] if linhas else None)
+
+    def gravar_geracao_talhoes(self, geracao_id, itens):
+        from drone.montagem import itens_para_json
+        self.rpc('drone_gravar_geracao_talhoes', {'p_geracao_id': geracao_id, 'p_talhoes': itens_para_json(itens)})
+
+    def ajuste(self, envio_id) -> list:
+        return [shapely_wkt.loads(l['wkt']) for l in self.rpc('drone_ajuste_wkt', {'p_envio_id': envio_id}) or []]
+
+    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False,
+                         talhoes=None) -> int:
+        """Revisão + arquivos + talhões + conclusão da geração/solicitação numa transação (hub.drone_publicar)."""
         return self.rpc('drone_publicar', {
             'p_cod_faz': cod_faz, 'p_documento': documento, 'p_motivo': motivo, 'p_numero': numero,
-            'p_arquivos': arquivos, 'p_geracao_id': geracao_id, 'p_legado': legado})
+            'p_arquivos': arquivos, 'p_geracao_id': geracao_id, 'p_legado': legado, 'p_talhoes': talhoes})
 
     def previas_para_apagar(self) -> list:
         limite = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ')

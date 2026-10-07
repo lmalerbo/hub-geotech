@@ -6,7 +6,8 @@ from shapely.ops import unary_union
 
 from drone.base_talhoes import talhoes_da_fazenda
 from drone.erros import ErroGeracao
-from drone.geometria import blocos_catacao, recortar, uniao_buffers
+from drone.geometria import blocos_catacao, recortar, resumir, uniao_buffers
+from drone.montagem import cobertura, dividir_por_talhao, fora_da_base, montar_normal, uniao
 from drone.mapa_pdf import DadosMapa, gerar_pdf
 from drone.saida import gravar_aplicacao, montar_zip
 
@@ -43,35 +44,56 @@ def processar(geracao: dict, banco, base: tuple, pasta: Path, hoje: datetime.dat
     talhoes = talhoes_da_fazenda(Path(arquivo_base), cod)
     obst, versoes = banco.obstaculos_vigentes(cod)
 
-    infest, agrupar, folga, fora = None, 0.0, 0.0, False
-    if tipo == 'catacao':
+    revisao = banco.proximo_numero(cod, tipo)   # só leitura: o projeto nasce na publicação
+    buffers = uniao_buffers(obst, distancias)
+    extras, cob, fora = [], None, False
+    agrupar = float(params.get('agrupar_infestacao_m', 20))
+    folga = float(params.get('folga_infestacao_m', 5))
+    if tipo == 'normal':
+        vigentes, revisao_em = banco.talhoes_vigentes(cod, 'normal')
+        escopo = geracao.get('escopo')
+        envios = {i.get('envio_id') for i in (escopo or {}).get('incluir', []) if i.get('fonte') == 'shape'}
+        ajuste = [g for e in envios if e for g in banco.ajuste(e)]
+        itens = montar_normal(vigentes, escopo, talhoes, buffers, ajuste, revisao, avisos=extras)
+        recorte = resumir(talhoes, uniao(itens))
+        cob = cobertura(itens, talhoes)
+        if cob < 99.95:
+            extras.append(f'Normal incompleta: {cob:.0f}% da fazenda tem projeto.')
+        if fora_da_base(itens, talhoes):
+            extras.append('Talhões fora da Base que continuam no projeto: '
+                          + ', '.join(map(str, fora_da_base(itens, talhoes))) + '.')
+        refeitos = {int(i['talhao']) for i in (escopo or {}).get('incluir', [])} if escopo else set(itens)
+        copiados = set(itens) - refeitos
+        if revisao_em and copiados and any(v['enviado_em'] > revisao_em for v in versoes):
+            extras.append(f'Obstáculos atualizados depois da revisão vigente: {len(copiados)} talhões '
+                          'copiados não foram refeitos.')
+    else:
         if not geracao.get('infestacao_id'):
             raise ErroGeracao('Catação sem shape de infestação: envie a infestação antes de gerar.')
         infest = banco.infestacao(geracao['infestacao_id'])
-        agrupar = float(params.get('agrupar_infestacao_m', 20))
-        folga = float(params.get('folga_infestacao_m', 5))
         fora = not blocos_catacao(infest, agrupar, folga).difference(unary_union(list(talhoes.geometry))).is_empty
-
-    recorte = recortar(talhoes, uniao_buffers(obst, distancias), infestacao=infest, agrupar=agrupar, folga=folga)
-    revisao = banco.proximo_numero(cod, tipo)   # só leitura: o projeto nasce na publicação
+        recorte = recortar(talhoes, buffers, infestacao=infest, agrupar=agrupar, folga=folga)
+        itens = dividir_por_talhao(recorte.area, talhoes, 'sistema', revisao)
+    banco.gravar_geracao_talhoes(geracao['id'], itens)
 
     saida = Path(pasta) / f"geracao-{geracao['id']}"
     shp = gravar_aplicacao(recorte.area, int(params['taxa_l_ha']), saida / 'shape', cod)
     zip_ = montar_zip(shp, saida / f'{cod}.zip')
     pdf = saida / f'{cod}.pdf'
-    orient = gerar_pdf(DadosMapa(cod, faz['nome'], tipo, revisao, talhoes, recorte, hoje), pdf)
+    orient = gerar_pdf(DadosMapa(cod, faz['nome'], tipo, revisao, talhoes, recorte, hoje, cobertura_pct=cob), pdf)
 
     destino = f"geracao-{geracao['id']}"
     return {
         'status': 'pronta',
         'orientacao': orient,
-        'insumos': {'distancias': distancias, 'taxa_l_ha': params['taxa_l_ha'], 'agrupar_infestacao_m': agrupar, 'folga_infestacao_m': folga,
-                    'base_talhoes': Path(arquivo_base).name, 'data_base': data_base.isoformat(),
-                    'obstaculos': [v['versao_id'] for v in versoes], 'infestacao_id': geracao.get('infestacao_id'),
+        'insumos': {'distancias': distancias, 'taxa_l_ha': params['taxa_l_ha'], 'agrupar_infestacao_m': agrupar,
+                    'folga_infestacao_m': folga, 'base_talhoes': Path(arquivo_base).name,
+                    'data_base': data_base.isoformat(), 'obstaculos': [v['versao_id'] for v in versoes],
+                    'infestacao_id': geracao.get('infestacao_id'), 'escopo': geracao.get('escopo'),
                     'revisao_prevista': revisao},
         'resumo': {'por_talhao': recorte.por_talhao, 'area_total_ha': recorte.area_total_ha,
-                   'aplicacao_ha': recorte.aplicacao_ha},
-        'alertas': alertas(recorte, versoes, params, hoje, fora),
+                   'aplicacao_ha': recorte.aplicacao_ha, 'cobertura_pct': cob},
+        'alertas': alertas(recorte, versoes, params, hoje, fora) + extras,
         'previa_zip': banco.subir_previa(zip_, f'{destino}/{cod}.zip'),
         'previa_pdf': banco.subir_previa(pdf, f'{destino}/{cod}.pdf'),
     }

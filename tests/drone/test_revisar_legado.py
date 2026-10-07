@@ -61,3 +61,10 @@ def test_precisa_refazer():
 
 def test_nao_refaz_o_que_ja_foi_consolidado():
     assert not precisa_refazer(usados={0, 2}, publicado=2, publicado_existe=True, ja_consolidado=True)
+def test_catacao_consolidada_volta_ao_ultimo_levantamento():
+    m = 'Importado do legado (consolidado: 24/25 Rev0, 24/25 Rev4, 26/27 Rev3)'
+    assert precisa_refazer(usados={4}, publicado=4, publicado_existe=True, ja_consolidado=True,
+                           tipo='catacao', motivo=m)
+    m2 = 'Importado do legado (último levantamento: 26/27 Rev3)'
+    assert not precisa_refazer(usados={4}, publicado=4, publicado_existe=True, ja_consolidado=False,
+                               tipo='catacao', motivo=m2)

@@ -566,6 +566,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 </head>
 <body>
 
@@ -659,7 +661,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       <button class="ni" onclick="trocar('consultas',this)"><span class="ico ni-ico">table_view</span><span class="ni-lbl">Consultas</span></button>
       <div class="sep"></div>
       <button class="ni dim"><span class="ico ni-ico">water_drop</span><span class="ni-lbl">Irrigação<span class="soon">em breve</span></span></button>
-      <button class="ni dim"><span class="ico ni-ico">flight</span><span class="ni-lbl">Drones<span class="soon">em breve</span></span></button>
+      <button class="ni" onclick="trocar('drone',this)"><span class="ico ni-ico">flight</span><span class="ni-lbl">Drone</span></button>
       <div class="sep"></div>
       <button class="ni" onclick="trocar('geotech',this)"><span class="ico ni-ico">apps</span><span class="ni-lbl" style="display:flex;align-items:center;gap:6px">Ferramentas<span style="font-size:9px;font-weight:700;background:rgba(91,110,232,.12);color:#5b6ee8;border-radius:20px;padding:1px 6px;white-space:nowrap">BETA</span></span></button>
     </nav>
@@ -715,6 +717,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       </div>
 
       <!-- COLHEITA -->
+      <div id="v-drone" class="view"><div id="drone-root"></div></div>
       <div id="v-colheita" class="view">
         <div class="pgrid">
           <div>
@@ -1781,8 +1784,8 @@ function irCfgExtras(){
   const btnExtras=document.querySelector('.cfg-cat[onclick*="extras"]');
   if(btnExtras){cfgTab('extras',btnExtras);}
 }
-const LABELS={dash:'Dashboard',plantio:'Plantio',colheita:'Colheita',preparo:'Preparo',portal:'Portal Mobile',geotech:'Ferramentas'};
-const MOD_AC={plantio:'var(--plantio)',colheita:'var(--colheita)',preparo:'var(--preparo)',dash:'var(--plantio)',portal:'var(--t2)',geotech:'#5b6ee8'};
+const LABELS={drone:'Drone',dash:'Dashboard',plantio:'Plantio',colheita:'Colheita',preparo:'Preparo',portal:'Portal Mobile',geotech:'Ferramentas'};
+const MOD_AC={drone:'var(--drones)',plantio:'var(--plantio)',colheita:'var(--colheita)',preparo:'var(--preparo)',dash:'var(--plantio)',portal:'var(--t2)',geotech:'#5b6ee8'};
 function trocar(v,el){
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
   if(el)el.classList.add('on');
@@ -1802,6 +1805,7 @@ function trocar(v,el){
     inp.onblur=()=>inp.style.borderColor='';
   }
   if(v==='consultas')rConsFilters();
+  if(v==='drone')droneIniciar();
 }
 async function entrar(){
   const email=document.getElementById('f-email').value.trim();
@@ -1877,8 +1881,8 @@ function toggleKey(id){
 // ─────────────────────────────────────────────────────────────
 // Preenchido por carregarDados() a partir de hub.usuarios / hub.usuario_modulos.
 const USUARIOS=[];
-const ROLE_LABELS={editor:'Editor',leitura:'Leitura'};
-const ROLE_CLASSES={editor:'rc-a',leitura:'rc-dash'};
+const ROLE_LABELS={editor:'Editor',leitura:'Leitura',solicitante:'Solicitante'};
+const ROLE_CLASSES={editor:'rc-a',leitura:'rc-dash',solicitante:'rc-dash'};
 const PERMS=[
   {key:'plantio',  label:'Plantio',        sub:'Acesso ao módulo de plantio'},
   {key:'colheita', label:'Colheita',       sub:'Acesso ao módulo de colheita'},
@@ -2324,7 +2328,7 @@ async function carregarDados(){
   for(const u of usuarios){
     const mods=new Set((u.usuario_modulos||[]).map(m=>m.modulo_id));
     USUARIOS.push({id:u.id,nome:u.nome,role:u.papel,admin:u.admin,
-      perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),portal:false,config:u.admin}});
+      perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),drone:mods.has('drone')||u.admin,portal:false,config:u.admin}});
   }
   EU=USUARIOS.find(u=>u.id===user.id)||null;
   const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
@@ -2730,7 +2734,7 @@ function aplicarUsuario(){
   document.getElementById('sb-uname').textContent=primeiro;
   document.getElementById('tb-uname').textContent=primeiro;
   document.getElementById('sb-urole').textContent=ROLE_LABELS[EU.role]+(EU.admin?' · Admin':'');
-  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['colheita','colheita'],['config','config']]){
+  for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['colheita','colheita'],['drone','drone'],['config','config']]){
     const btn=document.querySelector(`.ni[onclick*="'${alvo}'"]`);
     if(btn)btn.style.display=EU.perms[mod]?'':'none';
   }
@@ -2748,5 +2752,6 @@ MOD_AC['consultas']='var(--t2)';
 // Sessão salva no navegador: entra direto, sem pedir login de novo.
 sb.auth.getSession().then(({data})=>{if(data.session)abrirHub();});
 </script>
+<script src="drone.js"></script>
 </body>
 </html>

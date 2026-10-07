@@ -16,7 +16,7 @@ import os
 from comum import Hub
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
-ETAPAS = ['base_fazendas.py', 'planagri.py', 'conservacao.py', 'icol.py']
+ETAPAS = ['base_fazendas.py', 'talhao_geom.py', 'planagri.py', 'conservacao.py', 'icol.py']
 
 
 def main():

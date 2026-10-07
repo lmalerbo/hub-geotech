@@ -47,7 +47,7 @@ class GitHubReleases:
 
 
 def publicar(banco, gh, cod_faz, documento, motivo, arquivos: dict, numero_esperado=None,
-             geracao_id=None, legado=False) -> int:
+             geracao_id=None, legado=False, talhoes=None) -> int:
     """Sobe os arquivos no GitHub e só depois grava a revisão (hub.drone_publicar, uma transação).
     Falha no GitHub não mexe no banco; repetir reaproveita os assets já enviados (mesmo nome)."""
     faz = banco.fazenda(cod_faz)
@@ -66,4 +66,6 @@ def publicar(banco, gh, cod_faz, documento, motivo, arquivos: dict, numero_esper
             nome = nome_arquivo(cod_faz, faz['nome'], numero, documento, ext)
             url, tamanho = gh.subir(release, arquivos[ext], nome)
             enviados.append({'nome': nome, 'url': url, 'tamanho': tamanho})
-    return banco.publicar_revisao(cod_faz, documento, motivo, numero, enviados, geracao_id, legado)
+    from drone.montagem import itens_para_json
+    return banco.publicar_revisao(cod_faz, documento, motivo, numero, enviados, geracao_id, legado,
+                                  itens_para_json(talhoes) if talhoes else None)

@@ -25,6 +25,7 @@ from drone.geometria import so_poligonos
 from drone.importar_legado import (LIMIAR, MOTIVO, _texto, chave_recencia, consolidar, crs_pela_faixa,
                                    divergencia, ler_legado, projetos_por_fazenda, recorte_legado, safra_curta)
 from drone.mapa_pdf import DadosMapa, gerar_pdf
+from drone.montagem import dividir_por_talhao
 from drone.publicacao import GitHubReleases, nome_arquivo, publicar
 from drone.saida import gravar_aplicacao, montar_zip
 
@@ -73,9 +74,13 @@ def classificar(area, talhoes) -> str:
     return 'catacao' if cobertura < 0.4 and mediana_ha < 0.2 else 'normal'
 
 
-def precisa_refazer(usados: set, publicado: int, publicado_existe: bool, ja_consolidado: bool = False) -> bool:
+def precisa_refazer(usados: set, publicado: int, publicado_existe: bool, ja_consolidado: bool = False,
+                    tipo: str = 'normal', motivo: str = '') -> bool:
     if not publicado_existe:
         return True
+    if tipo == 'catacao':            # Catação = só o último levantamento (Parte 2)
+        m = motivo or ''
+        return 'último levantamento' not in m and (', ' in m or usados != {publicado})
     return not ja_consolidado and usados != {publicado}
 
 
@@ -182,6 +187,8 @@ def main():
                 publicado = lidos[-1][0]['caminho'] if lidos else None   # o que a carga de 30/09 publicou
                 novos = [(l, a) for l, a in extras[tipo] if not any(mesma_geometria(a, b) for _, b in lidos)]
                 todos = sorted(lidos + novos, key=lambda x: chave_recencia(x[0]))
+                if tipo == 'catacao':
+                    todos = todos[-1:]                   # só o levantamento mais recente
                 area, usados = consolidar(talhoes, [a for _, a in todos], LIMIAR[tipo])
                 if area.is_empty:
                     raise ValueError('nenhum projeto cai nos talhões de hoje')
@@ -194,7 +201,8 @@ def main():
                 linha['cobre_pct'] = round(divergencia(talhoes, area)['cobertura_base_pct'])
                 linha['zips_novos'] = len(novos)
                 consolidado = any('consolidado' in (r['motivo'] or '') for r in revs)
-                if not precisa_refazer(usados, idx_pub, bool(revs), consolidado):
+                if not precisa_refazer(usados, idx_pub, bool(revs), consolidado, tipo=tipo,
+                                       motivo=revs[0]['motivo'] if revs else ''):
                     linha['resultado'] = 'igual'
                 elif any(r['numero'] > 0 for r in revs):
                     linha['resultado'] = 'tem revisão do sistema — não mexe'
@@ -208,8 +216,11 @@ def main():
                                             safra=safra_curta(usados_l[-1]['safra'])), pdf)
                         if revs:
                             apagar_rev0_legado(banco, gh, cod, fazendas[cod], tipo, revs[0]['id'])
-                        publicar(banco, gh, cod, tipo, f'{MOTIVO} (consolidado: {fontes})', {'zip': zip_, 'pdf': pdf},
-                                 numero_esperado=0, legado=True)
+                        itens = dividir_por_talhao(area, talhoes, 'legado', 0)
+                        motivo = (f'{MOTIVO} (último levantamento: {fontes})' if tipo == 'catacao'
+                                  else f'{MOTIVO} (consolidado: {fontes})')
+                        publicar(banco, gh, cod, tipo, motivo, {'zip': zip_, 'pdf': pdf},
+                                 numero_esperado=0, legado=True, talhoes=itens)
                         linha['resultado'] += ' ✓'
             except Exception as e:
                 linha['resultado'], linha['detalhe'] = 'erro', str(e)

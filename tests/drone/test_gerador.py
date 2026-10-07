@@ -19,12 +19,13 @@ def base(tmp_path):
 
 
 class BancoFalso:
-    def __init__(self, tipo='normal', obstaculos=None, infestacao=None):
+    def __init__(self, tipo='normal', obstaculos=None, infestacao=None, vigentes=None, ajuste=None):
         self.tipo, self.obst, self.infest, self.previas = tipo, obstaculos or {}, infestacao, []
+        self.vigentes, self.ajuste_geoms, self.gravados = vigentes or {}, ajuste or [], None
 
     def parametros(self):
-        return {'taxa_l_ha': '10', 'agrupar_infestacao_m': '20', 'folga_infestacao_m': '5', 'alerta_aproveitamento_min': '0.30',
-                'alerta_obstaculos_meses': '24'}
+        return {'taxa_l_ha': '10', 'agrupar_infestacao_m': '20', 'folga_infestacao_m': '5',
+                'alerta_aproveitamento_min': '0.30', 'alerta_obstaculos_meses': '24'}
 
     def distancias(self):
         return {15: 15.0, 25: 25.0, 50: 50.0}
@@ -45,9 +46,19 @@ class BancoFalso:
     def proximo_numero(self, cod_faz, documento):
         return 2
 
+    def talhoes_vigentes(self, cod_faz, documento):
+        return self.vigentes, '2024-01-01T00:00:00+00:00'
+
+    def ajuste(self, envio_id):
+        return self.ajuste_geoms
+
+    def gravar_geracao_talhoes(self, geracao_id, itens):
+        self.gravados = itens
+
     def subir_previa(self, caminho, destino):
         self.previas.append((caminho.name, destino))
         return destino
+
 
 
 def test_normal_gera_zip_pdf_e_resumo(base, tmp_path):
@@ -84,3 +95,36 @@ def test_catacao_parcialmente_fora_gera_alerta(base, tmp_path):
     r = processar({'id': 6, 'solicitacao_id': 9, 'infestacao_id': 1}, b, base, tmp_path / 'w',
                   datetime.date(2026, 10, 2))
     assert any('fora dos talhões' in a for a in r['alertas'])
+
+
+def test_normal_incorpora_talhao_e_copia_o_vigente(base, tmp_path):
+    from drone.montagem import dividir_por_talhao
+    import geopandas as gpd
+    t = gpd.GeoDataFrame({'TALHAO': [1, 2]}, geometry=[box(0, 0, 100, 100), box(100, 0, 200, 100)], crs=31983)
+    vig = dividir_por_talhao(box(0, 0, 100, 100), t, 'legado', 0)            # só o talhão 1 tem projeto
+    b = BancoFalso(vigentes=vig)
+    g = {'id': 7, 'solicitacao_id': 9, 'infestacao_id': None,
+         'escopo': {'incluir': [{'talhao': 2, 'fonte': 'sistema'}], 'remover': []}}
+    r = processar(g, b, base, tmp_path / 'w', datetime.date(2026, 10, 8))
+    assert sorted(b.gravados) == [1, 2]
+    assert b.gravados[1]['origem'] == 'legado' and b.gravados[2]['desde_rev'] == 2
+    assert r['resumo']['cobertura_pct'] == pytest.approx(100)
+
+
+def test_normal_incompleta_vira_alerta(base, tmp_path):
+    b = BancoFalso()
+    g = {'id': 8, 'solicitacao_id': 9, 'infestacao_id': None,
+         'escopo': {'incluir': [{'talhao': 1, 'fonte': 'sistema'}], 'remover': []}}
+    r = processar(g, b, base, tmp_path / 'w', datetime.date(2026, 10, 8))
+    assert r['resumo']['cobertura_pct'] == pytest.approx(50)
+    assert any('incompleta' in a.lower() for a in r['alertas'])
+
+
+def test_catacao_grava_talhoes_sem_herdar_a_anterior(base, tmp_path):
+    from drone.montagem import dividir_por_talhao
+    import geopandas as gpd
+    t = gpd.GeoDataFrame({'TALHAO': [1, 2]}, geometry=[box(0, 0, 100, 100), box(100, 0, 200, 100)], crs=31983)
+    b = BancoFalso('catacao', infestacao=[box(40, 40, 50, 50)],
+                   vigentes=dividir_por_talhao(box(100, 0, 200, 100), t, 'legado', 0))
+    processar({'id': 9, 'solicitacao_id': 9, 'infestacao_id': 1}, b, base, tmp_path / 'w', datetime.date(2026, 10, 8))
+    assert sorted(b.gravados) == [1]                                           # talhão 2 da anterior não vem
