@@ -125,11 +125,12 @@ class DroneBanco(Hub):
     def ajuste(self, envio_id) -> list:
         return [shapely_wkt.loads(l['wkt']) for l in self.rpc('drone_ajuste_wkt', {'p_envio_id': envio_id}) or []]
 
-    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False) -> int:
-        """Revisão + arquivos + conclusão da geração/solicitação numa transação (hub.drone_publicar)."""
+    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False,
+                         talhoes=None) -> int:
+        """Revisão + arquivos + talhões + conclusão da geração/solicitação numa transação (hub.drone_publicar)."""
         return self.rpc('drone_publicar', {
             'p_cod_faz': cod_faz, 'p_documento': documento, 'p_motivo': motivo, 'p_numero': numero,
-            'p_arquivos': arquivos, 'p_geracao_id': geracao_id, 'p_legado': legado})
+            'p_arquivos': arquivos, 'p_geracao_id': geracao_id, 'p_legado': legado, 'p_talhoes': talhoes})
 
     def previas_para_apagar(self) -> list:
         limite = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ')

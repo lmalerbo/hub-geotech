@@ -45,13 +45,14 @@ class _BancoFalso:
     def proximo_numero(self, cod_faz, documento):
         return len(self.revisoes)
 
-    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False):
+    def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False,
+                         talhoes=None):
         if numero != len(self.revisoes):
             raise RuntimeError('número da revisão mudou')
         if numero > 0 and not motivo:
             raise RuntimeError('motivo obrigatório')
         rev = {'id': 11 + numero, 'numero': numero, 'motivo': motivo, 'geracao_id': geracao_id, 'legado': legado,
-               'arquivos': [a['nome'] for a in arquivos]}
+               'arquivos': [a['nome'] for a in arquivos], 'talhoes': talhoes}
         self.revisoes.append(rev)
         return rev['id']
 
@@ -125,3 +126,12 @@ def test_legado_vai_marcado_para_o_banco(tmp_path):
     b = _BancoFalso()
     publicar(b, _GhFalso(), 10156, 'normal', 'Importado do legado', _arquivos(tmp_path, pdf=False), legado=True)
     assert b.revisoes[0]['legado'] is True and b.revisoes[0]['arquivos'] == ['10156_POSSES_Rev0-Normal.zip']
+
+
+def test_legado_publica_com_os_talhoes(tmp_path):
+    from shapely.geometry import box
+    b = _BancoFalso()
+    itens = {1: {'geom': box(0, 0, 10, 10), 'area_ha': 0.01, 'origem': 'legado', 'desde_rev': 0}}
+    publicar(b, _GhFalso(), 10156, 'normal', 'Importado do legado', _arquivos(tmp_path), legado=True, talhoes=itens)
+    t = b.revisoes[0]['talhoes']
+    assert t[0]['talhao'] == 1 and t[0]['origem'] == 'legado' and t[0]['wkt'].startswith('MULTIPOLYGON')
