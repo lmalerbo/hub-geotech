@@ -9,6 +9,7 @@ import traceback
 from drone.banco import DroneBanco, carregar_env
 from drone.base_talhoes import arquivo_mais_recente
 from drone.config import PASTA_TRABALHO, cfg
+from drone.envios import processar_envio
 from drone.erros import ErroGeracao
 from drone.gerador import processar
 from drone.publicacao import GitHubReleases, publicar
@@ -56,6 +57,23 @@ def publicar_uma(banco, gh) -> bool:
     return True
 
 
+def processar_um_envio(banco) -> bool:
+    e = banco.pegar_envio()
+    if not e:
+        return False
+    _log(f"envio {e['id']} ({e['tipo']}, fazenda {e['cod_faz']})")
+    try:
+        _log('  ' + processar_envio(e, banco, PASTA_TRABALHO))
+        banco.concluir_envio(e['id'], 'ok')
+    except ErroGeracao as erro:
+        banco.concluir_envio(e['id'], 'erro', str(erro))
+        _log(f'  erro: {erro}')
+    except Exception as erro:
+        banco.concluir_envio(e['id'], 'erro', f'Erro interno ao ler o envio: {erro}')
+        _log(traceback.format_exc())
+    return True
+
+
 def limpar_previas(banco):
     """Prévias de gerações publicadas, descartadas ou prontas há mais de 30 dias saem do Storage."""
     for g in banco.previas_para_apagar():
@@ -69,7 +87,8 @@ def ciclo(banco, gh, c) -> bool:
         limpar_previas(banco)
     except Exception as e:   # Storage fora não pode travar a fila
         _log(f'limpeza de prévias falhou: {e}')
-    trabalhou = gerar_uma(banco, c)
+    trabalhou = processar_um_envio(banco)
+    trabalhou = gerar_uma(banco, c) or trabalhou
     return publicar_uma(banco, gh) or trabalhou
 
 
