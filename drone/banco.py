@@ -112,6 +112,19 @@ class DroneBanco(Hub):
                                                            'order': 'numero.desc', 'limit': '1'})
         return r[0]['numero'] + 1 if r else 0
 
+    def talhoes_vigentes(self, cod_faz, documento):
+        linhas = self.rpc('drone_talhoes_vigentes', {'p_cod_faz': cod_faz, 'p_documento': documento}) or []
+        itens = {l['talhao_num']: {'geom': shapely_wkt.loads(l['wkt']), 'area_ha': float(l['area_ha']),
+                                   'origem': l['origem'], 'desde_rev': l['desde_rev']} for l in linhas}
+        return itens, (linhas[0]['revisao_em'] if linhas else None)
+
+    def gravar_geracao_talhoes(self, geracao_id, itens):
+        from drone.montagem import itens_para_json
+        self.rpc('drone_gravar_geracao_talhoes', {'p_geracao_id': geracao_id, 'p_talhoes': itens_para_json(itens)})
+
+    def ajuste(self, envio_id) -> list:
+        return [shapely_wkt.loads(l['wkt']) for l in self.rpc('drone_ajuste_wkt', {'p_envio_id': envio_id}) or []]
+
     def publicar_revisao(self, cod_faz, documento, motivo, numero, arquivos, geracao_id=None, legado=False) -> int:
         """Revisão + arquivos + conclusão da geração/solicitação numa transação (hub.drone_publicar)."""
         return self.rpc('drone_publicar', {

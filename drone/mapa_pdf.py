@@ -33,6 +33,7 @@ class DadosMapa:
     recorte: Recorte
     gerado_em: datetime.date
     safra: str | None = None      # legado: safra original do projeto (ex.: '24/25')
+    cobertura_pct: float | None = None
 
 
 def orientacao(talhoes) -> str:
@@ -43,6 +44,12 @@ def orientacao(talhoes) -> str:
 def safra_de(data: datetime.date) -> str:
     ano = data.year if data.month >= 4 else data.year - 1
     return f'{ano % 100:02d}/{(ano + 1) % 100:02d}'
+
+
+def linha_incompleta(d: 'DadosMapa'):
+    if d.tipo != 'normal' or d.cobertura_pct is None or d.cobertura_pct >= 99.95:
+        return None
+    return f'Incompleta · {d.cobertura_pct:.0f}% da fazenda'
 
 
 def safra_do_mapa(d: 'DadosMapa') -> str:
@@ -192,6 +199,9 @@ def _carimbo(pg: Pagina, d: DadosMapa, x, y, w, escala):
     pg.texto(x + 11, y + 0.5, rotulo, 4.5, 'white', 'bold', ha='center')
     pg.texto(x + 3, y + 5, f'{d.cod_faz} · {d.nome}', 12, peso='bold')
     pg.texto(x + 3, y + 11.5, 'MAPA DE APLICAÇÃO · DRONE', 5.5, CINZA)
+    aviso = linha_incompleta(d)
+    if aviso:
+        pg.texto(x + w, y + 11.5, aviso, 5.5, '#d4890a', 'bold', ha='right')
     y += 19
     meia = (w - 3) / 2
     pct = d.recorte.aplicacao_ha / d.recorte.area_total_ha * 100 if d.recorte.area_total_ha else 0

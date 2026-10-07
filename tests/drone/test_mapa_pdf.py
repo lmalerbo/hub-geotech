@@ -93,3 +93,15 @@ def test_safra_do_mapa_usa_a_do_projeto_quando_informada():
     assert safra_do_mapa(d) == '26/27'
     d.safra = '24/25'
     assert safra_do_mapa(d) == '24/25'
+
+
+def test_linha_incompleta():
+    from drone.mapa_pdf import linha_incompleta
+    t = _talhoes(1000, 500)
+    d = DadosMapa(cod_faz=1, nome='X', tipo='normal', revisao=1, talhoes=t,
+                  recorte=recortar(t, uniao_buffers({}, {})), gerado_em=datetime.date(2026, 10, 8))
+    assert linha_incompleta(d) is None
+    d.cobertura_pct = 31.4
+    assert linha_incompleta(d) == 'Incompleta · 31% da fazenda'
+    d.cobertura_pct = 100.0
+    assert linha_incompleta(d) is None
