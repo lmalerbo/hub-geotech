@@ -204,7 +204,177 @@ function drAtualizarSelecaoMapa(){
   });
 }
 
-// Ações (clique, painel lateral, envios, prévia) ficam na Tarefa 9.
-function drClicarTalhao(){}
-function drPainelLateral(){document.getElementById('dr-side').innerHTML='';}
-function drNovaSolicitacao(){}
+function drAtual(){
+  const tipo=DR.doc;
+  const sol=DR.info.sols.find(s=>s.tipo===tipo)||null;
+  const ger=sol?DR.info.ger.find(g=>g.solicitacao_id===sol.id)||null:null;
+  return{sol,ger};
+}
+
+function drClicarTalhao(p){
+  if(!podeEditar('drone')||DR.doc!=='normal')return;
+  const {ger}=drAtual();if(ger)return;                       // prévia aberta: trava a seleção
+  const n=p.talhao;
+  if(DR.modoRemover){
+    if(p.status==='sem_projeto')return;
+    DR.rem.has(n)?DR.rem.delete(n):(DR.rem.add(n),DR.sel.delete(n));
+  }else{
+    if(p.status==='fora_da_base')return;
+    DR.sel.has(n)?DR.sel.delete(n):(DR.sel.set(n,DR.fonte||'sistema'),DR.rem.delete(n));
+  }
+  drAtualizarSelecaoMapa();drPainelLateral();
+}
+
+function drSelecionarSemProjeto(){
+  DR.geo.features.filter(f=>f.properties.camada==='talhao'&&f.properties.status==='sem_projeto')
+    .forEach(f=>{DR.sel.set(f.properties.talhao,DR.fonte||'sistema');DR.rem.delete(f.properties.talhao);});
+  drAtualizarSelecaoMapa();drPainelLateral();
+}
+
+function drFonte(f){DR.fonte=f;for(const k of DR.sel.keys())DR.sel.set(k,f);drPainelLateral();}
+
+function drObstaculosHtml(){
+  const linhas=[15,25,50].map(c=>{const v=DR.info.obst.find(o=>o.classe_m===c);
+    return`<div class="dr-row"><span>${c} m</span><span>${v?'v'+v.versao+' · '+new Date(v.enviado_em).toLocaleDateString('pt-BR'):'sem cadastro'}</span></div>`;}).join('');
+  const env=DR.info.envios.find(e=>e.status==='fila'||e.status==='processando');
+  const err=DR.info.envios.find(e=>e.status==='erro');
+  return`<div class="dr-box"><h3><span class="ico">warning</span> Obstáculos</h3>${linhas}
+    ${env?`<div class="dr-msg">processando envio…</div>`:''}${err?`<div class="dr-err">Último envio: ${esc(err.erro)}</div>`:''}
+    ${podeEditar('drone')?`<button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('obstaculos')"><span class="ico">upload</span> Enviar obstáculos</button>`:''}</div>`;
+}
+
+function drPrevHtml(ger){
+  if(ger.status==='fila'||ger.status==='processando')return`<div class="dr-box"><h3>Gerando prévia…</h3><div class="dr-msg">O agente está montando o PDF e o .zip. Esta tela atualiza sozinha.</div></div>`;
+  if(ger.status==='erro')return`<div class="dr-box"><h3>Erro na geração</h3><div class="dr-err">${esc(ger.erro)}</div>
+    <button class="dr-btn2" style="margin-top:8px" onclick="drDescartar(${ger.id})">Descartar e montar de novo</button></div>`;
+  if(ger.publicar_pedido_em&&!ger.publicacao_erro)return`<div class="dr-box"><h3>Publicando…</h3><div class="dr-msg">O agente está subindo os arquivos para o portal.</div></div>`;
+  const al=(ger.alertas||[]).map(a=>`<li>${esc(a)}</li>`).join('');
+  return`<div class="dr-box dr-prev"><h3>Prévia pronta</h3><div id="dr-pdf"><div class="dr-msg">carregando PDF…</div></div>
+    ${al?`<ul style="margin:8px 0 0 16px;color:#d4890a">${al}</ul>`:''}
+    ${ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:''}
+    <div style="font-size:12px;font-weight:600;margin:8px 0 4px">Motivo</div>
+    <input class="dr-mot" id="dr-mot" placeholder="ex.: completar talhões 20–33; talhão 129 reformado">
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="dr-btn" onclick="drPublicar(${ger.id})">Publicar</button>
+    <button class="dr-btn2" onclick="drDescartar(${ger.id})">Descartar</button></div></div>`;
+}
+
+async function drMostrarPdf(ger){
+  const {data,error}=await sb.storage.from('drone-previas').createSignedUrl(ger.previa_pdf,600);
+  const alvo=document.getElementById('dr-pdf');if(!alvo)return;
+  alvo.innerHTML=error?`<div class="dr-err">${esc(error.message)}</div>`:`<iframe src="${data.signedUrl}"></iframe>`;
+}
+
+function drPainelLateral(){
+  const side=document.getElementById('dr-side');if(!side)return;
+  const {sol,ger}=drAtual(),edita=podeEditar('drone');
+  let h='';
+  if(ger){h+=drPrevHtml(ger);}
+  else if(DR.doc==='normal'&&edita){
+    const prox=DR.geo.normal?DR.geo.normal.revisao+1:0;
+    const inc=[...DR.sel.keys()].sort((a,b)=>a-b),rem=[...DR.rem].sort((a,b)=>a-b);
+    const shape=[...DR.sel.values()].includes('shape');
+    h+=`<div class="dr-box"><h3><span class="ico" style="color:var(--drones)">edit_note</span> Nova revisão · Normal Rev${prox}</h3>
+      <div class="dr-msg" style="text-align:left">Clique nos talhões do mapa</div>
+      <div class="dr-seg"><button class="${DR.modoRemover?'':'on'}" onclick="DR.modoRemover=false;drPainelLateral()">Incluir / refazer</button>
+        <button class="${DR.modoRemover?'on':''}" onclick="DR.modoRemover=true;drPainelLateral()">Remover</button></div>
+      <button class="dr-btn2" onclick="drSelecionarSemProjeto()">Selecionar todos sem projeto</button>
+      <div style="font-weight:600;margin-top:8px">Incluir / refazer (${inc.length})</div>
+      <div class="dr-chips">${inc.map(n=>`<span class="dr-chip">${n}</span>`).join('')||'<span class="dr-msg">nenhum</span>'}</div>
+      <div class="dr-seg"><button class="${shape?'':'on'}" onclick="drFonte('sistema')">Sistema gera</button>
+        <button class="${shape?'on':''}" onclick="drFonte('shape')">Subir shape</button></div>
+      ${shape?`<button class="dr-btn2" onclick="drEnviar('ajuste')"><span class="ico">upload</span> ${DR.ajusteId?'Shape enviado ✓ (trocar)':'Enviar shape de ajuste'}</button>`:''}
+      <div style="font-weight:600;margin-top:8px">Remover (${rem.length})</div>
+      <div class="dr-chips">${rem.map(n=>`<span class="dr-chip r">${n}</span>`).join('')||'<span class="dr-msg">nenhum</span>'}</div></div>
+      ${drObstaculosHtml()}
+      <button class="dr-btn" ${inc.length||rem.length?'':'disabled'} onclick="drGerarNormal()"><span class="ico">play_arrow</span> Gerar prévia</button>
+      <div class="dr-msg">A prévia mostra a fazenda inteira (talhões de antes + os novos). Você confere e publica.</div>`;
+  }else if(DR.doc==='catacao'&&edita){
+    h+=`<div class="dr-box"><h3><span class="ico" style="color:#5b8c5a">grass</span> Catação</h3>
+      ${sol?`<div class="dr-row"><span>Solicitação</span><span>${esc(DR_ST[sol.status]||sol.status)}</span></div>
+        <button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('infestacao')"><span class="ico">upload</span> Enviar infestação (várias camadas)</button>`
+      :`<button class="dr-btn2" onclick="drAbrirCatacao()"><span class="ico">add</span> Abrir Catação desta fazenda</button>`}
+      <div class="dr-msg" style="margin-top:6px">Um levantamento novo substitui a Catação inteira.</div></div>
+      ${drObstaculosHtml()}
+      <button class="dr-btn" ${sol&&sol.status==='solicitado'?'':'disabled'} onclick="drGerarCatacao()"><span class="ico">play_arrow</span> Gerar prévia</button>`;
+  }else{
+    h+=drObstaculosHtml()+`<div class="dr-msg">Somente consulta.</div>`;
+  }
+  const hist=(DR.info.revs||[]).filter(r=>r.documento===DR.doc).map(r=>
+    `<div class="dr-row"><span>Rev${r.numero} · ${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span><span>${esc((r.motivo||'').slice(0,40))}</span></div>`).join('');
+  h+=`<div class="dr-box"><h3><span class="ico">history</span> Histórico</h3>${hist||'<div class="dr-msg">sem revisões</div>'}</div>`;
+  h+=`<div id="dr-err" class="dr-err"></div>`;
+  side.innerHTML=h;
+  if(ger&&ger.status==='pronta'&&!(ger.publicar_pedido_em&&!ger.publicacao_erro))drMostrarPdf(ger);
+  clearTimeout(DR.poll);
+  const ocupado=(ger&&(['fila','processando'].includes(ger.status)||(ger.publicar_pedido_em&&!ger.publicacao_erro)))
+    ||DR.info.envios.some(e=>e.status==='fila'||e.status==='processando');
+  if(ocupado)DR.poll=setTimeout(async()=>{await drRecarregarFazenda();drCarregarPainel();},5000);
+}
+
+function drErro(e){const el=document.getElementById('dr-err');if(el)el.textContent=e.message||e;}
+
+function drEnviar(tipo){
+  const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.accept='.shp,.shx,.dbf,.prj,.cpg,.zip';
+  inp.onchange=async()=>{
+    try{
+      const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];
+      for(const f of inp.files){
+        const c=`${pasta}/${f.name}`;
+        const {error}=await sb.storage.from('drone-envios').upload(c,f);
+        if(error)throw error;caminhos.push(c);
+      }
+      const {sol}=drAtual();
+      const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:null,
+        p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
+      if(tipo==='ajuste')DR.ajusteId=id;
+      await drRecarregarFazenda();
+    }catch(e){drErro(e);}
+  };
+  inp.click();
+}
+
+async function drGerarNormal(){
+  try{
+    if([...DR.sel.values()].includes('shape')&&!DR.ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
+    const escopo={incluir:[...DR.sel].map(([t,f])=>f==='shape'?{talhao:t,fonte:'shape',envio_id:DR.ajusteId}:{talhao:t,fonte:'sistema'}),
+      remover:[...DR.rem]};
+    const sol=drAtual().sol?.id||await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'normal',p_data_desejada:null,p_observacao:null});
+    await drRpc('drone_pedir_geracao',{p_solicitacao_id:sol,p_escopo:escopo});
+    DR.sel=new Map();DR.rem=new Set();
+    await drRecarregarFazenda();drCarregarPainel();
+  }catch(e){drErro(e);}
+}
+
+async function drAbrirCatacao(){
+  try{await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'catacao',p_data_desejada:null,p_observacao:null});
+    await drRecarregarFazenda();drCarregarPainel();}catch(e){drErro(e);}
+}
+
+async function drGerarCatacao(){
+  try{await drRpc('drone_pedir_geracao',{p_solicitacao_id:drAtual().sol.id,p_escopo:null});
+    await drRecarregarFazenda();drCarregarPainel();}catch(e){drErro(e);}
+}
+
+async function drPublicar(id){
+  try{
+    const mot=document.getElementById('dr-mot').value;
+    if(!await confirmar('Publicar esta revisão no portal de downloads?',{titulo:'Publicar',ok:'Publicar'}))return;
+    await drRpc('drone_publicar_pedido',{p_geracao_id:id,p_motivo:mot});
+    await drRecarregarFazenda();drCarregarPainel();
+  }catch(e){drErro(e);}
+}
+
+async function drDescartar(id){
+  try{
+    if(!await confirmar('Descartar esta prévia?',{titulo:'Descartar',ok:'Descartar',perigo:true}))return;
+    await drRpc('drone_descartar',{p_geracao_id:id});
+    await drRecarregarFazenda();drCarregarPainel();
+  }catch(e){drErro(e);}
+}
+
+async function drNovaSolicitacao(){
+  const cod=Number(prompt('Código da fazenda:'));if(!cod)return;
+  const obs=prompt('Observação (ex.: completar talhões do bloco norte):')||null;
+  try{await drRpc('drone_solicitar',{p_cod_faz:cod,p_tipo:'normal',p_data_desejada:null,p_observacao:obs});
+    await drCarregarPainel();drAbrirFazenda(cod,'normal');}catch(e){alert(e.message);}
+}
