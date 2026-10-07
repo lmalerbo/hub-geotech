@@ -20,7 +20,7 @@ from drone.banco import DroneBanco  # noqa: E402
 
 conta = json.loads(Path(os.environ['HUB_CONTA_TESTE']).read_text(encoding='utf-8'))
 b = DroneBanco()
-u = b.selecionar('usuarios', 'id,papel', {'nome': 'ilike.*teste*'})[0]
+u = b.selecionar('usuarios', 'id,papel', {'id': f"eq.{conta['id']}"})[0]
 papel_orig = u['papel']
 tinha_drone = bool(b.selecionar('usuario_modulos', 'modulo_id', {'usuario_id': f"eq.{u['id']}", 'modulo_id': 'eq.drone'}))
 falhas = []
