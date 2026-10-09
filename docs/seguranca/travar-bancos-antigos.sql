@@ -18,12 +18,9 @@
 
 begin;
 
-create temporary table _schemas_app on commit drop as
-select nspname from pg_namespace
- where nspname not in ('pg_catalog', 'information_schema', 'pg_toast', 'auth', 'storage', 'realtime', '_realtime',
-                       'supabase_functions', 'supabase_migrations', 'extensions', 'graphql', 'graphql_public',
-                       'pgsodium', 'pgsodium_masks', 'vault', 'net', 'cron', 'pgbouncer', '_analytics', 'pgmq')
-   and nspname not like 'pg_temp%' and nspname not like 'pg_toast_temp%';
+-- Schemas da aplicação = todos menos os do sistema/Supabase (a mesma condição
+-- aparece nas três consultas abaixo; o SQL Editor não guarda tabela temporária).
+
 
 do $$
 declare
@@ -35,7 +32,10 @@ begin
     select n.nspname, c.relname
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
      where c.relkind in ('r', 'p', 'v', 'm', 'f')
-       and n.nspname in (select nspname from _schemas_app)
+       and n.nspname not in ('information_schema', 'auth', 'storage', 'realtime', '_realtime', 'supabase_functions',
+                         'supabase_migrations', 'extensions', 'graphql', 'graphql_public', 'pgsodium', 'pgsodium_masks',
+                         'vault', 'net', 'cron', 'pgbouncer', '_analytics', 'pgmq')
+       and n.nspname !~ '^pg_'
   loop
     execute format('revoke insert, update, delete, truncate on %I.%I from anon, authenticated', r.nspname, r.relname);
   end loop;
@@ -46,7 +46,10 @@ begin
   for r in
     select p.oid::regprocedure as assinatura, p.proname
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname in (select nspname from _schemas_app)
+     where n.nspname not in ('information_schema', 'auth', 'storage', 'realtime', '_realtime', 'supabase_functions',
+                         'supabase_migrations', 'extensions', 'graphql', 'graphql_public', 'pgsodium', 'pgsodium_masks',
+                         'vault', 'net', 'cron', 'pgbouncer', '_analytics', 'pgmq')
+       and n.nspname !~ '^pg_'
        and p.prokind = 'f'
        and p.prorettype <> 'trigger'::regtype
        and p.prosrc ~* '\m(insert|update|delete|truncate)\M'
@@ -65,12 +68,18 @@ select 'tabela' as tipo, table_schema || '.' || table_name as objeto, string_agg
   from information_schema.role_table_grants
  where grantee in ('anon', 'authenticated')
    and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
-   and table_schema in (select nspname from _schemas_app)
+   and table_schema not in ('information_schema', 'auth', 'storage', 'realtime', '_realtime', 'supabase_functions',
+                         'supabase_migrations', 'extensions', 'graphql', 'graphql_public', 'pgsodium', 'pgsodium_masks',
+                         'vault', 'net', 'cron', 'pgbouncer', '_analytics', 'pgmq')
+       and table_schema !~ '^pg_'
  group by 1, 2
 union all
 select 'função', p.oid::regprocedure::text, 'EXECUTE'
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
- where n.nspname in (select nspname from _schemas_app)
+ where n.nspname not in ('information_schema', 'auth', 'storage', 'realtime', '_realtime', 'supabase_functions',
+                         'supabase_migrations', 'extensions', 'graphql', 'graphql_public', 'pgsodium', 'pgsodium_masks',
+                         'vault', 'net', 'cron', 'pgbouncer', '_analytics', 'pgmq')
+       and n.nspname !~ '^pg_'
    and p.prokind = 'f' and p.prorettype <> 'trigger'::regtype
    and p.prosrc ~* '\m(insert|update|delete|truncate)\M'
    and has_function_privilege('anon', p.oid, 'execute');
