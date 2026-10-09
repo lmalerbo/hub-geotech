@@ -15,7 +15,8 @@ def shapefiles(arquivos: list, pasta: Path) -> list:
             with zipfile.ZipFile(a) as z:
                 z.extractall(pasta / a.stem)
     candidatos = [Path(a) for a in arquivos] + list(pasta.rglob('*'))
-    return sorted({p.resolve() for p in candidatos if p.suffix.lower() == '.shp'}, key=lambda p: p.name)
+    return sorted({p.resolve() for p in candidatos if p.suffix.lower() == '.shp'
+                   and not p.name.startswith('._') and '__MACOSX' not in p.parts}, key=lambda p: p.name)
 
 
 def processar_envio(envio: dict, banco, pasta: Path) -> str:
@@ -41,13 +42,14 @@ def processar_envio(envio: dict, banco, pasta: Path) -> str:
             nomes, gs = por_classe.setdefault(classe, ([], []))
             nomes.append(shp.name)
             gs.extend(geoms)
-        for classe, (nomes, gs) in sorted(por_classe.items()):
-            banco.gravar_obstaculos(cod, classe, 'upload', ' + '.join(nomes), gs, usuario=usuario)
+        itens = [{'classe_m': c, 'arquivo': ' + '.join(n), 'wkts': [g.wkt for g in gs]}
+                 for c, (n, gs) in sorted(por_classe.items())]
+        banco.gravar_obstaculos_lote(cod, 'upload', itens, usuario=usuario, envio_id=envio['id'])   # tudo ou nada
         return 'obstáculos: ' + ', '.join(f'{c} m ({len(g)} feições)' for c, (_, g) in sorted(por_classe.items()))
     geoms = [g for _, gs in lidos for g in gs]
     nomes = ' + '.join(shp.name for shp, _ in lidos)
     if tipo == 'infestacao':
-        banco.gravar_infestacao(envio['solicitacao_id'], None, nomes, geoms, usuario=usuario)
+        banco.gravar_infestacao(envio['solicitacao_id'], None, nomes, geoms, usuario=usuario, envio_id=envio['id'])
         return f'infestação: {len(geoms)} feições de {len(lidos)} camada(s)'
     banco.gravar_ajuste(envio['id'], geoms)
     return f'shape de ajuste: {len(geoms)} feições'

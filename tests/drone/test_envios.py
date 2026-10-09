@@ -37,7 +37,11 @@ class _Banco:
     def gravar_obstaculos(self, cod, classe, origem, arquivo, geoms, usuario=None):
         self.gravados.append(('obst', cod, classe, len(geoms)))
 
-    def gravar_infestacao(self, sol, empresa, arquivo, geoms, usuario=None):
+    def gravar_obstaculos_lote(self, cod, origem, itens, usuario=None, envio_id=None):
+        for i in itens:
+            self.gravados.append(('obst', cod, i['classe_m'], len(i['wkts'])))
+
+    def gravar_infestacao(self, sol, empresa, arquivo, geoms, usuario=None, envio_id=None):
         self.gravados.append(('inf', sol, len(geoms)))
 
     def gravar_ajuste(self, envio_id, geoms):
@@ -85,3 +89,27 @@ def test_envio_sem_shp_da_erro(tmp_path):
     (o / 'leia.txt').write_text('x')
     with pytest.raises(ErroGeracao, match=r'\.shp'):
         processar_envio(_envio(tmp_path, 'ajuste', ['leia.txt']), _Banco(o), tmp_path / 'w')
+
+
+def test_ignora_lixo_de_zip_feito_no_mac(tmp_path):
+    src = _shp(tmp_path / 'src', 'restricoes25m.shp', [Point(200000, 7550000)])
+    z = tmp_path / 'envio.zip'
+    with zipfile.ZipFile(z, 'w') as f:
+        for p in src.parent.iterdir():
+            f.write(p, f'pasta/{p.name}')
+            f.writestr(f'__MACOSX/pasta/._{p.name}', b'lixo')
+    assert [p.name for p in shapefiles([z], tmp_path / 'x')] == ['restricoes25m.shp']
+
+
+class _BancoLote(_Banco):
+    def gravar_obstaculos_lote(self, cod, origem, itens, usuario=None, envio_id=None):
+        self.gravados.append(('lote', cod, envio_id, sorted((i['classe_m'], len(i['wkts'])) for i in itens)))
+
+
+def test_obstaculos_de_varias_classes_gravam_numa_chamada_so(tmp_path):
+    o = tmp_path / 'o'
+    a = _shp(o, 'restricoes15m.shp', [Point(200000, 7550000)])
+    b = _shp(o, 'restricoes50m.shp', [Point(200010, 7550000), Point(200020, 7550000)])
+    banco = _BancoLote(o)
+    processar_envio(_envio(tmp_path, 'obstaculos', _partes(a) + _partes(b)), banco, tmp_path / 'w')
+    assert banco.gravados == [('lote', 10156, 5, [(15, 1), (50, 2)])]

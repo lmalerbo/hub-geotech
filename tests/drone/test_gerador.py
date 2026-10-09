@@ -128,3 +128,29 @@ def test_catacao_grava_talhoes_sem_herdar_a_anterior(base, tmp_path):
                    vigentes=dividir_por_talhao(box(100, 0, 200, 100), t, 'legado', 0))
     processar({'id': 9, 'solicitacao_id': 9, 'infestacao_id': 1}, b, base, tmp_path / 'w', datetime.date(2026, 10, 8))
     assert sorted(b.gravados) == [1]                                           # talhão 2 da anterior não vem
+
+
+def test_normal_incompleta_nao_alerta_talhao_sem_projeto(base, tmp_path):
+    b = BancoFalso()
+    g = {'id': 10, 'solicitacao_id': 9, 'infestacao_id': None,
+         'escopo': {'incluir': [{'talhao': 1, 'fonte': 'sistema'}], 'remover': []}}
+    r = processar(g, b, base, tmp_path / 'w', datetime.date(2026, 10, 8))
+    assert not any('Talhão 2' in a for a in r['alertas'])
+
+
+def test_obstaculo_mais_antigo_em_outro_fuso_nao_alerta(base, tmp_path):
+    from drone.montagem import dividir_por_talhao
+    t = gpd.GeoDataFrame({'TALHAO': [1, 2]}, geometry=[box(0, 0, 100, 100), box(100, 0, 200, 100)], crs=31983)
+
+    class B(BancoFalso):
+        def obstaculos_vigentes(self, cod):
+            # 01:00 em +02:00 = 23:00Z do dia anterior: mais ANTIGO que a revisão (00:00Z), apesar do texto
+            return {15: [Point(5000, 5000)]}, [{'classe_m': 15, 'versao_id': 1, 'enviado_em': '2024-06-01T01:00:00+02:00'}]
+
+        def talhoes_vigentes(self, cod_faz, documento):
+            return dividir_por_talhao(box(0, 0, 200, 100), t, 'legado', 0), '2024-06-01T00:00:00+00:00'
+
+    g = {'id': 11, 'solicitacao_id': 9, 'infestacao_id': None,
+         'escopo': {'incluir': [{'talhao': 1, 'fonte': 'sistema'}], 'remover': []}}
+    r = processar(g, B(), base, tmp_path / 'w', datetime.date(2026, 10, 8))
+    assert not any('atualizados depois' in a for a in r['alertas'])
