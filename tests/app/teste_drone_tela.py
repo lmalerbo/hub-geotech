@@ -92,6 +92,10 @@ try:
         pg.click('#confirma-sim')
         pg.wait_for_selector('text=Nova revisão', timeout=15000)
         confere(True, 'prévia descartada, seleção liberada')
+        canc = pg.evaluate("""async s=>{const {error}=await sb.rpc('drone_cancelar',
+            {p_solicitacao_id:s,p_motivo:'teste automatizado'});return error?error.message:''}""", sol_criada)
+        st = b.selecionar('drone_solicitacoes', 'status,cancelado_motivo', {'id': f'eq.{sol_criada}'})[0]
+        confere(canc == '' and st['status'] == 'cancelado', f'cancelar solicitação pela tela ({canc or st})')
         confere(not erros, f'sem erro de JavaScript {erros[:2]}')
         nav.close()
 finally:

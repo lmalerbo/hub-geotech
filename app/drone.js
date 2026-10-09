@@ -48,6 +48,8 @@ function drEstilo(){
 .dr-modal{background:var(--sf);border-radius:16px;padding:18px 20px;width:420px;max-width:92vw;font-size:13px}
 .dr-modal h3{font-size:15px;margin-bottom:10px}.dr-modal label{display:block;font-size:12px;color:var(--t2);margin-top:10px}
 .dr-modal input,.dr-modal textarea{width:100%;border:1px solid var(--bd);border-radius:8px;padding:7px;font:inherit;margin-top:4px}
+.dr-x{border:0;background:none;color:var(--t3);cursor:pointer;padding:2px;border-radius:6px}
+.dr-x:hover{color:#c23b3b;background:#fbe0e0}
 .dr-vazio{display:flex;align-items:center;justify-content:center;height:560px;color:var(--t3)}`;
   document.head.appendChild(s);
 }
@@ -81,7 +83,8 @@ async function drCarregarPainel(){
       :g.status==='fila'||g.status==='processando'?'gerando…':g.status==='erro'?'erro na geração':DR_ST[x.status]||x.status;
     return`<div class="dr-it${DR.cod===x.cod_faz?' on':''}" onclick="drAbrirFazenda(${x.cod_faz},'${x.tipo}')">
       <span class="dr-cod">${x.cod_faz}</span><div>${esc(x.fazenda)}<small>${esc(x.observacao||st)}${x.solicitante?' · '+esc(x.solicitante):''}</small></div>
-      <div class="r">${x.data_desejada?'para '+new Date(x.data_desejada+'T12:00').toLocaleDateString('pt-BR'):''}<br>${esc(st)}</div></div>`;
+      <div class="r">${x.data_desejada?'para '+new Date(x.data_desejada+'T12:00').toLocaleDateString('pt-BR'):''}<br>${esc(st)}</div>
+      ${drPodeCancelar(x,x.geracao,EU)?`<button class="dr-x" title="Cancelar solicitação" onclick="event.stopPropagation();drCancelar(${x.id})"><span class="ico">close</span></button>`:''}</div>`;
   };
   const grupo=(tit,lista,vazio)=>`<div class="dr-grp"><div class="dr-gh">${tit}<span class="dr-n">${lista.length}</span></div>
     ${lista.length?lista.map(it).join(''):`<div class="dr-msg">${vazio}</div>`}</div>`;
@@ -134,7 +137,7 @@ async function drRecarregarFazenda(){
     const [geo,faz,sols,obst]=await Promise.all([
       drRpc('drone_mapa_fazenda',{p_cod_faz:cod}),
       sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single(),
-      sb.from('drone_solicitacoes').select('id,tipo,status,observacao').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
+      sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
       sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em').eq('cod_faz',cod).eq('vigente',true)]);
     const sIds=(sols.data||[]).map(s=>s.id);
     const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo')
@@ -220,6 +223,26 @@ function drClasseEscolhida(txt){
   const t=String(txt??'').replace(/m/gi,'').trim();
   if(!t)return null;                                   // vazio: classe pelo nome do arquivo
   const n=Number(t);return [15,25,50].includes(n)?n:undefined;
+}
+
+function drPodeCancelar(sol,ger,eu){
+  if(!sol||!eu)return false;
+  const ocupado=ger&&(ger.status==='processando'||(ger.status==='pronta'&&ger.publicar_pedido_em&&!ger.publicacao_erro));
+  if(ocupado)return false;
+  if(podeEditar('drone'))return true;
+  return sol.solicitante_id===eu.id&&!ger;            // solicitante: só a própria e antes da prévia
+}
+
+async function drCancelar(id){
+  const motivo=prompt('Motivo do cancelamento:');
+  if(motivo===null)return;
+  if(!motivo.trim()){alert('Informe o motivo.');return;}
+  if(!await confirmar('Cancelar esta solicitação? A prévia aberta, se houver, será descartada.',
+                      {titulo:'Cancelar solicitação',ok:'Cancelar solicitação',perigo:true}))return;
+  try{
+    await drRpc('drone_cancelar',{p_solicitacao_id:id,p_motivo:motivo});
+    await drCarregarPainel();if(DR.cod)await drRecarregarFazenda();
+  }catch(e){drErro(e);alert(e.message);}
 }
 
 function drAtual(){
@@ -322,6 +345,8 @@ function drPainelLateral(){
   const hist=(DR.info.revs||[]).filter(r=>r.documento===DR.doc).map(r=>
     `<div class="dr-row"><span>Rev${r.numero} · ${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span><span>${esc((r.motivo||'').slice(0,40))}</span></div>`).join('');
   h+=`<div class="dr-box"><h3><span class="ico">history</span> Histórico</h3>${hist||'<div class="dr-msg">sem revisões</div>'}</div>`;
+  if(sol&&drPodeCancelar(sol,ger,EU))
+    h+=`<button class="dr-btn2" style="color:#c23b3b" onclick="drCancelar(${sol.id})"><span class="ico">cancel</span> Cancelar solicitação</button>`;
   h+=`<div id="dr-err" class="dr-err"></div>`;
   side.innerHTML=h;
   if(ger&&ger.status==='pronta'&&!(ger.publicar_pedido_em&&!ger.publicacao_erro))drMostrarPdf(ger);
