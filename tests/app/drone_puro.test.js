@@ -40,3 +40,18 @@ test('formulário de solicitação valida fazenda e data', () => {
   assert.strictEqual(ctx.drValidarSolicitacao({ cod: '10008', data: '2000-01-01' }), 'A data desejada já passou.');
   assert.strictEqual(ctx.drValidarSolicitacao({ cod: '10008', data: '' }), null);
 });
+
+test('quem pode cancelar uma solicitação', () => {
+  const editor = { id: 'e', role: 'editor', perms: { drone: true } };
+  const solic = { id: 's', role: 'solicitante', perms: { drone: true } };
+  const sol = { solicitante_id: 's', status: 'solicitado' };
+  ctx.podeEditar = () => true;
+  assert.strictEqual(ctx.drPodeCancelar(sol, null, editor), true);
+  assert.strictEqual(ctx.drPodeCancelar(sol, { status: 'pronta' }, editor), true);
+  assert.strictEqual(ctx.drPodeCancelar(sol, { status: 'processando' }, editor), false);         // agente trabalhando
+  assert.strictEqual(ctx.drPodeCancelar(sol, { status: 'pronta', publicar_pedido_em: 'x' }, editor), false); // publicando
+  ctx.podeEditar = () => false;
+  assert.strictEqual(ctx.drPodeCancelar(sol, null, solic), true);                                 // a própria, sem prévia
+  assert.strictEqual(ctx.drPodeCancelar(sol, { status: 'pronta' }, solic), false);              // já tem prévia
+  assert.strictEqual(ctx.drPodeCancelar({ ...sol, solicitante_id: 'outro' }, null, solic), false); // de outra pessoa
+});
