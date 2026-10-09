@@ -44,6 +44,10 @@ function drEstilo(){
 .dr-msg{font-size:11px;color:var(--t3);text-align:center}.dr-err{color:#c23b3b;font-size:12px}
 .dr-mot{width:100%;border:1px solid var(--bd);border-radius:8px;padding:7px;font:inherit;font-size:12px}
 .dr-prev iframe{width:100%;height:420px;border:1px solid var(--bd);border-radius:10px}
+.dr-modal-fundo{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:50}
+.dr-modal{background:var(--sf);border-radius:16px;padding:18px 20px;width:420px;max-width:92vw;font-size:13px}
+.dr-modal h3{font-size:15px;margin-bottom:10px}.dr-modal label{display:block;font-size:12px;color:var(--t2);margin-top:10px}
+.dr-modal input,.dr-modal textarea{width:100%;border:1px solid var(--bd);border-radius:8px;padding:7px;font:inherit;margin-top:4px}
 .dr-vazio{display:flex;align-items:center;justify-content:center;height:560px;color:var(--t3)}`;
   document.head.appendChild(s);
 }
@@ -87,7 +91,9 @@ async function drCarregarPainel(){
   const inc=DR.painel.incompletas||[],obs=DR.painel.obstaculos_antigos||[],fora=DR.painel.fora_da_base||[];
   const nova=(podeEditar('drone')||(EU&&EU.role==='solicitante'&&EU.perms.drone))
     ?`<button class="dr-btn2" style="margin-bottom:12px" onclick="drNovaSolicitacao()"><span class="ico">add</span> Nova solicitação</button>`:'';
-  document.getElementById('dr-fila').innerHTML=nova
+  const ajuda=`<a class="dr-msg" style="display:block;text-align:right;margin:-4px 0 8px" target="_blank" rel="noreferrer"
+    href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md"><span class="ico" style="font-size:15px">help</span> Ajuda</a>`;
+  document.getElementById('dr-fila').innerHTML=ajuda+nova
     +grupo('Solicitações Normal',normal,'nenhuma')
     +grupo('Catação · aguardando',cat,'nenhuma')
     +grupo('Prévias para conferir',prev,'nenhuma')
@@ -116,7 +122,7 @@ async function drBuscar(txt){
 }
 
 async function drAbrirFazenda(cod,doc){
-  DR.cod=cod;DR.doc=doc||'normal';DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
+  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   clearTimeout(DR.poll);
   document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
   await drRecarregarFazenda();
@@ -156,7 +162,8 @@ function drRender(){
     <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
       <div class="dr-leg"><span><i style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>
         <span><i style="background:${DR_COR.sem}"></i>sem projeto</span><span><i style="background:#fff;border-color:${DR_COR.fora}"></i>fora da Base</span>
-        <span><i style="background:#d9defc;border-color:${DR_COR.sel}"></i>selecionado</span><span><i style="background:#fbe0e0;border-color:${DR_COR.rem}"></i>remover</span></div></div>
+        <span><i style="background:#d9defc;border-color:${DR_COR.sel}"></i>selecionado</span><span><i style="background:#fbe0e0;border-color:${DR_COR.rem}"></i>remover</span>
+        <label style="margin-left:auto;cursor:pointer"><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked)"> mostrar obstáculos</label></div></div>
       <div class="dr-side" id="dr-side"></div></div>`;
   drPintarMapa();
   drPainelLateral();
@@ -190,6 +197,7 @@ function drPintarMapa(){
       .forEach(p=>p[0].forEach(c=>b.extend(c))));
     if(!b.isEmpty())m.fitBounds(b,{padding:30,duration:0});
     drAtualizarSelecaoMapa();
+    if(DR.mostrarObst)drObstaculos(true);
     m.on('click','tal-f',e=>drClicarTalhao(e.features[0].properties));
     m.on('mouseenter','tal-f',()=>m.getCanvas().style.cursor='pointer');
     m.on('mouseleave','tal-f',()=>m.getCanvas().style.cursor='');
@@ -292,7 +300,9 @@ function drPainelLateral(){
       <div class="dr-chips">${inc.map(n=>`<span class="dr-chip">${n}</span>`).join('')||'<span class="dr-msg">nenhum</span>'}</div>
       <div class="dr-seg"><button class="${shape?'':'on'}" onclick="drFonte('sistema')">Sistema gera</button>
         <button class="${shape?'on':''}" onclick="drFonte('shape')">Subir shape</button></div>
-      ${shape?`<button class="dr-btn2" onclick="drEnviar('ajuste')"><span class="ico">upload</span> ${DR.ajusteId?'Shape enviado ✓ (trocar)':'Enviar shape de ajuste'}</button>`:''}
+      ${shape?(()=>{const ev=DR.ajusteId?DR.info.envios.find(e=>e.id===DR.ajusteId)||{status:'fila'}:null;
+        return`<button class="dr-btn2" onclick="drEnviar('ajuste')"><span class="ico">upload</span> ${drRotuloShape(ev)}</button>`
+          +(ev&&ev.status==='erro'?`<div class="dr-err">${esc(ev.erro)}</div>`:'');})():''}
       <div style="font-weight:600;margin-top:8px">Remover (${rem.length})</div>
       <div class="dr-chips">${rem.map(n=>`<span class="dr-chip r">${n}</span>`).join('')||'<span class="dr-msg">nenhum</span>'}</div></div>
       ${drObstaculosHtml()}
@@ -389,9 +399,79 @@ async function drDescartar(id){
   }catch(e){drErro(e);}
 }
 
-async function drNovaSolicitacao(){
-  const cod=Number(prompt('Código da fazenda:'));if(!cod)return;
-  const obs=prompt('Observação (ex.: completar talhões do bloco norte):')||null;
-  try{await drRpc('drone_solicitar',{p_cod_faz:cod,p_tipo:'normal',p_data_desejada:null,p_observacao:obs});
-    await drCarregarPainel();drAbrirFazenda(cod,'normal');}catch(e){alert(e.message);}
+function drValidarSolicitacao(v){
+  if(!v.cod)return'Escolha a fazenda.';
+  if(v.data){const hoje=new Date();hoje.setHours(0,0,0,0);if(new Date(v.data+'T12:00')<hoje)return'A data desejada já passou.';}
+  return null;
+}
+
+function drNovaSolicitacao(){
+  drEstilo();
+  const fundo=document.createElement('div');fundo.className='dr-modal-fundo';
+  fundo.innerHTML=`<div class="dr-modal"><h3>Nova solicitação · projeto Normal</h3>
+    <label>Fazenda<input id="drs-busca" placeholder="Nome ou código" autocomplete="off"></label>
+    <div id="drs-res"></div><input type="hidden" id="drs-cod">
+    <label>Data desejada (opcional)<input type="date" id="drs-data"></label>
+    <label>Observação<textarea id="drs-obs" rows="3" placeholder="ex.: completar talhões do bloco norte"></textarea></label>
+    <div class="dr-err" id="drs-err"></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="dr-btn" id="drs-ok">Enviar solicitação</button>
+    <button class="dr-btn2" id="drs-cancela">Cancelar</button></div></div>`;
+  document.body.appendChild(fundo);
+  const fechar=()=>fundo.remove();
+  fundo.querySelector('#drs-cancela').onclick=fechar;
+  fundo.onclick=e=>{if(e.target===fundo)fechar();};
+  fundo.querySelector('#drs-busca').oninput=async e=>{
+    const txt=e.target.value.trim();fundo.querySelector('#drs-cod').value='';
+    const res=fundo.querySelector('#drs-res');
+    if(txt.length<2){res.innerHTML='';return;}
+    const q=/^\d+$/.test(txt)?sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',Number(txt))
+      :sb.from('fazendas').select('cod_faz,nome').ilike('nome',`%${txt}%`).limit(8);
+    const {data}=await q;
+    res.innerHTML=(data||[]).map(f=>`<div class="dr-it" data-cod="${f.cod_faz}" data-nome="${esc(f.nome)}"><span class="dr-cod">${f.cod_faz}</span><div>${esc(f.nome)}</div></div>`).join('')
+      ||'<div class="dr-msg">nenhuma fazenda</div>';
+    res.querySelectorAll('.dr-it').forEach(el=>el.onclick=()=>{
+      fundo.querySelector('#drs-cod').value=el.dataset.cod;
+      fundo.querySelector('#drs-busca').value=`${el.dataset.cod} · ${el.dataset.nome}`;res.innerHTML='';});
+  };
+  fundo.querySelector('#drs-ok').onclick=async()=>{
+    const v={cod:fundo.querySelector('#drs-cod').value,data:fundo.querySelector('#drs-data').value,
+             obs:fundo.querySelector('#drs-obs').value};
+    const erro=drValidarSolicitacao(v);
+    if(erro){fundo.querySelector('#drs-err').textContent=erro;return;}
+    try{
+      await drRpc('drone_solicitar',{p_cod_faz:Number(v.cod),p_tipo:'normal',p_data_desejada:v.data||null,p_observacao:v.obs||null});
+      fechar();await drCarregarPainel();drAbrirFazenda(Number(v.cod),'normal');
+    }catch(e){fundo.querySelector('#drs-err').textContent=e.message;}
+  };
+  fundo.querySelector('#drs-busca').focus();
+}
+
+function drIrFazenda(cod){
+  trocar('drone',document.querySelector(`.ni[onclick*="'drone'"]`));
+  drAbrirFazenda(Number(cod));
+}
+
+// ── obstáculos no mapa (objeto + buffer da classe) ──────────────────────
+const DR_OBS_COR={15:'#2e7d32',25:'#e0a100',50:'#c62828'};
+async function drObstaculos(ligar){
+  DR.mostrarObst=ligar;
+  const m=DR.mapa;if(!m)return;
+  for(const id of ['obs-buf','obs-buf-l','obs-lin','obs-pt'])if(m.getLayer(id))m.removeLayer(id);
+  if(m.getSource('obs'))m.removeSource('obs');
+  if(!ligar)return;
+  try{if(!DR.obstGeo)DR.obstGeo=await drRpc('drone_obstaculos_mapa',{p_cod_faz:DR.cod});}
+  catch(e){drErro(e);return;}
+  const cor=['match',['get','classe'],15,DR_OBS_COR[15],25,DR_OBS_COR[25],DR_OBS_COR[50]];
+  m.addSource('obs',{type:'geojson',data:DR.obstGeo});
+  m.addLayer({id:'obs-buf',type:'fill',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'fill-color':cor,'fill-opacity':.15}});
+  m.addLayer({id:'obs-buf-l',type:'line',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'line-color':cor,'line-width':1,'line-dasharray':[2,2]}});
+  m.addLayer({id:'obs-lin',type:'line',source:'obs',filter:['all',['==',['get','camada'],'obst'],['!=',['geometry-type'],'Point']],paint:{'line-color':cor,'line-width':2}});
+  m.addLayer({id:'obs-pt',type:'circle',source:'obs',filter:['all',['==',['get','camada'],'obst'],['==',['geometry-type'],'Point']],paint:{'circle-color':cor,'circle-radius':3}});
+}
+
+function drRotuloShape(envio){
+  if(!envio)return'Enviar shape de ajuste';
+  if(envio.status==='erro')return'Erro no shape — enviar outro';
+  if(envio.status==='ok')return'Shape enviado ✓ (trocar)';
+  return'Shape em processamento…';
 }

@@ -765,6 +765,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
             <button class="cons-mod-tab on" onclick="consMod('plantio',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">eco</span>Plantio</button>
             <button class="cons-mod-tab" onclick="consMod('preparo',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">construction</span>Preparo</button>
             <button class="cons-mod-tab" id="cons-tab-colheita" onclick="consMod('colheita',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">agriculture</span>Colheita</button>
+            <button class="cons-mod-tab" id="cons-tab-drone" onclick="consMod('drone',this)"><span class="ico" style="font-size:14px;vertical-align:-3px;margin-right:4px">flight</span>Drone</button>
           </div>
           <button class="btn-export" id="btn-export" onclick="exportCons()" disabled>
             <span class="ico">content_copy</span>Excel
@@ -1132,7 +1133,9 @@ const MOD_DATA=[
    concTal:()=>FZ_P.filter(f=>f.ok.every(x=>x)).length,
    totalTal:()=>FZ_P.length,unit:'fazendas'},
   {id:'irrigacao',nome:'Projetos de Irrigação',c:'#0892c8',i:'water_drop',coming:true},
-  {id:'drones',  nome:'Projetos de Drones',    c:'#5b6ee8',i:'flight',     coming:true},
+  {id:'drones',  nome:'Projetos de Drones',    c:'#5b6ee8',i:'flight',
+   concTal:()=>DRONE_RESUMO.filter(r=>r.normal_rev!=null&&Number(r.cobertura_pct)>=100).length,
+   totalTal:()=>DRONE_RESUMO.filter(r=>r.normal_rev!=null).length,unit:'fazendas com Normal completa'},
 ];
 function rDash(){
   const hr=new Date().getHours();
@@ -1958,7 +1961,7 @@ function selUsr(i){
 // ─────────────────────────────────────────────────────────────
 const CONS_PAGE=20;
 let cMod='plantio', cSel=new Set(), cPage=0, cExpanded=new Set();
-let cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:''};
+let cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:'',normal:'',catacao:'',obst:''};
 const prStepColors=['#8898c0','#d4890a','#7c5de8','var(--preparo)'];
 
 function consRowsAll(){
@@ -2006,8 +2009,27 @@ function consRowsAll(){
              steps:ET_P.map((e,ei)=>({l:e.l,ok:f.ok[ei],usr:f.usr[ei],dt:f.dt[ei]}))};
     }).filter(Boolean);
   }
+  if(cMod==='drone'){
+    const antigo=Date.now()-730*864e5;                  // 24 meses
+    return DRONE_RESUMO.map((r,i)=>{
+      const pct=r.cobertura_pct==null?null:Number(r.cobertura_pct);
+      const normal=r.normal_rev==null?'sem':pct>=100?'completa':'incompleta';
+      const datas=[r.obst_15,r.obst_25,r.obst_50].filter(Boolean).map(d=>new Date(d).getTime());
+      const obst=!datas.length?'sem':Math.min(...datas)<antigo?'antigos':'ok';
+      return{_key:'d'+i,cod:String(r.cod_faz),n:r.fazenda||'',normal,pct,normal_rev:r.normal_rev,
+             catacao_rev:r.catacao_rev,catacao_ha:r.catacao_ha,obst,r};
+    }).filter(x=>{
+      if(cFilters.normal&&x.normal!==cFilters.normal)return false;
+      if(cFilters.catacao==='com'&&x.catacao_rev==null)return false;
+      if(cFilters.catacao==='sem'&&x.catacao_rev!=null)return false;
+      if(cFilters.obst&&x.obst!==cFilters.obst)return false;
+      if(cFilters.q&&!x.n.toLowerCase().includes(cFilters.q)&&!x.cod.includes(cFilters.q))return false;
+      return true;
+    }).sort((a,b)=>a.n.localeCompare(b.n));
+  }
   return[];
 }
+function drConsData(d){return d?new Date(d).toLocaleDateString('pt-BR'):'—';}
 
 function rCons(pg){
   if(pg!==undefined)cPage=pg;
@@ -2023,6 +2045,7 @@ function rCons(pg){
   if(cMod==='plantio')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
   if(cMod==='colheita') thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
   if(cMod==='preparo')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Voo</th><th>Etapa</th>';
+  if(cMod==='drone')    thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Normal</th><th>Cobertura</th><th>Catação</th><th>Obstáculos</th><th>Solicitação</th>';
   document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`;
 
   // Body rows
@@ -2041,6 +2064,15 @@ function rCons(pg){
       } else if(cMod==='colheita'){
         const concC=r._talsFilter.filter(t=>t.st==='CONCLUIDO').length;
         cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td style="font-variant-numeric:tabular-nums">${concC}/${r._talsFilter.length}</td><td style="font-variant-numeric:tabular-nums">${r.ha.toFixed(1)} ha</td>`;
+      } else if(cMod==='drone'){
+        const cor=r.normal==='completa'?'var(--plantio)':r.normal==='incompleta'?'#d4890a':'var(--t3)';
+        const corO=r.obst==='ok'?'var(--plantio)':r.obst==='antigos'?'#d4890a':'var(--t3)';
+        cells=`<td>${expIco}<strong>${esc(r.n)}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td>
+          <td>${r.normal_rev==null?'—':'Rev'+r.normal_rev}</td>
+          <td><span class="cons-badge" style="background:${cor}18;color:${cor}">${r.pct==null?'—':Math.round(r.pct)+'%'}</span></td>
+          <td>${r.catacao_rev==null?'—':'Rev'+r.catacao_rev+' · '+fmtNum(r.catacao_ha)+' ha'}</td>
+          <td><span class="cons-badge" style="background:${corO}18;color:${corO}">${r.obst==='ok'?'em dia':r.obst==='antigos'?'+24 meses':'sem'}</span></td>
+          <td>${esc(r.r.solicitacao||'—')}</td>`;
       } else {
         cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._vooC}18;color:${r._vooC}">${r.voo}</span></td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
       }
@@ -2058,7 +2090,8 @@ function rCons(pg){
 
   // Footer
   document.getElementById('cons-count').innerHTML=
-    `<strong>${total}</strong> ${cMod==='colheita'?'fazendas':'fazendas'} &nbsp;·&nbsp; <strong>${totalHa.toFixed(1)} ha</strong>`;
+    cMod==='drone'?`<strong>${total}</strong> fazendas`
+    :`<strong>${total}</strong> ${cMod==='colheita'?'fazendas':'fazendas'} &nbsp;·&nbsp; <strong>${totalHa.toFixed(1)} ha</strong>`;
   updExpBtn();
 
   // Pagination
@@ -2072,6 +2105,11 @@ function rCons(pg){
 }
 
 function consDetail(r){
+  if(cMod==='drone'){
+    return`<p style="font-size:12px;color:var(--t3);padding:6px 0">Obstáculos — 15 m: <strong style="color:var(--t1)">${drConsData(r.r.obst_15)}</strong>
+      · 25 m: <strong style="color:var(--t1)">${drConsData(r.r.obst_25)}</strong> · 50 m: <strong style="color:var(--t1)">${drConsData(r.r.obst_50)}</strong>
+      &nbsp;·&nbsp; <a href="#" onclick="event.preventDefault();drIrFazenda(${r.cod})">Abrir na tela do Drone</a></p>`;
+  }
   if(cMod==='plantio'){
     // show etapa info (in real system would show talhões)
     return`<p style="font-size:12px;color:var(--t3);padding:6px 0">Talhões: <strong style="color:var(--t1)">${r._fi!==undefined?FZ[r._fi]?.t:'—'}</strong> &nbsp;·&nbsp; Etapa atual: <strong style="color:${r._etapaC}">${r.etapa}</strong></p>`;
@@ -2125,6 +2163,13 @@ function rConsFilters(){
       <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${f.n}</option>`).join('')}</select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todos os períodos</option>${meses.filter(Boolean).sort((a,b)=>parseInt(a.slice(8))-parseInt(b.slice(8))).map(m=>`<option>${m}</option>`).join('')}</select>`;
+  } else if(cMod==='drone'){
+    html+=`<select class="cons-sel" onchange="cFilters.normal=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Normal: todas</option><option value="completa">Completa</option><option value="incompleta">Incompleta</option><option value="sem">Sem Normal</option></select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.catacao=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Catação: todas</option><option value="com">Com Catação</option><option value="sem">Sem Catação</option></select>`;
+    html+=`<select class="cons-sel" onchange="cFilters.obst=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+      <option value="">Obstáculos: todos</option><option value="ok">Em dia</option><option value="antigos">+24 meses</option><option value="sem">Sem obstáculos</option></select>`;
   } else {
     const meses=[...new Set(FZ_P.map(f=>f.mes))];
     const voos=[...new Set(FZ_P.map(f=>f.voo))];
@@ -2138,12 +2183,12 @@ function rConsFilters(){
   html+=`<button class="cons-sel" style="cursor:pointer;color:var(--t3)" onclick="limparCons()">Limpar</button>`;
   html+=`<input class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
   document.getElementById('cons-filters').innerHTML=html;
-  cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:''};
+  cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:'',normal:'',catacao:'',obst:''};
   rCons();
 }
 
 function limparCons(){
-  cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:''};
+  cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:'',normal:'',catacao:'',obst:''};
   cPage=0;
   document.querySelectorAll('#cons-filters .cons-sel').forEach(s=>{if(s.tagName==='SELECT'){s.value='';s.classList.remove('active');}});
   const inp=document.querySelector('#cons-filters .cons-search');if(inp)inp.value='';
@@ -2183,6 +2228,11 @@ function exportWpp(){
     if(cFilters.status)partes.push(cFilters.status.replace('_',' '));
     if(cFilters.mes)partes.push(cFilters.mes);
     if(cFilters.faz)partes.push(cFilters.faz);
+  } else if(cMod==='drone'){
+    partes.push('Drone');
+    if(cFilters.normal)partes.push('Normal '+cFilters.normal);
+    if(cFilters.catacao)partes.push(cFilters.catacao+' Catação');
+    if(cFilters.obst)partes.push('obstáculos '+cFilters.obst);
   } else {
     partes.push('Preparo');
     if(cFilters.etapa!=='')partes.push(cFilters.etapa==='-1'?'Entregue':ET_P[parseInt(cFilters.etapa)]?.l||'');
@@ -2193,7 +2243,9 @@ function exportWpp(){
   const totalHa=rows.reduce((s,r)=>s+(r.ha||0),0);
   const resumo=`${rows.length} fazenda${rows.length!==1?'s':''} · ${totalHa.toFixed(0)} ha`;
   let lista='';
-  if(cMod==='colheita'){
+  if(cMod==='drone'){
+    lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — Normal ${r.pct==null?'—':Math.round(r.pct)+'%'}`).join('\n');
+  } else if(cMod==='colheita'){
     lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — ${r.ha.toFixed(1)} ha · ${r.conc}/${r.tot} talhões`).join('\n');
   } else {
     lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — ${r.ha} ha · ${r.etapa}`).join('\n');
@@ -2217,6 +2269,9 @@ function exportCons(){
   } else if(cMod==='colheita'){
     header='Fazenda\tCódigo\tCiclo\tTalhões Conc.\tTalhões Total\tHa Total';
     body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.conc}\t${r.tot}\t${r.ha.toFixed(1)}`).join('\n');
+  } else if(cMod==='drone'){
+    header='Fazenda\tCódigo\tNormal\tCobertura %\tCatação\tCatação ha\tObst. 15m\tObst. 25m\tObst. 50m\tSolicitação';
+    body=rows.map(r=>`${r.n}\t${r.cod}\t${r.normal_rev==null?'':'Rev'+r.normal_rev}\t${r.pct??''}\t${r.catacao_rev==null?'':'Rev'+r.catacao_rev}\t${r.catacao_ha??''}\t${drConsData(r.r.obst_15)}\t${drConsData(r.r.obst_25)}\t${drConsData(r.r.obst_50)}\t${r.r.solicitacao||''}`).join('\n');
   } else {
     header='Fazenda\tCódigo\tCiclo\tMês\tHa\tVoo\tEtapa';
     body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.mes}\t${r.ha}\t${r.voo}\t${r.etapa}`).join('\n');
@@ -2236,6 +2291,7 @@ const SB_URL='https://dpvsivypabmvmrrpgmhc.supabase.co';
 const SB_KEY='sb_publishable_3xv0R1kmhSXkoUh3i4vN0A_Q5oLBbVL';   // chave pública por natureza; quem protege os dados é o RLS
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'hub'}});
 let EU=null;
+let DRONE_RESUMO=[];   // hub.drone_resumo(): uma linha por fazenda (dashboard e Consultas)
 // Frescor dos dados: a importação mais antiga entre as fontes diárias.
 const FONTES_DIARIAS=['base_fazendas','planagri','conservacao','icol'];
 let ATUALIZADO={txt:'—',lbl:'Dados atualizados',atrasado:false};
@@ -2331,6 +2387,7 @@ async function carregarDados(){
       perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),drone:mods.has('drone')||u.admin,portal:false,config:u.admin}});
   }
   EU=USUARIOS.find(u=>u.id===user.id)||null;
+  {const {data,error}=await sb.rpc('drone_resumo');DRONE_RESUMO=error?[]:(data||[]);}
   const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
 
   // Plantio: agrupa os talhões por fazenda.
@@ -2691,6 +2748,7 @@ async function abrirAviso(id){
   document.getElementById('sino-lista')?.remove();
   if(!a)return;
   if(!a.lido)marcarLidos([id]);
+  if(a.modulo_id==='drone'&&a.cod_faz)drIrFazenda(a.cod_faz);
   if(a.modulo_id==='colheita'&&a.cod_faz){
     trocar('colheita',document.querySelector(`.ni[onclick*="'colheita'"]`));
     const i=FZ_C.findIndex(f=>f.cod===String(a.cod_faz));
@@ -2739,6 +2797,7 @@ function aplicarUsuario(){
     if(btn)btn.style.display=EU.perms[mod]?'':'none';
   }
   document.getElementById('cons-tab-colheita').style.display=EU.perms.colheita?'':'none';
+  document.getElementById('cons-tab-drone').style.display=EU.perms.drone?'':'none';
 }
 
 // Init

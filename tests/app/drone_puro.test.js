@@ -27,3 +27,16 @@ test('classe escolhida no envio de obstáculos', () => {
   assert.strictEqual(ctx.drClasseEscolhida(''), null);          // vazio = pelo nome do arquivo
   assert.strictEqual(ctx.drClasseEscolhida('30'), undefined);   // inválido
 });
+
+test('botão do shape de ajuste mostra o estado do envio', () => {
+  assert.strictEqual(ctx.drRotuloShape(null), 'Enviar shape de ajuste');
+  assert.strictEqual(ctx.drRotuloShape({ status: 'fila' }), 'Shape em processamento…');
+  assert.strictEqual(ctx.drRotuloShape({ status: 'ok' }), 'Shape enviado ✓ (trocar)');
+  assert.strictEqual(ctx.drRotuloShape({ status: 'erro' }), 'Erro no shape — enviar outro');
+});
+
+test('formulário de solicitação valida fazenda e data', () => {
+  assert.strictEqual(ctx.drValidarSolicitacao({ cod: '', data: '' }), 'Escolha a fazenda.');
+  assert.strictEqual(ctx.drValidarSolicitacao({ cod: '10008', data: '2000-01-01' }), 'A data desejada já passou.');
+  assert.strictEqual(ctx.drValidarSolicitacao({ cod: '10008', data: '' }), null);
+});

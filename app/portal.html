@@ -215,7 +215,7 @@ async function carregar(){
     try{
       const rc=await fetch(`${SB_URL}/rest/v1/rpc/portal_drone_cobertura`,{method:'POST',
         headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'Content-Type':'application/json'},body:'{}'});
-      COB_DRONE=Object.fromEntries((rc.ok?await rc.json():[]).map(x=>[x.cod_faz,Number(x.cobertura_pct)]));
+      COB_DRONE=Object.fromEntries((rc.ok?await rc.json():[]).filter(x=>x.cobertura_pct!=null).map(x=>[x.cod_faz,Number(x.cobertura_pct)]));
     }catch(_){COB_DRONE={};}
     agrupar(linhas);
     render();
