@@ -95,10 +95,15 @@ class DroneBanco(Hub):
             'p_cod_faz': cod_faz, 'p_classe_m': classe_m, 'p_origem': origem, 'p_arquivo': arquivo,
             'p_wkts': [g.wkt for g in geoms], 'p_usuario': usuario})
 
-    def gravar_infestacao(self, solicitacao_id, empresa, arquivo, geoms, usuario=None) -> int:
+    def gravar_infestacao(self, solicitacao_id, empresa, arquivo, geoms, usuario=None, envio_id=None) -> int:
         return self.rpc('drone_gravar_infestacao', {
             'p_solicitacao_id': solicitacao_id, 'p_empresa': empresa, 'p_arquivo': arquivo,
-            'p_wkts': [g.wkt for g in geoms], 'p_usuario': usuario})
+            'p_wkts': [g.wkt for g in geoms], 'p_usuario': usuario, 'p_envio_id': envio_id})
+
+    def gravar_obstaculos_lote(self, cod_faz, origem, itens, usuario=None, envio_id=None) -> int:
+        """Várias classes numa transação só; o mesmo envio não grava duas vezes."""
+        return self.rpc('drone_gravar_obstaculos_lote', {'p_cod_faz': cod_faz, 'p_origem': origem, 'p_itens': itens,
+                                                          'p_usuario': usuario, 'p_envio_id': envio_id})
 
     def pegar_envio(self):
         r = self.rpc('drone_pegar_envio')
