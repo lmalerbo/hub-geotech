@@ -157,7 +157,7 @@ function drRender(){
   document.getElementById('dr-faz').innerHTML=`
     <div class="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
       <div><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
-      <div class="dr-docs">${card('normal','Normal',g.normal,pct!=null&&pct<100?`<span class="dr-tag">${Math.round(pct)}% DA FAZENDA</span>`:'')}
+      <div class="dr-docs">${card('normal','Normal',g.normal,pct!=null&&pct<100?`<span class="dr-tag">${Math.floor(pct)}% DA FAZENDA</span>`:'')}
         ${card('catacao','Catação',g.catacao,'')}</div></div>
     <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
       <div class="dr-leg"><span><i style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>

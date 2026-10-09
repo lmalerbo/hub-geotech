@@ -2045,7 +2045,7 @@ function rCons(pg){
   if(cMod==='plantio')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
   if(cMod==='colheita') thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
   if(cMod==='preparo')  thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Voo</th><th>Etapa</th>';
-  if(cMod==='drone')    thHtml+='<th style="width:16px"></th><th>Fazenda</th><th>Código</th><th>Normal</th><th>Cobertura</th><th>Catação</th><th>Obstáculos</th><th>Solicitação</th>';
+  if(cMod==='drone')    thHtml+='<th>Fazenda</th><th>Código</th><th>Normal</th><th>Cobertura</th><th>Catação</th><th>Obstáculos</th><th>Solicitação</th>';
   document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`;
 
   // Body rows
@@ -2069,7 +2069,7 @@ function rCons(pg){
         const corO=r.obst==='ok'?'var(--plantio)':r.obst==='antigos'?'#d4890a':'var(--t3)';
         cells=`<td>${expIco}<strong>${esc(r.n)}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td>
           <td>${r.normal_rev==null?'—':'Rev'+r.normal_rev}</td>
-          <td><span class="cons-badge" style="background:${cor}18;color:${cor}">${r.pct==null?'—':Math.round(r.pct)+'%'}</span></td>
+          <td><span class="cons-badge" style="background:${cor}18;color:${cor}">${r.pct==null?'—':Math.floor(r.pct)+'%'}</span></td>
           <td>${r.catacao_rev==null?'—':'Rev'+r.catacao_rev+' · '+fmtNum(r.catacao_ha)+' ha'}</td>
           <td><span class="cons-badge" style="background:${corO}18;color:${corO}">${r.obst==='ok'?'em dia':r.obst==='antigos'?'+24 meses':'sem'}</span></td>
           <td>${esc(r.r.solicitacao||'—')}</td>`;
@@ -2244,7 +2244,7 @@ function exportWpp(){
   const resumo=`${rows.length} fazenda${rows.length!==1?'s':''} · ${totalHa.toFixed(0)} ha`;
   let lista='';
   if(cMod==='drone'){
-    lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — Normal ${r.pct==null?'—':Math.round(r.pct)+'%'}`).join('\n');
+    lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — Normal ${r.pct==null?'—':Math.floor(r.pct)+'%'}`).join('\n');
   } else if(cMod==='colheita'){
     lista=rows.map((r,i)=>`${i+1}. ${r.n} (${r.cod}) — ${r.ha.toFixed(1)} ha · ${r.conc}/${r.tot} talhões`).join('\n');
   } else {
