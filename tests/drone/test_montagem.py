@@ -88,3 +88,11 @@ def test_talhao_do_sistema_todo_coberto_por_obstaculo_e_pulado_com_aviso(base):
                           base, tomado, [], 0, avisos=avisos)
     assert sorted(itens) == [3]
     assert avisos and '1' in avisos[0]
+
+
+def test_remover_talhao_que_nao_esta_no_projeto_avisa(base):
+    avisos = []
+    vig = {1: _item(box(0, 0, 100, 100))}
+    itens = montar_normal(vig, {'incluir': [], 'remover': [2]}, base, Polygon(), [], 1, avisos=avisos)
+    assert sorted(itens) == [1]
+    assert any('2' in a and 'não estavam' in a for a in avisos)

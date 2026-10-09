@@ -215,7 +215,7 @@ async function carregar(){
     try{
       const rc=await fetch(`${SB_URL}/rest/v1/rpc/portal_drone_cobertura`,{method:'POST',
         headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,'Content-Type':'application/json'},body:'{}'});
-      COB_DRONE=Object.fromEntries((rc.ok?await rc.json():[]).map(x=>[x.cod_faz,Number(x.cobertura_pct)]));
+      COB_DRONE=Object.fromEntries((rc.ok?await rc.json():[]).filter(x=>x.cobertura_pct!=null).map(x=>[x.cod_faz,Number(x.cobertura_pct)]));
     }catch(_){COB_DRONE={};}
     agrupar(linhas);
     render();
@@ -299,7 +299,7 @@ function arquivo(a){
   return`<div class="arq">
     <div class="tipo ${a.ext}">${esc(a.ext.toUpperCase())}</div>
     <div class="arq-txt">
-      <div class="arq-rot">${esc(rotulo(modulo,a.documento,a.ext))}<span class="rev">${esc(a.marcador)}${a.revisao}</span>${modulo==='drone'&&a.documento==='normal'&&COB_DRONE[a.cod_faz]<100?`<span class="bloco" style="background:#fdf1df;color:#d4890a">Incompleta · ${Math.round(COB_DRONE[a.cod_faz])}%</span>`:''}${a.bloco?`<span class="bloco">${esc(a.bloco)}</span>`:''}</div>
+      <div class="arq-rot">${esc(rotulo(modulo,a.documento,a.ext))}<span class="rev">${esc(a.marcador)}${a.revisao}</span>${modulo==='drone'&&a.documento==='normal'&&COB_DRONE[a.cod_faz]<100?`<span class="bloco" style="background:#fdf1df;color:#d4890a">Incompleta · ${Math.floor(COB_DRONE[a.cod_faz])}%</span>`:''}${a.bloco?`<span class="bloco">${esc(a.bloco)}</span>`:''}</div>
       <div class="arq-meta">${tamanho(a.tamanho_bytes)} · ${data(a.publicado_em)}</div>
     </div>
     <div class="acoes">${ver}<a class="btn baixar" href="${esc(a.url)}" download="${esc(a.nome_arquivo)}" rel="noreferrer" aria-label="Baixar ${esc(a.nome_arquivo)}"><span class="ico">download</span></a></div>

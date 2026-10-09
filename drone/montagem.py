@@ -37,6 +37,10 @@ def montar_normal(vigentes, escopo, talhoes, buffers, ajuste, nova_rev, avisos=N
     if faltando:
         raise ErroGeracao(f"Talhões que não existem na Base de hoje: {', '.join(map(str, faltando))}.")
     itens = {k: v for k, v in vigentes.items() if k not in remover}
+    nao_estavam = sorted(remover - set(vigentes))
+    if nao_estavam and avisos is not None:
+        avisos.append('Talhões marcados para remover que não estavam no projeto: '
+                      + ', '.join(map(str, nao_estavam)) + '.')
     shape = unary_union([make_valid(g) for g in ajuste]) if ajuste else None
     vazios, tomados = [], []
     for i in incluir:

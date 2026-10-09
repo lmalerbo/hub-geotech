@@ -85,8 +85,9 @@ def ciclo(banco, gh, c) -> bool:
     banco.batimento()
     try:
         limpar_previas(banco)
-    except Exception as e:   # Storage fora não pode travar a fila
-        _log(f'limpeza de prévias falhou: {e}')
+        banco.rpc('drone_avisos_limpar')             # "Publicado" some do sininho depois de 7 dias
+    except Exception as e:   # Storage/banco fora não pode travar a fila
+        _log(f'limpeza de prévias/avisos falhou: {e}')
     trabalhou = processar_um_envio(banco)
     trabalhou = gerar_uma(banco, c) or trabalhou
     return publicar_uma(banco, gh) or trabalhou

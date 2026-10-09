@@ -12,10 +12,16 @@ from drone.mapa_pdf import DadosMapa, gerar_pdf
 from drone.saida import gravar_aplicacao, montar_zip
 
 
-def alertas(recorte, versoes, params, hoje, infestacao_fora=False) -> list:
+def _dt(s):
+    return datetime.datetime.fromisoformat(str(s).replace('Z', '+00:00'))
+
+
+def alertas(recorte, versoes, params, hoje, infestacao_fora=False, so_talhoes=None) -> list:
     msgs = []
     minimo = float(params['alerta_aproveitamento_min'])
     for t in recorte.por_talhao:
+        if so_talhoes is not None and t['talhao'] not in so_talhoes:
+            continue                                     # talhão sem projeto (Normal incompleta): não é alerta
         if t['area_prod'] > 0 and t['aplicavel_ha'] < minimo * t['area_prod']:
             msgs.append(f"Talhão {t['talhao']}: aplicável {t['aplicavel_ha']:.2f} ha de {t['area_prod']:.2f} ha "
                         f"(abaixo de {minimo:.0%}).")
@@ -64,7 +70,7 @@ def processar(geracao: dict, banco, base: tuple, pasta: Path, hoje: datetime.dat
                           + ', '.join(map(str, fora_da_base(itens, talhoes))) + '.')
         refeitos = {int(i['talhao']) for i in (escopo or {}).get('incluir', [])} if escopo else set(itens)
         copiados = set(itens) - refeitos
-        if revisao_em and copiados and any(v['enviado_em'] > revisao_em for v in versoes):
+        if revisao_em and copiados and any(_dt(v['enviado_em']) > _dt(revisao_em) for v in versoes):
             extras.append(f'Obstáculos atualizados depois da revisão vigente: {len(copiados)} talhões '
                           'copiados não foram refeitos.')
     else:
@@ -93,7 +99,8 @@ def processar(geracao: dict, banco, base: tuple, pasta: Path, hoje: datetime.dat
                     'revisao_prevista': revisao},
         'resumo': {'por_talhao': recorte.por_talhao, 'area_total_ha': recorte.area_total_ha,
                    'aplicacao_ha': recorte.aplicacao_ha, 'cobertura_pct': cob},
-        'alertas': alertas(recorte, versoes, params, hoje, fora) + extras,
+        'alertas': alertas(recorte, versoes, params, hoje, fora,
+                           so_talhoes=set(itens) if tipo == 'normal' else None) + extras,
         'previa_zip': banco.subir_previa(zip_, f'{destino}/{cod}.zip'),
         'previa_pdf': banco.subir_previa(pdf, f'{destino}/{cod}.pdf'),
     }
