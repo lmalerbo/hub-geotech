@@ -1,6 +1,6 @@
 # Corretivos: gerador de mapa de aplicação de corretivos
 
-**Data:** 09/10/2026 · **Status:** aguardando revisão do usuário
+**Data:** 09/10/2026 · **Status:** aprovada em 11/10/2026 (inclusive as 7 decisões: acesso por módulo, aplicação repetida recusada, salvamento automático, exclusão com confirmação, quadros separados por Blend, layout comum com teste de regressão do Drone, fonte Selawik). Desenvolvimento a partir de 13/10/2026 às 7h.
 
 ## 1. Objetivo
 
