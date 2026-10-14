@@ -7,4 +7,7 @@ set PYTHONIOENCODING=utf-8
 echo. >> agendamento\logs\usuarios.log
 echo ===== %date% %time% ===== >> agendamento\logs\usuarios.log
 python ingestao\sincronizar_usuarios.py >> agendamento\logs\usuarios.log 2>&1
-echo codigo de saida: %errorlevel% >> agendamento\logs\usuarios.log
+set CODIGO=%errorlevel%
+echo codigo de saida: %CODIGO% >> agendamento\logs\usuarios.log
+REM Devolve o codigo ao Agendador: falha aparece como falha, nao como "exito".
+exit /b %CODIGO%

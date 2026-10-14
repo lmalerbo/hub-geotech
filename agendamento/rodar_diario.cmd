@@ -7,4 +7,7 @@ set PYTHONIOENCODING=utf-8
 echo. >> agendamento\logs\diario.log
 echo ===== %date% %time% ===== >> agendamento\logs\diario.log
 python ingestao\rodar_diario.py >> agendamento\logs\diario.log 2>&1
-echo codigo de saida: %errorlevel% >> agendamento\logs\diario.log
+set CODIGO=%errorlevel%
+echo codigo de saida: %CODIGO% >> agendamento\logs\diario.log
+REM Devolve o codigo ao Agendador: falha aparece como falha, nao como "exito".
+exit /b %CODIGO%
