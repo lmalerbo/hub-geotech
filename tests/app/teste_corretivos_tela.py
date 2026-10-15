@@ -1,8 +1,8 @@
-﻿"""Teste de ponta a ponta dos Corretivos (Playwright + Edge, banco real). Roda Ã  mÃ£o, da raiz do repositÃ³rio:
+"""Teste de ponta a ponta dos Corretivos (Playwright + Edge, banco real). Roda à mão, da raiz do repositório:
     set HUB_CONTA_TESTE=C:/caminho/conta-teste.json
     python tests/app/teste_corretivos_tela.py
-DÃ¡ Ã  conta de teste o mÃ³dulo 'corretivos' sÃ³ durante o teste e devolve o acesso original no fim.
-Cria um mapa de corretivo na fazenda 10974, lanÃ§a aplicaÃ§Ãµes, baixa o PDF e EXCLUI o mapa que ele mesmo criou."""
+Dá à conta de teste o módulo 'corretivos' só durante o teste e devolve o acesso original no fim.
+Cria um mapa de corretivo na fazenda 10974, lança aplicações, baixa o PDF e EXCLUI o mapa que ele mesmo criou."""
 import functools
 import http.server
 import json
@@ -31,14 +31,14 @@ falhas = []
 
 
 def remover(tabela, filtro):
-    """DELETE com service_role (o mÃ³dulo comum nÃ£o tem; uso sÃ³ para limpar o que este teste criou)."""
+    """DELETE com service_role (o módulo comum não tem; uso só para limpar o que este teste criou)."""
     import requests
     r = requests.delete(f'{b.url}/{tabela}', params=filtro, headers=b.headers, timeout=60)
     r.raise_for_status()
 
 
 def confere(cond, msg):
-    print(('âœ“ ' if cond else 'âœ— ') + msg)
+    print(('✓ ' if cond else '✗ ') + msg)
     if not cond:
         falhas.append(msg)
 
@@ -63,7 +63,7 @@ try:
         if pg.locator('#cr-email').is_visible():
             pg.fill('#cr-email', conta['email']); pg.fill('#cr-senha', conta['senha']); pg.click('#cr-entrar')
         pg.wait_for_selector('#cr-busca:visible', timeout=30000)
-        confere(True, 'login e acesso ao mÃ³dulo')
+        confere(True, 'login e acesso ao módulo')
 
         pg.fill('#cr-busca', str(FAZ)); pg.wait_for_selector('#cr-res .cr-it'); pg.click('#cr-res .cr-it')
         pg.wait_for_selector('[data-novo]:visible', timeout=20000)
@@ -86,24 +86,24 @@ try:
         aplicar({'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': '2', 'gesso': '', 'os': 'E2E-1'}, [A, B])
         aplicar({'tipo': 'blend', 'calcario': 'ph7', 'dose': '1.5', 'gesso': '1', 'os': 'E2E-2'}, [B])
         apls = b.selecionar('corretivo_aplicacoes', 'id,tipo,os', {'mapa_id': f'eq.{mapa_id}'})
-        confere(sorted(a['os'] for a in apls) == ['E2E-1', 'E2E-2'], 'duas aplicaÃ§Ãµes gravadas (calcÃ¡rio e blend)')
+        confere(sorted(a['os'] for a in apls) == ['E2E-1', 'E2E-2'], 'duas aplicações gravadas (calcário e blend)')
 
         aplicar({'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': '2', 'gesso': '', 'os': 'E2E-1'}, [A])
         confere(len(b.selecionar('corretivo_aplicacoes', 'id', {'mapa_id': f'eq.{mapa_id}'})) == 2,
-                'a tela recusa a mesma aplicaÃ§Ã£o no mesmo talhÃ£o')
+                'a tela recusa a mesma aplicação no mesmo talhão')
         dup = b.inserir('corretivo_aplicacoes', {'mapa_id': mapa_id, 'tipo': 'calcario', 'calcario': 'dolomitico',
                                                  'dose': 2, 'os': 'E2E-1', 'ordem': 9})
         dup_id = (dup[0] if isinstance(dup, list) else dup)['id']
         try:
             b.inserir('corretivo_aplicacao_talhoes', {'aplicacao_id': dup_id, 'mapa_id': mapa_id, 'talhao_num': A})
-            confere(False, 'o banco recusa a mesma aplicaÃ§Ã£o no mesmo talhÃ£o')
+            confere(False, 'o banco recusa a mesma aplicação no mesmo talhão')
         except Exception as e:  # noqa: BLE001
-            confere('jÃ¡ tem esta aplicaÃ§Ã£o' in str(e), 'o banco recusa a mesma aplicaÃ§Ã£o no mesmo talhÃ£o')
+            confere('já tem esta aplicação' in str(e), 'o banco recusa a mesma aplicação no mesmo talhão')
         remover('corretivo_aplicacoes', {'id': f'eq.{dup_id}'})
 
         pg.evaluate("async ([id, t]) => { await crApi().salvarArea(id, t, 7.77); await crRecarregar(); }", [mapa_id, A])
         ta = b.selecionar('corretivo_talhoes', 'area_ha,area_editada', {'mapa_id': f'eq.{mapa_id}', 'talhao_num': f'eq.{A}'})[0]
-        confere(float(ta['area_ha']) == 7.77 and ta['area_editada'], 'Ã¡rea editada gravada e marcada')
+        confere(float(ta['area_ha']) == 7.77 and ta['area_editada'], 'área editada gravada e marcada')
 
         pg.wait_for_selector('[data-pdf]:not([disabled])', timeout=240000)
         with pg.expect_download(timeout=240000) as dl:
@@ -113,22 +113,22 @@ try:
         dl.value.save_as(destino)
         texto = '\n'.join(pagina.get_text() for pagina in pymupdf.open(destino))
         confere(dl.value.suggested_filename.startswith(f'corretivo_{FAZ}_arado_'), 'nome do arquivo do PDF')
-        for esperado in ['CORRETIVO Â· ARADO', 'E2E-1', 'Blend PH7', '7,77*']:
-            confere(esperado in texto, f'PDF contÃ©m "{esperado}"')
+        for esperado in ['CORRETIVO · ARADO', 'E2E-1', 'Blend PH7', '7,77*']:
+            confere(esperado in texto, f'PDF contém "{esperado}"')
 
         pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-excluir="{mapa_id}"]', timeout=20000)
         pg.click(f'[data-excluir="{mapa_id}"]'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
         pg.wait_for_timeout(2500)
-        confere(not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_id}'}), 'mapa excluÃ­do pela tela')
+        confere(not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_id}'}), 'mapa excluído pela tela')
         log = b.selecionar('log_auditoria', 'id', {'modulo_id': 'eq.corretivos', 'campo': 'eq.mapa_corretivo',
                                                    'valor_anterior': f'like.mapa {mapa_id} *'})
-        confere(bool(log), 'exclusÃ£o registrada no log de auditoria')
+        confere(bool(log), 'exclusão registrada no log de auditoria')
         if not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_id}'}):
             mapa_id = None
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')
         nav.close()
 finally:
-    if mapa_id:                              # sÃ³ apaga o que o prÃ³prio teste criou
+    if mapa_id:                              # só apaga o que o próprio teste criou
         remover('corretivo_mapas', {'id': f'eq.{mapa_id}'})
     if not tinha_modulo:
         remover('usuario_modulos', {'usuario_id': f'eq.{uid}', 'modulo_id': 'eq.corretivos'})

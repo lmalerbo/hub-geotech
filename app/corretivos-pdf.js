@@ -1,5 +1,6 @@
 // Gerador do PDF no navegador: Pyodide + mapas/corretivo_pdf.py (mesmo layout do Drone).
-const crGerador = (() => {
+// `var` (não const): a página confere `window.crGerador`, e const de topo não vira propriedade de window.
+var crGerador = (() => {
   const VERSAO = '0.27.7';
   let py = null, promessa = null;
   const g = { estado: 'parado', erro: null, aoMudar: () => {} };
