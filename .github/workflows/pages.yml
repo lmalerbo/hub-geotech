@@ -26,6 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Arquivos Python do gerador de PDF (Pyodide)
+        run: python3 mapas/publicar.py app/py
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app
