@@ -81,7 +81,7 @@ O PDF tem:
 
 ## Excluir um mapa
 
-1. Na lista de mapas, clique no X do cartão.
+1. Na lista de mapas, clique na lixeira do cartão.
 2. Confirme em **Excluir**. Em **Cancelar** nada acontece.
 3. A exclusão fica registrada.
 
