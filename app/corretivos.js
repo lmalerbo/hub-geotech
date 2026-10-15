@@ -83,10 +83,10 @@ function crSb() {
   if (!CR_SB) CR_SB = window.supabase.createClient(CR_SB_URL, CR_SB_KEY, { db: { schema: 'hub' } });
   return CR_SB;
 }
-const CR_ST = { eu: null, fazendas: [], faz: null, mapas: [], trab: null };
+const CR_ST = { eu: null, fazendas: [], faz: null, mapas: [], trab: null, map: null, geo: null, det: null,
+  sel: new Set(), destApl: null, areaNova: {}, form: null, formMsg: null };
 const CR_OP_VAR = { subsolagem: '--irrigacao', supergrade: '--plantio', arado: '--colheita' };
 
-async function crAFazer() { throw new Error('a fazer'); }
 function crEsc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function crNorm(s) { return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 function crPad(n) { return String(n).padStart(2, '0'); }
@@ -163,7 +163,6 @@ const crApiReal = {
     const { error } = await crSb().from('corretivo_mapas').delete().eq('id', id);
     if (error) throw error;
   },
-  carregarMapa: crAFazer, salvarAplicacao: crAFazer, excluirAplicacao: crAFazer, talhoesFazenda: crAFazer,
 };
 
 function crApi() { return CR_DEMO ? CR_API_DEMO : crApiReal; }
@@ -263,7 +262,7 @@ async function crCarregarFazendas() {
     document.getElementById('cr-tentar-faz').onclick = crCarregarFazendas;
     return;
   }
-  if (CR_DEMO && CR_ST.fazendas.length && !CR_ST.faz) crEscolherFazenda(CR_ST.fazendas[0]);
+  if (CR_DEMO && CR_ST.fazendas.length && !CR_ST.faz) crEscolherFazenda(CR_ST.fazendas[0], true);
   else crFiltrar();
 }
 function crFiltrar() {
@@ -275,14 +274,15 @@ function crFiltrar() {
     ? achadas.map(f => `<button class="cr-it" type="button" data-cod="${f.cod_faz}"><span class="cr-cod">${f.cod_faz}</span><span class="nm">${crEsc(f.nome)}</span></button>`).join('')
     : '<div class="cr-msg">Nenhuma fazenda encontrada.</div>';
 }
-function crEscolherFazenda(f) {
+async function crEscolherFazenda(f, abrirPrimeiro = false) {
   CR_ST.faz = f;
   document.getElementById('cr-busca').value = `${f.cod_faz} · ${f.nome}`;
   document.getElementById('cr-res').innerHTML = '';
   document.getElementById('cr-faz-nome').textContent = f.nome;
   document.getElementById('cr-faz-sub').textContent = `Código ${f.cod_faz}`;
   document.getElementById('cr-pnl').classList.remove('off');
-  crCarregarMapas();
+  await crCarregarMapas();
+  if (abrirPrimeiro && CR_DEMO && CR_ST.mapas.length) crAbrirMapa(CR_ST.mapas[0]);
 }
 
 // ── Lista de mapas ──
@@ -325,6 +325,7 @@ function crCardMapa(m) {
       <div class="cr-stat"><small>Total</small><b>${crBr(m.toneladas)} t</b></div>
     </div>
     <div class="cr-rod">alterado por ${crEsc(m.alterado_por_nome)} em ${crDiaMes(m.alterado_em)}</div>
+    <button class="cr-btn2" type="button" data-abrir="${m.id}">Abrir mapa</button>
   </article>`;
 }
 async function crExcluir(id) {
@@ -361,9 +362,7 @@ async function crNovoMapa() {
     crToast('Não foi possível criar o mapa. Tente de novo.', true);
     return;
   }
-  CR_ST.trab = { id, operacao: op, data: crHojeIso() };
-  document.getElementById('cr-trab-tit').textContent = `Mapa ${CR_OPERACOES[op]} · ${crDataIso(CR_ST.trab.data)}`;
-  crTela('trabalho');
+  await crAbrirMapa({ id, operacao: op, data: crHojeIso() });
 }
 
 // ── Inicialização (só no navegador) ──
@@ -376,10 +375,12 @@ async function crIniciar() {
     if (f) crEscolherFazenda(f);
   };
   document.getElementById('cr-novo').onclick = crNovoMapa;
-  document.getElementById('cr-voltar').onclick = () => { crTela('lista'); crCarregarMapas(); };
+  crLigarTrabalho();
   document.getElementById('cr-mapas').onclick = e => {
     if (e.target.closest('[data-tentar]')) return crCarregarMapas();
     if (e.target.closest('[data-novo]')) return crNovoMapa();
+    const a = e.target.closest('[data-abrir]');
+    if (a) return crAbrirMapa(CR_ST.mapas.find(m => String(m.id) === a.dataset.abrir));
     const x = e.target.closest('[data-excluir]');
     if (x) crExcluir(x.dataset.excluir);
   };
@@ -393,4 +394,498 @@ async function crIniciar() {
     crMostrar('login');
   }
 }
+// ===== Corretivos: tela de trabalho (mapa, painel de aplicações) =====
+// Persistência: cada ação chama crApi e recarrega o mapa (sem botão Salvar).
+
+// Métodos reais da API de trabalho (tabelas hub.corretivo_*).
+function crDetalheMapa(m) {
+  const areas = {};
+  for (const t of m.corretivo_talhoes || []) areas[t.talhao_num] = { area_ha: Number(t.area_ha), editada: !!t.area_editada };
+  const apls = (m.corretivo_aplicacoes || []).map(a => ({
+    id: a.id, tipo: a.tipo, calcario: a.calcario, dose: Number(a.dose),
+    dose_gesso: a.dose_gesso == null ? null : Number(a.dose_gesso), os: String(a.os).trim(), ordem: a.ordem,
+    talhoes: (a.corretivo_aplicacao_talhoes || []).map(x => x.talhao_num),
+  }));
+  return { id: m.id, cod_faz: m.cod_faz, operacao: m.operacao, data: m.data, areas, apls: crOrdenadas(apls) };
+}
+// Insere em corretivo_talhoes os talhões do mapa que ainda não existem (antes dos vínculos).
+async function crInserirTalhoesFaltantes(mapaId, talhoes, areas) {
+  const sb = crSb();
+  const { data, error } = await sb.from('corretivo_talhoes').select('talhao_num').eq('mapa_id', mapaId);
+  if (error) throw error;
+  const existentes = new Set(data.map(t => t.talhao_num));
+  const novos = talhoes.filter(t => !existentes.has(t))
+    .map(t => ({ mapa_id: mapaId, talhao_num: t, area_ha: areas[t].area_ha, area_editada: !!areas[t].editada }));
+  if (novos.length) {
+    const { error: e } = await sb.from('corretivo_talhoes').insert(novos);
+    if (e) throw e;
+  }
+}
+// Remove do mapa os talhões de 'candidatos' que ficaram sem nenhuma aplicação.
+async function crLimparOrfaos(mapaId, candidatos) {
+  if (!candidatos.length) return;
+  const sb = crSb();
+  const { data, error } = await sb.from('corretivo_aplicacao_talhoes').select('talhao_num')
+    .eq('mapa_id', mapaId).in('talhao_num', candidatos);
+  if (error) throw error;
+  const usados = new Set(data.map(v => v.talhao_num));
+  const orfaos = candidatos.filter(t => !usados.has(t));
+  if (orfaos.length) {
+    const { error: e } = await sb.from('corretivo_talhoes').delete().eq('mapa_id', mapaId).in('talhao_num', orfaos);
+    if (e) throw e;
+  }
+}
+Object.assign(crApiReal, {
+  async carregarMapa(id) {
+    const { data, error } = await crSb().from('corretivo_mapas')
+      .select('id,cod_faz,operacao,data,corretivo_talhoes(talhao_num,area_ha,area_editada),corretivo_aplicacoes(id,tipo,calcario,dose,dose_gesso,os,ordem,corretivo_aplicacao_talhoes(talhao_num))')
+      .eq('id', id).single();
+    if (error) throw error;
+    return crDetalheMapa(data);
+  },
+  async talhoesFazenda(codFaz) {
+    const { data, error } = await crSb().rpc('corretivo_talhoes_fazenda', { p_cod_faz: codFaz });
+    if (error) throw error;
+    return data;
+  },
+  async salvarArea(mapaId, talhao, area) {
+    const { error } = await crSb().from('corretivo_talhoes').update({ area_ha: area, area_editada: true })
+      .eq('mapa_id', mapaId).eq('talhao_num', talhao);
+    if (error) throw error;
+  },
+  async aplicar(mapaId, p) {
+    const sb = crSb();
+    await crInserirTalhoesFaltantes(mapaId, p.talhoes, p.areas);
+    const { data: ords, error: e1 } = await sb.from('corretivo_aplicacoes').select('ordem').eq('mapa_id', mapaId);
+    if (e1) throw e1;
+    const ordem = Math.max(0, ...ords.map(o => o.ordem)) + 1;
+    const { data: ap, error: e2 } = await sb.from('corretivo_aplicacoes')
+      .insert({ mapa_id: mapaId, tipo: p.tipo, calcario: p.calcario, dose: p.dose, dose_gesso: p.dose_gesso, os: p.os, ordem })
+      .select('id').single();
+    if (e2) throw e2;
+    const { error: e3 } = await sb.from('corretivo_aplicacao_talhoes')
+      .insert(p.talhoes.map(t => ({ aplicacao_id: ap.id, mapa_id: mapaId, talhao_num: t })));
+    if (e3) throw e3;
+  },
+  async editarAplicacao(mapaId, aplId, p) {
+    const sb = crSb();
+    const { data: antes, error: e0 } = await sb.from('corretivo_aplicacao_talhoes').select('talhao_num').eq('aplicacao_id', aplId);
+    if (e0) throw e0;
+    const { error: e1 } = await sb.from('corretivo_aplicacoes').update({ dose: p.dose, dose_gesso: p.dose_gesso, os: p.os }).eq('id', aplId);
+    if (e1) throw e1;
+    await crInserirTalhoesFaltantes(mapaId, p.talhoes, p.areas);
+    const { error: e2 } = await sb.from('corretivo_aplicacao_talhoes').delete().eq('aplicacao_id', aplId);
+    if (e2) throw e2;
+    const { error: e3 } = await sb.from('corretivo_aplicacao_talhoes')
+      .insert(p.talhoes.map(t => ({ aplicacao_id: aplId, mapa_id: mapaId, talhao_num: t })));
+    if (e3) throw e3;
+    await crLimparOrfaos(mapaId, antes.map(v => v.talhao_num).filter(t => !p.talhoes.includes(t)));
+  },
+  async excluirAplicacao(mapaId, aplId) {
+    const sb = crSb();
+    const { data: antes, error: e0 } = await sb.from('corretivo_aplicacao_talhoes').select('talhao_num').eq('aplicacao_id', aplId);
+    if (e0) throw e0;
+    const { error } = await sb.from('corretivo_aplicacoes').delete().eq('id', aplId);
+    if (error) throw error;
+    await crLimparOrfaos(mapaId, antes.map(v => v.talhao_num));
+  },
+});
+
+// ── Cálculos da tela (usam as funções puras) ──
+function crSelecionados() { return Array.from(CR_ST.sel).sort((a, b) => a - b); }
+function crTotalApl(a, areas) {
+  const t = a.talhoes.reduce((s, x) => {
+    const ha = Number(areas[x] ? areas[x].area_ha : 0);
+    return s + crTotal(ha, a.dose) + (a.tipo === 'blend' ? crTotal(ha, a.dose_gesso) : 0);
+  }, 0);
+  return Math.round(t * 100) / 100;
+}
+function crAreaDe(t) {
+  const feat = CR_ST.geo.features.find(f => f.properties.talhao === t);
+  const padrao = Number(feat ? feat.properties.area_prod : 0);
+  const atual = CR_ST.det.areas[t];
+  if (atual) return { area_ha: atual.area_ha, editada: atual.editada };
+  const nova = CR_ST.areaNova[t];
+  if (nova != null) return { area_ha: nova, editada: nova !== padrao };
+  return { area_ha: padrao, editada: false };
+}
+
+// ── Mapa ──
+const CR_MAPA_ESTILO = {
+  version: 8,
+  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  sources: {},
+  layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#f7f8fa' } }],
+};
+// Imagem do meio a meio: faixas diagonais, uma cor por aplicação, na ordem de lançamento.
+function crRegistrarPadrao(m, cores) {
+  const id = 'p-' + cores.join('-');
+  if (!m.hasImage(id)) {
+    const tam = cores.length * 8;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = tam;
+    const ctx = cv.getContext('2d');
+    for (let y = 0; y < tam; y++) for (let x = 0; x < tam; x++) {
+      ctx.fillStyle = cores[Math.floor(((x + y) % tam) / 8)];
+      ctx.fillRect(x, y, 1, 1);
+    }
+    m.addImage(id, ctx.getImageData(0, 0, tam, tam));
+  }
+  return id;
+}
+function crMapaCriar() {
+  const m = new maplibregl.Map({ container: 'cr-mapa', attributionControl: false, style: CR_MAPA_ESTILO });
+  CR_ST.map = m;
+  m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  m.on('load', () => {
+    m.addSource('cr-tal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, promoteId: 'talhao' });
+    m.addLayer({ id: 'cr-fill', type: 'fill', source: 'cr-tal', filter: ['==', ['get', 'padrao'], ''],
+      paint: { 'fill-color': ['get', 'cor'] } });
+    m.addLayer({ id: 'cr-pad', type: 'fill', source: 'cr-tal', filter: ['!=', ['get', 'padrao'], ''],
+      paint: { 'fill-pattern': ['get', 'padrao'] } });
+    m.addLayer({ id: 'cr-linha', type: 'line', source: 'cr-tal', paint: {
+      'line-color': ['case', ['boolean', ['feature-state', 'sel'], false], '#16a76b',
+        ['boolean', ['feature-state', 'dest'], false], '#d4890a', '#1f2a30'],
+      'line-width': ['case', ['any', ['boolean', ['feature-state', 'sel'], false],
+        ['boolean', ['feature-state', 'dest'], false]], 3, 0.8] } });
+    m.addLayer({ id: 'cr-num', type: 'symbol', source: 'cr-tal', layout: {
+      'text-field': ['to-string', ['get', 'talhao']], 'text-font': ['Open Sans Semibold'], 'text-size': 11 },
+      paint: { 'text-color': '#1f2a30', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } });
+    m.on('click', e => {
+      const f = m.queryRenderedFeatures(e.point, { layers: ['cr-fill', 'cr-pad'] })[0];
+      if (f) crToggleSel(f.properties.talhao);
+    });
+    m.on('mouseenter', 'cr-fill', () => { m.getCanvas().style.cursor = 'pointer'; });
+    m.on('mouseleave', 'cr-fill', () => { m.getCanvas().style.cursor = ''; });
+    crAtualizarMapa(true);
+  });
+}
+function crAtualizarMapa(enquadrar = false) {
+  const m = CR_ST.map;
+  if (!m || !m.getSource('cr-tal') || !CR_ST.geo || !CR_ST.det) return;
+  const { apls, areas } = CR_ST.det;
+  const features = CR_ST.geo.features.map(f => {
+    const t = f.properties.talhao;
+    const cores = crCoresTalhao(apls, t);
+    const cor = cores.length === 1 ? cores[0] : (areas[t] ? CR_SEM : '#ffffff');
+    const padrao = cores.length >= 2 ? crRegistrarPadrao(m, cores) : '';
+    return { type: 'Feature', geometry: f.geometry, properties: { talhao: t, cor, padrao } };
+  });
+  m.getSource('cr-tal').setData({ type: 'FeatureCollection', features });
+  crAtualizarEstados();
+  if (enquadrar) {
+    const b = new maplibregl.LngLatBounds();
+    features.forEach(f => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)
+      .forEach(p => p[0].forEach(c => b.extend(c))));
+    if (!b.isEmpty()) m.fitBounds(b, { padding: 30, duration: 0 });
+  }
+}
+// Seleção (sel) e destaque de aplicação (dest) como feature-state.
+function crAtualizarEstados() {
+  const m = CR_ST.map;
+  if (!m || !m.getSource('cr-tal') || !CR_ST.geo || !CR_ST.det) return;
+  const dest = new Set(CR_ST.destApl == null ? [] : (CR_ST.det.apls.find(a => a.id === CR_ST.destApl) || { talhoes: [] }).talhoes);
+  for (const f of CR_ST.geo.features) {
+    const t = f.properties.talhao;
+    m.setFeatureState({ source: 'cr-tal', id: t }, { sel: CR_ST.sel.has(t), dest: dest.has(t) });
+  }
+}
+
+// ── Abertura, recarga e navegação ──
+async function crAbrirMapa(mapa) {
+  if (!mapa) return;
+  if (CR_ST.map) { CR_ST.map.remove(); CR_ST.map = null; }
+  Object.assign(CR_ST, { trab: mapa, sel: new Set(), destApl: null, areaNova: {}, formMsg: null, det: null, geo: null,
+    form: { tipo: 'calcario', calcario: 'dolomitico', dose: '', gesso: '', os: '' } });
+  document.getElementById('cr-trab-tit').textContent = `Mapa ${CR_OPERACOES[mapa.operacao]} · ${crDataIso(mapa.data)}`;
+  crTela('trabalho');
+  document.getElementById('cr-mapa').innerHTML = '<div class="cr-esq cr-mapa-esq" aria-hidden="true"></div>';
+  document.getElementById('cr-painel').innerHTML = '<div class="cr-sec" role="status"><div class="cr-esq"></div><div class="cr-esq curto"></div></div>';
+  try {
+    const [geo, det] = await Promise.all([crApi().talhoesFazenda(CR_ST.faz.cod_faz), crApi().carregarMapa(mapa.id)]);
+    CR_ST.geo = geo;
+    CR_ST.det = det;
+  } catch (e) {
+    document.getElementById('cr-mapa').innerHTML = '';
+    document.getElementById('cr-painel').innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível abrir o mapa.</span>'
+      + '<button class="cr-btn2" type="button" data-tentar-trab>Tentar de novo</button></div>';
+    return;
+  }
+  document.getElementById('cr-mapa').innerHTML = '';
+  crMapaCriar();
+  crRenderPainel();
+}
+async function crRecarregar() {
+  try {
+    CR_ST.det = await crApi().carregarMapa(CR_ST.trab.id);
+  } catch (e) {
+    crToast('Não foi possível atualizar o mapa. Tente de novo.', true);
+    return;
+  }
+  if (CR_ST.destApl != null && !CR_ST.det.apls.some(a => a.id === CR_ST.destApl)) CR_ST.destApl = null;
+  crAtualizarMapa();
+  crRenderPainel();
+}
+function crVoltarLista() {
+  if (CR_ST.map) { CR_ST.map.remove(); CR_ST.map = null; }
+  crTela('lista');
+  crCarregarMapas();
+}
+
+// ── Seleção ──
+function crToggleSel(t) {
+  if (CR_ST.sel.has(t)) CR_ST.sel.delete(t); else CR_ST.sel.add(t);
+  crAtualizarEstados();
+  crRenderPainel();
+}
+function crSelecionarTodos() {
+  CR_ST.sel = new Set(CR_ST.geo.features.map(f => f.properties.talhao));
+  crAtualizarEstados();
+  crRenderPainel();
+}
+function crLimparSel() {
+  CR_ST.sel = new Set();
+  crAtualizarEstados();
+  crRenderPainel();
+}
+function crDestacar(id) {
+  CR_ST.destApl = CR_ST.destApl === id ? null : id;
+  crAtualizarEstados();
+  crRenderPainel();
+}
+
+// ── Ações ──
+async function crSalvarArea(t, valor) {
+  const area = Number(valor);
+  if (!(area > 0)) {
+    crToast('Área deve ser maior que zero (ha).', true);
+    return crRenderPainel();
+  }
+  if (!CR_ST.det.areas[t]) {
+    CR_ST.areaNova[t] = area;
+    return crRenderPainel();
+  }
+  try {
+    await crApi().salvarArea(CR_ST.trab.id, t, area);
+  } catch (e) {
+    crToast('Não foi possível salvar a área.', true);
+    return;
+  }
+  await crRecarregar();
+}
+async function crAplicarMarcados() {
+  const f = CR_ST.form;
+  const talhoes = crSelecionados();
+  const dados = {
+    tipo: f.tipo,
+    calcario: f.tipo === 'fosfato' ? null : f.calcario,
+    dose: Number(f.dose),
+    dose_gesso: f.tipo === 'blend' ? Number(f.gesso) : null,
+    os: String(f.os ?? '').trim(),
+    talhoes,
+  };
+  const erro = crValidarAplicacao(dados);
+  if (erro) {
+    CR_ST.formMsg = { tipo: 'erro', texto: erro };
+    return crRenderPainel();
+  }
+  const dup = crDuplicadas(CR_ST.det.apls, dados, talhoes);
+  const ok = talhoes.filter(t => !dup.includes(t));
+  if (!ok.length) {
+    CR_ST.formMsg = { tipo: 'erro', texto: `Os talhões ${dup.join(', ')} já têm esta aplicação.` };
+    return crRenderPainel();
+  }
+  const areas = {};
+  for (const t of ok) areas[t] = crAreaDe(t);
+  try {
+    await crApi().aplicar(CR_ST.trab.id, { ...dados, talhoes: ok, areas });
+  } catch (e) {
+    crToast('Não foi possível aplicar. Tente de novo.', true);
+    return;
+  }
+  CR_ST.formMsg = dup.length ? { tipo: 'info', texto: `Os talhões ${dup.join(', ')} já têm esta aplicação. Gravei nos demais.` } : null;
+  CR_ST.sel = new Set();
+  CR_ST.areaNova = {};
+  if (!dup.length) crToast('Aplicação gravada.');
+  await crRecarregar();
+}
+async function crEditarAplicacao(id) {
+  const a = CR_ST.det.apls.find(x => x.id === id);
+  if (!a) return;
+  const blend = a.tipo === 'blend';
+  const todos = [...new Set([...CR_ST.geo.features.map(f => f.properties.talhao), ...a.talhoes])].sort((x, y) => x - y);
+  const fundo = document.getElementById('cr-modal-fundo');
+  const fechar = () => { fundo.classList.add('off'); fundo.innerHTML = ''; };
+  fundo.innerHTML = `<form class="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-ed-tit">
+    <h3 id="cr-ed-tit">Editar ${crEsc(crRotulo(a))}</h3>
+    <div class="cr-form">
+      <div><label class="cr-lbl" for="cr-ed-dose">Dose (t/ha)</label>
+        <input class="cr-inp" id="cr-ed-dose" type="number" step="0.01" min="0" value="${a.dose}"></div>
+      ${blend ? `<div><label class="cr-lbl" for="cr-ed-gesso">Dose do gesso (t/ha)</label>
+        <input class="cr-inp" id="cr-ed-gesso" type="number" step="0.01" min="0" value="${a.dose_gesso}"></div>` : ''}
+      <div><label class="cr-lbl" for="cr-ed-os">O.S.</label>
+        <input class="cr-inp" id="cr-ed-os" type="text" value="${crEsc(a.os)}"></div>
+      <fieldset class="cr-fs"><legend class="cr-lbl">Talhões</legend>
+        <div class="cr-cks">${todos.map(t => `<label class="cr-ck"><input type="checkbox" value="${t}"${a.talhoes.includes(t) ? ' checked' : ''}> Talhão ${t}</label>`).join('')}</div>
+      </fieldset>
+      <p class="cr-erro" id="cr-ed-erro" role="alert"></p>
+    </div>
+    <div class="cr-md-acoes">
+      <button class="cr-btn2" type="button" data-cancel>Cancelar</button>
+      <button class="cr-btn" type="submit">Salvar</button>
+    </div>
+  </form>`;
+  fundo.classList.remove('off');
+  const form = fundo.querySelector('form');
+  const erroEl = document.getElementById('cr-ed-erro');
+  fundo.onclick = e => { if (e.target === fundo) fechar(); };
+  form.querySelector('[data-cancel]').onclick = fechar;
+  form.querySelector('input').focus();
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const talhoes = Array.from(form.querySelectorAll('input[type=checkbox]:checked')).map(c => Number(c.value));
+    const dados = {
+      tipo: a.tipo, calcario: a.calcario,
+      dose: Number(document.getElementById('cr-ed-dose').value),
+      dose_gesso: blend ? Number(document.getElementById('cr-ed-gesso').value) : null,
+      os: document.getElementById('cr-ed-os').value.trim(), talhoes,
+    };
+    const erro = crValidarAplicacao(dados);
+    if (erro) { erroEl.textContent = erro; return; }
+    const dup = crDuplicadas(CR_ST.det.apls.filter(x => x.id !== a.id), dados, talhoes);
+    if (dup.length) { erroEl.textContent = `Os talhões ${dup.join(', ')} já têm esta aplicação.`; return; }
+    const areas = {};
+    for (const t of talhoes) areas[t] = crAreaDe(t);
+    try {
+      await crApi().editarAplicacao(CR_ST.trab.id, a.id, { ...dados, areas });
+    } catch (err) {
+      erroEl.textContent = 'Não foi possível salvar. Tente de novo.';
+      return;
+    }
+    fechar();
+    crToast('Aplicação atualizada.');
+    await crRecarregar();
+  };
+}
+async function crExcluirAplicacao(id) {
+  const a = CR_ST.det.apls.find(x => x.id === id);
+  if (!a) return;
+  const ok = await crDialogo('Excluir aplicação', `Excluir a aplicação ${crRotulo(a)} (O.S. ${a.os}) dos talhões ${a.talhoes.join(', ')}? Isso não pode ser desfeito.`, [
+    { rotulo: 'Cancelar', classe: 'cr-btn2', valor: false },
+    { rotulo: 'Excluir', classe: 'cr-btn cr-btn-perigo', valor: true },
+  ]);
+  if (!ok) return;
+  try {
+    await crApi().excluirAplicacao(CR_ST.trab.id, a.id);
+  } catch (e) {
+    crToast('Não foi possível excluir a aplicação. Tente de novo.', true);
+    return;
+  }
+  if (CR_ST.destApl === a.id) CR_ST.destApl = null;
+  crToast('Aplicação excluída.');
+  await crRecarregar();
+}
+
+// ── Painel ──
+function crCardAplicacao(a, areas) {
+  const cor = CR_CORES[crChaveCor(a)];
+  const on = CR_ST.destApl === a.id;
+  const doses = `dose ${crBr(a.dose)} t/ha` + (a.tipo === 'blend' ? ` · gesso ${crBr(a.dose_gesso)} t/ha` : '');
+  return `<div class="cr-ap${on ? ' on' : ''}">
+    <span class="cr-ap-sw" style="background:${cor}" aria-hidden="true"></span>
+    <button class="cr-ap-main" type="button" data-dest="${a.id}" aria-pressed="${on}">
+      <b>${crEsc(crRotulo(a))}</b>
+      <small>${doses} · O.S. ${crEsc(a.os)}</small>
+      <small>Talhões ${a.talhoes.slice().sort((x, y) => x - y).join(', ')} · ${crBr(crTotalApl(a, areas))} t</small>
+    </button>
+    <div class="cr-ap-acoes">
+      <button class="cr-x" type="button" data-editar="${a.id}" aria-label="Editar ${crEsc(crRotulo(a))} O.S. ${crEsc(a.os)}" title="Editar"><span class="ico">edit</span></button>
+      <button class="cr-x" type="button" data-excluir-apl="${a.id}" aria-label="Excluir ${crEsc(crRotulo(a))} O.S. ${crEsc(a.os)}" title="Excluir"><span class="ico">delete</span></button>
+    </div>
+  </div>`;
+}
+function crRenderPainel() {
+  const alvo = document.getElementById('cr-painel');
+  if (!CR_ST.det || !CR_ST.geo) return;
+  const { areas, apls } = CR_ST.det;
+  const fora = crTalhoesForaDaBase(areas, CR_ST.geo);
+  const sel = crSelecionados();
+  const f = CR_ST.form;
+  const blend = f.tipo === 'blend';
+  const calc = f.tipo !== 'fosfato';
+  const tipos = [['calcario', 'Calcário'], ['fosfato', 'Fosfato'], ['blend', 'Blend']];
+  const msg = CR_ST.formMsg ? `<p class="${CR_ST.formMsg.tipo === 'erro' ? 'cr-erro' : 'cr-info'}" role="${CR_ST.formMsg.tipo === 'erro' ? 'alert' : 'status'}">${crEsc(CR_ST.formMsg.texto)}</p>` : '';
+  const tot = crTotaisPorProduto(apls, areas);
+  alvo.innerHTML = `
+    ${fora.length ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Talhões que saíram da Base: ${fora.join(', ')}. Eles continuam no PDF, sem desenho.</span></div>` : ''}
+    <section class="cr-sec" aria-labelledby="cr-h-nova">
+      <div class="cr-sec-top">
+        <h2 id="cr-h-nova">Nova aplicação</h2>
+        <div class="cr-acoes-sel">
+          <button class="cr-btn2" type="button" data-todos>Selecionar todos</button>
+          <button class="cr-btn2" type="button" data-limpar>Limpar seleção</button>
+        </div>
+      </div>
+      ${sel.length
+        ? `<div class="cr-sel-lista">${sel.map(t => `<label class="cr-sel-l"><span>Talhão ${t} · área (ha)</span>
+            <input class="cr-inp cr-inp-sm" type="number" step="0.01" min="0" value="${crAreaDe(t).area_ha}" data-area="${t}"></label>`).join('')}</div>`
+        : '<p class="cr-msg">Marque talhões no mapa, ou use Selecionar todos.</p>'}
+      <fieldset class="cr-fs">
+        <legend class="cr-lbl">Tipo</legend>
+        <div class="cr-seg">${tipos.map(([v, r]) => `<label class="cr-seg-o"><input type="radio" name="cr-tipo" value="${v}" data-tipo${f.tipo === v ? ' checked' : ''}><span>${r}</span></label>`).join('')}</div>
+      </fieldset>
+      ${calc ? `<div><label class="cr-lbl" for="cr-f-calc">Calcário</label>
+        <select class="cr-inp" id="cr-f-calc" data-f="calcario">
+          <option value="dolomitico"${f.calcario === 'dolomitico' ? ' selected' : ''}>Dolomítico</option>
+          <option value="ph7"${f.calcario === 'ph7' ? ' selected' : ''}>PH7</option>
+        </select></div>` : ''}
+      <div><label class="cr-lbl" for="cr-f-dose">Dose (t/ha)</label>
+        <input class="cr-inp" id="cr-f-dose" type="number" step="0.01" min="0" data-f="dose" value="${crEsc(f.dose)}"></div>
+      ${blend ? `<div><label class="cr-lbl" for="cr-f-gesso">Dose do gesso (t/ha)</label>
+        <input class="cr-inp" id="cr-f-gesso" type="number" step="0.01" min="0" data-f="gesso" value="${crEsc(f.gesso)}"></div>` : ''}
+      <div><label class="cr-lbl" for="cr-f-os">O.S.</label>
+        <input class="cr-inp" id="cr-f-os" type="text" data-f="os" value="${crEsc(f.os)}"></div>
+      ${msg}
+      <button class="cr-btn cr-btn-bloco" type="button" data-aplicar${sel.length ? '' : ' disabled'}>Aplicar aos marcados</button>
+    </section>
+    <section class="cr-sec" aria-labelledby="cr-h-lista">
+      <h2 id="cr-h-lista">Aplicações do mapa</h2>
+      ${apls.length ? crOrdenadas(apls).map(a => crCardAplicacao(a, areas)).join('') : '<p class="cr-msg">Nenhuma aplicação neste mapa ainda.</p>'}
+    </section>
+    <section class="cr-sec" aria-labelledby="cr-h-res">
+      <h2 id="cr-h-res">Resumo</h2>
+      ${tot.length
+        ? `<div class="cr-tot-grid">${tot.map(t => `<div class="cr-tot"><small>${crEsc(t.titulo)}</small><b>${crBr(t.toneladas)} t</b>${t.detalhe ? `<small>${crEsc(t.detalhe)}</small>` : ''}</div>`).join('')}</div>`
+        : '<p class="cr-msg">Sem aplicações ainda.</p>'}
+      <button class="cr-btn2 cr-btn-bloco" type="button" disabled>Baixar PDF (em breve)</button>
+    </section>`;
+}
+function crLigarTrabalho() {
+  document.getElementById('cr-voltar').onclick = crVoltarLista;
+  document.getElementById('cr-trab-corpo').innerHTML = `<div class="cr-trab-grid">
+    <div class="cr-mapa-box"><div id="cr-mapa"></div></div>
+    <aside class="cr-painel" id="cr-painel" aria-label="Aplicações do mapa"></aside>
+  </div>`;
+  const painel = document.getElementById('cr-painel');
+  painel.onclick = e => {
+    const b = e.target.closest('[data-todos],[data-limpar],[data-dest],[data-editar],[data-excluir-apl],[data-aplicar],[data-tentar-trab]');
+    if (!b || b.disabled) return;
+    const d = b.dataset;
+    if ('todos' in d) crSelecionarTodos();
+    else if ('limpar' in d) crLimparSel();
+    else if (d.dest) crDestacar(Number(d.dest));
+    else if (d.editar) crEditarAplicacao(Number(d.editar));
+    else if (d.excluirApl) crExcluirAplicacao(Number(d.excluirApl));
+    else if ('aplicar' in d) crAplicarMarcados();
+    else if ('tentarTrab' in d) crAbrirMapa(CR_ST.trab);
+  };
+  painel.onchange = e => {
+    const el = e.target;
+    if (el.dataset.area) return crSalvarArea(Number(el.dataset.area), el.value);
+    if ('tipo' in el.dataset) { CR_ST.form.tipo = el.value; CR_ST.formMsg = null; return crRenderPainel(); }
+    if (el.dataset.f) CR_ST.form[el.dataset.f] = el.value;
+  };
+  painel.oninput = e => { if (e.target.dataset.f) CR_ST.form[e.target.dataset.f] = e.target.value; };
+}
+
 if (typeof document !== 'undefined' && document.getElementById) crIniciar();
