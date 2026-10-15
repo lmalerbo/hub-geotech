@@ -286,6 +286,10 @@ async function crCarregarEntrada() {
   CR_ST.eu = eu;
   if (!eu || !eu.pode) { crMostrar('sem-acesso'); return; }
   document.getElementById('cr-nome').textContent = eu.nome;
+  if (!CR_DEMO && window.crGerador) {          // a 1ª carga do Python leva ~20 s: começa já, em segundo plano
+    crGerador.aoMudar = () => { if (CR_ST.det) crRenderBotaoPdf(); };
+    crGerador.preparar().catch(() => {});
+  }
   crMostrar('app');
   crTela('lista');
   await crCarregarFazendas();
@@ -908,8 +912,46 @@ function crRenderPainel() {
       ${tot.length
         ? `<div class="cr-tot-grid">${tot.map(t => `<div class="cr-tot"><small>${crEsc(t.titulo)}</small><b>${crTon(t.toneladas)}</b>${t.detalhe ? `<small>${crEsc(t.detalhe.replace(/ t\b/g, '\u00a0t'))}</small>` : ''}</div>`).join('')}</div>`
         : '<p class="cr-msg">Sem aplicações ainda.</p>'}
-      <button class="cr-btn2 cr-btn-bloco" type="button" disabled>Baixar PDF (em breve)</button>
+      <div id="cr-pdf"></div>
     </section>`;
+  crRenderBotaoPdf();
+}
+// ── PDF (gerado no navegador por corretivos-pdf.js) ──
+function crRenderBotaoPdf() {
+  const alvo = document.getElementById('cr-pdf');
+  if (!alvo) return;
+  const vazio = !(CR_ST.det && CR_ST.det.apls.length);
+  if (CR_DEMO || !window.crGerador) {
+    alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled>Baixar PDF (indisponível na demonstração)</button>';
+    return;
+  }
+  const est = crGerador.estado;
+  if (est === 'erro') {
+    alvo.innerHTML = '<p class="cr-msg cr-erro-bloco" role="alert">Não foi possível preparar o gerador de PDF. Os dados do mapa estão salvos.</p>'
+      + '<button class="cr-btn2 cr-btn-bloco" type="button" data-pdf-tentar>Tentar de novo</button>';
+  } else if (est === 'pronto' || est === 'parado') {
+    alvo.innerHTML = `<button class="cr-btn cr-btn-bloco" type="button" data-pdf${vazio ? ' disabled' : ''}>Baixar PDF</button>`;
+  } else {
+    alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled aria-busy="true">Preparando o gerador… (só na primeira vez)</button>';
+  }
+}
+async function crBaixarPdf() {
+  const alvo = document.getElementById('cr-pdf');
+  const m = CR_ST.trab;
+  alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled aria-busy="true">Gerando o PDF…</button>';
+  try {
+    const dados = crMontarDados({ codFaz: CR_ST.faz.cod_faz, nome: CR_ST.faz.nome, operacao: m.operacao, data: m.data,
+                                  geradoPor: CR_ST.eu.nome, geo: CR_ST.geo, areas: CR_ST.det.areas, apls: CR_ST.det.apls });
+    const blob = await crGerador.gerar(dados);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = crNomeArquivo(CR_ST.faz.cod_faz, m.operacao, m.data);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) {
+    crToast('Não foi possível gerar o PDF. Tente de novo.', true);
+  }
+  crRenderBotaoPdf();
 }
 function crLigarTrabalho() {
   document.getElementById('cr-voltar').onclick = crVoltarLista;
@@ -919,7 +961,7 @@ function crLigarTrabalho() {
   </div>`;
   const painel = document.getElementById('cr-painel');
   painel.onclick = e => {
-    const b = e.target.closest('[data-todos],[data-limpar],[data-dest],[data-editar],[data-excluir-apl],[data-aplicar],[data-tentar-trab]');
+    const b = e.target.closest('[data-todos],[data-limpar],[data-dest],[data-editar],[data-excluir-apl],[data-aplicar],[data-tentar-trab],[data-pdf],[data-pdf-tentar]');
     if (!b || b.disabled) return;
     const d = b.dataset;
     if ('todos' in d) crSelecionarTodos();
@@ -929,6 +971,8 @@ function crLigarTrabalho() {
     else if (d.excluirApl) crExcluirAplicacao(Number(d.excluirApl));
     else if ('aplicar' in d) crAplicarMarcados();
     else if ('tentarTrab' in d) crAbrirMapa(CR_ST.trab);
+    else if ('pdfTentar' in d) { crGerador.preparar().catch(() => {}); crRenderBotaoPdf(); }
+    else if ('pdf' in d) crBaixarPdf();
   };
   painel.onchange = e => {
     const el = e.target;
