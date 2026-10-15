@@ -14,3 +14,6 @@ agendamento/logs/
 # maquetes do brainstorming (companheiro visual)
 .superpowers/
 drone/trabalho/
+
+# Gerado no deploy por mapas/publicar.py (arquivos do Pyodide)
+app/py/
