@@ -83,3 +83,46 @@ def test_tres_aplicacoes_no_mesmo_talhao(tmp_path):
     destino = tmp_path / 'c.pdf'
     gerar_pdf(_dados(1, aps), destino)
     assert _texto(destino)[0] == 1
+
+
+def test_nome_longo_cabe_na_pagina(tmp_path):
+    aps = [{'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': 2.0, 'dose_gesso': None, 'os': '4520',
+            'ordem': 1, 'talhoes': [1, 2, 3]}]
+    dados = _dados(3, aps)
+    vertical = {'type': 'FeatureCollection', 'features': []}
+    for i in range(3):
+        y0 = 7600000 + i * 320
+        geom = box(300000, y0, 300300, y0 + 300)
+        vertical['features'].append({'type': 'Feature', 'properties': {'talhao': i + 1},
+                                     'geometry': mapping(transform(PARA_4326, geom))})
+    dados['talhoes_geo'] = vertical
+    dados['cod_faz'] = 10372
+    dados['nome'] = 'FAZENDA SANTA RITA DO PASSA QUATRO'
+    destino = tmp_path / 'c.pdf'
+    assert gerar_pdf(dados, destino) == 'retrato'
+    doc = pymupdf.open(destino)
+    page = doc[0]
+    limite = page.rect.width - 8
+    for palavra in ['10372', 'QUATRO']:
+        rects = page.search_for(palavra)
+        assert rects, palavra
+        assert all(r.x1 <= limite for r in rects), (palavra, [r.x1 for r in rects], limite)
+
+
+def test_legenda_blend_unico(tmp_path):
+    from mapas.corretivo_dados import linhas_tabela
+    aps = [{'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': 2.0, 'dose_gesso': None, 'os': '4520',
+            'ordem': 1, 'talhoes': [1, 3]},
+           {'tipo': 'blend', 'calcario': 'dolomitico', 'dose': 1.5, 'dose_gesso': 1.0, 'os': '4530',
+            'ordem': 2, 'talhoes': [4, 5]},
+           {'tipo': 'blend', 'calcario': 'ph7', 'dose': 1.0, 'dose_gesso': 0.5, 'os': '4531',
+            'ordem': 3, 'talhoes': [1, 2]}]
+    dados = _dados(5, aps)
+    destino = tmp_path / 'c.pdf'
+    gerar_pdf(dados, destino)
+    _, texto = _texto(destino)
+    linhas = linhas_tabela(dados)
+    for rot in ['Blend · Dolomítico', 'Blend · PH7']:
+        esperado = sum(1 for l in linhas if rot in l)
+        assert texto.count(rot) == esperado, rot
+    assert 'Blend' in texto

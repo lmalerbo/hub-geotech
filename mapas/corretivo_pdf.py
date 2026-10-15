@@ -84,8 +84,8 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
 def _legenda(pg: Pagina, dados, x, y, w) -> float:
     """Quadradinhos só dos tipos usados; devolve o y logo abaixo da legenda."""
     rotulos: dict[str, str] = {}
-    for a in _ordenadas(dados):
-        rotulos.setdefault(chave_cor(a), rotulo(a))
+    for a in _ordenadas(dados):                  # Blend Dolomítico e PH7 têm a mesma cor: um item só
+        rotulos.setdefault(chave_cor(a), 'Blend' if a['tipo'] == 'blend' else rotulo(a))
     cursor, yy = x, y
     for chave, texto in rotulos.items():
         largura = 6.5 + 1.5 * len(texto) + 4
@@ -139,13 +139,31 @@ def _quadros(pg: Pagina, totais, x, y, w):
             pg.texto(cx + 2.5, cy + 11.2, q['detalhe'], 5, CINZA)
 
 
+def _largura_mm(pg: Pagina, texto: str, tam: float) -> float:
+    t = pg.fig.text(0, 0, texto, fontsize=tam, fontweight='bold')
+    bb = t.get_window_extent(renderer=pg.fig.canvas.get_renderer())
+    t.remove()
+    return bb.width / pg.fig.dpi * 25.4
+
+
+def _titulo_caber(pg: Pagina, texto: str, max_mm: float) -> tuple[str, float]:
+    """Maior fonte (12 a 8 pt) em que o título cabe; se nem a 8 pt couber, corta com '…'."""
+    for tam in (12, 11, 10, 9, 8):
+        if _largura_mm(pg, texto, tam) <= max_mm:
+            return texto, tam
+    while len(texto) > 1 and _largura_mm(pg, texto + '…', 8) > max_mm:
+        texto = texto[:-1]
+    return texto.rstrip() + '…', 8
+
+
 def _carimbo(pg: Pagina, dados, x, y, w, escala, quadros_linhas):
     texto_tag = f"CORRETIVO · {OPERACOES[dados['operacao']].upper()}"
     tag_w = 1.45 * len(texto_tag) + 4
     pg.ret(x, y, 0.9, 16, MARCA)
     pg.caixa(x + 3, y, tag_w, 3.6, MARCA, MARCA, 0.5, 0.1)
     pg.texto(x + 3 + tag_w / 2, y + 0.5, texto_tag, 4.5, 'white', 'bold', ha='center')
-    pg.texto(x + 3, y + 5, f"{dados['cod_faz']} · {dados['nome']}", 12, peso='bold')
+    titulo, tam = _titulo_caber(pg, f"{dados['cod_faz']} · {dados['nome']}", w - 3)
+    pg.texto(x + 3, y + 5, titulo, tam, peso='bold')
     pg.texto(x + 3, y + 11.5, 'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. ' + ', '.join(lista_os(dados)), 5.5, CINZA)
     y += 19
     _quadros(pg, totais_por_produto(dados), x, y, w)
