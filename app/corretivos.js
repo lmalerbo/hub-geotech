@@ -70,6 +70,59 @@ function crMontarDados(c) {
 }
 function crNomeArquivo(codFaz, operacao, data) { return `corretivo_${codFaz}_${operacao}_${data}.pdf`; }
 
+// ===== Corretivos: meio a meio por geometria (faixas diagonais) =====
+// crFaixas corta um talhão em n faixas por retas x+y = constante, igualmente espaçadas entre min e max de x+y.
+// Sutherland–Hodgman contra os dois semiplanos de cada faixa; externo e furos são recortados separadamente.
+function crFaixas(geometria, n) {
+  if (!(n > 1)) return [geometria];
+  const poligonos = geometria.type === 'Polygon' ? [geometria.coordinates] : geometria.coordinates;
+  let smin = Infinity, smax = -Infinity;
+  for (const pol of poligonos) for (const anel of pol) for (const p of anel) {
+    if (p[0] + p[1] < smin) smin = p[0] + p[1];
+    if (p[0] + p[1] > smax) smax = p[0] + p[1];
+  }
+  const faixas = [];
+  for (let k = 0; k < n; k++) {
+    const a = smin + (smax - smin) * k / n;
+    const b = smin + (smax - smin) * (k + 1) / n;
+    const pols = [];
+    for (const pol of poligonos) {
+      const externo = crRecortarAnel(pol[0], a, b);
+      if (!externo) continue;
+      const furos = pol.slice(1).map(anel => crRecortarAnel(anel, a, b)).filter(Boolean);
+      pols.push([externo, ...furos]);
+    }
+    faixas.push(pols.length === 1 ? { type: 'Polygon', coordinates: pols[0] } : { type: 'MultiPolygon', coordinates: pols });
+  }
+  return faixas;
+}
+function crRecortarAnel(anel, a, b) {
+  const f = anel.length > 1 && anel[0][0] === anel[anel.length - 1][0] && anel[0][1] === anel[anel.length - 1][1];
+  let pts = f ? anel.slice(0, -1) : anel.slice();
+  pts = crCortarSemiplano(pts, p => p[0] + p[1] - a);
+  pts = crCortarSemiplano(pts, p => b - (p[0] + p[1]));
+  return pts.length >= 3 ? [...pts, pts[0]] : null;
+}
+function crCortarSemiplano(pts, dist) {
+  const saida = [];
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const atual = pts[i], ant = pts[(i + n - 1) % n];
+    const dA = dist(atual), dN = dist(ant);
+    if (dA >= 0) {
+      if (dN < 0) saida.push(crInterseccao(ant, atual, dN, dA));
+      saida.push(atual);
+    } else if (dN >= 0) {
+      saida.push(crInterseccao(ant, atual, dN, dA));
+    }
+  }
+  return saida;
+}
+function crInterseccao(p, q, dp, dq) {
+  const t = dp / (dp - dq);
+  return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+}
+
 // ===== Corretivos: acesso, API (real e demonstração) e telas =====
 // As telas só são montadas quando há #cr-app no documento (o teste carrega este arquivo sem DOM).
 function crEhDemo() {
@@ -322,7 +375,7 @@ function crCardMapa(m) {
     <div class="cr-os">O.S. ${crEsc(os)}</div>
     <div class="cr-stats">
       <div class="cr-stat"><small>Talhões</small><b>${m.talhoes}</b></div>
-      <div class="cr-stat"><small>Total</small><b>${crBr(m.toneladas)} t</b></div>
+      <div class="cr-stat"><small>Total</small><b>${crTon(m.toneladas)}</b></div>
     </div>
     <div class="cr-rod">alterado por ${crEsc(m.alterado_por_nome)} em ${crDiaMes(m.alterado_em)}</div>
     <button class="cr-btn2" type="button" data-abrir="${m.id}">Abrir mapa</button>
@@ -492,6 +545,7 @@ Object.assign(crApiReal, {
 });
 
 // ── Cálculos da tela (usam as funções puras) ──
+function crTon(v) { return crBr(v) + '\u00a0t'; }
 function crSelecionados() { return Array.from(CR_ST.sel).sort((a, b) => a - b); }
 function crTotalApl(a, areas) {
   const t = a.talhoes.reduce((s, x) => {
@@ -517,32 +571,35 @@ const CR_MAPA_ESTILO = {
   sources: {},
   layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#f7f8fa' } }],
 };
-// Imagem do meio a meio: faixas diagonais, uma cor por aplicação, na ordem de lançamento.
-function crRegistrarPadrao(m, cores) {
-  const id = 'p-' + cores.join('-');
-  if (!m.hasImage(id)) {
-    const tam = cores.length * 8;
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = tam;
-    const ctx = cv.getContext('2d');
-    for (let y = 0; y < tam; y++) for (let x = 0; x < tam; x++) {
-      ctx.fillStyle = cores[Math.floor(((x + y) % tam) / 8)];
-      ctx.fillRect(x, y, 1, 1);
+// Duas fontes: 'cr-cor' (uma feição por faixa, com a cor da aplicação) e 'cr-tal' (talhão inteiro: contorno, número, seleção).
+function crFeicoesMapa() {
+  const { apls, areas } = CR_ST.det;
+  const talhoes = [], cores = [];
+  for (const f of CR_ST.geo.features) {
+    const t = f.properties.talhao;
+    talhoes.push({ type: 'Feature', geometry: f.geometry, properties: { talhao: t } });
+    const cs = crCoresTalhao(apls, t);
+    if (cs.length >= 2) {
+      crFaixas(f.geometry, cs.length).forEach((g, i) => cores.push({ type: 'Feature', geometry: g, properties: { talhao: t, cor: cs[i] } }));
+    } else {
+      const cor = cs.length === 1 ? cs[0] : (areas[t] ? CR_SEM : '#ffffff');
+      cores.push({ type: 'Feature', geometry: f.geometry, properties: { talhao: t, cor } });
     }
-    m.addImage(id, ctx.getImageData(0, 0, tam, tam));
   }
-  return id;
+  return {
+    talhoes: { type: 'FeatureCollection', features: talhoes },
+    cores: { type: 'FeatureCollection', features: cores },
+  };
 }
 function crMapaCriar() {
   const m = new maplibregl.Map({ container: 'cr-mapa', attributionControl: false, style: CR_MAPA_ESTILO });
   CR_ST.map = m;
   m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
   m.on('load', () => {
-    m.addSource('cr-tal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, promoteId: 'talhao' });
-    m.addLayer({ id: 'cr-fill', type: 'fill', source: 'cr-tal', filter: ['==', ['get', 'padrao'], ''],
-      paint: { 'fill-color': ['get', 'cor'] } });
-    m.addLayer({ id: 'cr-pad', type: 'fill', source: 'cr-tal', filter: ['!=', ['get', 'padrao'], ''],
-      paint: { 'fill-pattern': ['get', 'padrao'] } });
+    const vazio = { type: 'FeatureCollection', features: [] };
+    m.addSource('cr-cor', { type: 'geojson', data: vazio });
+    m.addSource('cr-tal', { type: 'geojson', data: vazio, promoteId: 'talhao' });
+    m.addLayer({ id: 'cr-fill', type: 'fill', source: 'cr-cor', paint: { 'fill-color': ['get', 'cor'] } });
     m.addLayer({ id: 'cr-linha', type: 'line', source: 'cr-tal', paint: {
       'line-color': ['case', ['boolean', ['feature-state', 'sel'], false], '#16a76b',
         ['boolean', ['feature-state', 'dest'], false], '#d4890a', '#1f2a30'],
@@ -552,7 +609,7 @@ function crMapaCriar() {
       'text-field': ['to-string', ['get', 'talhao']], 'text-font': ['Open Sans Semibold'], 'text-size': 11 },
       paint: { 'text-color': '#1f2a30', 'text-halo-color': '#fff', 'text-halo-width': 1.5 } });
     m.on('click', e => {
-      const f = m.queryRenderedFeatures(e.point, { layers: ['cr-fill', 'cr-pad'] })[0];
+      const f = m.queryRenderedFeatures(e.point, { layers: ['cr-fill'] })[0];
       if (f) crToggleSel(f.properties.talhao);
     });
     m.on('mouseenter', 'cr-fill', () => { m.getCanvas().style.cursor = 'pointer'; });
@@ -563,19 +620,13 @@ function crMapaCriar() {
 function crAtualizarMapa(enquadrar = false) {
   const m = CR_ST.map;
   if (!m || !m.getSource('cr-tal') || !CR_ST.geo || !CR_ST.det) return;
-  const { apls, areas } = CR_ST.det;
-  const features = CR_ST.geo.features.map(f => {
-    const t = f.properties.talhao;
-    const cores = crCoresTalhao(apls, t);
-    const cor = cores.length === 1 ? cores[0] : (areas[t] ? CR_SEM : '#ffffff');
-    const padrao = cores.length >= 2 ? crRegistrarPadrao(m, cores) : '';
-    return { type: 'Feature', geometry: f.geometry, properties: { talhao: t, cor, padrao } };
-  });
-  m.getSource('cr-tal').setData({ type: 'FeatureCollection', features });
+  const { talhoes, cores } = crFeicoesMapa();
+  m.getSource('cr-cor').setData(cores);
+  m.getSource('cr-tal').setData(talhoes);
   crAtualizarEstados();
   if (enquadrar) {
     const b = new maplibregl.LngLatBounds();
-    features.forEach(f => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)
+    talhoes.features.forEach(f => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)
       .forEach(p => p[0].forEach(c => b.extend(c))));
     if (!b.isEmpty()) m.fitBounds(b, { padding: 30, duration: 0 });
   }
@@ -796,7 +847,7 @@ function crCardAplicacao(a, areas) {
     <button class="cr-ap-main" type="button" data-dest="${a.id}" aria-pressed="${on}">
       <b>${crEsc(crRotulo(a))}</b>
       <small>${doses} · O.S. ${crEsc(a.os)}</small>
-      <small>Talhões ${a.talhoes.slice().sort((x, y) => x - y).join(', ')} · ${crBr(crTotalApl(a, areas))} t</small>
+      <small>Talhões ${a.talhoes.slice().sort((x, y) => x - y).join(', ')} · ${crTon(crTotalApl(a, areas))}</small>
     </button>
     <div class="cr-ap-acoes">
       <button class="cr-x" type="button" data-editar="${a.id}" aria-label="Editar ${crEsc(crRotulo(a))} O.S. ${crEsc(a.os)}" title="Editar"><span class="ico">edit</span></button>
@@ -855,7 +906,7 @@ function crRenderPainel() {
     <section class="cr-sec" aria-labelledby="cr-h-res">
       <h2 id="cr-h-res">Resumo</h2>
       ${tot.length
-        ? `<div class="cr-tot-grid">${tot.map(t => `<div class="cr-tot"><small>${crEsc(t.titulo)}</small><b>${crBr(t.toneladas)} t</b>${t.detalhe ? `<small>${crEsc(t.detalhe)}</small>` : ''}</div>`).join('')}</div>`
+        ? `<div class="cr-tot-grid">${tot.map(t => `<div class="cr-tot"><small>${crEsc(t.titulo)}</small><b>${crTon(t.toneladas)}</b>${t.detalhe ? `<small>${crEsc(t.detalhe.replace(/ t\b/g, '\u00a0t'))}</small>` : ''}</div>`).join('')}</div>`
         : '<p class="cr-msg">Sem aplicações ainda.</p>'}
       <button class="cr-btn2 cr-btn-bloco" type="button" disabled>Baixar PDF (em breve)</button>
     </section>`;

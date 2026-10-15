@@ -62,3 +62,22 @@ test('JSON para o gerador e nome do arquivo', () => {
   assert.strictEqual(d.areas['4'].editada, true);
   assert.strictEqual(ctx.crNomeArquivo(10156, 'arado', '2026-10-15'), 'corretivo_10156_arado_2026-10-15.pdf');
 });
+
+test('faixas cobrem o talhão', () => {
+  const areaAnel = a => { let s = 0; for (let i = 0; i < a.length - 1; i++) s += a[i][0] * a[i + 1][1] - a[i + 1][0] * a[i][1]; return Math.abs(s) / 2; };
+  const areaPol = p => areaAnel(p[0]) - p.slice(1).reduce((s, h) => s + areaAnel(h), 0);
+  const area = g => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).reduce((s, p) => s + areaPol(p), 0);
+  const L = { type: 'Polygon', coordinates: [[[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4], [0, 0]]] };
+  const MP = { type: 'MultiPolygon', coordinates: [
+    [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[2, 2], [4, 2], [4, 4], [2, 4], [2, 2]]],
+    [[[20, 0], [25, 0], [25, 5], [20, 5], [20, 0]]],
+  ] };
+  for (const g of [L, MP]) for (const n of [2, 3]) {
+    const faixas = ctx.crFaixas(g, n);
+    assert.strictEqual(faixas.length, n);
+    const total = area(g);
+    const soma = faixas.reduce((s, f) => s + area(f), 0);
+    assert.ok(Math.abs(soma - total) <= 1e-9 * total, `soma ${soma} != ${total}`);
+    for (const f of faixas) assert.ok(area(f) > 0);
+  }
+});
