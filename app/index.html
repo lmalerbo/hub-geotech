@@ -33,6 +33,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 
 /* ── LOGIN ────────────────────────────────────────────────── */
 #login{display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10}
+#tela-senha{display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:10}
 .deco{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 .dc{position:absolute;border-radius:50%;opacity:.05}
 .dc.a{width:600px;height:600px;top:-200px;right:-80px;background:var(--plantio)}
@@ -471,6 +472,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .usr-admin{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--t1)}
 .usr-nota{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:10px;padding:10px 12px;margin-top:12px}
 .usr-nota .ico{font-size:16px}
+.usr-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-top:6px}
+.senha-prov{display:inline-block;margin:10px 0;font-size:18px;letter-spacing:2px;background:var(--s2);padding:8px 14px;border-radius:10px;user-select:all}
 .ferr-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ferr-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--t2)}
 .ferr-form label span{font-weight:400;color:var(--t3);font-size:11px}
@@ -629,7 +632,23 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       <div class="tbx"><input type="password" id="f-pass" placeholder=" " autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()"><label for="f-pass">Senha</label></div>
       <div class="login-erro" id="login-erro"></div>
       <button class="btn-in" id="btn-entrar" onclick="entrar()">Entrar</button>
-      <p class="lsub" style="margin:4px 0 0;font-size:12px">Use o mesmo e-mail e senha do GeoMap.</p>
+      <p class="lsub" style="margin:4px 0 0;font-size:12px">A mesma conta vale para o Hub e o GeoMap.</p>
+    </div>
+  </div>
+</div>
+
+<div id="tela-senha" class="scr off">
+  <div class="deco"><div class="dc a"></div><div class="dc b"></div></div>
+  <div class="lcard">
+    <div class="brand"><div class="bmark">HG</div><span class="bname">hub geotech</span></div>
+    <h1 class="ltitle" id="senha-titulo">Defina sua senha</h1>
+    <p class="lsub" id="senha-sub">Sua senha é provisória. Escolha uma senha própria — ela vale para o Hub e o GeoMap.</p>
+    <div class="lform">
+      <div class="tbx"><input type="password" id="s-nova" placeholder=" " autocomplete="new-password"><label for="s-nova">Nova senha (mínimo 8 caracteres)</label></div>
+      <div class="tbx"><input type="password" id="s-conf" placeholder=" " autocomplete="new-password" onkeydown="if(event.key==='Enter')definirSenha()"><label for="s-conf">Repita a nova senha</label></div>
+      <div class="login-erro" id="senha-erro"></div>
+      <button class="btn-in" id="btn-senha" onclick="definirSenha()">Salvar senha</button>
+      <button class="btn-retro" id="btn-senha-cancelar" style="display:none" onclick="fecharTrocaSenha()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -716,6 +735,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
       <div class="urow">
         <div class="av" id="sb-av"></div>
         <div class="uinfo"><div class="uname" id="sb-uname"></div><div class="urole" id="sb-urole"></div></div>
+        <button class="btn-out" title="Trocar senha" onclick="abrirTrocaSenha(false)"><span class="ico">key</span></button>
         <button class="btn-out" onclick="sair()"><span class="ico">logout</span></button>
       </div>
     </div>
@@ -1639,7 +1659,7 @@ async function entrar(){
   btn.disabled=false;btn.textContent='Entrar';
   if(error){
     erro.textContent=/banned/i.test(error.message)
-      ?'Acesso bloqueado. Se o seu cadastro no GeoMap é novo, defina sua senha lá primeiro.'
+      ?'Acesso bloqueado. Fale com o administrador do Hub.'
       :'E-mail ou senha incorretos.';
     return;
   }
@@ -1653,16 +1673,51 @@ async function abrirHub(){
   try{await carregarDados();}
   catch(e){return falhar('Não foi possível carregar os dados: '+(e.message||e));}
   if(!EU)return falhar('Sua conta não tem acesso ao Hub. Fale com o administrador.');
+  if(EU.precisaTrocarSenha){car.classList.add('off');document.getElementById('login').classList.add('off');abrirTrocaSenha(true);return;}
   aplicarUsuario();
   rDash();rFaz();rFazP();rFazC();rSino();rUsrList();rGeotech();initCfgChips();
   car.classList.add('off');
   document.getElementById('login').classList.add('off');
   document.getElementById('hub').classList.remove('off');
+  if(!['plantio','preparo','colheita','drone'].some(m=>EU.perms[m]))trocar('geotech',document.querySelector(`.ni[onclick*="'geotech'"]`));
 }
 async function sair(){
   await sb.auth.signOut();
   document.getElementById('hub').classList.add('off');
   document.getElementById('login').classList.remove('off');
+}
+// Senha: obrigatória depois de senha provisória (criada/redefinida pelo admin)
+// ou pedida pela própria pessoa no botão "Trocar senha" da barra lateral.
+let trocaObrigatoria=false;
+function abrirTrocaSenha(obrigatoria){
+  trocaObrigatoria=obrigatoria;
+  document.getElementById('senha-titulo').textContent=obrigatoria?'Defina sua senha':'Trocar senha';
+  document.getElementById('senha-sub').textContent=obrigatoria
+    ?'Sua senha é provisória. Escolha uma senha própria — ela vale para o Hub e o GeoMap.'
+    :'A senha nova vale para o Hub e o GeoMap.';
+  document.getElementById('btn-senha-cancelar').style.display=obrigatoria?'none':'';
+  ['s-nova','s-conf'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('senha-erro').textContent='';
+  document.getElementById('tela-senha').classList.remove('off');
+  document.getElementById('s-nova').focus();
+}
+function fecharTrocaSenha(){document.getElementById('tela-senha').classList.add('off');}
+async function definirSenha(){
+  const nova=document.getElementById('s-nova').value,conf=document.getElementById('s-conf').value;
+  const erro=document.getElementById('senha-erro'),btn=document.getElementById('btn-senha');
+  erro.textContent='';
+  if(nova.length<8){erro.textContent='A senha precisa ter pelo menos 8 caracteres.';return;}
+  if(nova!==conf){erro.textContent='As duas senhas não são iguais.';return;}
+  btn.disabled=true;btn.textContent='Salvando…';
+  try{
+    const {error}=await sb.auth.updateUser({password:nova});
+    if(error)throw error;
+    const r=await sb.rpc('senha_definida');if(r.error)throw r.error;
+  }catch(e){erro.textContent='Não foi possível salvar: '+(e.message||e);return;}
+  finally{btn.disabled=false;btn.textContent='Salvar senha';}
+  fecharTrocaSenha();
+  if(trocaObrigatoria){EU.precisaTrocarSenha=false;await abrirHub();}
+  else showToast('Senha trocada');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1689,7 +1744,7 @@ async function salvarParametro(chave,valor,msg){
 
 // ── Ferramentas ──
 function rGeotech(){
-  const fs=ferramentas();
+  const fs=ferramentas().filter(f=>f.id!=='geomap'||EU?.admin||EU?.geomap);
   document.getElementById('gt-grid').innerHTML=fs.length?fs.map(f=>`
     <div class="gt-card">
       <div class="gt-ico" style="background:${esc(f.cor||'#5b6ee8')}"><span class="ico">${esc(f.icone||'apps')}</span></div>
@@ -1718,9 +1773,26 @@ async function carregarAcessos(){
   ACESSOS=data||[];rUsrList();
   if(selEmail)selUsr(selEmail);
 }
+// Ações de conta (criar, senha provisória, bloquear, GeoMap) passam pela função
+// "contas" do Supabase — a única com a chave de serviço; aqui vai o login do admin.
+async function chamarContas(corpo){
+  const {data,error}=await sb.functions.invoke('contas',{body:corpo});
+  if(error){let msg=error.message;try{msg=(await error.context.json()).erro||msg;}catch(_){}throw new Error(msg);}
+  return data;
+}
+let GRUPOS_GM=null;
+async function gruposGeomap(){
+  if(!GRUPOS_GM){try{GRUPOS_GM=await chamarContas({acao:'grupos_geomap'});}catch(e){GRUPOS_GM=[];showToast('Grupos do GeoMap indisponíveis: '+e.message);}}
+  return GRUPOS_GM;
+}
+function mostrarSenhaProvisoria(email,senha){
+  confirmar(`Senha provisória de ${esc(email)}:<br><code class="senha-prov">${esc(senha)}</code><br>Passe para a pessoa: ela troca no primeiro acesso. Esta senha não aparece de novo.`,
+    {titulo:'Senha provisória',ok:'Copiar e fechar',html:true}).then(ok=>{if(ok)navigator.clipboard?.writeText(senha);});
+}
 function situacaoAcesso(a){
-  if(!a.conta_criada)return['espera','Aguardando sincronização (até 1 h)'];
+  if(!a.conta_criada)return['espera','Sem conta'];
   if(a.bloqueado)return['erro','Bloqueado: senha provisória ou inativo no GeoMap'];
+  if(a.precisa_trocar_senha)return['espera','Com senha provisória (ainda não trocou)'];
   return['ok',a.ultimo_login?'Último acesso '+fmtDataHora(a.ultimo_login):'Ainda não entrou'];
 }
 function rUsrList(){
@@ -1749,7 +1821,7 @@ function formUsr(a,novo){
         <div class="usr-sit ${cls}">${esc(txt)}</div></div>
     </div>
     <div class="usr-form">
-      <label>E-mail<span>o mesmo do GeoMap</span>
+      <label>E-mail<span>usado para entrar</span>
         <input class="cfg-inp" id="u-email" value="${esc(a.email||'')}" ${novo?'':'readonly'} placeholder="nome@pedraagroindustrial.com.br"></label>
       <label>Nome<input class="cfg-inp" id="u-nome" value="${esc(a.nome||'')}" placeholder="Nome e sobrenome"></label>
       <label>Papel
@@ -1758,13 +1830,21 @@ function formUsr(a,novo){
       <label>Módulos
         <div class="usr-mods" id="u-mods">${mods.map(m=>`<label class="usr-mod"><input type="checkbox" value="${m.id}" ${(a.modulos||[]).includes(m.id)?'checked':''}>${esc(MOD_ROTULO[m.id]||m.nome)}</label>`).join('')}</div></label>
       <label class="usr-admin"><input type="checkbox" id="u-admin" ${a.admin?'checked':''}> Administrador <span>vê Configurações e Usuários</span></label>
+      <div class="usr-sec">GeoMap</div>
+      <label class="usr-admin"><input type="checkbox" id="u-gm" ${a.geomap_ativo?'checked':''} onchange="document.getElementById('u-gm-det').style.display=this.checked?'':'none'"> Acessa o GeoMap</label>
+      <div id="u-gm-det" style="${a.geomap_ativo?'':'display:none'}">
+        <label class="usr-admin"><input type="checkbox" id="u-gm-admin" ${a.geomap_admin?'checked':''}> Administrador do GeoMap <span>gerencia mapas e camadas</span></label>
+        <label>Grupos<div class="usr-mods" id="u-gm-grupos"><span class="usr-sit espera">Carregando grupos…</span></div>
+          <span>Os grupos e os mapas de cada grupo são definidos no GeoMap.</span></label>
+      </div>
     </div>
     <div class="login-erro" id="u-erro"></div>
     <div class="modal-botoes">
+      ${novo?'':`<button class="btn-retro" onclick="redefinirSenhaUsr('${esc(a.email)}')">Redefinir senha</button>`}
       ${novo||a.email===EU?.email?'':`<button class="btn-retro" style="color:#c23b3b" onclick="removerUsr('${esc(a.email)}')">Remover acesso</button>`}
       <button class="btn-acao" style="background:var(--t1)" onclick="salvarUsr(${novo})">${novo?'Adicionar':'Salvar'}</button>
     </div>
-    <div class="usr-nota"><span class="ico">info</span>A senha é a do GeoMap. Um acesso novo passa a funcionar na próxima sincronização (até 1 hora), se a pessoa já tiver conta no GeoMap.</div>
+    <div class="usr-nota"><span class="ico">info</span>O acesso vale na hora, para o Hub e o GeoMap. Conta nova recebe uma senha provisória, que a pessoa troca no primeiro acesso.</div>
   </div>`;
 }
 function segSel(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
@@ -1775,28 +1855,48 @@ function mostrarPainelUsr(html){
 }
 function selUsr(email){
   selEmail=email;rUsrList();
-  const a=ACESSOS.find(x=>x.email===email);if(a)mostrarPainelUsr(formUsr(a,false));
+  const a=ACESSOS.find(x=>x.email===email);
+  if(a){mostrarPainelUsr(formUsr(a,false));preencherGruposGm(a.geomap_grupos||[]);}
 }
-function novoUsr(){selEmail=null;rUsrList();mostrarPainelUsr(formUsr({papel:'leitura',modulos:[]},true));document.getElementById('u-email').focus();}
+function novoUsr(){selEmail=null;rUsrList();mostrarPainelUsr(formUsr({papel:'leitura',modulos:[]},true));preencherGruposGm([]);document.getElementById('u-email').focus();}
+async function preencherGruposGm(marcados){
+  const gs=await gruposGeomap();
+  const el=document.getElementById('u-gm-grupos');if(!el)return;
+  el.innerHTML=gs.length?gs.map(g=>`<label class="usr-mod"><input type="checkbox" value="${g.id}" ${marcados.includes(g.id)?'checked':''}>${esc(g.nome)}</label>`).join('')
+    :'<span class="usr-sit erro">Não foi possível ler os grupos do GeoMap.</span>';
+}
 async function salvarUsr(novo){
   const erro=document.getElementById('u-erro');erro.textContent='';
   const email=document.getElementById('u-email').value.trim().toLowerCase();
   const nome=document.getElementById('u-nome').value.trim();
   const papel=document.querySelector('#u-papel .on')?.dataset.v||'leitura';
-  const mods=[...document.querySelectorAll('#u-mods input:checked')].map(i=>i.value);
+  const modulos=[...document.querySelectorAll('#u-mods input:checked')].map(i=>i.value);
   const admin=document.getElementById('u-admin').checked;
+  const geomap_ativo=document.getElementById('u-gm').checked;
+  const geomap_admin=geomap_ativo&&document.getElementById('u-gm-admin').checked;
+  const geomap_grupos=geomap_ativo?[...document.querySelectorAll('#u-gm-grupos input:checked')].map(i=>Number(i.value)):[];
   if(!/^[^@\s]+@[^@\s]+$/.test(email)){erro.textContent='Informe um e-mail válido.';return;}
   if(!nome){erro.textContent='Informe o nome.';return;}
   if(novo&&ACESSOS.some(a=>a.email===email)){erro.textContent='Esse e-mail já tem acesso.';return;}
-  const {error}=await sb.rpc('acesso_salvar',{p_email:email,p_nome:nome,p_papel:papel,p_admin:admin,p_modulos:mods});
-  if(error){erro.textContent=error.message;return;}
-  showToast(novo?'Acesso adicionado':'Acesso salvo');selEmail=email;await carregarAcessos();
+  let r;
+  try{r=await chamarContas({acao:'salvar',email,nome,papel,admin,modulos,geomap_ativo,geomap_admin,geomap_grupos});}
+  catch(e){erro.textContent=e.message;return;}
+  selEmail=email;await carregarAcessos();
+  if(r.avisoGeomap)showToast('Salvo no Hub, mas o GeoMap não respondeu ('+r.avisoGeomap+'). Salve de novo em instantes.');
+  else showToast(novo?'Acesso adicionado':'Acesso salvo');
+  if(r.senhaProvisoria)mostrarSenhaProvisoria(email,r.senhaProvisoria);
+}
+async function redefinirSenhaUsr(email){
+  if(!await confirmar(`${email} recebe uma senha provisória nova e precisa trocá-la no próximo acesso. A senha atual deixa de valer.`,{titulo:'Redefinir senha',ok:'Redefinir'}))return;
+  try{const r=await chamarContas({acao:'redefinir_senha',email});await carregarAcessos();mostrarSenhaProvisoria(email,r.senhaProvisoria);}
+  catch(e){showToast('Não foi possível: '+e.message);}
 }
 async function removerUsr(email){
-  if(!await confirmar(`${email} deixa de entrar no Hub (a conta é bloqueada na próxima sincronização; o histórico continua).`,{titulo:'Remover acesso',ok:'Remover',perigo:true}))return;
-  const {error}=await sb.rpc('acesso_remover',{p_email:email});
-  if(error){showToast('Não foi possível: '+error.message);return;}
-  showToast('Acesso removido');selEmail=null;
+  if(!await confirmar(`${email} deixa de entrar no Hub e no GeoMap na hora (a conta é bloqueada; o histórico continua).`,{titulo:'Remover acesso',ok:'Remover',perigo:true}))return;
+  let r;
+  try{r=await chamarContas({acao:'remover',email});}catch(e){showToast('Não foi possível: '+e.message);return;}
+  showToast(r.avisoGeomap?'Removido do Hub; o GeoMap não respondeu — remova de novo em instantes.':'Acesso removido');
+  selEmail=null;
   document.getElementById('dpanel-u').style.display='none';document.getElementById('dempty-u').style.display='';
   await carregarAcessos();
 }
@@ -2268,7 +2368,7 @@ async function lerTudo(consulta){
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
   const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC,notasC,params,modulos]=await Promise.all([
-    lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,usuario_modulos(modulo_id)').order('nome')),
+    lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,precisa_trocar_senha,usuario_modulos(modulo_id)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
@@ -2329,11 +2429,12 @@ async function carregarDados(){
   USUARIOS.length=0;
   for(const u of usuarios){
     const mods=new Set((u.usuario_modulos||[]).map(m=>m.modulo_id));
-    USUARIOS.push({id:u.id,nome:u.nome,role:u.papel,admin:u.admin,
+    USUARIOS.push({id:u.id,nome:u.nome,role:u.papel,admin:u.admin,precisaTrocarSenha:u.precisa_trocar_senha,
       perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),drone:mods.has('drone')||u.admin,portal:false,config:u.admin}});
   }
   EU=USUARIOS.find(u=>u.id===user.id)||null;
   if(EU)EU.email=user.email;
+  if(EU)EU.geomap=!!(await sb.rpc('meu_acesso_geomap')).data;
   {const {data,error}=await sb.rpc('drone_resumo');DRONE_RESUMO=error?[]:(data||[]);}
   const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
 
@@ -2573,11 +2674,12 @@ function prepararSlots(){
   });
 }
 // Confirmação no visual do Hub (no lugar do confirm() do navegador).
-function confirmar(texto,{titulo='Confirmar',ok='Confirmar',perigo=false}={}){
+function confirmar(texto,{titulo='Confirmar',ok='Confirmar',perigo=false,html=false}={}){
   return new Promise(resolve=>{
     const m=document.getElementById('modal-confirma');
     document.getElementById('confirma-t').textContent=titulo;
-    document.getElementById('confirma-txt').textContent=texto;
+    if(html)document.getElementById('confirma-txt').innerHTML=texto;   // texto já escapado pelo chamador
+    else document.getElementById('confirma-txt').textContent=texto;
     const sim=document.getElementById('confirma-sim'),nao=document.getElementById('confirma-nao');
     sim.textContent=ok;sim.style.background=perigo?'#c23b3b':'var(--t1)';
     const fim=v=>{m.classList.add('off');sim.onclick=nao.onclick=null;resolve(v);};
