@@ -2,11 +2,13 @@
     set HUB_CONTA_TESTE=C:/caminho/conta-teste.json
     python tests/app/teste_corretivos_tela.py
 Dá à conta de teste o módulo 'corretivos' só durante o teste e devolve o acesso original no fim.
-Cria um mapa de corretivo na fazenda 10974, lança aplicações, baixa o PDF e EXCLUI o mapa que ele mesmo criou."""
+Cria um mapa de corretivo e um de aplicação aérea na fazenda 10974, lança aplicações, baixa os PDFs e EXCLUI os mapas
+que ele mesmo criou. Não mexe no cadastro de insumos (só lê)."""
 import functools
 import http.server
 import json
 import os
+import re
 import socketserver
 import subprocess
 import sys
@@ -49,7 +51,7 @@ H.log_message = lambda *a: None
 srv = socketserver.TCPServer(('127.0.0.1', 0), H)
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 url = f'http://127.0.0.1:{srv.server_address[1]}/aplicacao.html'
-mapa_id = None
+mapa_id = mapa_aereo = None
 try:
     if not tinha_modulo:
         b.inserir('usuario_modulos', {'usuario_id': uid, 'modulo_id': 'corretivos'})
@@ -137,11 +139,42 @@ try:
         confere(bool(log), 'exclusão registrada no log de auditoria')
         if not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_id}'}):
             mapa_id = None
+
+        # Aplicação aérea (16/10): insumo do cadastro, nome e unidade copiados, talhão 400 e margem no PDF.
+        antes = {m['id'] for m in b.selecionar('corretivo_mapas', 'id', {'cod_faz': f'eq.{FAZ}'})}
+        pg.click('#cr-novo'); pg.click('#cr-modal-fundo button:has-text("Aplicação aérea")')
+        pg.wait_for_function('CR_ST.geo && CR_ST.det && CR_ST.insumos.length', timeout=30000)
+        novos = [m['id'] for m in b.selecionar('corretivo_mapas', 'id', {'cod_faz': f'eq.{FAZ}'}) if m['id'] not in antes]
+        confere(len(novos) == 1, 'mapa aéreo criado no banco')
+        mapa_aereo = novos[0] if novos else None
+        confere(pg.evaluate('CR_ST.insumos.length') >= 34, 'cadastro de insumos carregado (34 iniciais)')
+        revolux = pg.evaluate("CR_ST.insumos.find(i => i.nome === 'INSETICIDA REVOLUX').id")
+        aplicar({'tipo': 'insumo', 'insumo_id': str(revolux), 'dose': '0.15', 'os': 'E2E-A1'}, [A, B])
+        gravadas = b.selecionar('corretivo_aplicacoes', 'tipo,insumo_nome,insumo_unidade', {'mapa_id': f'eq.{mapa_aereo}'})
+        confere(gravadas == [{'tipo': 'insumo', 'insumo_nome': 'INSETICIDA REVOLUX', 'insumo_unidade': 'L'}],
+                'aplicação de insumo gravada com nome e unidade')
+        pg.wait_for_selector('[data-pdf]:not([disabled])', timeout=240000)
+        with pg.expect_download(timeout=240000) as dl:
+            pg.click('[data-pdf]')
+        destino = RAIZ / '.prints' / 'e2e_aereo.pdf'
+        dl.value.save_as(destino)
+        texto = '\n'.join(pagina.get_text() for pagina in pymupdf.open(destino))
+        confere(dl.value.suggested_filename.startswith(f'aplicacao_aerea_{FAZ}_'), 'nome do arquivo do PDF aéreo')
+        for esperado in ['APLICAÇÃO AÉREA', 'Inseticida Revolux', 'E2E-A1', '0,15 L', 'TALHÕES + 5%']:
+            confere(esperado in texto, f'PDF aéreo contém "{esperado}"')
+        confere(bool(re.search(r'^400$', texto, re.M)), 'PDF aéreo tem a linha do talhão 400')
+        pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-excluir="{mapa_aereo}"]', timeout=20000)
+        pg.click(f'[data-excluir="{mapa_aereo}"]'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
+        pg.wait_for_timeout(2500)
+        if not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_aereo}'}):
+            confere(True, 'mapa aéreo excluído pela tela')
+            mapa_aereo = None
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')
         nav.close()
 finally:
-    if mapa_id:                              # só apaga o que o próprio teste criou
-        remover('corretivo_mapas', {'id': f'eq.{mapa_id}'})
+    for criado in (mapa_id, mapa_aereo):     # só apaga o que o próprio teste criou
+        if criado:
+            remover('corretivo_mapas', {'id': f'eq.{criado}'})
     if not tinha_modulo:
         remover('usuario_modulos', {'usuario_id': f'eq.{uid}', 'modulo_id': 'eq.corretivos'})
     srv.shutdown()
