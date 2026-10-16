@@ -29,9 +29,9 @@ test('rótulos e cores', () => {
 
 test('totais por produto iguais ao Python', () => {
   igual(ctx.crTotaisPorProduto([DOL, FOS, BLEND], AREAS), [
-    { titulo: 'Calcário Dolomítico', toneladas: 88.8, detalhe: null },
-    { titulo: 'Fosfato', toneladas: 22.2, detalhe: null },
-    { titulo: 'Blend Dolomítico', toneladas: 24.85, detalhe: 'calc. 14,91 t + gesso 9,94 t' },
+    { titulo: 'Calcário Dolomítico', total: 88.8, unidade: 't', detalhe: null },
+    { titulo: 'Fosfato', total: 22.2, unidade: 't', detalhe: null },
+    { titulo: 'Blend Dolomítico', total: 24.85, unidade: 't', detalhe: 'calc. 14,91 t + gesso 9,94 t' },
   ]);
 });
 

@@ -2,27 +2,76 @@
 // `var` (não const) para as constantes ficarem visíveis no contexto vm dos testes.
 var CR_CORES = { 'calcario:dolomitico': '#2f6db5', 'calcario:ph7': '#22a39f', fosfato: '#e07b1a', blend: '#7b4fb3' };
 var CR_SEM = '#e4e7e8';
-var CR_OPERACOES = { subsolagem: 'SubSolagem', supergrade: 'SuperGrade', arado: 'Arado' };
+var CR_OPERACOES = { subsolagem: 'SubSolagem', supergrade: 'SuperGrade', arado: 'Arado', aerea: 'Aplicação aérea' };
 var CR_CALC = { dolomitico: 'Dolomítico', ph7: 'PH7' };
+// Aplicação aérea (iguais a mapas/corretivo_dados.py): cores dos insumos na ordem em que aparecem; margem de 5%.
+var CR_PALETA_INSUMOS = ['#2f6db5', '#e07b1a', '#22a39f', '#7b4fb3', '#c23b3b', '#8a6d1f', '#2e8b57', '#d4558f', '#5b6770', '#b59a00'];
+var CR_MARGEM = 0.05;
+var CR_UNIDADE = { L: 'L', KG: 'kg' };
 
 function crBr(v) {
   return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function crNum(s) { return typeof s === 'number' ? s : Number(String(s ?? '').trim().replace(/\./g, '').replace(',', '.')); }
 function crTotal(area, dose) { return Math.round(area * dose * 100) / 100; }
-function crChaveCor(ap) { return ap.tipo === 'calcario' ? 'calcario:' + ap.calcario : ap.tipo; }
+function crAerea(operacao) { return operacao === 'aerea'; }
+// Dose com 2 casas, ou 3 quando a terceira importa (0,008 kg/ha).
+function crBrDose(v) {
+  const s = Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return s.endsWith('0') ? s.slice(0, -1) : s;
+}
+// 'INSETICIDA BOUVERIZ WP PR' -> 'Inseticida Bouveriz WP PR' (siglas de até 3 letras ficam como estão; igual a str.title).
+function crNomeInsumo(nome) {
+  return String(nome ?? '').split(/\s+/).filter(Boolean)
+    .map(p => p.length <= 3 ? p : p.toLowerCase().replace(/(^|[^a-zà-ÿ])([a-zà-ÿ])/g, (m, a, b) => a + b.toUpperCase())).join(' ');
+}
+function crUnidade(ap) { return ap.tipo === 'insumo' ? CR_UNIDADE[ap.insumo_unidade] : 't'; }
+function crChaveCor(ap) {
+  if (ap.tipo === 'insumo') return 'insumo:' + ap.insumo_nome;
+  return ap.tipo === 'calcario' ? 'calcario:' + ap.calcario : ap.tipo;
+}
+function crCoresDoMapa(apls) {
+  const cores = {};
+  let n = 0;
+  for (const a of crOrdenadas(apls)) {
+    const k = crChaveCor(a);
+    if (k in cores) continue;
+    cores[k] = a.tipo === 'insumo' ? CR_PALETA_INSUMOS[n++ % CR_PALETA_INSUMOS.length] : CR_CORES[k];
+  }
+  return cores;
+}
+function crMargem(areas, operacao) {
+  if (!crAerea(operacao)) return 0;
+  const soma = Object.values(areas).reduce((s, v) => s + Number(v.area_ha), 0);
+  return Math.round(soma * CR_MARGEM * 100) / 100;
+}
+function crAreaTotal(areas, operacao) {
+  const soma = Object.values(areas).reduce((s, v) => s + Number(v.area_ha), 0);
+  return Math.round((soma + crMargem(areas, operacao)) * 100) / 100;
+}
 function crRotulo(ap) {
+  if (ap.tipo === 'insumo') return crNomeInsumo(ap.insumo_nome);
   if (ap.tipo === 'calcario') return 'Calc. ' + CR_CALC[ap.calcario];
   if (ap.tipo === 'blend') return 'Blend · ' + CR_CALC[ap.calcario];
   return 'Fosfato';
 }
 function crOrdenadas(apls) { return [...apls].sort((a, b) => a.ordem - b.ordem); }
 function crCoresTalhao(apls, talhao) {
-  return crOrdenadas(apls).filter(a => a.talhoes.includes(talhao)).map(a => CR_CORES[crChaveCor(a)]);
+  const cores = crCoresDoMapa(apls);
+  return crOrdenadas(apls).filter(a => a.talhoes.includes(talhao)).map(a => cores[crChaveCor(a)]);
 }
-function crTotaisPorProduto(apls, areas) {
+function crTotaisPorProduto(apls, areas, operacao) {
   const soma = {};
   const area = a => a.talhoes.reduce((s, t) => s + Number(areas[t].area_ha), 0);
+  const r2 = v => Math.round(v * 100) / 100;
+  if (crAerea(operacao)) {                       // um quadro por insumo: dose × área dos talhões dele × 1,05
+    const ordem = [];
+    for (const a of crOrdenadas(apls)) {
+      if (!soma[a.insumo_nome]) { soma[a.insumo_nome] = [0, crUnidade(a)]; ordem.push(a.insumo_nome); }
+      soma[a.insumo_nome][0] += area(a) * (1 + CR_MARGEM) * a.dose;
+    }
+    return ordem.map(n => ({ titulo: crNomeInsumo(n), total: r2(soma[n][0]), unidade: soma[n][1], detalhe: null }));
+  }
   for (const a of crOrdenadas(apls)) {
     if (a.tipo === 'blend') {
       const k = 'Blend ' + CR_CALC[a.calcario];
@@ -33,14 +82,19 @@ function crTotaisPorProduto(apls, areas) {
       soma[k] = [(soma[k] ? soma[k][0] : 0) + area(a) * a.dose];
     }
   }
-  const r2 = v => Math.round(v * 100) / 100;
   return ['Calcário Dolomítico', 'Calcário PH7', 'Fosfato', 'Blend Dolomítico', 'Blend PH7'].filter(k => soma[k])
     .map(k => k.startsWith('Blend')
-      ? { titulo: k, toneladas: r2(soma[k][0] + soma[k][1]), detalhe: `calc. ${crBr(soma[k][0])} t + gesso ${crBr(soma[k][1])} t` }
-      : { titulo: k, toneladas: r2(soma[k][0]), detalhe: null });
+      ? { titulo: k, total: r2(soma[k][0] + soma[k][1]), unidade: 't', detalhe: `calc. ${crBr(soma[k][0])} t + gesso ${crBr(soma[k][1])} t` }
+      : { titulo: k, total: r2(soma[k][0]), unidade: 't', detalhe: null });
 }
 function crValidarAplicacao(f) {
   if (!f.talhoes || !f.talhoes.length) return 'Marque ao menos um talhão no mapa.';
+  if (f.tipo === 'insumo') {
+    if (!f.insumo_id) return 'Escolha o insumo.';
+    if (!(crNum(f.dose) > 0)) return 'Dose deve ser maior que zero.';
+    if (!String(f.os ?? '').trim()) return 'Informe a O.S.';
+    return null;
+  }
   if ((f.tipo === 'calcario' || f.tipo === 'blend') && !f.calcario) return 'Escolha o calcário (Dolomítico ou PH7).';
   if (!(crNum(f.dose) > 0)) return 'Dose deve ser maior que zero (t/ha).';
   if (f.tipo === 'blend' && !(crNum(f.dose_gesso) > 0)) return 'Informe a dose do gesso (t/ha).';
@@ -50,7 +104,7 @@ function crValidarAplicacao(f) {
 function crMesma(a, b) {
   return a.tipo === b.tipo && (a.calcario || null) === (b.calcario || null) && crNum(a.dose) === crNum(b.dose)
     && (a.dose_gesso == null ? null : crNum(a.dose_gesso)) === (b.dose_gesso == null ? null : crNum(b.dose_gesso))
-    && String(a.os).trim() === String(b.os).trim();
+    && String(a.os).trim() === String(b.os).trim() && (a.insumo_id ?? null) === (b.insumo_id ?? null);
 }
 function crDuplicadas(apls, nova, talhoes) {
   return talhoes.filter(t => apls.some(a => a.talhoes.includes(t) && crMesma(a, nova)));
@@ -69,9 +123,12 @@ function crMontarDados(c) {
            talhoes_geo: c.geo, areas,
            aplicacoes: crOrdenadas(c.apls).map(a => ({ tipo: a.tipo, calcario: a.calcario || null, dose: crNum(a.dose),
              dose_gesso: a.dose_gesso == null ? null : crNum(a.dose_gesso), os: String(a.os).trim(), ordem: a.ordem,
-             talhoes: [...a.talhoes] })) };
+             talhoes: [...a.talhoes],
+             ...(a.tipo === 'insumo' ? { insumo_nome: a.insumo_nome, insumo_unidade: a.insumo_unidade } : {}) })) };
 }
-function crNomeArquivo(codFaz, operacao, data) { return `corretivo_${codFaz}_${operacao}_${data}.pdf`; }
+function crNomeArquivo(codFaz, operacao, data) {
+  return crAerea(operacao) ? `aplicacao_aerea_${codFaz}_${data}.pdf` : `corretivo_${codFaz}_${operacao}_${data}.pdf`;
+}
 
 // ===== Corretivos: meio a meio por geometria (faixas diagonais) =====
 // crFaixas corta um talhão em n faixas por retas x+y = constante, igualmente espaçadas entre min e max de x+y.
