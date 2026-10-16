@@ -1799,7 +1799,7 @@ function rUsrList(){
   const el=document.getElementById('usr-list');if(!el)return;
   el.innerHTML=ACESSOS.map(a=>{
     const [cls]=situacaoAcesso(a);
-    return`<div class="usr-card${selEmail===a.email?' on':''}" onclick="selUsr('${esc(a.email)}')">
+    return`<div class="usr-card${selEmail===a.email?' on':''}" data-email="${esc(a.email)}" onclick="selUsr(this.dataset.email)">
       <div class="usr-av">${esc(iniciais(a.nome))}</div>
       <div class="usr-txt">
         <div class="usr-nome">${esc(a.nome)}<span class="usr-dot ${cls}"></span></div>
@@ -1840,8 +1840,8 @@ function formUsr(a,novo){
     </div>
     <div class="login-erro" id="u-erro"></div>
     <div class="modal-botoes">
-      ${novo?'':`<button class="btn-retro" onclick="redefinirSenhaUsr('${esc(a.email)}')">Redefinir senha</button>`}
-      ${novo||a.email===EU?.email?'':`<button class="btn-retro" style="color:#c23b3b" onclick="removerUsr('${esc(a.email)}')">Remover acesso</button>`}
+      ${novo?'':`<button class="btn-retro" data-email="${esc(a.email)}" onclick="redefinirSenhaUsr(this.dataset.email)">Redefinir senha</button>`}
+      ${novo||a.email===EU?.email?'':`<button class="btn-retro" style="color:#c23b3b" data-email="${esc(a.email)}" onclick="removerUsr(this.dataset.email)">Remover acesso</button>`}
       <button class="btn-acao" style="background:var(--t1)" onclick="salvarUsr(${novo})">${novo?'Adicionar':'Salvar'}</button>
     </div>
     <div class="usr-nota"><span class="ico">info</span>O acesso vale na hora, para o Hub e o GeoMap. Conta nova recebe uma senha provisória, que a pessoa troca no primeiro acesso.</div>
