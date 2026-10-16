@@ -1,7 +1,11 @@
-"""PDF do mapa de aplicação de corretivos (layout do Drone, faixas e quadros por produto).
+"""PDF do mapa de aplicação de corretivos. Sempre A4 em pé.
 
-Coordenadas da página em mm (origem no topo). O layout comum mora em mapas/layout.py; as regras do
-corretivo (cores, linhas da tabela, totais) mora em mapas/corretivo_dados.py."""
+Página 1, de cima para baixo: faixa da marca, MAPA em largura total (legenda das cores dentro dele), CARIMBO
+numa faixa horizontal (identificação | totais por produto | escala/área/safra e norte) e TABELA
+"APLICAÇÕES POR TALHÃO" com letra grande. Linhas que não cabem vão para as páginas seguintes.
+
+Coordenadas da página em mm (origem no topo). Usa só as peças genéricas de mapas/layout.py (Pagina, eixo_mapa,
+escala, moldura, norte, nova_pagina); a tabela, o carimbo e a legenda são locais, para não mexer no Drone."""
 import datetime
 import io
 import json
@@ -12,24 +16,40 @@ import geopandas as gpd
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.patches import FancyBboxPatch
 
 from mapas.corretivo_dados import (
     CORES, OPERACOES, SEM_APLICACAO, area_total, chave_cor, faixas, linhas_tabela, lista_os, rotulo,
     totais_por_produto, _ordenadas,
 )
 from mapas.layout import (
-    CINZA, GRAFITE, LINHA, MARCA, Pagina, br, cabe, caixa_norte, escala_grafica, escala_numerica,
-    eixo_mapa, grade, moldura_logo, nova_pagina, orientacao, paginas_tabela, rodape, safra_de,
+    CINZA, GRAFITE, LINHA, MARCA, Pagina, br, caixa_norte, eixo_mapa, escala_grafica, escala_numerica,
+    moldura_logo, nova_pagina, safra_de,
 )
 
 LOGO = Path(__file__).resolve().parent.parent / 'drone' / 'assets' / 'logo-pedra.png'
 EPSG_UTM = 31983
-COLS = [('TALHÃO', 0.02, 'left'), ('ÁREA', 0.20, 'right'), ('APLICAÇÃO', 0.24, 'left'),
-        ('DOSE', 0.70, 'right'), ('TOTAL', 0.85, 'right'), ('O.S.', 0.98, 'right')]
-M = 10
-ALTURA_CARIMBO_BASE = 48          # carimbo = 48 + 18 por linha de quadros (66 com uma linha, como no Drone)
-RESERVA_LEGENDA = 14              # mm reservados abaixo da grade (nota + legenda)
+W, H = 210, 297                  # A4 em pé, mm
+M = 10                           # margem
+LARG = W - 2 * M                 # largura útil: 190 mm
+TOPO, BASE = 10, 274             # área do conteúdo (o rodapé fica em 278)
+U = BASE - TOPO                  # altura útil: 264 mm
+GAP = 4                          # espaço entre mapa, carimbo e tabela
+MAPA_MIN = 0.45 * U              # o mapa nunca fica com menos de ~45% da altura útil
+LETRA_LINHA = 14                 # letra das linhas da tabela
+LINHA_TAB = 7.5                  # altura de cada linha da tabela
+CAB_TAB = 10.2                   # do topo da tabela até a primeira linha (título + cabeçalho)
+TOTAL_NOTA = 12.5                # linha de total + nota, no fim da tabela
+TOPO_CONT = 18                   # topo da tabela nas páginas extras (depois do nome da fazenda)
+CAP_EXTRA = int((BASE - TOPO_CONT - CAB_TAB) // LINHA_TAB)
+LETRA_LEGENDA = 13
+WA, WB, WC = 66, 90, 28          # blocos do carimbo (identificação | totais | escala/área/safra)
+COLUNAS = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 42, 'right'), ('APLICAÇÃO', 52, 'left'),
+           ('DOSE (t/ha)', 124, 'right'), ('TOTAL (t)', 148, 'right'), ('O.S.', 153, 'left')]
+NOTA = '* área editada · ÁREA ha · DOSE t/ha · TOTAL t'
 
+
+# ---------- dados ----------
 
 def _gdf(dados) -> gpd.GeoDataFrame:
     gdf = gpd.GeoDataFrame.from_features(dados['talhoes_geo']['features'], crs='EPSG:4326')
@@ -52,6 +72,68 @@ def _aplicacoes_por_talhao(dados) -> dict:
             por_talhao.setdefault(int(t), []).append(a)
     return por_talhao
 
+
+# ---------- medidas de texto (mm) ----------
+
+def _largura(pg: Pagina, texto: str, tam: float, peso='normal') -> float:
+    t = pg.fig.text(0, 0, texto, fontsize=tam, fontweight=peso)
+    bb = t.get_window_extent(renderer=pg.fig.canvas.get_renderer())
+    t.remove()
+    return bb.width / pg.fig.dpi * 25.4
+
+
+def _cortar(pg: Pagina, texto: str, max_mm: float, tam: float, peso='normal') -> str:
+    """Corta o fim do texto com '…' até caber em max_mm."""
+    if _largura(pg, texto, tam, peso) <= max_mm:
+        return texto
+    while len(texto) > 1 and _largura(pg, texto + '…', tam, peso) > max_mm:
+        texto = texto[:-1]
+    return texto.rstrip() + '…'
+
+
+def _caber(pg: Pagina, texto: str, max_mm: float, tam: float, minimo: float, peso='normal'):
+    """(texto, tamanho): reduz a letra até o mínimo; abaixo disso corta com '…'."""
+    t = tam
+    while t >= minimo - 1e-9:
+        if _largura(pg, texto, t, peso) <= max_mm:
+            return texto, t
+        t -= 0.5
+    return _cortar(pg, texto, max_mm, minimo, peso), minimo
+
+
+def _linhas_titulo(pg: Pagina, texto: str, max_mm: float):
+    """Título do carimbo: uma linha (12 a 9 pt) ou, se nem a 9 pt couber, duas linhas (9 pt, a 2ª cortada)."""
+    for tam in (12, 11, 10, 9):
+        if _largura(pg, texto, tam, 'bold') <= max_mm:
+            return [(texto, tam)]
+    palavras = texto.split(' ')
+    l1 = ''
+    i = 0
+    while i < len(palavras):
+        cand = (l1 + ' ' + palavras[i]).strip()
+        if l1 and _largura(pg, cand, 9, 'bold') > max_mm:
+            break
+        l1 = cand
+        i += 1
+    resto = ' '.join(palavras[i:])
+    if not resto:
+        return [(l1, 9)]
+    return [(l1, 9), (_cortar(pg, resto, max_mm, 9, 'bold'), 9)]
+
+
+def _subtitulo(pg: Pagina, lista, max_mm: float):
+    """'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. …': reduz a letra até 4,8 pt; depois mostra menos O.S. ('… (+N)')."""
+    base = 'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. '
+    n = len(lista)
+    for tam in (5.5, 5.2, 4.8):
+        for k in range(n, 0, -1):
+            s = base + ', '.join(lista[:k]) + ('' if k == n else f', … (+{n - k})')
+            if _largura(pg, s, tam) <= max_mm:
+                return s, tam
+    return _cortar(pg, base + (lista[0] if lista else ''), max_mm, 4.8), 4.8
+
+
+# ---------- mapa ----------
 
 def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
     ax, s, x0, y0 = eixo_mapa(pg, gdf, x, y, w, h)
@@ -83,146 +165,200 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
                 va='center', path_effects=[pe.withStroke(linewidth=2, foreground='white')])
     escala_grafica(ax, s, x0, y0)
     moldura_logo(pg, x, y, w, h, LOGO)
+    _legenda_mapa(pg, dados, x, y, w, h)
     return escala_numerica(s)
 
 
-def _legenda(pg: Pagina, dados, x, y, w) -> float:
-    """Quadradinhos só dos tipos usados; devolve o y logo abaixo da legenda."""
+def _legenda_mapa(pg: Pagina, dados, x, y, w, h):
+    """Caixa branca (alpha 0,9) no canto inferior direito do mapa: só os tipos usados; Blend é um item só."""
     rotulos: dict[str, str] = {}
     for a in _ordenadas(dados):                  # Blend Dolomítico e PH7 têm a mesma cor: um item só
         rotulos.setdefault(chave_cor(a), 'Blend' if a['tipo'] == 'blend' else rotulo(a))
-    cursor, yy = x, y
-    for chave, texto in rotulos.items():
-        largura = 6.5 + 1.5 * len(texto) + 4
-        if cursor + largura > x + w and cursor > x:
-            cursor, yy = x, yy + 5
-        pg.ret(cursor, yy, 5, 3, CORES[chave])
-        pg.texto(cursor + 6.5, yy - 0.2, texto, 5.5, CINZA)
-        cursor += largura
-    if any(len(aps) >= 2 for aps in _aplicacoes_por_talhao(dados).values()):
-        if cursor + 34 > x + w and cursor > x:
-            cursor, yy = x, yy + 5
-        pg.texto(cursor, yy - 0.2, '◩ duas aplicações', 5.5, CINZA)
-        yy += 5
-    return yy + 5 if rotulos else yy
+    if not rotulos:
+        return
+    duas = any(len(aps) >= 2 for aps in _aplicacoes_por_talhao(dados).values())
+    itens = [(CORES[c], t) for c, t in rotulos.items()] + ([(None, '◩ duas aplicações')] if duas else [])
+    passo, pad, sw = 6.2, 2.5, 5.0
+    larg = max(_largura(pg, t, LETRA_LEGENDA) for _, t in itens) + sw + 2.5
+    bw = larg + 2 * pad
+    bh = passo * len(itens) + 2 * pad - 1.2
+    bx, by = x + w - bw - 2.5, y + h - bh - 2.5
+    pg.fig.patches.append(FancyBboxPatch(
+        (bx / pg.W, 1 - (by + bh) / pg.H), bw / pg.W, bh / pg.H, boxstyle='round,pad=0,rounding_size=0.0',
+        transform=pg.fig.transFigure, facecolor='white', edgecolor=LINHA, linewidth=0.5, alpha=0.9))
+    for i, (cor, texto) in enumerate(itens):
+        yy = by + pad + i * passo + passo / 2
+        if cor is None:
+            pg.texto(bx + pad, yy, texto, LETRA_LEGENDA, CINZA, va='center')
+        else:
+            pg.ret(bx + pad, yy - 1.5, sw, 3, cor)
+            pg.texto(bx + pad + sw + 2.5, yy, texto, LETRA_LEGENDA, GRAFITE, va='center')
 
 
-def _tabela(pg: Pagina, dados, x, y, w, h):
-    linhas = linhas_tabela(dados)
-    total = ['Total', br(area_total(dados)), '', '', '', '']
-    disp = h - RESERVA_LEGENDA
-    pg.texto(x, y, 'APLICAÇÕES POR TALHÃO', 5.5, CINZA, 'semibold')
-    if cabe(len(linhas), disp):
-        alt = min(4.2, (disp - 22) / (len(linhas) + 2))
-        yy = grade(pg, COLS, linhas, x, y + 5, w, alt, total)
-    else:
-        pg.texto(x, y + 4.5, f'{len(linhas)} linhas: tabela completa a partir da página 2.', 6, GRAFITE)
-        yy = grade(pg, COLS, [], x, y + 10, w, 4.2, total)
-    pg.texto(x, yy + 1, '* área editada · ÁREA ha · DOSE t/ha · TOTAL t', 4.8, CINZA)
-    _legenda(pg, dados, x, yy + 6, w)
+# ---------- carimbo ----------
 
-
-def _cabecalho_extra(dados):
-    """Título e subtítulo de cada página extra da tabela."""
-    def desenhar(pg: Pagina):
-        pg.texto(10, 10, f"{dados['cod_faz']} · {dados['nome']}", 12, peso='bold')
-        pg.texto(10, 17, 'APLICAÇÕES POR TALHÃO', 5.5, CINZA, 'semibold')
-    return desenhar
+def _altura_carimbo(totais) -> float:
+    rows = max(1, math.ceil(len(totais) / 3))
+    return max(24.0, 19 + 18 * (rows - 1))
 
 
 def _quadros(pg: Pagina, totais, x, y, w):
-    cw = (w - 6) / 3
+    gap = 2
+    cw = (w - 4 - 2 * gap) / 3
     for idx, q in enumerate(totais):
         r, c = divmod(idx, 3)
-        cx, cy = x + c * (cw + 3), y + r * 18
+        cx, cy = x + 2 + c * (cw + gap), y + 2 + r * 18
         destaque = idx == 0
         pg.caixa(cx, cy, cw, 15, '#b9dcc4' if destaque else LINHA, '#f1f8f3' if destaque else 'white')
-        pg.texto(cx + 2.5, cy + 1.8, q['titulo'], 4.8, CINZA, 'semibold')
-        pg.texto(cx + 2.5, cy + 5, br(q['toneladas']), 12, MARCA if destaque else GRAFITE, 'bold')
-        pg.texto(cx + cw - 2.5, cy + 6.8, 't', 5.5, CINZA, 'semibold', ha='right')
+        if _largura(pg, q['titulo'], LETRA_LEGENDA, 'semibold') <= cw - 5:
+            titulo, t1 = q['titulo'], LETRA_LEGENDA     # rótulo curto (ex.: Fosfato) como na legenda
+        else:
+            titulo, t1 = _caber(pg, q['titulo'], cw - 5, 4.8, 4.0, 'semibold')
+        pg.texto(cx + 2.5, cy + 1.0, titulo, t1, CINZA, 'semibold')
+        valor, t2 = _caber(pg, br(q['toneladas']), cw - 5 - 4, 12, 9, 'bold')
+        pg.texto(cx + 2.5, cy + 6.0, valor, t2, MARCA if destaque else GRAFITE, 'bold')
+        pg.texto(cx + cw - 2.5, cy + 7.8, 't', 5.5, CINZA, 'semibold', ha='right')
         if q['detalhe']:
-            pg.texto(cx + 2.5, cy + 11.2, q['detalhe'], 5, CINZA)
+            det, t3 = _caber(pg, q['detalhe'], cw - 5, 5, 4.0)
+            pg.texto(cx + 2.5, cy + 11.4, det, t3, CINZA)
 
 
-def _largura_mm(pg: Pagina, texto: str, tam: float) -> float:
-    t = pg.fig.text(0, 0, texto, fontsize=tam, fontweight='bold')
-    bb = t.get_window_extent(renderer=pg.fig.canvas.get_renderer())
-    t.remove()
-    return bb.width / pg.fig.dpi * 25.4
-
-
-def _titulo_caber(pg: Pagina, texto: str, max_mm: float) -> tuple[str, float]:
-    """Maior fonte (12 a 8 pt) em que o título cabe; se nem a 8 pt couber, corta com '…'."""
-    for tam in (12, 11, 10, 9, 8):
-        if _largura_mm(pg, texto, tam) <= max_mm:
-            return texto, tam
-    while len(texto) > 1 and _largura_mm(pg, texto + '…', 8) > max_mm:
-        texto = texto[:-1]
-    return texto.rstrip() + '…', 8
-
-
-def _carimbo(pg: Pagina, dados, x, y, w, escala, quadros_linhas):
-    texto_tag = f"CORRETIVO · {OPERACOES[dados['operacao']].upper()}"
-    tag_w = 1.45 * len(texto_tag) + 4
-    pg.ret(x, y, 0.9, 16, MARCA)
-    pg.caixa(x + 3, y, tag_w, 3.6, MARCA, MARCA, 0.5, 0.1)
-    pg.texto(x + 3 + tag_w / 2, y + 0.5, texto_tag, 4.5, 'white', 'bold', ha='center')
-    titulo, tam = _titulo_caber(pg, f"{dados['cod_faz']} · {dados['nome']}", w - 3)
-    pg.texto(x + 3, y + 5, titulo, tam, peso='bold')
-    pg.texto(x + 3, y + 11.5, 'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. ' + ', '.join(lista_os(dados)), 5.5, CINZA)
-    y += 19
-    _quadros(pg, totais_por_produto(dados), x, y, w)
-    y += 18 * quadros_linhas
-    pg.caixa(x, y, w, 10)
-    celula = (w - 14) / 3
-    n_talhoes = len(dados['areas'])
+def _carimbo(pg: Pagina, dados, yb, hb, escala):
+    totais = totais_por_produto(dados)
+    pg.caixa(M, yb, LARG, hb, LINHA, 'white')
+    xb, xc = M + WA + 3, M + WA + 3 + WB + 3
+    for xs in (xb - 1.5, xc - 1.5):
+        pg.ret(xs, yb + 2, 0.25, hb - 4, LINHA)
+    # (a) identificação
+    x = M + 3
+    tag = f"CORRETIVO · {OPERACOES[dados['operacao']].upper()}"
+    tag_txt, tt = _caber(pg, tag, WA - 10, 4.5, 4.0, 'bold')
+    tag_w = _largura(pg, tag_txt, tt, 'bold') + 4
+    pg.caixa(x, yb + 2.5, tag_w, 3.6, MARCA, MARCA, 0.5, 0.1)
+    pg.texto(x + tag_w / 2, yb + 3.0, tag_txt, tt, 'white', 'bold', ha='center')
+    y = yb + 7.5
+    for texto, tam in _linhas_titulo(pg, f"{dados['cod_faz']} · {dados['nome']}", WA - 6):
+        pg.texto(x, y, texto, tam, peso='bold')
+        y += tam * 0.3528 * 1.2
+    sub, ts = _subtitulo(pg, lista_os(dados), WA - 6)
+    pg.texto(x, y + 0.8, sub, ts, CINZA)
+    # (b) totais por produto
+    _quadros(pg, totais, xb, yb, WB)
+    # (c) escala / área / safra e norte
     celulas = [('ESCALA', f'1:{escala:,}'.replace(',', '.')),
-               (f'ÁREA · {n_talhoes} TALHÕES', f'{br(area_total(dados))} ha'),
+               (f'ÁREA · {len(dados["areas"])} TALHÕES', f'{br(area_total(dados))} ha'),
                ('SAFRA', safra_de(_data(dados)))]
+    largura_txt = WC - 3 - 8
     for i, (titulo, valor) in enumerate(celulas):
-        cx = x + i * celula
-        if i:
-            pg.ret(cx, y + 1.5, 0.25, 7, LINHA)
-        pg.texto(cx + 2.5, y + 1.8, titulo, 4.5, CINZA, 'semibold')
-        pg.texto(cx + 2.5, y + 4.8, valor, 7, peso='semibold')
-    caixa_norte(pg, x + w - 7, y + 1.3)
-    y += 13
-    rodape(pg, x, y, w, 'Pedra Agroindustrial S/A · Geotecnologia',
-           f"Gerado em {_gerado_em(dados):%d/%m/%Y} por {dados.get('gerado_por', '')}")
+        cy = yb + 2 + i * 7.2
+        pg.texto(xc + 2.5, cy + 0.3, _cortar(pg, titulo, largura_txt, 4.5, 'semibold'), 4.5, CINZA, 'semibold')
+        pg.texto(xc + 2.5, cy + 3.3, _cortar(pg, valor, largura_txt, 7, 'semibold'), 7, GRAFITE, 'semibold')
+    caixa_norte(pg, xc + WC - 5, yb + 3)
 
 
-def _altura_carimbo(dados) -> float:
-    rows = max(1, math.ceil(len(totais_por_produto(dados)) / 3))
-    return ALTURA_CARIMBO_BASE + 18 * rows
+# ---------- tabela ----------
 
+def _linha_tabela(pg: Pagina, yy: float, valores, bold=False, cor=GRAFITE):
+    ultima = len(COLUNAS) - 1
+    for i, (valor, (_, fx, ha)) in enumerate(zip(valores, COLUNAS)):
+        if not valor:
+            continue
+        x = M + fx
+        tam = LETRA_LINHA
+        if i == ultima:                               # O.S.: reduz/corta para caber na coluna
+            valor, tam = _caber(pg, valor, LARG - fx - 1, LETRA_LINHA, 9)
+        pg.texto(x, yy + LINHA_TAB / 2, valor, tam, cor, 'bold' if bold else 'normal', ha=ha, va='center')
+
+
+def _tabela(pg: Pagina, y, titulo, linhas, total):
+    """Título, cabeçalho, linhas (zebradas) e, se total não for None, a linha de total e a nota.
+    Devolve o y logo abaixo do que foi desenhado."""
+    pg.texto(M, y, titulo, 10, GRAFITE, 'semibold')
+    for nome, fx, ha in COLUNAS:
+        pg.texto(M + fx, y + 7.2, nome, 10, MARCA, 'bold', ha=ha, va='center')
+    pg.ret(M, y + 9.4, LARG, 0.35, GRAFITE)
+    yy = y + CAB_TAB
+    for i, valores in enumerate(linhas):
+        if i % 2:
+            pg.ret(M, yy, LARG, LINHA_TAB, '#f4f6f5')
+        _linha_tabela(pg, yy, valores)
+        yy += LINHA_TAB
+    if total is not None:
+        pg.ret(M, yy + 0.3, LARG, 0.35, GRAFITE)
+        _linha_tabela(pg, yy + 0.3, total, bold=True)
+        yy += LINHA_TAB + 0.3
+        pg.texto(M, yy + 1.5, NOTA, 6, CINZA)
+        yy += 4
+    return yy
+
+
+def _paginar(n: int, hb: float) -> list[int]:
+    """Quantas linhas vão em cada página. Página 1 tem o mapa (>= 45% da altura útil); o total fica na última."""
+    tab_max = U - 2 * GAP - hb - MAPA_MIN
+    if CAB_TAB + n * LINHA_TAB + TOTAL_NOTA <= tab_max:
+        return [n]
+    cap1 = min(int((tab_max - CAB_TAB) // LINHA_TAB), max(n - 1, 0))
+    sizes = [cap1]
+    resto = n - cap1
+    while resto > 0:
+        take = min(resto, CAP_EXTRA)
+        if take == resto and take > CAP_EXTRA - 2:   # deixa ao menos 2 linhas para a página com o total
+            take = CAP_EXTRA - 2
+        sizes.append(take)
+        resto -= take
+    return sizes
+
+
+def _rodape(pg: Pagina, dados, k: int, n: int):
+    pg.ret(M, 278, LARG, 0.2, LINHA)
+    pg.texto(M, 279.2, 'Pedra Agroindustrial S/A · Geotecnologia', 4.8, CINZA)
+    pg.texto(W - M, 279.2, f"Gerado em {_gerado_em(dados):%d/%m/%Y} por {dados.get('gerado_por', '')}",
+             4.8, CINZA, ha='right')
+    if n > 1:
+        pg.texto(W / 2, 279.2, f'Página {k} de {n}', 4.8, CINZA, ha='center')
+
+
+def _cabecalho_extra(pg: Pagina, dados):
+    pg.texto(M, TOPO, f"{dados['cod_faz']} · {dados['nome']}", 12, GRAFITE, 'bold')
+
+
+# ---------- PDF ----------
 
 def gerar_pdf(dados: dict, destino) -> str:
     gdf = _gdf(dados)
-    orient = orientacao(gdf)
-    W, H = (297, 210) if orient == 'paisagem' else (210, 297)
-    altura = _altura_carimbo(dados)
-    quadros_linhas = (altura - ALTURA_CARIMBO_BASE) // 18
+    totais = totais_por_produto(dados)
+    linhas = linhas_tabela(dados)
+    total = ['Total', br(area_total(dados)), '', '', '', '']
+    hb = _altura_carimbo(totais)
+    tamanhos = _paginar(len(linhas), hb)
+    n_paginas = len(tamanhos)
+    so_p1 = n_paginas == 1
+    h_tab1 = CAB_TAB + tamanhos[0] * LINHA_TAB + (TOTAL_NOTA if so_p1 else 0)
+    h_mapa = U - 2 * GAP - hb - h_tab1
+
     pg = nova_pagina(W, H)
-    if orient == 'paisagem':
-        mw = W * 0.63
-        escala = _mapa(pg, dados, gdf, M, M, mw, H - 2 * M)
-        px, pw = M + mw + 7, W - (M + mw + 7) - M
-        _tabela(pg, dados, px, M, pw, H - 2 * M - altura - 6)
-        _carimbo(pg, dados, px, H - M - altura, pw, escala, quadros_linhas)
-    else:
-        mh = H - 2 * M - altura - 8
-        escala = _mapa(pg, dados, gdf, M, M, W - 2 * M, mh)
-        cw = (W - 2 * M - 8) / 2
-        _tabela(pg, dados, M, M + mh + 8, cw, altura)
-        _carimbo(pg, dados, M + cw + 8, M + mh + 8, cw, escala, quadros_linhas)
-    h_tab = (H - 2 * M - altura - 6) if orient == 'paisagem' else altura
+    escala = _mapa(pg, dados, gdf, M, TOPO, LARG, h_mapa)
+    yb = TOPO + h_mapa + GAP
+    _carimbo(pg, dados, yb, hb, escala)
+    y_tab = yb + hb + GAP
+    _tabela(pg, y_tab, 'APLICAÇÕES POR TALHÃO', linhas[:tamanhos[0]], total if so_p1 else None)
+    _rodape(pg, dados, 1, n_paginas)
+
     with PdfPages(destino) as pdf:
         pdf.savefig(pg.fig)
         plt.close(pg.fig)
-        if not cabe(len(linhas_tabela(dados)), h_tab - RESERVA_LEGENDA):
-            total = ['Total', br(area_total(dados)), '', '', '', '']
-            paginas_tabela(pdf, W, H, COLS, linhas_tabela(dados), total, _cabecalho_extra(dados))
-    return orient
+        inicio = tamanhos[0]
+        for k, qtd in enumerate(tamanhos[1:], start=2):
+            pg = nova_pagina(W, H)
+            _cabecalho_extra(pg, dados)
+            ultima = k == n_paginas
+            _tabela(pg, TOPO_CONT, 'APLICAÇÕES POR TALHÃO (continuação)', linhas[inicio:inicio + qtd],
+                    total if ultima else None)
+            _rodape(pg, dados, k, n_paginas)
+            pdf.savefig(pg.fig)
+            plt.close(pg.fig)
+            inicio += qtd
+    return 'retrato'
 
 
 def gerar_bytes(json_texto: str) -> bytes:
