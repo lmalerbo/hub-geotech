@@ -62,7 +62,10 @@ function crTalhoesForaDaBase(areas, geo) {
 function crMontarDados(c) {
   const areas = {};
   for (const [t, v] of Object.entries(c.areas)) areas[String(t)] = { area_ha: Number(v.area_ha), editada: !!v.editada };
-  return { cod_faz: c.codFaz, nome: c.nome, operacao: c.operacao, data: c.data, gerado_por: c.geradoPor,
+  const hoje = new Date();
+  const geradoEm = c.geradoEm || [hoje.getFullYear(), String(hoje.getMonth() + 1).padStart(2, '0'),
+                                  String(hoje.getDate()).padStart(2, '0')].join('-');   // data local, não UTC
+  return { cod_faz: c.codFaz, nome: c.nome, operacao: c.operacao, data: c.data, gerado_por: c.geradoPor, gerado_em: geradoEm,
            talhoes_geo: c.geo, areas,
            aplicacoes: crOrdenadas(c.apls).map(a => ({ tipo: a.tipo, calcario: a.calcario || null, dose: crNum(a.dose),
              dose_gesso: a.dose_gesso == null ? null : crNum(a.dose_gesso), os: String(a.os).trim(), ordem: a.ordem,
@@ -510,51 +513,41 @@ Object.assign(crApiReal, {
       .eq('mapa_id', mapaId).eq('talhao_num', talhao);
     if (error) throw error;
   },
+  // Aplicar, editar e excluir rodam no banco numa transação só (funções hub.corretivo_*), com trava por mapa:
+  // ou grava tudo ou nada — sem aplicação órfã por duplo clique, falha no meio ou duas abas ao mesmo tempo.
   async aplicar(mapaId, p) {
-    const sb = crSb();
-    await crInserirTalhoesFaltantes(mapaId, p.talhoes, p.areas);
-    const { data: ords, error: e1 } = await sb.from('corretivo_aplicacoes').select('ordem').eq('mapa_id', mapaId);
-    if (e1) throw e1;
-    const ordem = Math.max(0, ...ords.map(o => o.ordem)) + 1;
-    const { data: ap, error: e2 } = await sb.from('corretivo_aplicacoes')
-      .insert({ mapa_id: mapaId, tipo: p.tipo, calcario: p.calcario, dose: p.dose, dose_gesso: p.dose_gesso, os: p.os, ordem })
-      .select('id').single();
-    if (e2) throw e2;
-    const { error: e3 } = await sb.from('corretivo_aplicacao_talhoes')
-      .insert(p.talhoes.map(t => ({ aplicacao_id: ap.id, mapa_id: mapaId, talhao_num: t })));
-    if (e3) throw e3;
+    const { error } = await crSb().rpc('corretivo_aplicar', {
+      p_mapa_id: mapaId,
+      p_aplicacao: { tipo: p.tipo, calcario: p.calcario, dose: p.dose, dose_gesso: p.dose_gesso, os: p.os },
+      p_talhoes: crTalhoesRpc(p.talhoes, p.areas),
+    });
+    if (error) throw error;
   },
   async editarAplicacao(mapaId, aplId, p) {
-    const sb = crSb();
-    const { data: antes, error: e0 } = await sb.from('corretivo_aplicacao_talhoes').select('talhao_num').eq('aplicacao_id', aplId);
-    if (e0) throw e0;
-    const { error: e1 } = await sb.from('corretivo_aplicacoes').update({ dose: p.dose, dose_gesso: p.dose_gesso, os: p.os }).eq('id', aplId);
-    if (e1) throw e1;
-    await crInserirTalhoesFaltantes(mapaId, p.talhoes, p.areas);
-    const { error: e2 } = await sb.from('corretivo_aplicacao_talhoes').delete().eq('aplicacao_id', aplId);
-    if (e2) throw e2;
-    const { error: e3 } = await sb.from('corretivo_aplicacao_talhoes')
-      .insert(p.talhoes.map(t => ({ aplicacao_id: aplId, mapa_id: mapaId, talhao_num: t })));
-    if (e3) throw e3;
-    await crLimparOrfaos(mapaId, antes.map(v => v.talhao_num).filter(t => !p.talhoes.includes(t)));
+    const { error } = await crSb().rpc('corretivo_editar_aplicacao', {
+      p_aplicacao_id: aplId,
+      p_campos: { dose: p.dose, dose_gesso: p.dose_gesso, os: p.os },
+      p_talhoes: crTalhoesRpc(p.talhoes, p.areas),
+    });
+    if (error) throw error;
   },
   async excluirAplicacao(mapaId, aplId) {
-    const sb = crSb();
-    const { data: antes, error: e0 } = await sb.from('corretivo_aplicacao_talhoes').select('talhao_num').eq('aplicacao_id', aplId);
-    if (e0) throw e0;
-    const { error } = await sb.from('corretivo_aplicacoes').delete().eq('id', aplId);
+    const { error } = await crSb().rpc('corretivo_excluir_aplicacao', { p_aplicacao_id: aplId });
     if (error) throw error;
-    await crLimparOrfaos(mapaId, antes.map(v => v.talhao_num));
   },
 });
+function crTalhoesRpc(talhoes, areas) {
+  return talhoes.map(t => ({ talhao_num: t, area_ha: Number(areas[t].area_ha), area_editada: !!areas[t].editada }));
+}
 
 // ── Cálculos da tela (usam as funções puras) ──
 function crTon(v) { return crBr(v) + '\u00a0t'; }
 function crSelecionados() { return Array.from(CR_ST.sel).sort((a, b) => a - b); }
 function crTotalApl(a, areas) {
+  // soma sem arredondar e arredonda uma vez no fim (igual ao Resumo e ao PDF)
   const t = a.talhoes.reduce((s, x) => {
     const ha = Number(areas[x] ? areas[x].area_ha : 0);
-    return s + crTotal(ha, a.dose) + (a.tipo === 'blend' ? crTotal(ha, a.dose_gesso) : 0);
+    return s + ha * a.dose + (a.tipo === 'blend' ? ha * a.dose_gesso : 0);
   }, 0);
   return Math.round(t * 100) / 100;
 }
@@ -729,6 +722,19 @@ async function crSalvarArea(t, valor) {
   await crRecarregar();
 }
 async function crAplicarMarcados() {
+  if (CR_ST.gravando) return;                   // duplo clique: a segunda chamada é ignorada
+  CR_ST.gravando = true;
+  const botao = document.querySelector('[data-aplicar]');
+  if (botao) { botao.disabled = true; botao.setAttribute('aria-busy', 'true'); }
+  try {
+    await crAplicarMarcadosAgora();
+  } finally {
+    CR_ST.gravando = false;
+    const b = document.querySelector('[data-aplicar]');
+    if (b) b.removeAttribute('aria-busy');
+  }
+}
+async function crAplicarMarcadosAgora() {
   const f = CR_ST.form;
   const talhoes = crSelecionados();
   const dados = {

@@ -51,6 +51,14 @@ def test_pdf_basico(tmp_path):
     assert 'Rev' not in texto
 
 
+def test_rodape_usa_a_data_em_que_o_pdf_foi_gerado(tmp_path):
+    # Revisão de 16/10: o rodapé mostrava a data do mapa; um PDF gerado semanas depois saía com a data errada.
+    destino = tmp_path / 'c.pdf'
+    gerar_pdf({**_dados(), 'gerado_em': '2026-11-03'}, destino)
+    _, texto = _texto(destino)
+    assert 'Gerado em 03/11/2026 por Ana' in texto
+
+
 def test_gerar_bytes_igual_ao_arquivo(tmp_path):
     b = gerar_bytes(json.dumps(_dados()))
     assert b.startswith(b'%PDF')

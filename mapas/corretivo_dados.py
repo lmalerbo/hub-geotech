@@ -92,7 +92,10 @@ def faixas(geom: BaseGeometry, n: int) -> list[BaseGeometry]:
     if n <= 1:
         return [geom]
     minx, miny, maxx, maxy = geom.bounds
-    umin, umax = minx + miny, maxx + maxy
+    # intervalo de x+y pelos vértices (não pelo retângulo envolvente, que deixava faixa vazia); igual a crFaixas na tela
+    somas = [x + y for parte in getattr(geom, 'geoms', [geom])
+             for anel in [parte.exterior, *parte.interiors] for x, y in anel.coords]
+    umin, umax = min(somas), max(somas)
     passo = (umax - umin) / n
     folga = (maxx - minx) + (maxy - miny) + 1
     partes = []

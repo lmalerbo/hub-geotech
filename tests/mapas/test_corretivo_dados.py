@@ -73,6 +73,17 @@ def test_faixas_cobrem_talhao(n):
     assert all(not p.is_empty for p in partes)
 
 
+@pytest.mark.parametrize('n', [2, 3])
+@pytest.mark.parametrize('talhao', [Polygon([(0, 0), (1, 0), (0, 1)]),            # triângulo
+                                    Polygon([(1, 0), (2, 1), (1, 2), (0, 1)])])   # losango
+def test_faixas_nunca_saem_vazias(talhao, n):
+    # Revisão de 16/10: com o intervalo pelo retângulo envolvente, a 2ª faixa do triângulo saía vazia
+    # e a cor da 2ª aplicação sumia do PDF. O intervalo tem de vir dos vértices, como na tela (crFaixas).
+    partes = faixas(talhao, n)
+    assert all(p.area > 1e-9 for p in partes), [p.area for p in partes]
+    assert sum(p.area for p in partes) == pytest.approx(talhao.area, rel=1e-9)
+
+
 def test_faixas_cobrem_talhao_multiparte():
     t = MultiPolygon([box(0, 0, 50, 50).difference(box(20, 20, 30, 30)), box(80, 0, 120, 40)])
     partes = faixas(t, 3)

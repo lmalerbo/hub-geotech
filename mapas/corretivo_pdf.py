@@ -40,6 +40,11 @@ def _data(dados) -> datetime.date:
     return datetime.date.fromisoformat(str(dados['data'])[:10])
 
 
+def _gerado_em(dados) -> datetime.date:
+    """Data em que o PDF foi gerado (rodapé), como no Drone; sem ela, a data do mapa."""
+    return datetime.date.fromisoformat(str(dados.get('gerado_em') or dados['data'])[:10])
+
+
 def _aplicacoes_por_talhao(dados) -> dict:
     por_talhao: dict[int, list[dict]] = {}
     for a in _ordenadas(dados):
@@ -183,7 +188,7 @@ def _carimbo(pg: Pagina, dados, x, y, w, escala, quadros_linhas):
     caixa_norte(pg, x + w - 7, y + 1.3)
     y += 13
     rodape(pg, x, y, w, 'Pedra Agroindustrial S/A · Geotecnologia',
-           f"Gerado em {_data(dados):%d/%m/%Y} por {dados.get('gerado_por', '')}")
+           f"Gerado em {_gerado_em(dados):%d/%m/%Y} por {dados.get('gerado_por', '')}")
 
 
 def _altura_carimbo(dados) -> float:

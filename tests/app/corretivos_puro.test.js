@@ -58,7 +58,11 @@ test('talhões fora da base', () => {
 test('JSON para o gerador e nome do arquivo', () => {
   const d = ctx.crMontarDados({ codFaz: 10156, nome: 'F', operacao: 'arado', data: '2026-10-15', geradoPor: 'Ana',
                                 geo: { type: 'FeatureCollection', features: [] }, areas: AREAS, apls: [DOL] });
-  igual(Object.keys(d).sort(), ['aplicacoes', 'areas', 'cod_faz', 'data', 'gerado_por', 'nome', 'operacao', 'talhoes_geo']);
+  igual(Object.keys(d).sort(), ['aplicacoes', 'areas', 'cod_faz', 'data', 'gerado_em', 'gerado_por', 'nome', 'operacao', 'talhoes_geo']);
+  assert.match(d.gerado_em, /^\d{4}-\d{2}-\d{2}$/);       // data de hoje (rodapé "Gerado em"), não a data do mapa
+  assert.strictEqual(ctx.crMontarDados({ codFaz: 1, nome: 'F', operacao: 'arado', data: '2026-10-15', geradoPor: 'A',
+                                         geradoEm: '2026-11-03', geo: { type: 'FeatureCollection', features: [] },
+                                         areas: AREAS, apls: [DOL] }).gerado_em, '2026-11-03');
   assert.strictEqual(d.areas['4'].editada, true);
   assert.strictEqual(ctx.crNomeArquivo(10156, 'arado', '2026-10-15'), 'corretivo_10156_arado_2026-10-15.pdf');
 });

@@ -88,6 +88,18 @@ try:
         apls = b.selecionar('corretivo_aplicacoes', 'id,tipo,os', {'mapa_id': f'eq.{mapa_id}'})
         confere(sorted(a['os'] for a in apls) == ['E2E-1', 'E2E-2'], 'duas aplicações gravadas (calcário e blend)')
 
+        # duplo clique em "Aplicar": grava uma aplicação só (revisão de 16/10: antes sobrava aplicação sem talhão)
+        pg.evaluate("([f, ts]) => { CR_ST.sel = new Set(ts); Object.assign(CR_ST.form, f); crAtualizarEstados(); crRenderPainel(); }",
+                    [{'tipo': 'fosfato', 'calcario': None, 'dose': '0.5', 'gesso': '', 'os': 'E2E-3'}, [A]])
+        pg.dblclick('[data-aplicar]')
+        pg.wait_for_timeout(3000)
+        e2e3 = b.selecionar('corretivo_aplicacoes', 'id', {'mapa_id': f'eq.{mapa_id}', 'os': 'eq.E2E-3'})
+        sem_talhao = [a for a in b.selecionar('corretivo_aplicacoes', 'id,corretivo_aplicacao_talhoes(talhao_num)',
+                                              {'mapa_id': f'eq.{mapa_id}'}) if not a['corretivo_aplicacao_talhoes']]
+        confere(len(e2e3) == 1 and not sem_talhao, 'duplo clique grava uma aplicação só, sem aplicação órfã')
+        if e2e3:
+            b.rpc('corretivo_excluir_aplicacao', {'p_aplicacao_id': e2e3[0]['id']})
+
         aplicar({'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': '2', 'gesso': '', 'os': 'E2E-1'}, [A])
         confere(len(b.selecionar('corretivo_aplicacoes', 'id', {'mapa_id': f'eq.{mapa_id}'})) == 2,
                 'a tela recusa a mesma aplicação no mesmo talhão')
