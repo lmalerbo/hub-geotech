@@ -59,3 +59,11 @@ def test_senha_definida_so_desliga_a_propria(banco, pessoa, como):
     como(a, 'select hub.senha_definida()')
     assert banco.execute('select precisa_trocar_senha from hub.usuarios where id=%s', (a,)).fetchone() == (False,)
     assert banco.execute('select precisa_trocar_senha from hub.usuarios where id=%s', (b,)).fetchone() == (True,)
+
+
+def test_meu_acesso_geomap(banco, pessoa, como):
+    adm = pessoa('adm5@x.com', admin=True)
+    uid = pessoa('gm@x.com')
+    assert como(uid, 'select hub.meu_acesso_geomap()') == [(False,)]
+    salvar(como, adm, 'gm@x.com', gm_ativo=True)
+    assert como(uid, 'select hub.meu_acesso_geomap()') == [(True,)]
