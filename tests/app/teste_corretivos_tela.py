@@ -98,7 +98,7 @@ try:
                                               {'mapa_id': f'eq.{mapa_id}'}) if not a['corretivo_aplicacao_talhoes']]
         confere(len(e2e3) == 1 and not sem_talhao, 'duplo clique grava uma aplicação só, sem aplicação órfã')
         if e2e3:
-            b.rpc('corretivo_excluir_aplicacao', {'p_aplicacao_id': e2e3[0]['id']})
+            remover('corretivo_aplicacoes', {'id': f"eq.{e2e3[0]['id']}"})
 
         aplicar({'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': '2', 'gesso': '', 'os': 'E2E-1'}, [A])
         confere(len(b.selecionar('corretivo_aplicacoes', 'id', {'mapa_id': f'eq.{mapa_id}'})) == 2,
