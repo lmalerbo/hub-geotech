@@ -285,8 +285,11 @@ def _tabela(pg: Pagina, y, titulo, linhas, total):
         pg.texto(M + fx, y + 8.0, nome, 10, MARCA, 'bold', ha=ha, va='center')
     pg.ret(M, y + 10.4, LARG, 0.35, GRAFITE)
     yy = y + CAB_TAB
-    for i, valores in enumerate(linhas):
-        if i % 2:
+    grupo = -1
+    for valores in linhas:
+        if valores[0]:                     # linha que abre um talhão (as seguintes do mesmo talhão vêm com '')
+            grupo += 1
+        if grupo % 2:                      # zebrado por TALHÃO: as linhas do mesmo talhão têm o mesmo fundo
             pg.ret(M, yy, LARG, LINHA_TAB, '#f4f6f5')
         _linha_tabela(pg, yy, valores)
         yy += LINHA_TAB
