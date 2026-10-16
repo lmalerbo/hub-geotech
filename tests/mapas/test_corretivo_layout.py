@@ -105,11 +105,59 @@ def test_nenhum_texto_sobre_outro(pdf):
             assert inter.get_area() / menor < 0.15, f'{nome} pág. {i + 1}: "{ta}" sobre "{tb}"'
 
 
+def _linha_da_tabela(s, spans):
+    """Rótulo com dose e total (decimais) na mesma altura = linha da tabela."""
+    y = (s['bbox'][1] + s['bbox'][3]) / 2
+    return sum(1 for t in spans if t is not s and t['bbox'][1] <= y <= t['bbox'][3]
+               and re.search(r'\d,\d\d', t['text'])) >= 2
+
+
 def test_tabela_e_legenda_com_letra_grande(pdf):
+    # Só a TABELA e a LEGENDA crescem (pedido do usuário); os títulos dos quadros de totais do carimbo
+    # ("Calcário Dolomítico", "Fosfato"…) ficam do tamanho de antes e todos iguais entre si.
     nome, doc = pdf
-    tamanhos = [s['size'] for p in doc for s in _spans(p) if s['text'].strip() in ROTULOS + ('Blend',)]
-    assert tamanhos, nome
-    assert min(tamanhos) >= LETRA_TABELA - 0.5, f'{nome}: letra da tabela/legenda {min(tamanhos):.1f} pt'
+    tabela, legenda = [], {}
+    for p in doc:
+        spans = list(_spans(p))
+        for s in spans:
+            t = s['text'].strip()
+            if t in ROTULOS and _linha_da_tabela(s, spans):
+                tabela.append(s['size'])
+            elif t in ROTULOS + ('Blend',):
+                legenda[t] = max(legenda.get(t, 0), s['size'])
+    assert tabela, f'{nome}: tabela sem linhas'
+    assert min(tabela) >= LETRA_TABELA - 0.5, f'{nome}: letra da tabela {min(tabela):.1f} pt'
+    assert legenda and min(legenda.values()) >= LETRA_TABELA - 0.5, f'{nome}: legenda {legenda}'
+
+
+def test_titulos_dos_quadros_de_totais_iguais(pdf):
+    nome, doc = pdf
+    titulos = ('Calcário Dolomítico', 'Calcário PH7', 'Fosfato', 'Blend Dolomítico', 'Blend PH7')
+    p = doc[0]
+    spans = list(_spans(p))
+    tamanhos = {round(s['size'], 1) for s in spans if s['text'].strip() in titulos and not _linha_da_tabela(s, spans)
+                and s['size'] < LETRA_TABELA - 0.5}
+    grandes = [s['text'] for s in spans if s['text'].strip() in titulos and s['size'] >= LETRA_TABELA - 0.5]
+    assert not grandes, f'{nome}: título de quadro de totais em letra de tabela: {grandes}'
+    assert len(tamanhos) <= 1, f'{nome}: títulos dos quadros com tamanhos diferentes {tamanhos}'
+
+
+def test_talhao_nunca_partido_entre_paginas(pdf):
+    # A primeira linha da tabela em cada página traz o número do talhão (o operador nunca vê
+    # "Fosfato" solto no topo da página sem saber de qual talhão é).
+    nome, doc = pdf
+    for i, p in enumerate(doc):
+        spans = list(_spans(p))
+        linhas = sorted((s for s in spans if s['text'].strip() in ROTULOS and _linha_da_tabela(s, spans)),
+                        key=lambda s: s['bbox'][1])
+        if not linhas:
+            continue
+        primeira = linhas[0]
+        y = (primeira['bbox'][1] + primeira['bbox'][3]) / 2
+        a_esquerda = [t['text'].strip() for t in spans
+                      if t['bbox'][1] <= y <= t['bbox'][3] and t['bbox'][2] <= primeira['bbox'][0]]
+        assert any(re.fullmatch(r'\d+', t) for t in a_esquerda), \
+            f'{nome} pág. {i + 1}: primeira linha "{primeira["text"]}" sem o número do talhão ({a_esquerda})'
 
 
 def test_cada_linha_aparece_uma_vez_e_inteira(pdf):
