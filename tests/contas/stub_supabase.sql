@@ -1,0 +1,30 @@
+-- O mínimo do Supabase para rodar as migrações de acesso num Postgres local:
+-- papéis, auth.users e auth.uid() (lido de request.jwt.claim.sub, como no Supabase).
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+end $$;
+create schema auth;
+create table auth.users (
+  id uuid primary key default gen_random_uuid(),
+  email text, encrypted_password text, banned_until timestamptz, last_sign_in_at timestamptz,
+  updated_at timestamptz
+);
+create function auth.uid() returns uuid language sql stable as $$
+  select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+create schema hub;
+grant usage on schema hub, auth to anon, authenticated, service_role;
+create table hub.modulos (id text primary key, nome text not null, ordem int not null, ativo boolean not null default true);
+insert into hub.modulos values ('plantio','Plantio',1,true),('preparo','Preparo',2,true),('colheita','Colheita',3,true),('drone','Drone',4,true);
+create table hub.usuarios (
+  id uuid primary key references auth.users (id) on delete cascade, nome text not null,
+  papel text not null default 'leitura' check (papel in ('editor','leitura','solicitante')),
+  admin boolean not null default false, criado_em timestamptz not null default now());
+create table hub.usuario_modulos (usuario_id uuid not null references hub.usuarios (id) on delete cascade,
+  modulo_id text not null references hub.modulos (id), primary key (usuario_id, modulo_id));
+create table hub.log_auditoria (id bigint generated always as identity primary key, modulo_id text,
+  entidade_tipo text not null constraint log_auditoria_entidade_tipo_check check (entidade_tipo in ('fazenda','talhao')),
+  entidade_id bigint not null, campo text not null, valor_anterior text, valor_novo text,
+  usuario_id uuid references hub.usuarios (id), origem text not null default 'usuario', criado_em timestamptz not null default now());
+create table hub.parametros (chave text primary key, valor text not null, descricao text, atualizado_em timestamptz not null default now());
