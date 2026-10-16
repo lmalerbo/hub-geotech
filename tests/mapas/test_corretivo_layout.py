@@ -1,5 +1,6 @@
 """Layout de impressão do PDF de corretivos (pedido de 16/10/2026: tabela 3x maior para operadores idosos).
-Regras que valem para QUALQUER mapa: folha A4 em pé; nada sai da margem; nada se sobrepõe; tabela e legenda
+Regras que valem para QUALQUER mapa: fazenda em pé = A4 em pé com a tabela abaixo do mapa; fazenda larga = A4
+deitada, folha 1 só com mapa e carimbo e a tabela grande da folha 2 em diante (pedido de 16/10); nada sai da margem; nada se sobrepõe; tabela e legenda
 com letra grande; tabela longa continua nas páginas seguintes sem partir linha, com título, cabeçalho,
 rodapé e "Página k de n" em todas."""
 import itertools
@@ -15,6 +16,7 @@ from mapas.corretivo_pdf import gerar_pdf
 pymupdf = pytest.importorskip('pymupdf')
 PARA_4326 = Transformer.from_crs(31983, 4326, always_xy=True).transform
 A4_RETRATO = (595.3, 841.9)          # pontos
+A4_PAISAGEM = (841.9, 595.3)
 MARGEM = 14.0                         # ~5 mm: nenhum texto encosta na borda
 LETRA_TABELA = 13.0                   # ~3x a letra antiga (4,5–6 pt)
 ROTULOS = ('Calc. Dolomítico', 'Calc. PH7', 'Fosfato', 'Blend · Dolomítico', 'Blend · PH7', '+ Gesso')
@@ -58,6 +60,8 @@ CASOS = {
     'muitas_os': _dados(30, [_ap('calcario', t, [t], 2 + t / 100, os=f'98{t:04d}') for t in range(1, 31)]),
     'fazenda_em_pe': _dados(9, [_ap('calcario', 1, [1, 2, 3], 2.11), _ap('fosfato', 2, [3, 4], 0.53)],
                             deitada=False),
+    'em_pe_60_talhoes': _dados(60, [_ap('calcario', 1, list(range(1, 61)), 2.37, os='3211'),
+                                    _ap('fosfato', 2, list(range(1, 61)), 0.53, os='32111')], deitada=False),
     '3_aplicacoes_no_talhao': _dados(2, [_ap('calcario', 1, [1], 2.11), _ap('fosfato', 2, [1], 0.53),
                                          _ap('blend', 3, [1, 2], 1.44, calcario='ph7', gesso=0.95)]),
 }
@@ -78,10 +82,28 @@ def pdf(request, tmp_path_factory):
     return request.param, pymupdf.open(destino)
 
 
-def test_folha_a4_em_pe(pdf):
-    _, doc = pdf
-    for p in doc:
-        assert (round(p.rect.width, 1), round(p.rect.height, 1)) == A4_RETRATO
+def _deitada(nome):
+    from mapas.layout import orientacao
+    from mapas.corretivo_pdf import _gdf
+    return orientacao(_gdf(CASOS[nome])) == 'paisagem'
+
+
+def test_folha_a4_na_orientacao_da_fazenda(pdf):
+    # Todas as folhas na mesma orientação (impressão sem girar folha no meio do documento).
+    nome, doc = pdf
+    esperado = A4_PAISAGEM if _deitada(nome) else A4_RETRATO
+    for i, p in enumerate(doc):
+        assert (round(p.rect.width, 1), round(p.rect.height, 1)) == esperado, f'{nome} pág. {i + 1}'
+
+
+def test_fazenda_larga_tabela_comeca_na_folha_2(pdf):
+    nome, doc = pdf
+    if not _deitada(nome):
+        return
+    assert len(doc) >= 2, f'{nome}: paisagem precisa da folha 2 para a tabela'
+    spans = list(_spans(doc[0]))
+    assert not [s for s in spans if s['text'].strip() in ROTULOS and _linha_da_tabela(s, spans)],         f'{nome}: folha 1 em paisagem tem linhas da tabela'
+    assert 'APLICAÇÕES POR TALHÃO' in doc[1].get_text() and '(continuação)' not in doc[1].get_text()
 
 
 def test_nenhum_texto_sai_da_margem(pdf):
@@ -187,8 +209,9 @@ def test_toda_pagina_organizada(pdf):
     n = len(doc)
     for i, p in enumerate(doc):
         texto = p.get_text()
+        spans = list(_spans(p))
         assert 'Gerado em' in texto, f'{nome} pág. {i + 1}: sem rodapé'
-        if any(r in texto for r in ROTULOS):
+        if any(s['text'].strip() in ROTULOS and _linha_da_tabela(s, spans) for s in spans):   # legenda não conta
             assert 'TALHÃO' in texto and 'O.S.' in texto, f'{nome} pág. {i + 1}: tabela sem cabeçalho'
         if n > 1:
             assert f'Página {i + 1} de {n}' in texto, f'{nome} pág. {i + 1}: sem numeração'
