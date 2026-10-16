@@ -2,7 +2,7 @@ import math
 
 import geopandas as gpd
 import pytest
-from shapely.geometry import LineString, Point, box
+from shapely.geometry import LineString, MultiPolygon, Point, box
 
 from drone.erros import ErroGeracao
 from drone.geometria import recortar, uniao_buffers
@@ -46,6 +46,16 @@ def test_catacao_manchas_a_mais_de_20m_ficam_separadas(talhoes):
     longe = [box(10, 40, 12, 42), box(40, 40, 42, 42)]          # 28 m entre elas
     r = recortar(talhoes, uniao_buffers({}, {}), infestacao=longe, agrupar=20, folga=5)
     assert len(r.area.geoms) == 2
+
+
+def test_catacao_manchas_num_registro_so_sao_agrupadas_uma_a_uma(talhoes):
+    # Shape do levantamento com todas as manchas num único registro (MultiPolygon),
+    # como veio a Catação da 10678: cada mancha conta separada no agrupamento,
+    # e não um contorno só em volta de todas.
+    longe = MultiPolygon([box(10, 40, 12, 42), box(40, 40, 42, 42)])   # 28 m entre elas
+    r = recortar(talhoes, uniao_buffers({}, {}), infestacao=[longe], agrupar=20, folga=5)
+    assert len(r.area.geoms) == 2
+    assert r.aplicacao_ha == pytest.approx(2 * 12 * 12 / 1e4, rel=0.02)
 
 
 def test_catacao_bloco_tem_poucos_vertices(talhoes):

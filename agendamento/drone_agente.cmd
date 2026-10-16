@@ -7,4 +7,7 @@ set PYTHONIOENCODING=utf-8
 set PYTHONWARNINGS=ignore
 echo ===== %date% %time% agente iniciado ===== >> agendamento\logs\drone_agente.log
 python -m drone.agente >> agendamento\logs\drone_agente.log 2>&1
-echo codigo de saida: %errorlevel% >> agendamento\logs\drone_agente.log
+set CODIGO=%errorlevel%
+echo codigo de saida: %CODIGO% >> agendamento\logs\drone_agente.log
+REM Devolve o codigo ao Agendador: falha aparece como falha, nao como "exito".
+exit /b %CODIGO%

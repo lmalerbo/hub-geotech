@@ -26,6 +26,13 @@ def so_poligonos(geom: BaseGeometry) -> MultiPolygon:
     return MultiPolygon([p for p in partes if p.area >= AREA_MINIMA_M2])
 
 
+def _partes(geom: BaseGeometry) -> list:
+    """Geometrias simples (polígono, linha, ponto) de qualquer coleção, sem as vazias."""
+    if hasattr(geom, 'geoms'):
+        return [p for g in geom.geoms for p in _partes(g)]
+    return [] if geom.is_empty else [geom]
+
+
 def uniao_buffers(obstaculos: dict, distancias: dict) -> BaseGeometry:
     partes = [make_valid(g).buffer(distancias[classe])
               for classe, geoms in obstaculos.items() for g in geoms if not g.is_empty]
@@ -35,7 +42,9 @@ def uniao_buffers(obstaculos: dict, distancias: dict) -> BaseGeometry:
 def blocos_catacao(manchas: list, agrupar: float, folga: float, tolerancia: float = 3.0) -> BaseGeometry:
     """Manchas a até `agrupar` m viram um grupo; cada grupo vira o contorno das suas manchas
     + `folga` m, com cantos retos e poucos vértices (desenho que o drone consegue voar)."""
-    manchas = [make_valid(m) for m in manchas if not m.is_empty]
+    # Cada mancha conta sozinha no agrupamento, mesmo quando o shape traz várias
+    # num registro só (MultiPolygon): senão o contorno abraça todas de uma vez.
+    manchas = [p for m in manchas if not m.is_empty for p in _partes(make_valid(m))]
     if not manchas:
         return Polygon()
     grupos = unary_union([m.buffer(agrupar / 2) for m in manchas])
