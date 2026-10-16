@@ -48,7 +48,7 @@ H = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(RAIZ /
 H.log_message = lambda *a: None
 srv = socketserver.TCPServer(('127.0.0.1', 0), H)
 threading.Thread(target=srv.serve_forever, daemon=True).start()
-url = f'http://127.0.0.1:{srv.server_address[1]}/corretivos.html'
+url = f'http://127.0.0.1:{srv.server_address[1]}/aplicacao.html'
 mapa_id = None
 try:
     if not tinha_modulo:

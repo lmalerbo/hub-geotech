@@ -9,14 +9,16 @@ update hub.modulos set nome = 'Mapas de aplicação' where id = 'corretivos';
 -- Cadastro de insumos: quem usa a ferramenta lê e mantém. Remover = ativo false (mapas antigos guardam cópia).
 create table hub.insumos (
   id             bigint generated always as identity primary key,
-  codigo         int unique,
+  codigo         int,
   nome           text not null check (nome = trim(nome) and length(nome) > 0),
   unidade        text not null check (unidade in ('L', 'KG')),
   dose_sugerida  numeric check (dose_sugerida > 0),
   ativo          boolean not null default true,
   criado_em      timestamptz not null default now()
 );
-create unique index insumos_nome_unico on hub.insumos (upper(nome));
+-- Nome único só entre os ativos: um insumo removido pode ser cadastrado de novo.
+create unique index insumos_nome_unico on hub.insumos (upper(nome)) where ativo;
+create unique index insumos_codigo_unico on hub.insumos (codigo) where ativo;
 
 alter table hub.insumos enable row level security;
 create policy insumos on hub.insumos for all to authenticated

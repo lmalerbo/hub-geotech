@@ -99,3 +99,14 @@ def test_aplicacao_de_insumo_exige_insumo(como, pessoa):
     mapa = _mapa(como, uid, 'aerea')
     r = _aplicar(como, uid, mapa, {'tipo': 'insumo', 'dose': 1, 'os': '1'})
     assert r[0] == 'ERRO'
+
+
+def test_insumo_removido_pode_ser_cadastrado_de_novo_mas_ativo_nao_repete(como, pessoa):
+    uid = pessoa()
+    como(uid, "insert into hub.insumos (codigo, nome, unidade) values (990001, 'INSUMO VAI E VOLTA', 'L')")
+    como(uid, "update hub.insumos set ativo = false where nome = 'INSUMO VAI E VOLTA'")
+    de_novo = como(uid, "insert into hub.insumos (nome, unidade) values ('Insumo Vai E Volta', 'KG') returning id")
+    assert como(uid, "update hub.insumos set codigo = 990001 where nome = 'Insumo Vai E Volta' returning codigo") == [(990001,)]
+    assert de_novo and de_novo[0] != 'ERRO', de_novo
+    repetido = como(uid, "insert into hub.insumos (nome, unidade) values ('INSUMO VAI E VOLTA', 'L')")
+    assert repetido[0] == 'ERRO'
