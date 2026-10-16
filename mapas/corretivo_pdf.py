@@ -175,17 +175,52 @@ def _subtitulo(pg: Pagina, lista, max_mm: float, dados):
 
 # ---------- mapa ----------
 
+# Reservas (topo, base, lado) em mm, da mais justa à de sempre: a fazenda chega o mais perto possível da moldura,
+# desde que não fique embaixo do logo (canto sup. esquerdo), da escala (canto inf. esquerdo) nem da legenda.
+RESERVAS = [(5, 5, 5), (12, 9, 6), (22, 14, 8)]
+LOGO_MM, ESCALA_MM = (40, 19), (50, 12)            # cantos ocupados (largura, altura) a partir da moldura
+
+
+def _uniao(gdf):
+    return gdf.geometry.union_all() if hasattr(gdf.geometry, 'union_all') else gdf.geometry.unary_union
+
+
+def _caixa_dados(s, x0, y0, x, y, h, X0, Y0, X1, Y1):
+    """Retângulo da página (mm) nas coordenadas do mapa (metros), para o enquadramento em teste."""
+    return box(x0 + (X0 - x) / s, y0 + (y + h - Y1) / s, x0 + (X1 - x) / s, y0 + (y + h - Y0) / s)
+
+
+def _enquadrar(pg: Pagina, gdf, x, y, w, h, leg):
+    """(ax, s, x0, y0, reserva): o enquadramento mais justo em que nada cobre a fazenda. leg = (bw, bh) da legenda
+    ou None; ela precisa caber num dos cantos direitos sem tocar a fazenda."""
+    uniao = _uniao(gdf)
+    for reserva in RESERVAS:
+        ax, s, x0, y0 = eixo_mapa(pg, gdf, x, y, w, h, reserva=reserva)
+        if reserva == RESERVAS[-1]:
+            return ax, s, x0, y0, reserva
+        livre = lambda X0, Y0, X1, Y1: _caixa_dados(s, x0, y0, x, y, h, X0, Y0, X1, Y1).intersection(uniao).area == 0
+        ok = livre(x, y, x + LOGO_MM[0], y + LOGO_MM[1]) and livre(x, y + h - ESCALA_MM[1], x + ESCALA_MM[0], y + h)
+        if ok and leg:
+            bw, bh = leg
+            ok = livre(x + w - bw - 2.5, y + 2.5, x + w - 2.5, y + 2.5 + bh) or                 livre(x + w - bw - 2.5, y + h - bh - 2.5, x + w - 2.5, y + h - 2.5)
+        if ok:
+            return ax, s, x0, y0, reserva
+        ax.remove()
+
+
 def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
-    ax, s, x0, y0 = eixo_mapa(pg, gdf, x, y, w, h)
+    itens = _itens_legenda(dados)
+    ax, s, x0, y0, _ = _enquadrar(pg, gdf, x, y, w, h, _tamanho_legenda(pg, itens) if itens else None)
     por_talhao = _aplicacoes_por_talhao(dados)
     cores = cores_do_mapa(dados)
     no_mapa = {int(k) for k in dados['areas']}
-    pintados = []                                   # (geometria, número) de cada talhão com geometria
+    pintados = []                                   # (geometria, número, cor) de cada talhão com geometria
     for _, linha in gdf.iterrows():
         t = int(linha['talhao'])
         geom = linha.geometry
-        if t not in no_mapa:                        # talhão da fazenda fora do mapa: branco com contorno
+        if t not in no_mapa:                        # talhão da fazenda fora do mapa: branco, número em cinza
             gpd.GeoSeries([geom], crs=gdf.crs).plot(ax=ax, facecolor='white', edgecolor='none')
+            pintados.append((geom, t, CINZA))
             continue
         aps = por_talhao.get(t, [])
         if not aps:
@@ -196,24 +231,24 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
                     continue
                 gpd.GeoSeries([parte], crs=gdf.crs).plot(ax=ax, facecolor=cores[chave_cor(ap)],
                                                          edgecolor='none', alpha=0.92)
-        pintados.append((geom, t))
+        pintados.append((geom, t, GRAFITE))
     for _, linha in gdf.iterrows():                 # contornos por cima das pinturas
         gpd.GeoSeries([linha.geometry], crs=gdf.crs).plot(ax=ax, facecolor='none', edgecolor=GRAFITE,
                                                           linewidth=0.5)
-    for geom, t in pintados:
+    for geom, t, cor in pintados:
         p = geom.representative_point()
-        ax.text(p.x, p.y, str(t), fontsize=6.5, fontweight='semibold', color=GRAFITE, ha='center',
+        ax.text(p.x, p.y, str(t), fontsize=6.5, fontweight='semibold', color=cor, ha='center',
                 va='center', path_effects=[pe.withStroke(linewidth=2, foreground='white')])
     escala_grafica(ax, s, x0, y0)
     moldura_logo(pg, x, y, w, h, LOGO)
-    _legenda_mapa(pg, dados, x, y, w, h, ax, gdf)
+    _legenda_mapa(pg, itens, x, y, w, h, ax, gdf)
     return escala_numerica(s)
 
 
 def _canto_legenda(pg: Pagina, ax, gdf, x, y, w, h, bw, bh) -> str:
     """'baixo' ou 'cima' (lado direito; à esquerda ficam o logo e a escala): o canto em que a legenda cobre
     menos a fazenda. Empate fica embaixo, como sempre foi."""
-    uniao = gdf.geometry.union_all() if hasattr(gdf.geometry, 'union_all') else gdf.geometry.unary_union
+    uniao = _uniao(gdf)
     para_dados = ax.transData.inverted()
 
     def coberto(by):
@@ -225,21 +260,32 @@ def _canto_legenda(pg: Pagina, ax, gdf, x, y, w, h, bw, bh) -> str:
     return 'cima' if coberto(y + 2.5) < coberto(y + h - bh - 2.5) else 'baixo'
 
 
-def _legenda_mapa(pg: Pagina, dados, x, y, w, h, ax, gdf):
-    """Caixa branca (alpha 0,9) num canto direito do mapa (o que cobre menos a fazenda): só os tipos usados;
-    Blend é um item só."""
+PASSO_LEG, PAD_LEG, SW_LEG = 6.2, 2.5, 5.0
+
+
+def _itens_legenda(dados) -> list:
+    """[(cor, texto)]: só os tipos usados; Blend é um item só; '◩ duas aplicações' se algum talhão tiver duas."""
     cores = cores_do_mapa(dados)
     rotulos: dict[str, str] = {}
     for a in _ordenadas(dados):                  # Blend Dolomítico e PH7 têm a mesma cor: um item só
         rotulos.setdefault(chave_cor(a), 'Blend' if a['tipo'] == 'blend' else rotulo(a))
     if not rotulos:
-        return
+        return []
     duas = any(len(aps) >= 2 for aps in _aplicacoes_por_talhao(dados).values())
-    itens = [(cores[c], t) for c, t in rotulos.items()] + ([(None, '◩ duas aplicações')] if duas else [])
-    passo, pad, sw = 6.2, 2.5, 5.0
-    larg = max(_largura(pg, t, LETRA_LEGENDA) for _, t in itens) + sw + 2.5
-    bw = larg + 2 * pad
-    bh = passo * len(itens) + 2 * pad - 1.2
+    return [(cores[c], t) for c, t in rotulos.items()] + ([(None, '◩ duas aplicações')] if duas else [])
+
+
+def _tamanho_legenda(pg: Pagina, itens) -> tuple:
+    larg = max(_largura(pg, t, LETRA_LEGENDA) for _, t in itens) + SW_LEG + 2.5
+    return larg + 2 * PAD_LEG, PASSO_LEG * len(itens) + 2 * PAD_LEG - 1.2
+
+
+def _legenda_mapa(pg: Pagina, itens, x, y, w, h, ax, gdf):
+    """Caixa branca (alpha 0,9) num canto direito do mapa (o que cobre menos a fazenda)."""
+    if not itens:
+        return
+    passo, pad, sw = PASSO_LEG, PAD_LEG, SW_LEG
+    bw, bh = _tamanho_legenda(pg, itens)
     bx = x + w - bw - 2.5
     by = y + 2.5 if _canto_legenda(pg, ax, gdf, x, y, w, h, bw, bh) == 'cima' else y + h - bh - 2.5
     pg.fig.patches.append(FancyBboxPatch(
