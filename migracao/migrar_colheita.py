@@ -29,7 +29,7 @@ import requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ingestao'))
 from comum import RAIZ, Hub, carregar_config  # noqa: E402
-from sincronizar_usuarios import AuthAdmin  # noqa: E402
+from trazer_usuarios_geomap import AuthAdmin  # noqa: E402  (login único: a sincronização saiu)
 
 TIPOS = {'VANT', 'PROJETO', 'SEM LINHAS'}
 # 10967_TABOCA.4_Exp1L.dwg | 10623.AGROPASTORIL.AMERICANA.Exp2L.zip | 10951_GUANABARA.102_Exp.Mapa.pdf
@@ -131,7 +131,7 @@ def ids_dos_usuarios_antigos(usados):
     faltando = sorted(u for u in usados if email_de.get(u) not in contas)
     if faltando:
         sys.exit(f'Sem conta no Hub para o login antigo {faltando}: preencha usuario_antigo em '
-                 'ingestao/usuarios_hub.json e rode sincronizar_usuarios.py.')
+                 'ingestao/usuarios_hub.json (migração legada, anterior ao login único).')
     return {u: contas[email_de[u]]['id'] for u in usados}
 
 

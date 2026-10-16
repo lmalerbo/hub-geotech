@@ -1,11 +1,10 @@
 # Agendamento no servidor Geo
 
-Quatro tarefas do Agendador de Tarefas do Windows mantêm o Hub atualizado:
+Três tarefas do Agendador de Tarefas do Windows mantêm o Hub atualizado:
 
 | Tarefa | Quando | O que faz |
 |---|---|---|
 | Hub Geotech - Rodada diaria | todo dia, 07:00 | Base Fazendas → PLANAGRI → Conservação → ICOL → regras (`ingestao/rodar_diario.py`) |
-| Hub Geotech - Sincronizar usuarios | a cada hora | contas e senhas do GeoMap → Hub (`ingestao/sincronizar_usuarios.py`) |
 | Hub Geotech - Voos Linhas de Colheita | a cada hora | Regra B da Colheita: agenda no Drone MGMT (via GeoMap) os voos que atingiram porte e acompanha até divulgar (`ingestao/voos_linhas_colheita.py`; precisa de `GEOMAP_API_URL` e `HUB_INTEGRACAO_TOKEN` no `.env`) |
 | Hub Geotech - Agente Drone | a cada 10 min (fica rodando; se já estiver no ar, a chamada é ignorada) | gera e publica os projetos de drone da fila (`python -m drone.agente`) |
 
@@ -27,11 +26,9 @@ No PowerShell do servidor Geo, logado como `geotecnologia`. O Python e o git já
    pip install -r drone/requirements.txt
    ```
 
-2. Copiar os dois arquivos secretos, que **não estão no GitHub**, do PC do Leo para as mesmas posições no servidor:
-   - `hub-geotech-supabase.env`, na raiz do `hub-geotech`;
-   - `ingestao/usuarios_hub.json`.
+2. Copiar o arquivo secreto, que **não está no GitHub**, do PC do Leo para a mesma posição no servidor: `hub-geotech-supabase.env`, na raiz do `hub-geotech`.
 
-3. No `hub-geotech-supabase.env` do servidor, acrescentar uma linha com a conexão do banco do GeoMap. Copie o valor de `DATABASE_URL` que está em `geomap/backend/.env` no PC do Leo:
+3. No `hub-geotech-supabase.env` do servidor, acrescentar uma linha com a conexão do banco do GeoMap (usada pela Regra B da Colheita). Copie o valor de `DATABASE_URL` que está em `geomap/backend/.env` no PC do Leo:
 
    ```text
    GEOMAP_DATABASE_URL=postgresql://...
@@ -49,12 +46,10 @@ No PowerShell do servidor Geo, logado como `geotecnologia`. O Python e o git já
 
    ```powershell
    .\agendamento\rodar_diario.cmd
-   .\agendamento\sincronizar_usuarios.cmd
    Get-Content agendamento\logs\diario.log -Encoding UTF8 -Tail 25
-   Get-Content agendamento\logs\usuarios.log -Encoding UTF8 -Tail 15
    ```
 
-   As duas execuções devem terminar com `codigo de saida: 0`. Use sempre `-Encoding UTF8`: sem ele, o PowerShell 5.1 mostra os acentos quebrados, mas o arquivo está certo.
+   A execução deve terminar com `codigo de saida: 0`. Use sempre `-Encoding UTF8`: sem ele, o PowerShell 5.1 mostra os acentos quebrados, mas o arquivo está certo.
 
 5. Criar as tarefas e rodar uma vez pelo agendador:
 
@@ -80,8 +75,12 @@ No PowerShell do servidor Geo, logado como `geotecnologia`. O Python e o git já
 
   ```powershell
   schtasks /delete /tn "Hub Geotech - Rodada diaria" /f
-  schtasks /delete /tn "Hub Geotech - Sincronizar usuarios" /f
   ```
+
+### Contas (login único, desde 10/2026)
+As contas e senhas são do Hub (tela Usuários). Não há mais sincronização com o GeoMap.
+Na virada, remover a tarefa antiga do servidor:
+`schtasks /delete /tn "Hub Geotech - Sincronizar usuarios" /f`
 
 ## Problemas já conhecidos nessa rede
 
