@@ -95,4 +95,12 @@ grant execute on function hub.acesso_salvar(text, text, text, boolean, text[], b
 grant execute on function hub.acessos_situacao() to authenticated, service_role;
 grant execute on function hub.senha_definida() to authenticated, service_role;
 
+-- A própria pessoa tem acesso ao GeoMap? (card do GeoMap em Ferramentas)
+create or replace function hub.meu_acesso_geomap()
+returns boolean language sql stable security definer set search_path = hub, auth as $$
+  select coalesce((select a.geomap_ativo from hub.acessos a join auth.users u on lower(u.email) = a.email where u.id = auth.uid()), false);
+$$;
+revoke all on function hub.meu_acesso_geomap() from public, anon;
+grant execute on function hub.meu_acesso_geomap() to authenticated;
+
 commit;
