@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'migracao'))
-from trazer_usuarios_geomap import planejar  # noqa: E402
+from trazer_usuarios_geomap import ja_migrado, planejar  # noqa: E402
 
 G = {
     'ana@x.com': {'nome': 'Ana', 'hash': '$2b$10$' + 'a' * 53, 'ativo': True, 'admin': True, 'grupos': [1, 2], 'senha_provisoria': False},
@@ -35,3 +35,17 @@ def test_acesso_do_hub_sem_geomap_continua():
     p = planejar(G, {**A, 'so-hub@x.com': {'nome': 'Só Hub', 'papel': 'leitura', 'admin': False, 'modulos': ['preparo']}})
     so = next(x for x in p if x['email'] == 'so-hub@x.com')
     assert so['acesso']['geomap_ativo'] is False and so['copiar_hash'] is False and so['bloquear'] is False
+
+
+def test_contas_de_servico_do_geomap_ficam_de_fora():
+    # Revisão final: automacao@geoportal.local (admin no GeoMap) mantém o login próprio do GeoMap;
+    # contas @geoportal.local são de serviço/teste e não viram contas do Hub.
+    g = {**G, 'automacao@geoportal.local': {'nome': 'Automação', 'hash': '$2b$10$' + 'z' * 53, 'ativo': True,
+                                            'admin': True, 'grupos': [], 'senha_provisoria': False}}
+    assert 'automacao@geoportal.local' not in {x['email'] for x in planejar(g, A)}
+
+
+def test_segunda_execucao_e_recusada_depois_da_virada():
+    # Revisão final: rodar de novo depois da virada desfaria senhas trocadas no Hub.
+    assert ja_migrado({'ana@x.com': {'geomap_ativo': False}}) is False
+    assert ja_migrado({'ana@x.com': {'geomap_ativo': True}}) is True

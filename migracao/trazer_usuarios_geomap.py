@@ -43,7 +43,7 @@ def ler_geomap():
         host=u.hostname, port=u.port or 5432, database=u.path.lstrip('/'), ssl_context=ctx, timeout=30)
     try:
         con.run('set transaction read only')
-        linhas = con.run("""select lower(u.email), u.nome, u.senha_hash, u.status, u.papel, u.precisa_trocar_senha,
+        linhas = con.run("""select lower(trim(u.email)), u.nome, u.senha_hash, u.status, u.papel, u.precisa_trocar_senha,
                                    coalesce(array_agg(ug.grupo_id) filter (where ug.grupo_id is not null), '{}')
                               from usuarios u left join usuarios_grupos ug on ug.usuario_id = u.id
                              group by u.id""")
@@ -54,9 +54,18 @@ def ler_geomap():
             for e, n, h, s, p, prov, g in linhas}
 
 
+CONTA_DE_SERVICO = '@geoportal.local'   # contas de serviço/teste do GeoMap: mantêm o login próprio, fora do Hub
+
+
+def ja_migrado(acessos):
+    """A virada já rodou? (alguém com GeoMap no Hub). Rodar de novo desfaria senhas trocadas no Hub."""
+    return any(a.get('geomap_ativo') for a in acessos.values())
+
+
 def planejar(geomap, acessos):
     """Lista de ações por e-mail (pura, sem rede)."""
     plano = []
+    geomap = {e: g for e, g in geomap.items() if not e.endswith(CONTA_DE_SERVICO)}
     for email in sorted(set(geomap) | set(acessos)):
         g, a = geomap.get(email), acessos.get(email)
         gm_ativo = bool(g and g['ativo'])
@@ -114,9 +123,13 @@ class AuthAdmin:
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('--simular', action='store_true')
+    ap.add_argument('--forcar', action='store_true', help='rodar de novo depois da virada (desfaz senhas trocadas no Hub!)')
     args = ap.parse_args()
     hub, auth = Hub(), AuthAdmin()
-    acessos = {a['email']: a for a in hub.selecionar('acessos', 'email,nome,papel,admin,modulos', {'order': 'email'})}
+    acessos = {a['email']: a for a in hub.selecionar('acessos', 'email,nome,papel,admin,modulos,geomap_ativo', {'order': 'email'})}
+    if ja_migrado(acessos) and not args.simular and not args.forcar:
+        sys.exit('A virada já foi feita (há acessos com GeoMap no Hub). Rodar de novo desfaria as senhas trocadas '
+                 'no Hub. Se for mesmo necessário, use --forcar.')
     plano, contas = planejar(ler_geomap(), acessos), auth.por_email()
     pendentes = []
     for p in plano:
