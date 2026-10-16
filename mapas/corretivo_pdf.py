@@ -38,12 +38,12 @@ GAP = 4                          # espaço entre mapa, carimbo e tabela
 MAPA_MIN = 0.45 * U              # o mapa nunca fica com menos de ~45% da altura útil
 LETRA_LINHA = 14                 # letra das linhas da tabela
 LINHA_TAB = 7.5                  # altura de cada linha da tabela
-CAB_TAB = 10.2                   # do topo da tabela até a primeira linha (título + cabeçalho)
+CAB_TAB = 11.2                   # do topo da tabela até a primeira linha (título + cabeçalho)
 TOTAL_NOTA = 12.5                # linha de total + nota, no fim da tabela
 TOPO_CONT = 18                   # topo da tabela nas páginas extras (depois do nome da fazenda)
 CAP_EXTRA = int((BASE - TOPO_CONT - CAB_TAB) // LINHA_TAB)
 LETRA_LEGENDA = 13
-WA, WB, WC = 66, 90, 28          # blocos do carimbo (identificação | totais | escala/área/safra)
+WA, WB, WC = 60, 84, 40          # blocos do carimbo (identificação | totais | escala/área/safra)
 COLUNAS = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 42, 'right'), ('APLICAÇÃO', 52, 'left'),
            ('DOSE (t/ha)', 124, 'right'), ('TOTAL (t)', 148, 'right'), ('O.S.', 153, 'left')]
 NOTA = '* área editada · ÁREA ha · DOSE t/ha · TOTAL t'
@@ -202,25 +202,32 @@ def _altura_carimbo(totais) -> float:
     return max(24.0, 19 + 18 * (rows - 1))
 
 
+def _tamanho_titulos(pg: Pagina, titulos, max_mm: float) -> float:
+    """Um tamanho só para todos os títulos dos quadros: 4,8 pt, reduzido (até 4,0) se algum não couber."""
+    tam = 4.8
+    for t in titulos:
+        while tam > 4.0 and _largura(pg, t, tam, 'semibold') > max_mm:
+            tam -= 0.1
+    return round(tam, 1)
+
+
 def _quadros(pg: Pagina, totais, x, y, w):
     gap = 2
     cw = (w - 4 - 2 * gap) / 3
+    tam_titulo = _tamanho_titulos(pg, [q['titulo'] for q in totais], cw - 5)
     for idx, q in enumerate(totais):
         r, c = divmod(idx, 3)
         cx, cy = x + 2 + c * (cw + gap), y + 2 + r * 18
         destaque = idx == 0
         pg.caixa(cx, cy, cw, 15, '#b9dcc4' if destaque else LINHA, '#f1f8f3' if destaque else 'white')
-        if _largura(pg, q['titulo'], LETRA_LEGENDA, 'semibold') <= cw - 5:
-            titulo, t1 = q['titulo'], LETRA_LEGENDA     # rótulo curto (ex.: Fosfato) como na legenda
-        else:
-            titulo, t1 = _caber(pg, q['titulo'], cw - 5, 4.8, 4.0, 'semibold')
-        pg.texto(cx + 2.5, cy + 1.0, titulo, t1, CINZA, 'semibold')
+        pg.texto(cx + 2.5, cy + 1.8, _cortar(pg, q['titulo'], cw - 5, tam_titulo, 'semibold'), tam_titulo,
+                 CINZA, 'semibold')
         valor, t2 = _caber(pg, br(q['toneladas']), cw - 5 - 4, 12, 9, 'bold')
-        pg.texto(cx + 2.5, cy + 6.0, valor, t2, MARCA if destaque else GRAFITE, 'bold')
-        pg.texto(cx + cw - 2.5, cy + 7.8, 't', 5.5, CINZA, 'semibold', ha='right')
+        pg.texto(cx + 2.5, cy + 5, valor, t2, MARCA if destaque else GRAFITE, 'bold')
+        pg.texto(cx + cw - 2.5, cy + 6.8, 't', 5.5, CINZA, 'semibold', ha='right')
         if q['detalhe']:
             det, t3 = _caber(pg, q['detalhe'], cw - 5, 5, 4.0)
-            pg.texto(cx + 2.5, cy + 11.4, det, t3, CINZA)
+            pg.texto(cx + 2.5, cy + 11.2, det, t3, CINZA)
 
 
 def _carimbo(pg: Pagina, dados, yb, hb, escala):
@@ -248,12 +255,12 @@ def _carimbo(pg: Pagina, dados, yb, hb, escala):
     celulas = [('ESCALA', f'1:{escala:,}'.replace(',', '.')),
                (f'ÁREA · {len(dados["areas"])} TALHÕES', f'{br(area_total(dados))} ha'),
                ('SAFRA', safra_de(_data(dados)))]
-    largura_txt = WC - 3 - 8
+    largura_txt = WC - 3 - 10            # a seta do norte fica à direita, sem encostar no texto
     for i, (titulo, valor) in enumerate(celulas):
         cy = yb + 2 + i * 7.2
-        pg.texto(xc + 2.5, cy + 0.3, _cortar(pg, titulo, largura_txt, 4.5, 'semibold'), 4.5, CINZA, 'semibold')
-        pg.texto(xc + 2.5, cy + 3.3, _cortar(pg, valor, largura_txt, 7, 'semibold'), 7, GRAFITE, 'semibold')
-    caixa_norte(pg, xc + WC - 5, yb + 3)
+        pg.texto(xc + 2.5, cy + 0.3, _cortar(pg, titulo, largura_txt, 4.8, 'semibold'), 4.8, CINZA, 'semibold')
+        pg.texto(xc + 2.5, cy + 3.2, _cortar(pg, valor, largura_txt, 7, 'semibold'), 7, GRAFITE, 'semibold')
+    caixa_norte(pg, xc + WC - 5.5, yb + 3)
 
 
 # ---------- tabela ----------
@@ -273,10 +280,10 @@ def _linha_tabela(pg: Pagina, yy: float, valores, bold=False, cor=GRAFITE):
 def _tabela(pg: Pagina, y, titulo, linhas, total):
     """Título, cabeçalho, linhas (zebradas) e, se total não for None, a linha de total e a nota.
     Devolve o y logo abaixo do que foi desenhado."""
-    pg.texto(M, y, titulo, 10, GRAFITE, 'semibold')
+    pg.texto(M, y, titulo, 12, GRAFITE, 'bold')
     for nome, fx, ha in COLUNAS:
-        pg.texto(M + fx, y + 7.2, nome, 10, MARCA, 'bold', ha=ha, va='center')
-    pg.ret(M, y + 9.4, LARG, 0.35, GRAFITE)
+        pg.texto(M + fx, y + 8.0, nome, 10, MARCA, 'bold', ha=ha, va='center')
+    pg.ret(M, y + 10.4, LARG, 0.35, GRAFITE)
     yy = y + CAB_TAB
     for i, valores in enumerate(linhas):
         if i % 2:
@@ -292,21 +299,43 @@ def _tabela(pg: Pagina, y, titulo, linhas, total):
     return yy
 
 
-def _paginar(n: int, hb: float) -> list[int]:
-    """Quantas linhas vão em cada página. Página 1 tem o mapa (>= 45% da altura útil); o total fica na última."""
+def _paginar(linhas: list, hb: float) -> list:
+    """Intervalos (ini, fim) de linhas por página. Quebra só entre talhões (a linha de um talhão nunca se
+    separa); só um talhão maior que a página é partido, e a página seguinte repete o número dele.
+    Página 1 tem o mapa (>= 45% da altura útil); o total e a nota ficam na última página."""
+    n = len(linhas)
+    if n == 0:
+        return [(0, 0)]
     tab_max = U - 2 * GAP - hb - MAPA_MIN
-    if CAB_TAB + n * LINHA_TAB + TOTAL_NOTA <= tab_max:
-        return [n]
-    cap1 = min(int((tab_max - CAB_TAB) // LINHA_TAB), max(n - 1, 0))
-    sizes = [cap1]
-    resto = n - cap1
-    while resto > 0:
-        take = min(resto, CAP_EXTRA)
-        if take == resto and take > CAP_EXTRA - 2:   # deixa ao menos 2 linhas para a página com o total
-            take = CAP_EXTRA - 2
-        sizes.append(take)
-        resto -= take
-    return sizes
+    cap1 = int((tab_max - CAB_TAB) // LINHA_TAB)
+    last1 = int((tab_max - CAB_TAB - TOTAL_NOTA) // LINHA_TAB)
+    capx = CAP_EXTRA
+    lastx = int((BASE - TOPO_CONT - CAB_TAB - TOTAL_NOTA) // LINHA_TAB)
+    inicios = {i for i, linha in enumerate(linhas) if linha[0] != ''}
+    paginas, pos, primeira = [], 0, True
+    while True:
+        cap, last = (cap1, last1) if primeira else (capx, lastx)
+        if n - pos <= last:
+            paginas.append((pos, n))
+            return paginas
+        fim = None
+        for e in range(min(pos + cap, n - 1), pos, -1):
+            if e in inicios:
+                fim = e
+                break
+        if fim is None:                            # talhão maior que a página: parte
+            fim = max(pos + 1, min(pos + cap, n - 1))
+        paginas.append((pos, fim))
+        pos, primeira = fim, False
+
+
+def _recortar(linhas: list, ini: int, fim: int) -> list:
+    """Linhas de uma página; se a página começa no meio de um talhão, repete o número e a área dele."""
+    rows = [list(r) for r in linhas[ini:fim]]
+    if rows and ini > 0 and rows[0][0] == '':
+        k = max(j for j in range(ini) if linhas[j][0] != '')
+        rows[0] = [linhas[k][0], linhas[k][1]] + rows[0][2:]
+    return rows
 
 
 def _rodape(pg: Pagina, dados, k: int, n: int):
@@ -330,10 +359,10 @@ def gerar_pdf(dados: dict, destino) -> str:
     linhas = linhas_tabela(dados)
     total = ['Total', br(area_total(dados)), '', '', '', '']
     hb = _altura_carimbo(totais)
-    tamanhos = _paginar(len(linhas), hb)
-    n_paginas = len(tamanhos)
+    intervalos = _paginar(linhas, hb)
+    n_paginas = len(intervalos)
     so_p1 = n_paginas == 1
-    h_tab1 = CAB_TAB + tamanhos[0] * LINHA_TAB + (TOTAL_NOTA if so_p1 else 0)
+    h_tab1 = CAB_TAB + (intervalos[0][1] - intervalos[0][0]) * LINHA_TAB + (TOTAL_NOTA if so_p1 else 0)
     h_mapa = U - 2 * GAP - hb - h_tab1
 
     pg = nova_pagina(W, H)
@@ -341,23 +370,21 @@ def gerar_pdf(dados: dict, destino) -> str:
     yb = TOPO + h_mapa + GAP
     _carimbo(pg, dados, yb, hb, escala)
     y_tab = yb + hb + GAP
-    _tabela(pg, y_tab, 'APLICAÇÕES POR TALHÃO', linhas[:tamanhos[0]], total if so_p1 else None)
+    _tabela(pg, y_tab, 'APLICAÇÕES POR TALHÃO', _recortar(linhas, *intervalos[0]), total if so_p1 else None)
     _rodape(pg, dados, 1, n_paginas)
 
     with PdfPages(destino) as pdf:
         pdf.savefig(pg.fig)
         plt.close(pg.fig)
-        inicio = tamanhos[0]
-        for k, qtd in enumerate(tamanhos[1:], start=2):
+        for k, (ini, fim) in enumerate(intervalos[1:], start=2):
             pg = nova_pagina(W, H)
             _cabecalho_extra(pg, dados)
             ultima = k == n_paginas
-            _tabela(pg, TOPO_CONT, 'APLICAÇÕES POR TALHÃO (continuação)', linhas[inicio:inicio + qtd],
+            _tabela(pg, TOPO_CONT, 'APLICAÇÕES POR TALHÃO (continuação)', _recortar(linhas, ini, fim),
                     total if ultima else None)
             _rodape(pg, dados, k, n_paginas)
             pdf.savefig(pg.fig)
             plt.close(pg.fig)
-            inicio += qtd
     return 'retrato'
 
 
