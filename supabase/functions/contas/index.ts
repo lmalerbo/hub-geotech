@@ -3,6 +3,7 @@
 // guardada em arquivo. Quem chama manda o próprio login; só admin passa.
 // Segredos: HUB_INTEGRACAO_TOKEN (o mesmo que o GeoMap aceita) e GEOMAP_URL.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { temAcesso } from "./regras.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -38,6 +39,7 @@ async function geomap(caminho: string, opcoes: RequestInit = {}) {
   const r = await fetch(`${GEOMAP}${caminho}`, {
     ...opcoes,
     headers: { "x-hub-token": TOKEN_HUB, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(20000),   // Render dormindo: não segurar a tela do admin para sempre
   });
   const corpo = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`GeoMap: ${corpo.erro || `HTTP ${r.status}`}`);
@@ -52,6 +54,21 @@ async function contaPorEmail(servico: SupabaseClient, email: string) {
     if (achou) return achou;
     if (data.users.length < 200) return null;
   }
+}
+
+// Erros do Supabase viram exceção (a tela mostra a mensagem em vez de "salvo" sem ter salvo).
+async function exigir<T extends { error: { message: string } | null }>(p: PromiseLike<T>, oQue: string): Promise<T> {
+  const r = await p;
+  if (r.error) throw new Error(`${oQue}: ${r.error.message}`);
+  return r;
+}
+
+async function bloquear(servico: SupabaseClient, id: string, sim: boolean) {
+  await exigir(servico.auth.admin.updateUserById(id, { ban_duration: sim ? BLOQUEIO : "none" }), "Não foi possível atualizar o bloqueio da conta");
+}
+
+async function marcarTrocaDeSenha(servico: SupabaseClient, id: string) {
+  await exigir(servico.from("usuarios").update({ precisa_trocar_senha: true }).eq("id", id), "Não foi possível marcar a troca de senha");
 }
 
 async function salvar(comoUsuario: SupabaseClient, servico: SupabaseClient, a: Acesso) {
@@ -75,9 +92,8 @@ async function salvar(comoUsuario: SupabaseClient, servico: SupabaseClient, a: A
     if (senha) await servico.auth.admin.deleteUser(conta!.id);   // conta recém-criada sem acesso: desfaz
     throw new Error(error.message);
   }
-  if (senha) await servico.from("usuarios").update({ precisa_trocar_senha: true }).eq("id", conta!.id);
-  const temAcesso = modulos.length > 0 || !!a.geomap_ativo;
-  await servico.auth.admin.updateUserById(conta!.id, { ban_duration: temAcesso ? "none" : BLOQUEIO });
+  if (senha) await marcarTrocaDeSenha(servico, conta!.id);
+  await bloquear(servico, conta!.id, !temAcesso({ modulos, geomap_ativo: a.geomap_ativo, admin: a.admin }));
   let avisoGeomap: string | null = null;
   try {
     await geomap("/integracao/contas/usuario", {
@@ -89,12 +105,17 @@ async function salvar(comoUsuario: SupabaseClient, servico: SupabaseClient, a: A
 }
 
 async function redefinir(servico: SupabaseClient, emailBruto: string) {
-  const conta = await contaPorEmail(servico, String(emailBruto || "").trim().toLowerCase());
+  const email = String(emailBruto || "").trim().toLowerCase();
+  const conta = await contaPorEmail(servico, email);
   if (!conta) throw new Error("Essa pessoa ainda não tem conta.");
   const senha = senhaProvisoria();
   const { error } = await servico.auth.admin.updateUserById(conta.id, { password: senha });
   if (error) throw new Error(`Não foi possível redefinir: ${error.message}`);
-  await servico.from("usuarios").update({ precisa_trocar_senha: true }).eq("id", conta.id);
+  await marcarTrocaDeSenha(servico, conta.id);
+  // Quem tem acesso e estava bloqueado (ex.: pela sincronização antiga) volta a entrar com a provisória.
+  const { data: acesso } = await exigir(
+    servico.from("acessos").select("modulos,geomap_ativo,admin").eq("email", email).maybeSingle(), "Não foi possível ler o acesso");
+  if (temAcesso(acesso)) await bloquear(servico, conta.id, false);
   return { ok: true, senhaProvisoria: senha };
 }
 
@@ -105,7 +126,7 @@ async function remover(comoUsuario: SupabaseClient, servico: SupabaseClient, ema
   const { error } = await comoUsuario.rpc("acesso_remover", { p_email: email });
   if (error) throw new Error(error.message);
   const conta = await contaPorEmail(servico, email);
-  if (conta) await servico.auth.admin.updateUserById(conta.id, { ban_duration: BLOQUEIO });
+  if (conta) await bloquear(servico, conta.id, true);
   let avisoGeomap: string | null = null;
   try {
     await geomap("/integracao/contas/usuario", { method: "PUT", body: JSON.stringify({ email, nome, ativo: false, admin: false, grupoIds: [] }) });
