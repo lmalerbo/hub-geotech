@@ -19,7 +19,10 @@ A4_RETRATO = (595.3, 841.9)          # pontos
 A4_PAISAGEM = (841.9, 595.3)
 MARGEM = 14.0                         # ~5 mm: nenhum texto encosta na borda
 LETRA_TABELA = 13.0                   # ~3x a letra antiga (4,5–6 pt)
-ROTULOS = ('Calc. Dolomítico', 'Calc. PH7', 'Fosfato', 'Blend · Dolomítico', 'Blend · PH7', '+ Gesso')
+INSUMOS = ('INSETICIDA REVOLUX', 'ADJUVANTE LIQUIDO OCHIMA', 'FERTILIZANTE FOLIAR NORTO', 'INSETICIDA BOUVERIZ WP PR',
+           'FERTILIZANTE AMINOCORE BA', 'INOCULANTE LIQUIDO KOPPER', 'REGULADOR CRESC STOLLER S', 'INSETICIDA VANTACOR 5L')
+ROTULOS = ('Calc. Dolomítico', 'Calc. PH7', 'Fosfato', 'Blend · Dolomítico', 'Blend · PH7', '+ Gesso',
+           *(__import__('mapas.corretivo_dados', fromlist=['x']).nome_insumo(n) for n in INSUMOS))
 SO_NUMERO = re.compile(r'^[\d.,\s]*m?$')   # números de talhão e da escala gráfica (desenhados sobre o mapa)
 
 
@@ -38,6 +41,15 @@ def _dados(n, aplicacoes, nome='FAZENDA TESTE', deitada=True):
             'gerado_por': 'Leonardo Malerbo', 'talhoes_geo': _talhoes(n, deitada),
             'areas': {str(i + 1): {'area_ha': 5.0 + i * 0.37, 'editada': i == 0} for i in range(n)},
             'aplicacoes': aplicacoes}
+
+
+def _ins(i, ordem, talhoes, dose, os='9001'):
+    return {'tipo': 'insumo', 'insumo_nome': INSUMOS[i], 'insumo_unidade': 'KG' if 'WP' in INSUMOS[i] else 'L',
+            'calcario': None, 'dose': dose, 'dose_gesso': None, 'os': os, 'ordem': ordem, 'talhoes': talhoes}
+
+
+def _aereo(n, aplicacoes, deitada=True):
+    return {**_dados(n, aplicacoes, deitada=deitada), 'operacao': 'aerea'}
 
 
 def _ap(tipo, ordem, talhoes, dose, os='3211', calcario='dolomitico', gesso=None):
@@ -64,6 +76,10 @@ CASOS = {
                                     _ap('fosfato', 2, list(range(1, 61)), 0.53, os='32111')], deitada=False),
     '3_aplicacoes_no_talhao': _dados(2, [_ap('calcario', 1, [1], 2.11), _ap('fosfato', 2, [1], 0.53),
                                          _ap('blend', 3, [1, 2], 1.44, calcario='ph7', gesso=0.95)]),
+    'aereo_em_pe_3_insumos': _aereo(9, [_ins(0, 1, list(range(1, 10)), 0.15), _ins(1, 2, list(range(1, 10)), 0.25),
+                                         _ins(3, 3, [1, 2, 3], 0.11)], deitada=False),
+    'aereo_largo_8_insumos': _aereo(20, [_ins(i, i + 1, list(range(1, 21)), 0.1 + i / 100, os=f'90{i:02d}')
+                                         for i in range(8)]),
 }
 
 
@@ -154,13 +170,12 @@ def test_tabela_e_legenda_com_letra_grande(pdf):
 
 def test_titulos_dos_quadros_de_totais_iguais(pdf):
     nome, doc = pdf
-    titulos = ('Calcário Dolomítico', 'Calcário PH7', 'Fosfato', 'Blend Dolomítico', 'Blend PH7')
     p = doc[0]
     spans = list(_spans(p))
     # Os títulos dos quadros são os textos de produto em letra pequena ("Fosfato" grande é a legenda ou a tabela).
     produtos = {t['titulo'] for t in __import__('mapas.corretivo_dados', fromlist=['x']).totais_por_produto(CASOS[nome])}
     pequenos = {s['text'].strip(): round(s['size'], 1) for s in spans
-                if s['text'].strip() in titulos and s['size'] < LETRA_TABELA - 0.5}
+                if s['text'].strip() in produtos and s['size'] < LETRA_TABELA - 0.5}
     assert set(pequenos) == produtos, f'{nome}: quadros de totais {sorted(pequenos)} ≠ produtos {sorted(produtos)}'
     assert len(set(pequenos.values())) <= 1, f'{nome}: títulos dos quadros com tamanhos diferentes {pequenos}'
 

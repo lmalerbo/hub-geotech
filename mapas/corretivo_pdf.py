@@ -1,9 +1,10 @@
-"""PDF do mapa de aplicação de corretivos. A4 na orientação da fazenda (todas as folhas iguais).
+"""PDF dos Mapas de aplicação (corretivo e aplicação aérea). A4 na orientação da fazenda (todas as folhas iguais).
 
 Fazenda em pé (retrato), página 1 de cima para baixo: MAPA em largura total (legenda das cores dentro dele),
 CARIMBO numa faixa horizontal (identificação | totais por produto | escala/área/safra e norte) e TABELA
 "APLICAÇÕES POR TALHÃO" com letra grande. Linhas que não cabem vão para as páginas seguintes.
 Fazenda larga (paisagem): folha 1 só com MAPA e CARIMBO; a TABELA, com a mesma letra grande, da folha 2 em diante.
+Aplicação aérea: coluna INSUMO, unidade junto do número e talhão 400 (margem de 5%) no fim da tabela.
 
 Coordenadas da página em mm (origem no topo). Usa só as peças genéricas de mapas/layout.py (Pagina, eixo_mapa,
 escala, moldura, norte, nova_pagina); a tabela, o carimbo e a legenda são locais, para não mexer no Drone."""
@@ -19,9 +20,10 @@ import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.patches import FancyBboxPatch
+from shapely.geometry import box
 
 from mapas.corretivo_dados import (
-    CORES, OPERACOES, SEM_APLICACAO, area_total, chave_cor, faixas, linhas_tabela, lista_os, rotulo,
+    OPERACOES, SEM_APLICACAO, aerea, area_total, chave_cor, cores_do_mapa, faixas, linhas_tabela, lista_os, rotulo,
     totais_por_produto, _ordenadas,
 )
 from mapas.layout import (
@@ -45,6 +47,16 @@ LARG_RETRATO = 190               # as colunas abaixo são para 190 mm; em paisag
 COLUNAS = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 42, 'right'), ('APLICAÇÃO', 52, 'left'),
            ('DOSE (t/ha)', 124, 'right'), ('TOTAL (t)', 148, 'right'), ('O.S.', 153, 'left')]
 NOTA = '* área editada · ÁREA ha · DOSE t/ha · TOTAL t'
+# Aéreo: o nome do insumo é mais longo e a unidade vai junto do número ("0,15 L", "15,75 L").
+# TOTAL fica 36 mm depois da DOSE: cabe "104.000,00 L" a 14 pt sem encostar (teste do total grande).
+COLUNAS_AEREA = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 36, 'right'), ('INSUMO', 41, 'left'),
+                 ('DOSE/ha', 126, 'right'), ('TOTAL', 162, 'right'), ('O.S.', 166, 'left')]
+NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · DOSE por ha e TOTAL na unidade de cada insumo'
+LIVRE_DOSE = 25                  # mm reservados antes da coluna DOSE (o número fica alinhado à direita)
+
+
+def _colunas(dados):
+    return COLUNAS_AEREA if aerea(dados) else COLUNAS
 
 
 @dataclass(frozen=True)
@@ -148,9 +160,10 @@ def _linhas_titulo(pg: Pagina, texto: str, max_mm: float):
     return [(l1, 9), (_cortar(pg, resto, max_mm, 9, 'bold'), 9)]
 
 
-def _subtitulo(pg: Pagina, lista, max_mm: float):
-    """'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. …': reduz a letra até 4,8 pt; depois mostra menos O.S. ('… (+N)')."""
-    base = 'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. '
+def _subtitulo(pg: Pagina, lista, max_mm: float, dados):
+    """'MAPA DE APLICAÇÃO · CORRETIVOS · O.S. …' (ou '· AÉREA ·'): reduz a letra até 4,8 pt; depois mostra menos
+    O.S. ('… (+N)')."""
+    base = f"MAPA DE APLICAÇÃO · {'AÉREA' if aerea(dados) else 'CORRETIVOS'} · O.S. "
     n = len(lista)
     for tam in (5.5, 5.2, 4.8):
         for k in range(n, 0, -1):
@@ -165,6 +178,7 @@ def _subtitulo(pg: Pagina, lista, max_mm: float):
 def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
     ax, s, x0, y0 = eixo_mapa(pg, gdf, x, y, w, h)
     por_talhao = _aplicacoes_por_talhao(dados)
+    cores = cores_do_mapa(dados)
     no_mapa = {int(k) for k in dados['areas']}
     pintados = []                                   # (geometria, número) de cada talhão com geometria
     for _, linha in gdf.iterrows():
@@ -180,7 +194,7 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
             for parte, ap in zip(faixas(geom, len(aps)), aps):
                 if parte.is_empty or parte.area == 0:
                     continue
-                gpd.GeoSeries([parte], crs=gdf.crs).plot(ax=ax, facecolor=CORES[chave_cor(ap)],
+                gpd.GeoSeries([parte], crs=gdf.crs).plot(ax=ax, facecolor=cores[chave_cor(ap)],
                                                          edgecolor='none', alpha=0.92)
         pintados.append((geom, t))
     for _, linha in gdf.iterrows():                 # contornos por cima das pinturas
@@ -192,24 +206,42 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
                 va='center', path_effects=[pe.withStroke(linewidth=2, foreground='white')])
     escala_grafica(ax, s, x0, y0)
     moldura_logo(pg, x, y, w, h, LOGO)
-    _legenda_mapa(pg, dados, x, y, w, h)
+    _legenda_mapa(pg, dados, x, y, w, h, ax, gdf)
     return escala_numerica(s)
 
 
-def _legenda_mapa(pg: Pagina, dados, x, y, w, h):
-    """Caixa branca (alpha 0,9) no canto inferior direito do mapa: só os tipos usados; Blend é um item só."""
+def _canto_legenda(pg: Pagina, ax, gdf, x, y, w, h, bw, bh) -> str:
+    """'baixo' ou 'cima' (lado direito; à esquerda ficam o logo e a escala): o canto em que a legenda cobre
+    menos a fazenda. Empate fica embaixo, como sempre foi."""
+    uniao = gdf.geometry.union_all() if hasattr(gdf.geometry, 'union_all') else gdf.geometry.unary_union
+    para_dados = ax.transData.inverted()
+
+    def coberto(by):
+        cantos = [para_dados.transform(pg.fig.transFigure.transform((X / pg.W, 1 - Y / pg.H)))
+                  for X, Y in ((x + w - bw - 2.5, by), (x + w - 2.5, by + bh))]
+        (x0, y0), (x1, y1) = cantos
+        return box(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)).intersection(uniao).area
+
+    return 'cima' if coberto(y + 2.5) < coberto(y + h - bh - 2.5) else 'baixo'
+
+
+def _legenda_mapa(pg: Pagina, dados, x, y, w, h, ax, gdf):
+    """Caixa branca (alpha 0,9) num canto direito do mapa (o que cobre menos a fazenda): só os tipos usados;
+    Blend é um item só."""
+    cores = cores_do_mapa(dados)
     rotulos: dict[str, str] = {}
     for a in _ordenadas(dados):                  # Blend Dolomítico e PH7 têm a mesma cor: um item só
         rotulos.setdefault(chave_cor(a), 'Blend' if a['tipo'] == 'blend' else rotulo(a))
     if not rotulos:
         return
     duas = any(len(aps) >= 2 for aps in _aplicacoes_por_talhao(dados).values())
-    itens = [(CORES[c], t) for c, t in rotulos.items()] + ([(None, '◩ duas aplicações')] if duas else [])
+    itens = [(cores[c], t) for c, t in rotulos.items()] + ([(None, '◩ duas aplicações')] if duas else [])
     passo, pad, sw = 6.2, 2.5, 5.0
     larg = max(_largura(pg, t, LETRA_LEGENDA) for _, t in itens) + sw + 2.5
     bw = larg + 2 * pad
     bh = passo * len(itens) + 2 * pad - 1.2
-    bx, by = x + w - bw - 2.5, y + h - bh - 2.5
+    bx = x + w - bw - 2.5
+    by = y + 2.5 if _canto_legenda(pg, ax, gdf, x, y, w, h, bw, bh) == 'cima' else y + h - bh - 2.5
     pg.fig.patches.append(FancyBboxPatch(
         (bx / pg.W, 1 - (by + bh) / pg.H), bw / pg.W, bh / pg.H, boxstyle='round,pad=0,rounding_size=0.0',
         transform=pg.fig.transFigure, facecolor='white', edgecolor=LINHA, linewidth=0.5, alpha=0.9))
@@ -249,9 +281,9 @@ def _quadros(pg: Pagina, totais, x, y, w, por_linha):
         pg.caixa(cx, cy, cw, 15, '#b9dcc4' if destaque else LINHA, '#f1f8f3' if destaque else 'white')
         pg.texto(cx + 2.5, cy + 1.8, _cortar(pg, q['titulo'], cw - 5, tam_titulo, 'semibold'), tam_titulo,
                  CINZA, 'semibold')
-        valor, t2 = _caber(pg, br(q['toneladas']), cw - 5 - 4, 12, 9, 'bold')
+        valor, t2 = _caber(pg, br(q['total']), cw - 5 - 5, 12, 9, 'bold')
         pg.texto(cx + 2.5, cy + 5, valor, t2, MARCA if destaque else GRAFITE, 'bold')
-        pg.texto(cx + cw - 2.5, cy + 6.8, 't', 5.5, CINZA, 'semibold', ha='right')
+        pg.texto(cx + cw - 2.5, cy + 6.8, q['unidade'], 5.5, CINZA, 'semibold', ha='right')
         if q['detalhe']:
             det, t3 = _caber(pg, q['detalhe'], cw - 5, 5, 4.0)
             pg.texto(cx + 2.5, cy + 11.2, det, t3, CINZA)
@@ -265,7 +297,7 @@ def _carimbo(pg: Pagina, f: Folha, dados, yb, hb, escala):
         pg.ret(xs, yb + 2, 0.25, hb - 4, LINHA)
     # (a) identificação
     x = M + 3
-    tag = f"CORRETIVO · {OPERACOES[dados['operacao']].upper()}"
+    tag = 'APLICAÇÃO AÉREA' if aerea(dados) else f"CORRETIVO · {OPERACOES[dados['operacao']].upper()}"
     tag_txt, tt = _caber(pg, tag, WA - 10, 4.5, 4.0, 'bold')
     tag_w = _largura(pg, tag_txt, tt, 'bold') + 4
     pg.caixa(x, yb + 2.5, tag_w, 3.6, MARCA, MARCA, 0.5, 0.1)
@@ -274,13 +306,14 @@ def _carimbo(pg: Pagina, f: Folha, dados, yb, hb, escala):
     for texto, tam in _linhas_titulo(pg, f"{dados['cod_faz']} · {dados['nome']}", WA - 6):
         pg.texto(x, y, texto, tam, peso='bold')
         y += tam * 0.3528 * 1.2
-    sub, ts = _subtitulo(pg, lista_os(dados), WA - 6)
+    sub, ts = _subtitulo(pg, lista_os(dados), WA - 6, dados)
     pg.texto(x, y + 0.8, sub, ts, CINZA)
     # (b) totais por produto
     _quadros(pg, totais, xb, yb, f.wb, f.por_linha)
     # (c) escala / área / safra e norte
     celulas = [('ESCALA', f'1:{escala:,}'.replace(',', '.')),
-               (f'ÁREA · {len(dados["areas"])} TALHÕES', f'{br(area_total(dados))} ha'),
+               (f'ÁREA · {len(dados["areas"])} TALHÕES' + (' + 5%' if aerea(dados) else ''),
+                f'{br(area_total(dados))} ha'),
                ('SAFRA', safra_de(_data(dados)))]
     largura_txt = WC - 3 - 10            # a seta do norte fica à direita, sem encostar no texto
     for i, (titulo, valor) in enumerate(celulas):
@@ -292,23 +325,26 @@ def _carimbo(pg: Pagina, f: Folha, dados, yb, hb, escala):
 
 # ---------- tabela ----------
 
-def _linha_tabela(pg: Pagina, f: Folha, yy: float, valores, bold=False, cor=GRAFITE):
-    ultima = len(COLUNAS) - 1
-    for i, (valor, (_, fx, ha)) in enumerate(zip(valores, COLUNAS)):
+def _linha_tabela(pg: Pagina, f: Folha, dados, yy: float, valores, bold=False, cor=GRAFITE):
+    colunas = _colunas(dados)
+    ultima = len(colunas) - 1
+    for i, (valor, (_, fx, ha)) in enumerate(zip(valores, colunas)):
         if not valor:
             continue
         x = f.col(fx)
         tam = LETRA_LINHA
         if i == ultima:                               # O.S.: reduz/corta para caber na coluna
             valor, tam = _caber(pg, valor, M + f.larg - x - 1, LETRA_LINHA, 9)
+        elif i == 2 and aerea(dados):                 # insumo: reduz até 11 pt antes de cortar
+            valor, tam = _caber(pg, valor, f.col(colunas[3][1]) - LIVRE_DOSE - x, LETRA_LINHA, 11)
         pg.texto(x, yy + LINHA_TAB / 2, valor, tam, cor, 'bold' if bold else 'normal', ha=ha, va='center')
 
 
-def _tabela(pg: Pagina, f: Folha, y, titulo, linhas, total):
+def _tabela(pg: Pagina, f: Folha, dados, y, titulo, linhas, total):
     """Título, cabeçalho, linhas (zebradas) e, se total não for None, a linha de total e a nota.
     Devolve o y logo abaixo do que foi desenhado."""
     pg.texto(M, y, titulo, 12, GRAFITE, 'bold')
-    for nome, fx, ha in COLUNAS:
+    for nome, fx, ha in _colunas(dados):
         pg.texto(f.col(fx), y + 8.0, nome, 10, MARCA, 'bold', ha=ha, va='center')
     pg.ret(M, y + 10.4, f.larg, 0.35, GRAFITE)
     yy = y + CAB_TAB
@@ -318,13 +354,13 @@ def _tabela(pg: Pagina, f: Folha, y, titulo, linhas, total):
             grupo += 1
         if grupo % 2:                      # zebrado por TALHÃO: as linhas do mesmo talhão têm o mesmo fundo
             pg.ret(M, yy, f.larg, LINHA_TAB, '#f4f6f5')
-        _linha_tabela(pg, f, yy, valores)
+        _linha_tabela(pg, f, dados, yy, valores)
         yy += LINHA_TAB
     if total is not None:
         pg.ret(M, yy + 0.3, f.larg, 0.35, GRAFITE)
-        _linha_tabela(pg, f, yy + 0.3, total, bold=True)
+        _linha_tabela(pg, f, dados, yy + 0.3, total, bold=True)
         yy += LINHA_TAB + 0.3
-        pg.texto(M, yy + 1.5, NOTA, 6, CINZA)
+        pg.texto(M, yy + 1.5, NOTA_AEREA if aerea(dados) else NOTA, 6, CINZA)
         yy += 4
     return yy
 
@@ -409,7 +445,7 @@ def gerar_pdf(dados: dict, destino) -> str:
     yb = TOPO + h_mapa + GAP
     _carimbo(pg, f, dados, yb, hb, escala)
     if na_folha_do_mapa:
-        _tabela(pg, f, yb + hb + GAP, 'APLICAÇÕES POR TALHÃO', _recortar(linhas, *na_folha_do_mapa),
+        _tabela(pg, f, dados, yb + hb + GAP, 'APLICAÇÕES POR TALHÃO', _recortar(linhas, *na_folha_do_mapa),
                 total if n_paginas == 1 else None)
     _rodape(pg, f, dados, 1, n_paginas)
 
@@ -420,7 +456,7 @@ def gerar_pdf(dados: dict, destino) -> str:
             pg = nova_pagina(f.W, f.H)
             _cabecalho_extra(pg, dados)
             titulo = 'APLICAÇÕES POR TALHÃO' if (f.paisagem and k == 2) else 'APLICAÇÕES POR TALHÃO (continuação)'
-            _tabela(pg, f, TOPO_CONT, titulo, _recortar(linhas, ini, fim), total if k == n_paginas else None)
+            _tabela(pg, f, dados, TOPO_CONT, titulo, _recortar(linhas, ini, fim), total if k == n_paginas else None)
             _rodape(pg, f, dados, k, n_paginas)
             pdf.savefig(pg.fig)
             plt.close(pg.fig)
