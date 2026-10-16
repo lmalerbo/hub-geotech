@@ -36,12 +36,13 @@ EPSG_UTM = 31983
 M = 10                           # margem
 TOPO = 10                        # topo do conteúdo
 GAP = 4                          # espaço entre mapa, carimbo e tabela
-LETRA_LINHA = 14                 # letra das linhas da tabela
-LINHA_TAB = 7.5                  # altura de cada linha da tabela
+LETRA_LINHA = 12                 # letra das linhas da tabela (16/10: era 14, "pode diminuir um pouco")
+LINHA_TAB = 6.5                  # altura de cada linha da tabela
 CAB_TAB = 11.2                   # do topo da tabela até a primeira linha (título + cabeçalho)
 TOTAL_NOTA = 12.5                # linha de total + nota, no fim da tabela
 TOPO_CONT = 18                   # topo da tabela nas páginas só de tabela (depois do nome da fazenda)
 LETRA_LEGENDA = 13
+LETRA_TALHAO = 9                 # número do talhão no mapa (16/10: era 6,5)
 WA, WC = 60, 40                  # blocos do carimbo: identificação | totais (o resto) | escala/área/safra
 LARG_RETRATO = 190               # as colunas abaixo são para 190 mm; em paisagem se espalham na proporção
 COLUNAS = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 42, 'right'), ('APLICAÇÃO', 52, 'left'),
@@ -237,8 +238,8 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
                                                           linewidth=0.5)
     for geom, t, cor in pintados:
         p = geom.representative_point()
-        ax.text(p.x, p.y, str(t), fontsize=6.5, fontweight='semibold', color=cor, ha='center',
-                va='center', path_effects=[pe.withStroke(linewidth=2, foreground='white')])
+        ax.text(p.x, p.y, str(t), fontsize=LETRA_TALHAO, fontweight='semibold', color=cor, ha='center',
+                va='center', path_effects=[pe.withStroke(linewidth=2.5, foreground='white')])
     escala_grafica(ax, s, x0, y0)
     moldura_logo(pg, x, y, w, h, LOGO)
     _legenda_mapa(pg, itens, x, y, w, h, ax, gdf)

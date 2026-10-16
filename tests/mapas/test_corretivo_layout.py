@@ -18,7 +18,8 @@ PARA_4326 = Transformer.from_crs(31983, 4326, always_xy=True).transform
 A4_RETRATO = (595.3, 841.9)          # pontos
 A4_PAISAGEM = (841.9, 595.3)
 MARGEM = 14.0                         # ~5 mm: nenhum texto encosta na borda
-LETRA_TABELA = 13.0                   # ~3x a letra antiga (4,5–6 pt)
+LETRA_TABELA = 12.0                   # ~2,5x a letra antiga (4,5–6 pt); 16/10: "pode diminuir um pouco" (era 14)
+LETRA_LEGENDA = 13.0
 INSUMOS = ('INSETICIDA REVOLUX', 'ADJUVANTE LIQUIDO OCHIMA', 'FERTILIZANTE FOLIAR NORTO', 'INSETICIDA BOUVERIZ WP PR',
            'FERTILIZANTE AMINOCORE BA', 'INOCULANTE LIQUIDO KOPPER', 'REGULADOR CRESC STOLLER S', 'INSETICIDA VANTACOR 5L')
 ROTULOS = ('Calc. Dolomítico', 'Calc. PH7', 'Fosfato', 'Blend · Dolomítico', 'Blend · PH7', '+ Gesso',
@@ -165,7 +166,8 @@ def test_tabela_e_legenda_com_letra_grande(pdf):
                 legenda[t] = max(legenda.get(t, 0), s['size'])
     assert tabela, f'{nome}: tabela sem linhas'
     assert min(tabela) >= LETRA_TABELA - 0.5, f'{nome}: letra da tabela {min(tabela):.1f} pt'
-    assert legenda and min(legenda.values()) >= LETRA_TABELA - 0.5, f'{nome}: legenda {legenda}'
+    assert max(tabela) <= LETRA_TABELA + 0.5, f'{nome}: letra da tabela {max(tabela):.1f} pt (pedido: um pouco menor)'
+    assert legenda and min(legenda.values()) >= LETRA_LEGENDA - 0.5, f'{nome}: legenda {legenda}'
 
 
 def test_titulos_dos_quadros_de_totais_iguais(pdf):
@@ -175,7 +177,7 @@ def test_titulos_dos_quadros_de_totais_iguais(pdf):
     # Os títulos dos quadros são os textos de produto em letra pequena ("Fosfato" grande é a legenda ou a tabela).
     produtos = {t['titulo'] for t in __import__('mapas.corretivo_dados', fromlist=['x']).totais_por_produto(CASOS[nome])}
     pequenos = {s['text'].strip(): round(s['size'], 1) for s in spans
-                if s['text'].strip() in produtos and s['size'] < LETRA_TABELA - 0.5}
+                if s['text'].strip() in produtos and s['size'] < 11}
     assert set(pequenos) == produtos, f'{nome}: quadros de totais {sorted(pequenos)} ≠ produtos {sorted(produtos)}'
     assert len(set(pequenos.values())) <= 1, f'{nome}: títulos dos quadros com tamanhos diferentes {pequenos}'
 

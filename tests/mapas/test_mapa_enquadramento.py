@@ -51,5 +51,6 @@ def test_numero_de_todos_os_talhoes_da_fazenda():
     d = _dados([1, 2, 3])
     pg = nova_pagina(297, 210)
     corretivo_pdf._mapa(pg, d, corretivo_pdf._gdf(d), 10, 10, 277, 150)
-    textos = {t.get_text() for ax in pg.fig.axes for t in ax.texts}
-    assert {str(t) for t in range(1, 17)} <= textos
+    numeros = {t.get_text(): t.get_fontsize() for ax in pg.fig.axes for t in ax.texts if t.get_text().isdigit()}
+    assert {str(t) for t in range(1, 17)} <= set(numeros)
+    assert min(numeros[str(t)] for t in range(1, 17)) >= 9          # 16/10: números maiores (eram 6,5 pt)
