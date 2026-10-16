@@ -135,11 +135,12 @@ def test_titulos_dos_quadros_de_totais_iguais(pdf):
     titulos = ('Calcário Dolomítico', 'Calcário PH7', 'Fosfato', 'Blend Dolomítico', 'Blend PH7')
     p = doc[0]
     spans = list(_spans(p))
-    tamanhos = {round(s['size'], 1) for s in spans if s['text'].strip() in titulos and not _linha_da_tabela(s, spans)
-                and s['size'] < LETRA_TABELA - 0.5}
-    grandes = [s['text'] for s in spans if s['text'].strip() in titulos and s['size'] >= LETRA_TABELA - 0.5]
-    assert not grandes, f'{nome}: título de quadro de totais em letra de tabela: {grandes}'
-    assert len(tamanhos) <= 1, f'{nome}: títulos dos quadros com tamanhos diferentes {tamanhos}'
+    # Os títulos dos quadros são os textos de produto em letra pequena ("Fosfato" grande é a legenda ou a tabela).
+    produtos = {t['titulo'] for t in __import__('mapas.corretivo_dados', fromlist=['x']).totais_por_produto(CASOS[nome])}
+    pequenos = {s['text'].strip(): round(s['size'], 1) for s in spans
+                if s['text'].strip() in titulos and s['size'] < LETRA_TABELA - 0.5}
+    assert set(pequenos) == produtos, f'{nome}: quadros de totais {sorted(pequenos)} ≠ produtos {sorted(produtos)}'
+    assert len(set(pequenos.values())) <= 1, f'{nome}: títulos dos quadros com tamanhos diferentes {pequenos}'
 
 
 def test_talhao_nunca_partido_entre_paginas(pdf):
