@@ -61,8 +61,11 @@ def test_fluxo_completo(admin_token):
     status, grupos = contas(admin_token, acao='grupos_geomap')
     assert status == 200 and isinstance(grupos, list) and grupos
 
-    status, r = contas(admin_token, acao='salvar', email=EMAIL, nome='Funcao Contas', papel='leitura',
-                       admin=False, modulos=['plantio'], geomap_ativo=False, geomap_admin=False, geomap_grupos=[])
+    status, mapas = contas(admin_token, acao='mapas_geomap')
+    assert status == 200 and isinstance(mapas, list)
+
+    status, r = contas(admin_token, acao='salvar', email=EMAIL, nome='Funcao Contas', niveis={'plantio': 'leitura'},
+                       admin=False, geomap_ativo=False, geomap_admin=False, geomap_grupos=[], geomap_mapas=[])
     assert status == 200 and r['senhaProvisoria'] and len(r['senhaProvisoria']) == 10 and r['avisoGeomap'] is None
     token_novo = entrar(EMAIL, r['senhaProvisoria'])
     assert token_novo, 'a senha provisória entra'

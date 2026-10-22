@@ -3,7 +3,7 @@
 // guardada em arquivo. Quem chama manda o próprio login; só admin passa.
 // Segredos: HUB_INTEGRACAO_TOKEN (o mesmo que o GeoMap aceita) e GEOMAP_URL.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { temAcesso } from "./regras.js";
+import { temAcesso, mapasParaGeomap } from "./regras.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -15,8 +15,8 @@ const BLOQUEIO = "876000h";
 const ALFABETO = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 type Acesso = {
-  email: string; nome: string; papel: string; admin: boolean; modulos: string[];
-  geomap_ativo: boolean; geomap_admin: boolean; geomap_grupos: number[];
+  email: string; nome: string; admin: boolean; niveis: Record<string, string>;
+  geomap_ativo: boolean; geomap_admin: boolean; geomap_grupos: number[]; geomap_mapas: { mapa_id: number; pode_editar: boolean }[];
 };
 
 export function senhaProvisoria(n = 10): string {
@@ -73,7 +73,6 @@ async function marcarTrocaDeSenha(servico: SupabaseClient, id: string) {
 
 async function salvar(comoUsuario: SupabaseClient, servico: SupabaseClient, a: Acesso) {
   const email = String(a.email || "").trim().toLowerCase();
-  const modulos = a.modulos || [];
   let conta = await contaPorEmail(servico, email);
   let senha: string | null = null;
   if (!conta) {
@@ -85,20 +84,21 @@ async function salvar(comoUsuario: SupabaseClient, servico: SupabaseClient, a: A
     conta = data.user;
   }
   const { error } = await comoUsuario.rpc("acesso_salvar", {
-    p_email: email, p_nome: a.nome, p_papel: a.papel || "leitura", p_admin: !!a.admin, p_modulos: modulos,
+    p_email: email, p_nome: a.nome, p_admin: !!a.admin, p_niveis: a.niveis || {},
     p_geomap_ativo: !!a.geomap_ativo, p_geomap_admin: !!a.geomap_admin, p_geomap_grupos: a.geomap_grupos || [],
+    p_geomap_mapas: a.geomap_mapas || [],
   });
   if (error) {
     if (senha) await servico.auth.admin.deleteUser(conta!.id);   // conta recém-criada sem acesso: desfaz
     throw new Error(error.message);
   }
   if (senha) await marcarTrocaDeSenha(servico, conta!.id);
-  await bloquear(servico, conta!.id, !temAcesso({ modulos, geomap_ativo: a.geomap_ativo, admin: a.admin }));
+  await bloquear(servico, conta!.id, !temAcesso({ niveis: a.niveis, geomap_ativo: a.geomap_ativo, admin: a.admin }));
   let avisoGeomap: string | null = null;
   try {
     await geomap("/integracao/contas/usuario", {
       method: "PUT",
-      body: JSON.stringify({ email, nome: a.nome, ativo: !!a.geomap_ativo, admin: !!a.geomap_admin, grupoIds: a.geomap_grupos || [] }),
+      body: JSON.stringify({ email, nome: a.nome, ativo: !!a.geomap_ativo, admin: !!a.geomap_admin, grupoIds: a.geomap_grupos || [], mapas: a.geomap_ativo ? mapasParaGeomap(a.geomap_mapas) : [] }),
     });
   } catch (e) { avisoGeomap = (e as Error).message; }
   return { ok: true, senhaProvisoria: senha, avisoGeomap };
@@ -114,7 +114,7 @@ async function redefinir(servico: SupabaseClient, emailBruto: string) {
   await marcarTrocaDeSenha(servico, conta.id);
   // Quem tem acesso e estava bloqueado (ex.: pela sincronização antiga) volta a entrar com a provisória.
   const { data: acesso } = await exigir(
-    servico.from("acessos").select("modulos,geomap_ativo,admin").eq("email", email).maybeSingle(), "Não foi possível ler o acesso");
+    servico.from("acessos").select("niveis,geomap_ativo,admin").eq("email", email).maybeSingle(), "Não foi possível ler o acesso");
   if (temAcesso(acesso)) await bloquear(servico, conta.id, false);
   return { ok: true, senhaProvisoria: senha };
 }
@@ -129,7 +129,7 @@ async function remover(comoUsuario: SupabaseClient, servico: SupabaseClient, ema
   if (conta) await bloquear(servico, conta.id, true);
   let avisoGeomap: string | null = null;
   try {
-    await geomap("/integracao/contas/usuario", { method: "PUT", body: JSON.stringify({ email, nome, ativo: false, admin: false, grupoIds: [] }) });
+    await geomap("/integracao/contas/usuario", { method: "PUT", body: JSON.stringify({ email, nome, ativo: false, admin: false, grupoIds: [], mapas: [] }) });
   } catch (e) { avisoGeomap = (e as Error).message; }
   return { ok: true, avisoGeomap };
 }
@@ -150,6 +150,7 @@ Deno.serve(async (req) => {
     const corpo = await req.json();
     switch (corpo.acao) {
       case "grupos_geomap": return resp(await geomap("/integracao/contas/grupos"));
+      case "mapas_geomap": return resp(await geomap("/integracao/contas/mapas"));
       case "salvar": return resp(await salvar(comoUsuario, servico, corpo));
       case "redefinir_senha": return resp(await redefinir(servico, corpo.email));
       case "remover": return resp(await remover(comoUsuario, servico, corpo.email));
