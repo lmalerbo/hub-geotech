@@ -473,6 +473,45 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .usr-nota{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:10px;padding:10px 12px;margin-top:12px}
 .usr-nota .ico{font-size:16px}
 .usr-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-top:6px}
+.usr-pgrid>*{min-width:0}
+.usr-busca{width:100%;margin-bottom:10px}
+.usr-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.usr-chip{height:28px;padding:0 11px;border:1.5px solid var(--bd2);border-radius:20px;background:var(--sf);font-family:'Poppins',sans-serif;font-size:11.5px;font-weight:500;color:var(--t2);cursor:pointer;transition:border-color var(--tb),color var(--tb),background var(--tb)}
+.usr-chip:hover{border-color:var(--t2);color:var(--t1)}
+.usr-chip.on{border-color:var(--plantio);background:rgba(22,167,107,.08);color:var(--t1);font-weight:600}
+.usr-resumo{font-size:11px;color:var(--t2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usr-sub{font-size:11.5px;color:var(--t3);margin-top:2px;overflow-wrap:anywhere}
+.usr-abas{padding:14px 20px 0}
+.usr-abas .seg{display:flex;width:100%;flex-wrap:wrap}
+.usr-abas .seg button{flex:1 1 auto;padding:6px 10px;white-space:nowrap}
+.usr-corpo{padding:6px 20px 16px;display:flex;flex-direction:column;min-width:0}
+.usr-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--bd)}
+.usr-linha:last-child{border-bottom:none}
+.usr-linha-txt{flex:1;min-width:180px}
+.usr-niveis{flex-wrap:wrap;max-width:100%}
+.usr-niveis button{padding:6px 12px;font-size:12px}
+.usr-perigo{color:#c23b3b}
+.usr-nota-topo{font-size:11.5px;color:var(--t3);line-height:1.5;margin:0 0 6px}
+.usr-sub-bloco{display:flex;flex-direction:column;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd);min-width:0}
+.usr-tab-wrap{overflow-x:auto;max-width:100%;border:1px solid var(--bd);border-radius:10px}
+.usr-tab{width:100%;border-collapse:collapse;font-size:12px}
+.usr-tab th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);padding:8px 10px;border-bottom:1px solid var(--bd);white-space:nowrap}
+.usr-tab td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--t2);vertical-align:middle}
+.usr-tab tr:last-child td{border-bottom:none}
+.usr-tab td:first-child{color:var(--t1);font-weight:500;min-width:110px}
+.usr-tab .btn-retro{white-space:nowrap}
+.usr-switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.usr-switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
+.usr-switch span{position:absolute;inset:0;border-radius:20px;background:var(--bd2);transition:background var(--tb);pointer-events:none}
+.usr-switch span::after{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:var(--sh-sm);transition:transform var(--tb) var(--sp)}
+.usr-switch input:checked+span{background:var(--plantio)}
+.usr-switch input:checked+span::after{transform:translateX(18px)}
+.usr-switch input:focus-visible+span{box-shadow:0 0 0 3px rgba(22,167,107,.25)}
+.usr-admin-card{margin-top:10px}
+.usr-rodape{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid var(--bd)}
+.usr-rodape-txt{font-size:11.5px;color:var(--t3);flex:1;min-width:160px}
+.usr-rodape .login-erro{flex-basis:100%;margin:0}
+.usr-salvar{width:auto;padding:0 22px}
 .senha-prov{display:inline-block;margin:10px 0;font-size:18px;letter-spacing:2px;background:var(--s2);padding:8px 14px;border-radius:10px;user-select:all}
 .ferr-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ferr-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--t2)}
@@ -892,12 +931,14 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 
       <!-- USUÁRIOS (só admin) -->
       <div id="v-usuarios" class="view">
-        <div class="pgrid">
+        <div class="pgrid usr-pgrid">
           <div>
             <div class="usr-header">
-              <div class="sec-h" style="margin:0">Acessos ao Hub</div>
+              <div class="sec-h" style="margin:0">Quem acessa o quê</div>
               <button class="btn-add-usr" onclick="novoUsr()"><span class="ico">person_add</span>Novo acesso</button>
             </div>
+            <input class="cfg-inp usr-busca" type="search" placeholder="Buscar por nome ou e-mail" aria-label="Buscar pessoa" oninput="USR.busca=this.value;rUsrList()">
+            <div class="usr-filtros" id="usr-filtros"></div>
             <div class="usr-list" id="usr-list"><div class="col-sel-hint">Carregando…</div></div>
           </div>
           <div>
@@ -1731,7 +1772,6 @@ function showToast(msg){
 }
 // Preenchido por carregarDados() a partir de hub.usuarios / hub.usuario_modulos.
 const USUARIOS=[];
-const ROLE_LABELS={editor:'Editor',leitura:'Leitura',solicitante:'Solicitante'};
 let PARAM={}, MODULOS=[];
 const PORTAL_URL=new URL('portal.html',location.href).href;
 function iniciais(nome){return String(nome||'?').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();}
@@ -1765,13 +1805,20 @@ function irConfig(aba){
 }
 
 // ── Usuários (acessos) ──
+// As regras (níveis, resumo, filtro, mapas) estão em app/usuarios.js. Aqui fica só a tela.
 let ACESSOS=[], selEmail=null;
-const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone'};
-async function carregarAcessos(){
+let USR={filtro:'todos',busca:'',aba:'conta',rasc:null,base:null,mapas:undefined};
+const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone',corretivos:'Mapas de aplicação'};
+const USR_ABAS=[['conta','Conta'],['modulos','Módulos do Hub'],['ferramentas','Ferramentas']];
+const USR_CHIP_NIVEL={nada:'rc-dash',ver:'rc-a',editar:'rc-admin'};
+let GRUPOS_GM=null, MAPAS_GM=null;
+async function carregarAcessos(resetar=false){
   const {data,error}=await sb.rpc('acessos_situacao');
   if(error){document.getElementById('usr-list').innerHTML=`<div class="col-sel-hint">Não foi possível carregar: ${esc(error.message)}</div>`;return;}
   ACESSOS=data||[];rUsrList();
-  if(selEmail)selUsr(selEmail);
+  if(selEmail&&!ACESSOS.some(a=>a.email===selEmail)){selEmail=null;USR.rasc=null;}
+  if(selEmail&&resetar)usrAbrir(selEmail);
+  else rUsrPainel();
 }
 // Ações de conta (criar, senha provisória, bloquear, GeoMap) passam pela função
 // "contas" do Supabase — a única com a chave de serviço; aqui vai o login do admin.
@@ -1780,115 +1827,236 @@ async function chamarContas(corpo){
   if(error){let msg=error.message;try{msg=(await error.context.json()).erro||msg;}catch(_){}throw new Error(msg);}
   return data;
 }
-let GRUPOS_GM=null;
 async function gruposGeomap(){
   if(!GRUPOS_GM){try{GRUPOS_GM=await chamarContas({acao:'grupos_geomap'});}catch(e){GRUPOS_GM=[];showToast('Grupos do GeoMap indisponíveis: '+e.message);}}
   return GRUPOS_GM;
+}
+// Diferente dos grupos: falha não fica em cache, para tentar de novo na próxima vez.
+async function mapasGeomap(){
+  if(!MAPAS_GM){try{MAPAS_GM=await chamarContas({acao:'mapas_geomap'});}catch(e){return null;}}
+  return MAPAS_GM;
 }
 function mostrarSenhaProvisoria(email,senha){
   confirmar(`Senha provisória de ${esc(email)}:<br><code class="senha-prov">${esc(senha)}</code><br>Passe para a pessoa: ela troca no primeiro acesso. Esta senha não aparece de novo.`,
     {titulo:'Senha provisória',ok:'Copiar e fechar',html:true}).then(ok=>{if(ok)navigator.clipboard?.writeText(senha);});
 }
-function situacaoAcesso(a){
-  if(!a.conta_criada)return['espera','Sem conta'];
-  if(a.bloqueado)return['erro','Bloqueado: senha provisória ou inativo no GeoMap'];
-  if(a.precisa_trocar_senha)return['espera','Com senha provisória (ainda não trocou)'];
-  return['ok',a.ultimo_login?'Último acesso '+fmtDataHora(a.ultimo_login):'Ainda não entrou'];
-}
+function segSel(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
+function usrSwitch(id,on,acao){return `<label class="usr-switch"><input type="checkbox" id="${id}" ${on?'checked':''} onchange="${acao}"><span></span></label>`;}
+
+// Lista (coluna esquerda)
 function rUsrList(){
   const el=document.getElementById('usr-list');if(!el)return;
-  el.innerHTML=ACESSOS.map(a=>{
-    const [cls]=situacaoAcesso(a);
+  document.getElementById('usr-filtros').innerHTML=USR_FILTROS.map(([id,nome])=>
+    `<button type="button" class="usr-chip${USR.filtro===id?' on':''}" data-f="${id}" onclick="usrFiltro(this)">${esc(nome)}</button>`).join('');
+  el.innerHTML=usrFiltrar(ACESSOS,USR.filtro,USR.busca).map(a=>{
+    const [cls]=usrSituacao(a);
     return`<div class="usr-card${selEmail===a.email?' on':''}" data-email="${esc(a.email)}" onclick="selUsr(this.dataset.email)">
       <div class="usr-av">${esc(iniciais(a.nome))}</div>
       <div class="usr-txt">
         <div class="usr-nome">${esc(a.nome)}<span class="usr-dot ${cls}"></span></div>
         <div class="usr-mail">${esc(a.email)}</div>
+        <div class="usr-resumo">${esc(usrResumo(a))}</div>
       </div>
-      <div class="usr-chips">
-        <span class="role-chip ${a.papel==='editor'?'rc-a':'rc-dash'}">${ROLE_LABELS[a.papel]||a.papel}</span>
-        ${a.admin?'<span class="role-chip rc-admin">Admin</span>':''}
-      </div>
-    </div>`;}).join('')||'<div class="col-sel-hint">Nenhum acesso cadastrado.</div>';
+    </div>`;}).join('')
+    ||`<div class="col-sel-hint">${ACESSOS.length?'Nenhum acesso encontrado.':'Nenhum acesso cadastrado.'}</div>`;
 }
-function formUsr(a,novo){
-  const [cls,txt]=novo?['espera','Novo acesso']:situacaoAcesso(a);
-  const mods=MODULOS.filter(m=>m.id!=='voo');
-  return`<div class="cfg-card">
-    <div class="usr-topo">
-      <div class="usr-av grande">${esc(iniciais(a.nome||'?'))}</div>
-      <div><div class="usr-titulo">${esc(a.nome||'Novo acesso')}</div>
-        <div class="usr-sit ${cls}">${esc(txt)}</div></div>
+function usrFiltro(b){USR.filtro=b.dataset.f;rUsrList();}
+
+// Trocar de pessoa ou criar uma nova descarta o rascunho só depois de perguntar.
+function usrAssinatura(r){
+  return JSON.stringify([r.email,r.nome,!!r.admin,Object.entries(r.niveis||{}).sort(),!!r.geomap_ativo,!!r.geomap_admin,
+    [...(r.geomap_grupos||[])].sort(),Object.entries(r.mapas||{}).sort()]);
+}
+function usrMudou(){return !!USR.rasc&&usrAssinatura(USR.rasc)!==USR.base;}
+async function usrPodeTrocar(){
+  return !usrMudou()||await confirmar('Há mudanças não salvas. Descartar?',{titulo:'Mudanças não salvas',ok:'Descartar',perigo:true});
+}
+function usrRascunho(a){
+  return{email:a.email,nome:a.nome,admin:!!a.admin,niveis:{...(a.niveis||{})},geomap_ativo:!!a.geomap_ativo,
+    geomap_admin:!!a.geomap_admin,geomap_grupos:[...(a.geomap_grupos||[])],mapas:usrMapasDoBanco(a.geomap_mapas)};
+}
+function usrAbrir(email){
+  const a=ACESSOS.find(x=>x.email===email);if(!a)return;
+  if(email!==selEmail)USR.aba='conta';
+  selEmail=email;
+  USR.rasc=usrRascunho(a);USR.base=usrAssinatura(USR.rasc);
+  rUsrList();rUsrPainel();
+}
+async function selUsr(email){
+  if(email===selEmail&&!USR.rasc?.novo)return;
+  if(!await usrPodeTrocar())return;
+  usrAbrir(email);
+}
+async function novoUsr(){
+  if(!await usrPodeTrocar())return;
+  selEmail=null;
+  USR.rasc={novo:true,email:'',nome:'',admin:false,niveis:{},geomap_ativo:false,geomap_admin:false,geomap_grupos:[],mapas:{}};
+  USR.base=usrAssinatura(USR.rasc);USR.aba='conta';
+  rUsrList();rUsrPainel();
+  document.getElementById('u-email').focus();
+}
+
+// Painel (coluna direita): cabeçalho, abas, corpo e rodapé com Salvar.
+function rUsrPainel(){
+  const r=USR.rasc, painel=document.getElementById('dpanel-u');
+  document.getElementById('dsh-u').style.visibility=r?'visible':'hidden';
+  document.getElementById('dempty-u').style.display=r?'none':'';
+  painel.style.display=r?'':'none';
+  if(!r){painel.innerHTML='';return;}
+  const a=r.novo?null:ACESSOS.find(x=>x.email===selEmail);
+  const [cls,txt]=a?usrSituacao(a):['espera','Novo acesso'];
+  const sub=r.novo?'Preencha o e-mail e o nome; o acesso vale ao salvar.'
+    :`${esc(r.email)} · ${a?.ultimo_login?'último acesso '+fmtDataHora(a.ultimo_login):'ainda não entrou'}`;
+  painel.innerHTML=`<div class="usr-panel">
+    <div class="usr-panel-head">
+      <div class="usr-av grande">${esc(iniciais(r.nome||'?'))}</div>
+      <div style="min-width:0"><div class="usr-titulo">${esc(r.nome||'Novo acesso')}</div>
+        <div class="usr-sit ${cls}">${esc(txt)}</div>
+        <div class="usr-sub">${sub}</div></div>
     </div>
-    <div class="usr-form">
-      <label>E-mail<span>usado para entrar</span>
-        <input class="cfg-inp" id="u-email" value="${esc(a.email||'')}" ${novo?'':'readonly'} placeholder="nome@pedraagroindustrial.com.br"></label>
-      <label>Nome<input class="cfg-inp" id="u-nome" value="${esc(a.nome||'')}" placeholder="Nome e sobrenome"></label>
-      <label>Papel
-        <div class="seg" id="u-papel">${['editor','leitura'].map(pp=>`<button type="button" class="${(a.papel||'leitura')===pp?'on':''}" onclick="segSel(this)" data-v="${pp}">${ROLE_LABELS[pp]}</button>`).join('')}</div>
-        <span>Editor faz ações e envia arquivos; Leitura só consulta.</span></label>
-      <label>Módulos
-        <div class="usr-mods" id="u-mods">${mods.map(m=>`<label class="usr-mod"><input type="checkbox" value="${m.id}" ${(a.modulos||[]).includes(m.id)?'checked':''}>${esc(MOD_ROTULO[m.id]||m.nome)}</label>`).join('')}</div></label>
-      <label class="usr-admin"><input type="checkbox" id="u-admin" ${a.admin?'checked':''}> Administrador <span>vê Configurações e Usuários</span></label>
-      <div class="usr-sec">GeoMap</div>
-      <label class="usr-admin"><input type="checkbox" id="u-gm" ${a.geomap_ativo?'checked':''} onchange="document.getElementById('u-gm-det').style.display=this.checked?'':'none'"> Acessa o GeoMap</label>
-      <div id="u-gm-det" style="${a.geomap_ativo?'':'display:none'}">
-        <label class="usr-admin"><input type="checkbox" id="u-gm-admin" ${a.geomap_admin?'checked':''}> Administrador do GeoMap <span>gerencia mapas e camadas</span></label>
-        <label>Grupos<div class="usr-mods" id="u-gm-grupos"><span class="usr-sit espera">Carregando grupos…</span></div>
-          <span>Os grupos e os mapas de cada grupo são definidos no GeoMap.</span></label>
-      </div>
+    <div class="usr-abas"><div class="seg" id="usr-abas" role="tablist">${USR_ABAS.map(([id,nome])=>
+      `<button type="button" role="tab" data-aba="${id}" aria-selected="${USR.aba===id}" class="${USR.aba===id?'on':''}" onclick="usrAba(this)">${nome}</button>`).join('')}</div></div>
+    <div class="usr-corpo" id="usr-corpo"></div>
+    <div class="usr-rodape">
+      <span class="usr-rodape-txt">Vale na hora, para o Hub e as ferramentas.</span>
+      <div class="login-erro" id="u-erro"></div>
+      <button class="btn-acao usr-salvar" style="background:var(--t1)" onclick="salvarUsr()">${r.novo?'Adicionar':'Salvar'}</button>
     </div>
-    <div class="login-erro" id="u-erro"></div>
-    <div class="modal-botoes">
-      ${novo?'':`<button class="btn-retro" data-email="${esc(a.email)}" onclick="redefinirSenhaUsr(this.dataset.email)">Redefinir senha</button>`}
-      ${novo||a.email===EU?.email?'':`<button class="btn-retro" style="color:#c23b3b" data-email="${esc(a.email)}" onclick="removerUsr(this.dataset.email)">Remover acesso</button>`}
-      <button class="btn-acao" style="background:var(--t1)" onclick="salvarUsr(${novo})">${novo?'Adicionar':'Salvar'}</button>
-    </div>
-    <div class="usr-nota"><span class="ico">info</span>O acesso vale na hora, para o Hub e o GeoMap. Conta nova recebe uma senha provisória, que a pessoa troca no primeiro acesso.</div>
   </div>`;
+  rUsrCorpo();
 }
-function segSel(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
-function mostrarPainelUsr(html){
-  document.getElementById('dsh-u').style.visibility='visible';
-  document.getElementById('dempty-u').style.display='none';
-  const p=document.getElementById('dpanel-u');p.style.display='';p.innerHTML=html;
+function usrAba(b){
+  USR.aba=b.dataset.aba;
+  document.querySelectorAll('#usr-abas button').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-selected',on);});
+  rUsrCorpo();
 }
-function selUsr(email){
-  selEmail=email;rUsrList();
-  const a=ACESSOS.find(x=>x.email===email);
-  if(a){mostrarPainelUsr(formUsr(a,false));preencherGruposGm(a.geomap_grupos||[]);}
+function rUsrCorpo(){
+  const r=USR.rasc, el=document.getElementById('usr-corpo');if(!r||!el)return;
+  if(USR.aba==='conta')el.innerHTML=usrHtmlConta(r);
+  else if(USR.aba==='modulos')el.innerHTML=usrHtmlModulos(r);
+  else{el.innerHTML=usrHtmlFerramentas(r);preencherFerramentasGm();}
 }
-function novoUsr(){selEmail=null;rUsrList();mostrarPainelUsr(formUsr({papel:'leitura',modulos:[]},true));preencherGruposGm([]);document.getElementById('u-email').focus();}
-async function preencherGruposGm(marcados){
-  const gs=await gruposGeomap();
-  const el=document.getElementById('u-gm-grupos');if(!el)return;
-  el.innerHTML=gs.length?gs.map(g=>`<label class="usr-mod"><input type="checkbox" value="${g.id}" ${marcados.includes(g.id)?'checked':''}>${esc(g.nome)}</label>`).join('')
+function usrHtmlConta(r){
+  const novo=!!r.novo, eu=!novo&&r.email===EU?.email;
+  return `<div class="usr-form">
+    <label>Nome<input class="cfg-inp" id="u-nome" value="${esc(r.nome||'')}" placeholder="Nome e sobrenome" oninput="USR.rasc.nome=this.value"></label>
+    <label>E-mail<span>usado para entrar</span><input class="cfg-inp" id="u-email" value="${esc(r.email||'')}" ${novo?'':'readonly'} placeholder="nome@pedraagroindustrial.com.br" oninput="USR.rasc.email=this.value"></label>
+  </div>
+  ${novo?'':`<div class="usr-linha"><div class="usr-linha-txt"><div class="cfg-row-lbl">Senha</div>
+    <div class="cfg-row-sub">Gera uma senha provisória; a pessoa troca no próximo acesso.</div></div>
+    <button class="btn-retro" data-email="${esc(r.email)}" onclick="redefinirSenhaUsr(this.dataset.email)">Redefinir senha</button></div>`}
+  ${novo||eu?'':`<div class="usr-linha"><div class="usr-linha-txt"><div class="cfg-row-lbl">Remover acesso</div>
+    <div class="cfg-row-sub">Bloqueia a conta no Hub e em todas as ferramentas na hora. O histórico continua.</div></div>
+    <button class="btn-retro usr-perigo" data-email="${esc(r.email)}" onclick="removerUsr(this.dataset.email)">Remover</button></div>`}`;
+}
+function usrHtmlModulos(r){
+  return `<p class="usr-nota-topo">Nível em cada módulo. Leitura consulta; Solicitante pede projetos (Drone); Editor faz ações e envia arquivos.</p>
+  ${USR_MODULOS_HUB.map(([id,nome])=>{
+    const n=r.niveis[id]||'';
+    const opcoes=[['','Sem acesso'],['leitura','Leitura'],...(id==='drone'?[['solicitante','Solicitante']]:[]),['editor','Editor']];
+    return `<div class="usr-linha"><div class="cfg-row-lbl">${esc(nome)}</div>
+      <div class="seg usr-niveis" aria-label="Nível em ${esc(nome)}">${opcoes.map(([v,t])=>
+        `<button type="button" class="${n===v?'on':''}" data-mod="${id}" data-n="${v}" onclick="usrNivel(this)">${t}</button>`).join('')}</div></div>`;
+  }).join('')}
+  <div class="cfg-card usr-admin-card"><div class="cfg-row"><div class="cfg-row-l">
+    <div class="cfg-row-lbl">Administrador do Hub</div>
+    <div class="cfg-row-sub">Gerencia usuários e configurações. Só um admin concede admin.</div></div>
+    ${usrSwitch('u-admin',r.admin,'USR.rasc.admin=this.checked')}</div></div>`;
+}
+function usrNivel(b){
+  const {mod,n}=b.dataset;
+  if(n)USR.rasc.niveis[mod]=n;else delete USR.rasc.niveis[mod];
+  segSel(b);
+}
+function usrHtmlFerramentas(r){
+  const gm=!!r.geomap_ativo;
+  return `<div class="cfg-card">
+    <div class="cfg-card-t"><span class="ico">map</span>GeoMap</div>
+    <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Mapas, polígonos e ortomosaicos</div>
+      <div class="cfg-row-sub">Entra no GeoMap com o login do Hub.</div></div>
+      ${usrSwitch('u-gm',gm,'USR.rasc.geomap_ativo=this.checked;rUsrCorpo()')}</div>
+    ${gm?`<div class="usr-sub-bloco">
+      <label class="usr-admin"><input type="checkbox" id="u-gm-admin" ${r.geomap_admin?'checked':''} onchange="USR.rasc.geomap_admin=this.checked"> Administrador do GeoMap <span>gerencia mapas e camadas</span></label>
+      <div class="usr-sec">Grupos</div>
+      <div class="usr-mods" id="u-gm-grupos"><span class="usr-sit espera">Carregando grupos…</span></div>
+      <div class="usr-sec">Mapas</div>
+      <p class="usr-nota-topo">O grupo dá a base; aqui você pode dar acesso a mais um mapa ou liberar edição (anotar pins) só para esta pessoa.</p>
+      <div id="u-mapas"></div>
+    </div>`:''}
+  </div>
+  <div class="cfg-card">
+    <div class="cfg-card-t"><span class="ico">route</span>Mapas de aplicação</div>
+    <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Corretivos e Aplicação aérea</div>
+      <div class="cfg-row-sub">Gera o PDF do mapa.</div></div>
+      ${usrSwitch('u-corr',r.niveis.corretivos==='editor','usrCorretivos(this)')}</div>
+  </div>
+  <div class="usr-nota"><span class="ico">info</span>Kronos e Portal de downloads entram aqui quando passarem a usar o login do Hub.</div>`;
+}
+function usrCorretivos(el){
+  if(el.checked)USR.rasc.niveis.corretivos='editor';else delete USR.rasc.niveis.corretivos;
+}
+function usrGrupo(el){
+  const id=Number(el.value), atuais=USR.rasc.geomap_grupos;
+  USR.rasc.geomap_grupos=el.checked?[...new Set([...atuais,id])]:atuais.filter(x=>x!==id);
+  usrDesenharMapas();
+}
+async function preencherFerramentasGm(){
+  if(!USR.rasc?.geomap_ativo)return;
+  const [gs,ms]=await Promise.all([gruposGeomap(),mapasGeomap()]);
+  if(!USR.rasc?.geomap_ativo)return;   // a chave pode ter sido desligada enquanto carregava
+  const eg=document.getElementById('u-gm-grupos');
+  if(eg)eg.innerHTML=gs.length?gs.map(g=>`<label class="usr-mod"><input type="checkbox" value="${g.id}" ${USR.rasc.geomap_grupos.includes(g.id)?'checked':''} onchange="usrGrupo(this)">${esc(g.nome)}</label>`).join('')
     :'<span class="usr-sit erro">Não foi possível ler os grupos do GeoMap.</span>';
+  USR.mapas=ms;
+  usrDesenharMapas();
 }
-async function salvarUsr(novo){
-  const erro=document.getElementById('u-erro');erro.textContent='';
-  const email=document.getElementById('u-email').value.trim().toLowerCase();
-  const nome=document.getElementById('u-nome').value.trim();
-  const papel=document.querySelector('#u-papel .on')?.dataset.v||'leitura';
-  const modulos=[...document.querySelectorAll('#u-mods input:checked')].map(i=>i.value);
-  const admin=document.getElementById('u-admin').checked;
-  const geomap_ativo=document.getElementById('u-gm').checked;
-  const geomap_admin=geomap_ativo&&document.getElementById('u-gm-admin').checked;
-  const geomap_grupos=geomap_ativo?[...document.querySelectorAll('#u-gm-grupos input:checked')].map(i=>Number(i.value)):[];
-  if(!/^[^@\s]+@[^@\s]+$/.test(email)){erro.textContent='Informe um e-mail válido.';return;}
-  if(!nome){erro.textContent='Informe o nome.';return;}
-  if(novo&&ACESSOS.some(a=>a.email===email)){erro.textContent='Esse e-mail já tem acesso.';return;}
-  let r;
-  try{r=await chamarContas({acao:'salvar',email,nome,papel,admin,modulos,geomap_ativo,geomap_admin,geomap_grupos});}
-  catch(e){erro.textContent=e.message;return;}
-  selEmail=email;await carregarAcessos();
-  if(r.avisoGeomap)showToast('Salvo no Hub, mas o GeoMap não respondeu ('+r.avisoGeomap+'). Salve de novo em instantes.');
+// Tabela: Mapa · Pelos grupos · Individual · Resultado (o maior dos dois vale).
+function usrDesenharMapas(){
+  const el=document.getElementById('u-mapas');if(!el)return;
+  const ms=USR.mapas, r=USR.rasc;
+  if(ms===undefined){el.innerHTML='<span class="usr-sit espera">Carregando mapas…</span>';return;}
+  if(ms===null){el.innerHTML='<span class="usr-sit erro">Não foi possível ler os mapas do GeoMap.</span>';return;}
+  if(!ms.length){el.innerHTML='<span class="usr-sit espera">O GeoMap ainda não tem mapas.</span>';return;}
+  const chip=n=>`<span class="role-chip ${USR_CHIP_NIVEL[n]}">${n==='nada'?'Sem acesso':USR_MAPA_ROTULO[n]}</span>`;
+  el.innerHTML=`<div class="usr-tab-wrap"><table class="usr-tab">
+    <thead><tr><th>Mapa</th><th>Pelos grupos</th><th>Individual</th><th>Resultado</th></tr></thead>
+    <tbody>${ms.map(m=>{
+      const pg=usrPelosGrupos(m,r.geomap_grupos), ind=r.mapas[m.id]||'nada', fin=usrNivelFinal(pg,ind);
+      return `<tr><td>${esc(m.nome)}</td>
+        <td>${pg==='nada'?'—':chip(pg)}</td>
+        <td><button type="button" class="btn-retro" data-mapa="${m.id}" onclick="usrIndividual(this)">${ind==='nada'?'+ dar acesso':USR_MAPA_ROTULO[ind]}</button></td>
+        <td>${chip(fin)}</td></tr>`;}).join('')}
+    </tbody></table></div>`;
+}
+function usrIndividual(b){
+  const id=b.dataset.mapa, prox=usrProximoIndividual(USR.rasc.mapas[id]||'nada');
+  if(prox==='nada')delete USR.rasc.mapas[id];else USR.rasc.mapas[id]=prox;
+  usrDesenharMapas();
+}
+
+// Salvar: valida, manda à função "contas" e recarrega a lista.
+async function salvarUsr(){
+  const r=USR.rasc;if(!r)return;
+  const novo=!!r.novo, email=String(r.email||'').trim().toLowerCase(), nome=String(r.nome||'').trim();
+  let msg='';
+  if(!/^[^@\s]+@[^@\s]+$/.test(email))msg='Informe um e-mail válido.';
+  else if(!nome)msg='Informe o nome.';
+  else if(novo&&ACESSOS.some(a=>a.email===email))msg='Esse e-mail já tem acesso.';
+  if(msg){USR.aba='conta';rUsrPainel();document.getElementById('u-erro').textContent=msg;return;}
+  const gm=!!r.geomap_ativo;
+  let res;
+  try{res=await chamarContas({acao:'salvar',email,nome,admin:!!r.admin,niveis:r.niveis,
+    geomap_ativo:gm,geomap_admin:gm&&!!r.geomap_admin,geomap_grupos:gm?r.geomap_grupos:[],
+    geomap_mapas:gm?usrMapasParaBanco(r.mapas):[]});}
+  catch(e){document.getElementById('u-erro').textContent=e.message;return;}
+  selEmail=email;await carregarAcessos(true);
+  if(res.avisoGeomap)showToast('Salvo no Hub, mas o GeoMap não respondeu ('+res.avisoGeomap+'). Salve de novo em instantes.');
   else showToast(novo?'Acesso adicionado':'Acesso salvo');
-  if(r.senhaProvisoria)mostrarSenhaProvisoria(email,r.senhaProvisoria);
+  if(res.senhaProvisoria)mostrarSenhaProvisoria(email,res.senhaProvisoria);
 }
 async function redefinirSenhaUsr(email){
   if(!await confirmar(`${email} recebe uma senha provisória nova e precisa trocá-la no próximo acesso. A senha atual deixa de valer.`,{titulo:'Redefinir senha',ok:'Redefinir'}))return;
-  try{const r=await chamarContas({acao:'redefinir_senha',email});await carregarAcessos();mostrarSenhaProvisoria(email,r.senhaProvisoria);}
+  try{const r=await chamarContas({acao:'redefinir_senha',email});await carregarAcessos(false);mostrarSenhaProvisoria(email,r.senhaProvisoria);}
   catch(e){showToast('Não foi possível: '+e.message);}
 }
 async function removerUsr(email){
@@ -1896,8 +2064,7 @@ async function removerUsr(email){
   let r;
   try{r=await chamarContas({acao:'remover',email});}catch(e){showToast('Não foi possível: '+e.message);return;}
   showToast(r.avisoGeomap?'Removido do Hub; o GeoMap não respondeu — remova de novo em instantes.':'Acesso removido');
-  selEmail=null;
-  document.getElementById('dpanel-u').style.display='none';document.getElementById('dempty-u').style.display='';
+  selEmail=null;USR.rasc=null;
   await carregarAcessos();
 }
 
@@ -1916,7 +2083,7 @@ function rCfgGeral(){
     <div class="cfg-card">
       <div class="cfg-card-t"><span class="ico">person</span>Você</div>
       <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">${esc(EU.nome)}</div><div class="cfg-row-sub">${esc(EU.email||'')}</div></div>
-        <span class="role-chip rc-a">${ROLE_LABELS[EU.role]}${EU.admin?' · Admin':''}</span></div>
+        <div class="usr-roles">${Object.entries(EU.niveis).map(([m,n])=>`<span class="role-chip rc-a">${esc(MOD_ROTULO[m]||m)} · ${esc(USR_NIVEIS[n]||n)}</span>`).join('')||'<span class="role-chip rc-dash">Sem módulos</span>'}${EU.admin?'<span class="role-chip rc-admin">Admin</span>':''}</div></div>
     </div>
     <div class="cfg-card">
       <div class="cfg-card-t"><span class="ico">agriculture</span>Colheita</div>
@@ -2368,7 +2535,7 @@ async function lerTudo(consulta){
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
   const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC,notasC,params,modulos]=await Promise.all([
-    lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,precisa_trocar_senha,usuario_modulos(modulo_id)').order('nome')),
+    lerTudo(()=>sb.from('usuarios').select('id,nome,admin,precisa_trocar_senha,usuario_modulos(modulo_id,nivel)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
     lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
@@ -2428,9 +2595,9 @@ async function carregarDados(){
 
   USUARIOS.length=0;
   for(const u of usuarios){
-    const mods=new Set((u.usuario_modulos||[]).map(m=>m.modulo_id));
-    USUARIOS.push({id:u.id,nome:u.nome,role:u.papel,admin:u.admin,precisaTrocarSenha:u.precisa_trocar_senha,
-      perms:{plantio:mods.has('plantio'),colheita:mods.has('colheita'),preparo:mods.has('preparo'),drone:mods.has('drone')||u.admin,portal:false,config:u.admin}});
+    const niveis=Object.fromEntries((u.usuario_modulos||[]).map(m=>[m.modulo_id,m.nivel]));
+    USUARIOS.push({id:u.id,nome:u.nome,niveis,admin:u.admin,precisaTrocarSenha:u.precisa_trocar_senha,
+      perms:{plantio:!!niveis.plantio,colheita:!!niveis.colheita,preparo:!!niveis.preparo,drone:!!niveis.drone||u.admin,portal:false,config:u.admin}});
   }
   EU=USUARIOS.find(u=>u.id===user.id)||null;
   if(EU)EU.email=user.email;
@@ -2807,7 +2974,8 @@ async function abrirAviso(id){
 
 // Mesma regra do banco (hub.pode_editar): o botão só aparece pra quem pode;
 // quem decide de verdade é a função no banco.
-function podeEditar(mod){return !!EU&&(EU.admin||(EU.role==='editor'&&EU.perms[mod]));}
+// Mesma regra do banco (hub.pode_editar): admin ou nível editor no módulo.
+function podeEditar(mod){return !!EU&&(EU.admin||EU.niveis[mod]==='editor');}
 
 // Executa uma ação (função do banco), avisa o resultado e recarrega os dados.
 async function rpcAcao(btn,fn,args,msgOk){
@@ -2840,7 +3008,7 @@ function aplicarUsuario(){
   document.getElementById('tb-av').textContent=iniciais;
   document.getElementById('sb-uname').textContent=primeiro;
   document.getElementById('tb-uname').textContent=primeiro;
-  document.getElementById('sb-urole').textContent=ROLE_LABELS[EU.role]+(EU.admin?' · Admin':'');
+  document.getElementById('sb-urole').textContent=EU.admin?'Admin':'';
   EU.perms.usuarios=EU.admin;
   for(const [mod,alvo] of [['plantio','plantio'],['preparo','preparo'],['colheita','colheita'],['drone','drone'],['config','config'],['usuarios','usuarios']]){
     const btn=document.querySelector(`.ni[onclick*="'${alvo}'"]`);
@@ -2861,6 +3029,7 @@ MOD_AC['consultas']='var(--t2)';
 // Sessão salva no navegador: entra direto, sem pedir login de novo.
 sb.auth.getSession().then(({data})=>{if(data.session)abrirHub();});
 </script>
+<script src="usuarios.js"></script>
 <script src="drone.js"></script>
 </body>
 </html>
