@@ -1,8 +1,10 @@
-SALVAR = 'select hub.acesso_salvar(%s, %s, %s, %s, %s, %s, %s, %s)'
+import json
+
+SALVAR = 'select hub.acesso_salvar(%s, %s, %s, %s::jsonb, %s, %s, %s, %s::jsonb)'
 
 
-def salvar(como, uid, email, nome='Fulano', papel='leitura', admin=False, modulos=(), gm_ativo=False, gm_admin=False, gm_grupos=()):
-    return como(uid, SALVAR, (email, nome, papel, admin, list(modulos), gm_ativo, gm_admin, list(gm_grupos)))
+def salvar(como, uid, email, nome='Fulano', admin=False, niveis=None, gm_ativo=False, gm_admin=False, gm_grupos=()):
+    return como(uid, SALVAR, (email, nome, admin, json.dumps(niveis or {}), gm_ativo, gm_admin, list(gm_grupos), json.dumps([])))
 
 
 def test_salvar_grava_campos_do_geomap(banco, pessoa, como):
@@ -16,7 +18,7 @@ def test_salvar_grava_campos_do_geomap(banco, pessoa, como):
 def test_salvar_cria_hub_usuarios_quando_a_conta_existe(banco, pessoa, como):
     adm = pessoa('adm2@x.com', admin=True)
     uid = banco.execute("insert into auth.users (email) values ('soconta@x.com') returning id").fetchone()[0]
-    salvar(como, adm, 'soconta@x.com', nome='Só Conta', papel='editor', modulos=['plantio'])
+    salvar(como, adm, 'soconta@x.com', nome='Só Conta', niveis={'plantio': 'editor'})
     assert banco.execute('select nome, papel from hub.usuarios where id=%s', (uid,)).fetchone() == ('Só Conta', 'editor')
     assert banco.execute('select modulo_id from hub.usuario_modulos where usuario_id=%s', (uid,)).fetchall() == [('plantio',)]
 
