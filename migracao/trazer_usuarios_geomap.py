@@ -120,13 +120,18 @@ class AuthAdmin:
                               json={'ban_duration': BLOQUEIO if sim else 'none'}))
 
 
+def colunas_acessos(simular):
+    """A simulação roda antes do SQL da virada, quando acessos.geomap_ativo ainda não existe."""
+    return 'email,nome,papel,admin,modulos' + ('' if simular else ',geomap_ativo')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('--simular', action='store_true')
     ap.add_argument('--forcar', action='store_true', help='rodar de novo depois da virada (desfaz senhas trocadas no Hub!)')
     args = ap.parse_args()
     hub, auth = Hub(), AuthAdmin()
-    acessos = {a['email']: a for a in hub.selecionar('acessos', 'email,nome,papel,admin,modulos,geomap_ativo', {'order': 'email'})}
+    acessos = {a['email']: a for a in hub.selecionar('acessos', colunas_acessos(args.simular), {'order': 'email'})}
     if ja_migrado(acessos) and not args.simular and not args.forcar:
         sys.exit('A virada já foi feita (há acessos com GeoMap no Hub). Rodar de novo desfaria as senhas trocadas '
                  'no Hub. Se for mesmo necessário, use --forcar.')

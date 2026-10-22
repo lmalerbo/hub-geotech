@@ -49,3 +49,10 @@ def test_segunda_execucao_e_recusada_depois_da_virada():
     # Revisão final: rodar de novo depois da virada desfaria senhas trocadas no Hub.
     assert ja_migrado({'ana@x.com': {'geomap_ativo': False}}) is False
     assert ja_migrado({'ana@x.com': {'geomap_ativo': True}}) is True
+
+
+def test_simulacao_roda_antes_do_sql_da_virada():
+    # Ensaio de 22/10: a simulação (passo 3 do runbook) vem ANTES do SQL que cria acessos.geomap_ativo (passo 4).
+    from trazer_usuarios_geomap import colunas_acessos
+    assert 'geomap_ativo' not in colunas_acessos(simular=True)
+    assert 'geomap_ativo' in colunas_acessos(simular=False)      # a de verdade precisa dela para recusar 2ª execução

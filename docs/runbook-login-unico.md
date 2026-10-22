@@ -18,8 +18,9 @@ Branches: Hub `login-unico` (hub-geotech); GeoMap `feat/login-hub` (backend + fr
    - `HUB_SUPABASE_URL=https://dpvsivypabmvmrrpgmhc.supabase.co`
    - `HUB_SUPABASE_ANON_KEY=<chave publicável do Hub, a mesma que está em app/index.html>`
    - `CONTAS_LOGIN_LOCAL=automacao@geoportal.local` — a automação diária continua entrando pelo login próprio do GeoMap. **Não** desativar essa conta.
-3. Simulação (só leitura): `python migracao/trazer_usuarios_geomap.py --simular` e conferir a lista com o Leo. Na simulação de 16/10/2026:
-   - **4 pessoas com a senha provisória do GeoMap** (arthur.lopes, bruno.soares, karen.martins, lucas.campos): não recebem o hash; o Leo entrega uma provisória do Hub no passo 11;
+3. Simulação (só leitura, roda antes do SQL): `python migracao/trazer_usuarios_geomap.py --simular` e conferir a lista com o Leo. Na simulação de 22/10/2026:
+   - **1 pessoa com a senha provisória do GeoMap** (oliveira.lucas): não recebe o hash; o Leo entrega uma provisória do Hub no passo 11;
+   - **5 contas que existem só no GeoMap** e serão criadas no Hub (danilo.zinader, usuarios-tittoto, victor.castro, victor.domiciano, willy.oliveira);
    - as contas `@geoportal.local` (`automacao`, `__teste_vigiar__`) ficam de fora automaticamente: continuam só no GeoMap.
 
 ## Virada (tudo no mesmo dia, em sequência)
