@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapas de aplicação · Hub Geotech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="corretivos.css">
+</head>
+<body>
+
+<div id="cr-carregando" class="cr-tela cr-centro">
+  <div class="cr-lcard" style="max-width:380px">
+    <div class="cr-esq" aria-hidden="true"></div>
+    <p class="cr-msg" role="status">Carregando…</p>
+  </div>
+</div>
+
+<div id="cr-login" class="cr-tela cr-centro off">
+  <form class="cr-lcard" id="cr-form" novalidate>
+    <div class="cr-brand"><span class="bmark">MA</span><span class="bname">Hub Geotech</span></div>
+    <h1 class="cr-ltitle">Mapas de aplicação</h1>
+    <p class="cr-lsub">Entre com a mesma conta do Hub.</p>
+    <div class="cr-form">
+      <div>
+        <label class="cr-lbl" for="cr-email">E-mail</label>
+        <input class="cr-inp" id="cr-email" type="email" autocomplete="username" placeholder="nome@empresa.com">
+      </div>
+      <div>
+        <label class="cr-lbl" for="cr-senha">Senha</label>
+        <input class="cr-inp" id="cr-senha" type="password" autocomplete="current-password">
+      </div>
+      <p class="cr-erro" id="cr-login-erro" role="alert"></p>
+      <button class="cr-btn cr-btn-bloco" id="cr-entrar" type="submit">Entrar</button>
+    </div>
+  </form>
+</div>
+
+<div id="cr-sem-acesso" class="cr-tela cr-centro off">
+  <div class="cr-lcard">
+    <div class="cr-brand"><span class="bmark">MA</span><span class="bname">Mapas de aplicação</span></div>
+    <p class="cr-msg-login" role="status">Sua conta não tem acesso aos Mapas de aplicação. Peça ao administrador.</p>
+    <button class="cr-btn cr-btn-bloco" type="button" data-sair>Sair</button>
+  </div>
+</div>
+
+<div id="cr-app" class="cr-tela off">
+  <div class="cr-demo off" id="cr-demo">Demonstração — dados fictícios</div>
+
+  <header class="cr-top">
+    <div class="cr-brand">
+      <span class="bmark sm">MA</span>
+      <span class="bname">Mapas de aplicação</span>
+    </div>
+    <div class="cr-top-acoes">
+      <span class="cr-nome" id="cr-nome"></span>
+      <a class="cr-btn2" href="index.html"><span class="ico">arrow_back</span> Voltar ao Hub</a>
+      <button class="cr-btn2" type="button" data-sair><span class="ico">logout</span> Sair</button>
+    </div>
+  </header>
+
+  <main class="cr-main">
+    <section id="cr-lista" aria-label="Mapas de aplicação">
+      <div class="cr-busca">
+        <label class="cr-lbl" for="cr-busca">Fazenda</label>
+        <input class="cr-inp" id="cr-busca" type="search" autocomplete="off" placeholder="Código ou nome da fazenda">
+        <div class="cr-res" id="cr-res" aria-live="polite"></div>
+      </div>
+      <div class="cr-pnl off" id="cr-pnl">
+        <div class="cr-ph">
+          <div>
+            <div class="nm" id="cr-faz-nome"></div>
+            <div class="sub" id="cr-faz-sub"></div>
+          </div>
+          <button class="cr-btn" type="button" id="cr-novo"><span class="ico">add</span> Novo mapa</button>
+        </div>
+        <div id="cr-mapas"></div>
+      </div>
+    </section>
+
+    <section id="cr-trabalho" class="off" aria-label="Mapa em edição">
+      <div class="cr-pnl">
+        <div class="cr-ph">
+          <button class="cr-btn2" type="button" id="cr-voltar"><span class="ico">arrow_back</span> Voltar</button>
+          <div class="nm" id="cr-trab-tit"></div>
+        </div>
+        <div class="cr-trab-corpo" id="cr-trab-corpo"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="cr-modal-fundo off" id="cr-modal-fundo"></div>
+<div class="cr-toast" id="cr-toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="corretivos-pdf.js"></script>
+<script src="corretivos-demo.js"></script>
+<script src="corretivos.js"></script>
+</body>
+</html>

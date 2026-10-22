@@ -16,6 +16,14 @@ const CR_DEMO_MAPAS = [
     toneladas: 18.6, alterado_por_nome: 'Rafael Souza', alterado_em: '2026-10-12T11:05:00' },
 ];
 // Geometria fictícia: grade de 2 x 3 talhões (1 a 6). O talhão 9 não tem geometria (fora da Base).
+// Cadastro de insumos de demonstração (nomes e unidades da migração; dados fictícios).
+const CR_DEMO_INSUMOS = [
+  { id: 1, codigo: 29779, nome: 'REGULADOR MATURADOR ETHEP', unidade: 'L', dose_sugerida: 0.08, ativo: true },
+  { id: 2, codigo: 562297, nome: 'INSETICIDA BOUVERIZ WP PR', unidade: 'KG', dose_sugerida: 0.1, ativo: true },
+  { id: 3, codigo: 562864, nome: 'FERTILIZANTE VOLT 20L', unidade: 'L', dose_sugerida: 0.5, ativo: true },
+  { id: 4, codigo: 300526, nome: 'FUNGICIDA PRIORI XTRA', unidade: 'L', dose_sugerida: 0.5, ativo: true },
+  { id: 5, codigo: 563266, nome: 'INSETICIDA VANTACOR 5L', unidade: 'L', dose_sugerida: 0.035, ativo: true },
+];
 const CR_DEMO_GEO = (() => {
   const areas = [23, 23, 21.4, 5.24, 4.7, 12];
   const features = areas.map((area, i) => {
@@ -44,7 +52,8 @@ const CR_API_DEMO = (() => {
   const copia = v => JSON.parse(JSON.stringify(v));
   let mapas = copia(CR_DEMO_MAPAS);
   const detalhes = copia(CR_DEMO_DETALHE);
-  let proximoId = 100, proximaAplicacao = 100;
+  let proximoId = 100, proximaAplicacao = 100, proximoInsumo = 100;
+  let insumos = copia(CR_DEMO_INSUMOS);
   const det = id => (detalhes[id] = detalhes[id] || { areas: {}, apls: [] });
   // Remove do mapa os talhões de 'candidatos' que ficaram sem aplicação.
   const limparOrfaos = (d, candidatos) => {
@@ -53,8 +62,10 @@ const CR_API_DEMO = (() => {
   };
   const resumo = m => {
     const d = detalhes[m.id];
-    const total = d.apls.reduce((s, a) => s + crTotalApl(a, d.areas), 0);
+    const corr = d.apls.filter(a => a.tipo !== 'insumo');     // L e kg não se somam
+    const total = corr.reduce((s, a) => s + crTotalApl(a, d.areas), 0);
     return { ...m, talhoes: Object.keys(d.areas).length, toneladas: Math.round(total * 100) / 100,
+             insumos: new Set(d.apls.filter(a => a.tipo === 'insumo').map(a => a.insumo_nome)).size,
              os: [...new Set(d.apls.map(a => a.os))].sort() };
   };
   return {
@@ -69,10 +80,22 @@ const CR_API_DEMO = (() => {
       const hoje = new Date();
       const pad = n => String(n).padStart(2, '0');
       mapas.push({ id, cod_faz: Number(codFaz), operacao, data: `${hoje.getFullYear()}-${pad(hoje.getMonth() + 1)}-${pad(hoje.getDate())}`,
-                   os: [], talhoes: 0, toneladas: 0, alterado_por_nome: 'Usuário demonstração', alterado_em: hoje.toISOString() });
+                   os: [], talhoes: 0, toneladas: 0, insumos: 0, alterado_por_nome: 'Usuário demonstração', alterado_em: hoje.toISOString() });
       return id;
     },
     excluirMapa: async id => { mapas = mapas.filter(m => m.id !== Number(id)); },
+    insumos: async () => copia(insumos.filter(i => i.ativo).sort((a, b) => a.nome.localeCompare(b.nome))),
+    salvarInsumo: async p => {
+      const nome = String(p.nome).trim();
+      // Como o banco: nome (sem diferenciar maiúsculas) e código são únicos só entre os insumos ativos.
+      const ativos = insumos.filter(i => i.ativo && i.id !== Number(p.id));
+      if (ativos.some(i => i.nome.toUpperCase() === nome.toUpperCase())) throw new Error('Já existe um insumo com esse nome.');
+      if (p.codigo != null && ativos.some(i => i.codigo === p.codigo)) throw new Error('Já existe um insumo com esse código.');
+      const dados = { codigo: p.codigo, nome, unidade: p.unidade, dose_sugerida: p.dose_sugerida };
+      if (p.id) Object.assign(insumos.find(i => i.id === Number(p.id)), dados);
+      else insumos.push({ id: proximoInsumo++, ativo: true, ...dados });
+    },
+    removerInsumo: async id => { Object.assign(insumos.find(i => i.id === Number(id)), { ativo: false }); },
     talhoesFazenda: async () => copia(CR_DEMO_GEO),
     carregarMapa: async id => {
       const m = mapas.find(x => x.id === Number(id));
@@ -87,8 +110,11 @@ const CR_API_DEMO = (() => {
       const d = det(Number(id));
       for (const t of p.talhoes) if (!d.areas[t]) d.areas[t] = { area_ha: p.areas[t].area_ha, editada: !!p.areas[t].editada };
       const ordem = Math.max(0, ...d.apls.map(a => a.ordem)) + 1;
+      // Como o banco: nome e unidade do insumo são copiados no momento da gravação.
+      const ins = p.tipo === 'insumo' ? insumos.find(i => i.id === Number(p.insumo_id)) : null;
       d.apls.push({ id: proximaAplicacao++, tipo: p.tipo, calcario: p.calcario, dose: p.dose, dose_gesso: p.dose_gesso,
-                    os: p.os, ordem, talhoes: [...p.talhoes] });
+                    os: p.os, ordem, talhoes: [...p.talhoes],
+                    insumo_id: ins ? ins.id : null, insumo_nome: ins ? ins.nome : null, insumo_unidade: ins ? ins.unidade : null });
     },
     editarAplicacao: async (id, aplId, p) => {
       const d = det(Number(id));

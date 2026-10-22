@@ -52,10 +52,10 @@ def test_totais_por_produto_blend_separado():
     blend_ph7 = {**BLEND, 'calcario': 'ph7', 'talhoes': [1], 'ordem': 4}
     t = totais_por_produto({'areas': AREAS, 'aplicacoes': [DOL, FOS, BLEND, blend_ph7]})
     assert t == [
-        {'titulo': 'Calcário Dolomítico', 'toneladas': 88.8, 'detalhe': None},
-        {'titulo': 'Fosfato', 'toneladas': 22.2, 'detalhe': None},
-        {'titulo': 'Blend Dolomítico', 'toneladas': 24.85, 'detalhe': 'calc. 14,91 t + gesso 9,94 t'},
-        {'titulo': 'Blend PH7', 'toneladas': 57.5, 'detalhe': 'calc. 34,50 t + gesso 23,00 t'},
+        {'titulo': 'Calcário Dolomítico', 'total': 88.8, 'unidade': 't', 'detalhe': None},
+        {'titulo': 'Fosfato', 'total': 22.2, 'unidade': 't', 'detalhe': None},
+        {'titulo': 'Blend Dolomítico', 'total': 24.85, 'unidade': 't', 'detalhe': 'calc. 14,91 t + gesso 9,94 t'},
+        {'titulo': 'Blend PH7', 'total': 57.5, 'unidade': 't', 'detalhe': 'calc. 34,50 t + gesso 23,00 t'},
     ]
 
 

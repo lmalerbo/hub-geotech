@@ -62,11 +62,12 @@ def nova_pagina(W, H) -> Pagina:
     return pg
 
 
-def eixo_mapa(pg: Pagina, gdf, x, y, w, h):
-    """Cria o eixo do mapa já enquadrado no GeoDataFrame. Devolve (ax, s, x0, y0): s = mm por metro."""
+def eixo_mapa(pg: Pagina, gdf, x, y, w, h, reserva=(22, 14, 8)):
+    """Cria o eixo do mapa já enquadrado no GeoDataFrame. Devolve (ax, s, x0, y0): s = mm por metro.
+    reserva = (topo, base, lado) em mm; o padrão guarda a faixa do logo (cima) e da escala (baixo)."""
     ax = pg.eixo(x, y, w, h)
     minx, miny, maxx, maxy = gdf.total_bounds
-    topo, base, lado = 22, 14, 8                      # reserva para logo (cima) e escala (baixo)
+    topo, base, lado = reserva
     s = min((w - 2 * lado) / (maxx - minx), (h - topo - base) / (maxy - miny))
     x0 = minx - (lado + ((w - 2 * lado) - (maxx - minx) * s) / 2) / s
     y0 = miny - (base + ((h - topo - base) - (maxy - miny) * s) / 2) / s

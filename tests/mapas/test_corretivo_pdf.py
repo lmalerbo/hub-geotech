@@ -43,7 +43,7 @@ def test_pdf_basico(tmp_path):
     destino = tmp_path / 'c.pdf'
     gerar_pdf(_dados(), destino)
     paginas, texto = _texto(destino)
-    assert paginas == 1
+    assert paginas == 2           # fazenda larga: folha 1 com mapa e carimbo, tabela na folha 2
     for esperado in ['CORRETIVO · SUBSOLAGEM', '10156 · FAZENDA TESTE', 'O.S. 4520, 4521, 4530',
                      'Calcário Dolomítico', 'Fosfato', 'Blend Dolomítico', 'calc. 40,50 t + gesso 27,00 t',
                      'Blend · Dolomítico', '+ Gesso', '13,00*', 'Gerado em 15/10/2026 por Ana']:

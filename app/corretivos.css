@@ -123,6 +123,9 @@ button,input{font:inherit}
 .cr-ck input{accent-color:var(--plantio);width:16px;height:16px}
 .cr-info{color:var(--t2);font-size:12px;background:var(--s2);border-radius:10px;padding:8px 10px}
 .cr-modal{max-height:90vh;overflow:auto}
+.cr-ins-linha{display:flex;gap:8px;align-items:center}
+.cr-ins-linha select{flex:1;min-width:0}
+.cr-ins-linha .cr-btn2{flex-shrink:0}
 @media (max-width:899px){
   .cr-trab-grid{grid-template-columns:1fr}
   .cr-mapa-box{position:relative;height:50vh;min-height:300px;border-right:0;border-bottom:1px solid var(--bd)}
@@ -133,6 +136,16 @@ button,input{font:inherit}
 .cr-modal-fundo{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .cr-modal{background:var(--sf);border-radius:16px;padding:20px;width:420px;max-width:100%;box-shadow:var(--sh-md)}
 .cr-modal h3{font-size:15px;font-weight:600;margin-bottom:8px}
+.cr-modal-ins{width:min(560px,calc(100vw - 32px))}
+.cr-ins-lista{max-height:240px;overflow:auto;border:1px solid var(--bd);border-radius:var(--r-sm);margin-top:12px}
+.cr-ins-tab{width:100%;border-collapse:collapse;font-size:12px}
+.cr-ins-tab th{position:sticky;top:0;background:var(--s2);color:var(--t2);font-weight:600;text-align:left;padding:6px 8px;font-size:11px}
+.cr-ins-tab td{padding:6px 8px;border-top:1px solid var(--bd);vertical-align:middle;overflow-wrap:anywhere}
+.cr-ins-acoes{white-space:nowrap;text-align:right}
+.cr-ins-acoes .cr-x{display:inline-flex}
+.cr-ins-form .cr-erro:empty{display:none}
+.cr-ins-form{margin-top:14px}
+.cr-ins-form h4{font-size:13px;font-weight:600}
 .cr-modal p{font-size:13px;color:var(--t2);line-height:1.5}
 .cr-md-acoes{display:flex;flex-direction:column;gap:8px;margin-top:16px}
 .cr-md-acoes .cr-btn,.cr-md-acoes .cr-btn2{justify-content:center;width:100%}
