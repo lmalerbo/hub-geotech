@@ -5,6 +5,11 @@ const DR_ST={aguardando_obstaculos:'aguardando obstáculos',aguardando_infestaca
   solicitado:'solicitado',em_elaboracao:'em elaboração',devolvido:'devolvido'};
 const DR_COR={normal:'#a0694b',catacao:'#5b8c5a',sel:'#5b6ee8',rem:'#c23b3b',sem:'#e9ebef',fora:'#d4890a'};
 
+// Movimento (app/motion.js). Os botões do Drone chamam as funções sem passar o
+// botão; ele é pego do evento do clique — antes de qualquer await/prompt, que
+// apagam window.event.
+function drBotao(){const e=window.event;return e&&e.target&&e.target.closest?e.target.closest('button'):null;}
+
 function drEstilo(){
   if(document.getElementById('drone-css'))return;
   const s=document.createElement('style');s.id='drone-css';
@@ -63,6 +68,9 @@ async function droneIniciar(){
       <div id="dr-busca-res"></div><div id="dr-fila"></div></div>
       <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um item da fila ou busque uma fazenda</div></div>`;
     root.dataset.pronto='1';
+    const fila=document.getElementById('dr-fila');
+    Mo.carregando(fila);await drCarregarPainel();Mo.pronto(fila);
+    return;
   }
   await drCarregarPainel();
 }
@@ -128,7 +136,9 @@ async function drAbrirFazenda(cod,doc){
   DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   clearTimeout(DR.poll);
   document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
-  await drRecarregarFazenda();
+  const pnl=document.getElementById('dr-faz');
+  DR.voo=null;
+  Mo.carregando(pnl);await drRecarregarFazenda();Mo.pronto(pnl);
 }
 
 async function drRecarregarFazenda(){
@@ -170,12 +180,34 @@ function drRender(){
       <div class="dr-side" id="dr-side"></div></div>`;
   drPintarMapa();
   drPainelLateral();
+  drVooPublicacao();
+}
+
+// Publicação pedida: o drone sobrevoa o mapa até o agente responder. A tela é
+// redesenhada a cada 5 s (polling); DR.voo guarda desde quando, para o voo
+// continuar de onde estava. Quando a publicação some da lista (publicada) o
+// drone pousa com ✓; se voltar com erro, mostra a falha.
+function drVooPublicacao(){
+  const mapa=document.getElementById('dr-map');if(!mapa)return;
+  const {ger}=drAtual();
+  if(ger&&ger.publicar_pedido_em&&!ger.publicacao_erro){
+    if(!DR.voo||DR.voo.id!==ger.id)DR.voo={id:ger.id,desde:Date.now()};
+    Mo.voo(mapa,{texto:'Publicando no portal…',desde:DR.voo.desde});
+  }else if(DR.voo){
+    const erro=ger&&ger.id===DR.voo.id&&ger.publicacao_erro;
+    Mo.voo(mapa,{desde:DR.voo.desde}).pousar(!erro,erro?'Falha ao publicar':'Publicado no portal');
+    DR.voo=null;
+  }
 }
 
 function drPintarMapa(){
   const fc={type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')};
   const apl={type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)};
   if(DR.mapa){DR.mapa.remove();DR.mapa=null;}
+  // esboço só quando muda a fazenda/documento (o polling redesenha o mapa a cada 5 s)
+  const box=document.getElementById('dr-map'),chave=DR.cod+'|'+DR.doc,novo=DR.mapaChave!==chave;
+  DR.mapaChave=chave;
+  if(novo)Mo.carregando(box);
   const m=new maplibregl.Map({container:'dr-map',attributionControl:false,
     style:{version:8,glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',sources:{},
       layers:[{id:'fundo',type:'background',paint:{'background-color':'#f7f8fa'}}]}});
@@ -199,6 +231,7 @@ function drPintarMapa(){
     fc.features.forEach(f=>(f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates)
       .forEach(p=>p[0].forEach(c=>b.extend(c))));
     if(!b.isEmpty())m.fitBounds(b,{padding:30,duration:0});
+    Mo.pronto(box,{cascata:false});
     drAtualizarSelecaoMapa();
     if(DR.mostrarObst)drObstaculos(true);
     m.on('click','tal-f',e=>drClicarTalhao(e.features[0].properties));
@@ -234,15 +267,18 @@ function drPodeCancelar(sol,ger,eu){
 }
 
 async function drCancelar(id){
+  const btn=drBotao();
   const motivo=prompt('Motivo do cancelamento:');
   if(motivo===null)return;
   if(!motivo.trim()){alert('Informe o motivo.');return;}
   if(!await confirmar('Cancelar esta solicitação? A prévia aberta, se houver, será descartada.',
                       {titulo:'Cancelar solicitação',ok:'Cancelar solicitação',perigo:true}))return;
+  const fim=Mo.ocupado(btn);
   try{
     await drRpc('drone_cancelar',{p_solicitacao_id:id,p_motivo:motivo});
+    fim(true);
     await drCarregarPainel();if(DR.cod)await drRecarregarFazenda();
-  }catch(e){drErro(e);alert(e.message);}
+  }catch(e){fim(false);drErro(e);alert(e.message);}
 }
 
 function drAtual(){
@@ -367,25 +403,56 @@ function drEnviar(tipo){
     if(classe===undefined){alert('Classe inválida: use 15, 25 ou 50.');return;}
   }
   const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.accept='.shp,.shx,.dbf,.prj,.cpg,.zip';
+  const btn=drBotao();
   inp.onchange=async()=>{
+    const arqs=[...inp.files];if(!arqs.length)return;
+    const fim=Mo.ocupado(btn);
+    // barra de progresso logo abaixo do botão (ou no topo do painel)
+    const lugar=document.createElement('div');
+    (btn&&btn.isConnected?btn:document.getElementById('dr-side')?.firstChild)?.after?.(lugar);
+    const total=arqs.reduce((s,f)=>s+f.size,0),prog=Mo.progresso(lugar,{total});
     try{
-      const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];
-      for(const f of inp.files){
-        const c=`${pasta}/${drNomeSeguro(f.name)}`;
-        const {error}=await sb.storage.from('drone-envios').upload(c,f);
-        if(error)throw error;caminhos.push(c);
+      const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];let feitos=0;
+      for(const [k,f] of arqs.entries()){
+        const c=`${pasta}/${drNomeSeguro(f.name)}`,rot=`${f.name}${arqs.length>1?` (${k+1} de ${arqs.length})`:''}`;
+        prog.atualizar(feitos,'Enviando '+rot);
+        await drSubirComProgresso('drone-envios',c,f,b=>prog.atualizar(feitos+Math.min(b,f.size),'Enviando '+rot));
+        feitos+=f.size;caminhos.push(c);
       }
+      prog.processando('Registrando o envio…');
       const {sol}=drAtual();
       const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:classe,
         p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
       if(tipo==='ajuste')DR.ajusteId=id;
+      prog.fim(true);await fim(true);
       await drRecarregarFazenda();
-    }catch(e){drErro(e);}
+    }catch(e){prog.fim(false);fim(false);drErro(e);}
   };
   inp.click();
 }
 
+// sb.storage.upload não informa o progresso; a mesma chamada à API do Storage
+// por XMLHttpRequest informa. Sem sobrescrever (igual ao upload padrão).
+async function drSubirComProgresso(bucket,caminho,arq,aoProgredir){
+  const token=(await sb.auth.getSession()).data.session?.access_token;
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open('POST',`${SB_URL}/storage/v1/object/${bucket}/${caminho.split('/').map(encodeURIComponent).join('/')}`);
+    x.setRequestHeader('Authorization','Bearer '+token);x.setRequestHeader('apikey',SB_KEY);
+    x.setRequestHeader('Content-Type',arq.type||'application/octet-stream');x.setRequestHeader('x-upsert','false');
+    x.upload.onprogress=e=>{if(e.lengthComputable)aoProgredir(e.loaded);};
+    x.onload=()=>{
+      if(x.status>=200&&x.status<300)return res();
+      let msg='erro '+x.status;try{const c=JSON.parse(x.responseText);msg=c.message||c.error||msg;}catch(_){}
+      rej(new Error(`${arq.name}: ${msg}`));
+    };
+    x.onerror=()=>rej(new Error('Falha de conexão no envio. Confira a internet e tente de novo.'));
+    x.send(arq);
+  });
+}
+
 async function drGerarNormal(){
+  const fim=Mo.ocupado(drBotao());
   try{
     if([...DR.sel.values()].includes('shape')&&!DR.ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
     const escopo={incluir:[...DR.sel].map(([t,f])=>f==='shape'?{talhao:t,fonte:'shape',envio_id:DR.ajusteId}:{talhao:t,fonte:'sistema'}),
@@ -393,35 +460,47 @@ async function drGerarNormal(){
     const sol=drAtual().sol?.id||await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'normal',p_data_desejada:null,p_observacao:null});
     await drRpc('drone_pedir_geracao',{p_solicitacao_id:sol,p_escopo:escopo});
     DR.sel=new Map();DR.rem=new Set();
+    fim(true);
     await drRecarregarFazenda();drCarregarPainel();
-  }catch(e){drErro(e);}
+  }catch(e){fim(false);drErro(e);}
 }
 
 async function drAbrirCatacao(){
+  const fim=Mo.ocupado(drBotao());
   try{await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'catacao',p_data_desejada:null,p_observacao:null});
-    await drRecarregarFazenda();drCarregarPainel();}catch(e){drErro(e);}
+    fim(true);await drRecarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
 }
 
 async function drGerarCatacao(){
+  const fim=Mo.ocupado(drBotao());
   try{await drRpc('drone_pedir_geracao',{p_solicitacao_id:drAtual().sol.id,p_escopo:null});
-    await drRecarregarFazenda();drCarregarPainel();}catch(e){drErro(e);}
+    fim(true);await drRecarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
 }
 
+// Depois do pedido, drVooPublicacao (no redesenho) põe o drone para voar até o agente publicar.
 async function drPublicar(id){
+  const btn=drBotao();
+  let fim=()=>{};
   try{
     const mot=document.getElementById('dr-mot').value;
     if(!await confirmar('Publicar esta revisão no portal de downloads?',{titulo:'Publicar',ok:'Publicar'}))return;
+    fim=Mo.ocupado(btn);
     await drRpc('drone_publicar_pedido',{p_geracao_id:id,p_motivo:mot});
+    fim(true);
     await drRecarregarFazenda();drCarregarPainel();
-  }catch(e){drErro(e);}
+  }catch(e){fim(false);drErro(e);}
 }
 
 async function drDescartar(id){
+  const btn=drBotao();
+  let fim=()=>{};
   try{
     if(!await confirmar('Descartar esta prévia?',{titulo:'Descartar',ok:'Descartar',perigo:true}))return;
+    fim=Mo.ocupado(btn);
     await drRpc('drone_descartar',{p_geracao_id:id});
+    fim(true);
     await drRecarregarFazenda();drCarregarPainel();
-  }catch(e){drErro(e);}
+  }catch(e){fim(false);drErro(e);}
 }
 
 function drValidarSolicitacao(v){
@@ -463,10 +542,12 @@ function drNovaSolicitacao(){
              obs:fundo.querySelector('#drs-obs').value};
     const erro=drValidarSolicitacao(v);
     if(erro){fundo.querySelector('#drs-err').textContent=erro;return;}
+    const fim=Mo.ocupado(fundo.querySelector('#drs-ok'));
     try{
       await drRpc('drone_solicitar',{p_cod_faz:Number(v.cod),p_tipo:'normal',p_data_desejada:v.data||null,p_observacao:v.obs||null});
+      await fim(true);
       fechar();await drCarregarPainel();drAbrirFazenda(Number(v.cod),'normal');
-    }catch(e){fundo.querySelector('#drs-err').textContent=e.message;}
+    }catch(e){fim(false);fundo.querySelector('#drs-err').textContent=e.message;}
   };
   fundo.querySelector('#drs-busca').focus();
 }

@@ -84,6 +84,12 @@ def rodar(pg, calmo):
     confere('pronto: esboço removido e 6 itens' + sufixo,
             pg.locator('#lista .mo-esboco').count() == 0 and pg.locator('#lista > div').count() == 6)
 
+    # carregando discreto → conteúdo continua visível, sem linhas de esboço
+    disc = pg.evaluate("""()=>{const l=document.getElementById('lista');Mo.carregando(l,{discreto:true});
+      const r={barras:l.querySelectorAll('.mo-esboco>i').length,campo:!!l.querySelector('.mo-esboco .mo-campo'),
+        opac:getComputedStyle(l.firstElementChild).opacity};Mo.pronto(l,{cascata:false});return r;}""")
+    confere(f'carregando discreto: {disc}' + sufixo, disc['barras'] == 0 and disc['campo'] and disc['opac'] == '1')
+
     # etapa → marca aparece (sem ela com menos movimento) e a Promise resolve
     pg.locator('#b-etapa').click()
     pg.wait_for_timeout(250)
@@ -106,6 +112,28 @@ def rodar(pg, calmo):
         foto(pg, '5-concluido')
     pg.wait_for_timeout(1700)
     confere('concluido: some sozinho' + sufixo, pg.locator('#faz .mo-conc').count() == 0)
+
+    # voo → drone sobrevoando (andando, sem movimento fica parado), pousa em ✓ ou mostra o erro
+    pg.locator('#b-voo-ok').click()
+    mapa = pg.locator('#mapa-voo')
+    pg.wait_for_timeout(700)
+    p1 = mapa.locator('.mo-voo-rota').evaluate("r=>getComputedStyle(r).transform")
+    pg.wait_for_timeout(600)
+    p2 = mapa.locator('.mo-voo-rota').evaluate("r=>getComputedStyle(r).transform")
+    confere('voo: drone e texto visíveis' + sufixo,
+            mapa.locator('.mo-voo-drone svg').count() == 1 and 'Publicando' in mapa.locator('.mo-voo-txt').inner_text())
+    confere('voo: drone anda só com movimento' + sufixo, (p1 != p2) != calmo)
+    if not calmo:
+        foto(pg, '6-voo')
+    pg.wait_for_timeout(3400)
+    confere('voo: pousa e vira ✓' + sufixo,
+            mapa.locator('.mo-voo').count() == 0 and mapa.locator('.mo-conc-txt').inner_text() == 'Publicado no portal')
+    pg.wait_for_timeout(2000)
+    pg.locator('#b-voo-erro').click()
+    pg.wait_for_timeout(4400)
+    confere('voo: falha mostra o erro' + sufixo, 'Falha ao publicar' in mapa.locator('.mo-voo-txt.mo-erro').inner_text())
+    pg.wait_for_timeout(2300)
+    confere('voo: some depois da falha' + sufixo, mapa.locator('.mo-voo').count() == 0)
 
     confere('sem erro de JS' + sufixo, not erros)
 

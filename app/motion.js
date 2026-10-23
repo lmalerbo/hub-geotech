@@ -7,9 +7,10 @@
 //   Mo.ocupado(botao,{texto}?)   → fim(ok,{travado}?)  botão vivo enquanto espera; ✓ ou ✕ no fim
 //                                  (travado: continua desabilitado depois do ✓, quem chamou libera)
 //   Mo.progresso(el,{total,mb})  → {atualizar(bytes,texto?), processando(texto?), fim(ok,texto?)}
-//   Mo.carregando(container) / Mo.pronto(container)   esboço animado de lista/painel
+//   Mo.carregando(container,{discreto}?) / Mo.pronto(container,{cascata}?)   esboço animado de lista/painel/mapa
 //   Mo.etapa(barraEl,de,para)    → Promise  marca deslizando de uma etapa a outra
 //   Mo.concluido(el,{texto})     → Promise  comemoração quando fazenda/projeto chega em Ok
+//   Mo.voo(el,{texto,desde}?)    → {pousar(ok,texto?)→Promise, parar()}  drone sobrevoando el (esperas longas do Drone)
 // Extras: Mo.campo(grande?) devolve o HTML do indicador de espera do Hub.
 // ─────────────────────────────────────────────────────────────
 (function(){
@@ -86,26 +87,77 @@
   }
 
   // ── Esboço de lista/painel ─────────────────────────────────
-  function carregando(c){
+  // discreto: conteúdo continua visível; só uma linha de luz no topo e o campo
+  // no canto — para recargas curtas de um painel que já está na tela.
+  function carregando(c,{discreto=false}={}){
     if(!c||c.querySelector(':scope>.mo-esboco'))return;
-    c.classList.add('mo-carregando');c.setAttribute('aria-busy','true');
+    c.classList.add('mo-carregando');c.classList.toggle('mo-discreto',discreto);c.setAttribute('aria-busy','true');
     const n=Math.max(4,Math.min(12,Math.floor((c.clientHeight||160)/26)));
     const e=document.createElement('div');e.className='mo-esboco';
-    e.innerHTML='<i></i>'.repeat(n)+campo();
+    e.innerHTML=(discreto?'':'<i></i>'.repeat(n))+campo();
     c.appendChild(e);
   }
   // Tira o esboço e faz o conteúdo novo chegar em cascata curta
   // (só os primeiros itens; o resto aparece junto, sem fila longa).
-  function pronto(c){
+  function pronto(c,{cascata=true}={}){  // cascata:false para mapa (não sacode o canvas)
     if(!c)return;
-    c.classList.remove('mo-carregando');c.removeAttribute('aria-busy');
+    c.classList.remove('mo-carregando','mo-discreto');c.removeAttribute('aria-busy');
     const e=c.querySelector(':scope>.mo-esboco');
     if(e){e.classList.add('mo-sai');setTimeout(()=>e.remove(),180);}
-    if(calmo())return;
+    if(calmo()||!cascata)return;
     [...c.children].filter(x=>!x.classList.contains('mo-esboco')).slice(0,10).forEach((x,i)=>{
       x.style.animationDelay=(i*28)+'ms';x.classList.add('mo-surge');
       x.addEventListener('animationend',()=>{x.classList.remove('mo-surge');x.style.animationDelay='';},{once:true});
     });
+  }
+
+  // ── Drone sobrevoando ──────────────────────────────────────
+  // Para esperas longas do Drone (publicação, prévia): o drone faz passadas
+  // sobre o elemento como numa aplicação e volta ao início. `desde` (Date.now()
+  // de quando a espera começou) mantém a fase quando a tela é redesenhada
+  // (polling): o drone continua de onde estava em vez de recomeçar.
+  // pousar(ok): vai ao centro, desce e vira ✓ (Mo.concluido) ou balança e mostra o erro.
+  const DRONE_SVG=`<svg viewBox="-32 -32 64 64" aria-hidden="true">
+    <path d="M-16-16L16 16M16-16L-16 16" stroke="#2c3440" stroke-width="4.5" stroke-linecap="round"/>
+    ${[[16,-16],[-16,-16],[16,16],[-16,16]].map(([x,y])=>`<g transform="translate(${x} ${y})"><circle r="10.5" class="mo-voo-disco"/>
+      <g class="mo-helice"><rect x="-10" y="-1.6" width="20" height="3.2" rx="1.6"/></g><circle r="2.2" fill="#2c3440"/></g>`).join('')}
+    <rect x="-8" y="-11" width="16" height="22" rx="6" class="mo-voo-corpo"/><circle cy="-6.5" r="2" fill="#fff"/></svg>`;
+  const VOO_MS=12000;   // igual à duração de mo-voo-rota no CSS
+  function voo(el,{texto='',desde=Date.now()}={}){
+    if(!el)return{pousar:()=>Promise.resolve(),parar(){}};
+    el.querySelector(':scope>.mo-voo')?.remove();
+    if(getComputedStyle(el).position==='static')el.style.position='relative';
+    const w=document.createElement('div');w.className='mo-voo';w.setAttribute('role','status');
+    w.style.setProperty('--mo-voo-atraso',-((Date.now()-desde)%VOO_MS)+'ms');
+    w.innerHTML=`<div class="mo-voo-rota"><div class="mo-voo-sombra"></div><div class="mo-voo-rumo"><div class="mo-voo-drone">${DRONE_SVG}</div></div></div>
+      <div class="mo-voo-txt">${campo('b')}<span class="mo-voo-msg"></span></div>`;
+    const t=w.querySelector('.mo-voo-txt');
+    t.querySelector('.mo-voo-msg').textContent=texto;t.hidden=!texto;
+    el.appendChild(w);
+    const rota=w.querySelector('.mo-voo-rota'),rumo=w.querySelector('.mo-voo-rumo');
+    return{
+      parar(){w.remove();},
+      pousar(ok,txt){
+        if(!w.isConnected)return Promise.resolve();
+        const de=getComputedStyle(rota).transform,giro=getComputedStyle(rumo).transform;
+        w.classList.add('mo-pousa');   // tira as animações em laço e congela onde está
+        rota.style.transform=de;rumo.style.transform=giro;
+        if(ok)t.hidden=true;
+        else{t.hidden=false;t.classList.add('mo-erro');t.querySelector('.mo-voo-msg').textContent=txt||'Não deu certo';t.querySelector('.mo-campo')?.remove();}
+        const centro=`translate(${w.clientWidth/2}px,${w.clientHeight/2}px)`,dur=calmo()?0:650,
+          curva={duration:dur,easing:'cubic-bezier(.65,0,.35,1)',fill:'forwards'};
+        rumo.animate([{transform:giro},{transform:'rotate(0deg)'}],curva);
+        return rota.animate([{transform:de},{transform:centro}],curva).finished.then(()=>{
+          if(!ok){
+            const d=w.querySelector('.mo-voo-drone');
+            return(calmo()?Promise.resolve():d.animate([{transform:'rotate(0)'},{transform:'rotate(-12deg)'},{transform:'rotate(10deg)'},
+              {transform:'rotate(-6deg)'},{transform:'rotate(0)'}],{duration:500}).finished).then(()=>espera(1400)).then(()=>w.remove());
+          }
+          w.classList.add('mo-desce');   // drone encolhe, sombra encontra o drone, hélices desaceleram
+          return espera(calmo()?0:420).then(()=>{w.remove();return concluido(el,{texto:txt||'Concluído'});});
+        });
+      },
+    };
   }
 
   // ── Barra de etapa ─────────────────────────────────────────
@@ -164,5 +216,5 @@
     return espera(1900).then(()=>{w.remove();if(pos)el.style.position='';});
   }
 
-  window.Mo={ocupado,progresso,carregando,pronto,etapa,concluido,campo:g=>campo(g?'g':'')};
+  window.Mo={ocupado,progresso,carregando,pronto,etapa,concluido,voo,campo:g=>campo(g?'g':'')};
 })();

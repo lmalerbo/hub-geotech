@@ -738,7 +738,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
         <div class="av" id="sb-av"></div>
         <div class="uinfo"><div class="uname" id="sb-uname"></div><div class="urole" id="sb-urole"></div></div>
         <button class="btn-out" title="Trocar senha" onclick="abrirTrocaSenha(false)"><span class="ico">key</span></button>
-        <button class="btn-out" onclick="sair()"><span class="ico">logout</span></button>
+        <button class="btn-out" onclick="sair(this)"><span class="ico">logout</span></button>
       </div>
     </div>
   </aside>
@@ -1494,7 +1494,7 @@ function rDetC(){
       <button class="col-desfazer" onclick="marcarTipoC(this,null)">Desfazer (voltar para A Fazer)</button>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn-tal-action" onclick="abrirVoo()"><span class="ico" style="font-size:14px">flight</span>Pedir voo</button>
-        ${selTals.some(i=>VOO_CANCELAVEL.has(f.tals[i].voo?.status))?`<button class="btn-tal-action" onclick="cancelarVoo()" style="color:#c23b3b">Cancelar pedido de voo</button>`:''}
+        ${selTals.some(i=>VOO_CANCELAVEL.has(f.tals[i].voo?.status))?`<button class="btn-tal-action" onclick="cancelarVoo(this)" style="color:#c23b3b">Cancelar pedido de voo</button>`:''}
       </div>
     </div>`:`<div class="col-sel-hint">Selecione os talhões e escolha o tipo de linha</div>`;
   const podeArq=edita;
@@ -1575,12 +1575,12 @@ async function confirmarVoo(){
   showToast(`${data.criados} pedido(s) de voo`+(ign.length?` · ${ign.length} ignorado(s): ${[...new Set(ign.map(x=>x.motivo))].join('; ')}`:''));
   await recarregar(alvoDaAcao('colheita_pedir_voo',{p_layers:layers}));
 }
-async function cancelarVoo(){
+async function cancelarVoo(btn){
   const f=FZ_C[ativaC];
   const layers=selTals.map(i=>f.tals[i]).filter(t=>VOO_CANCELAVEL.has(t.voo?.status)).map(t=>t.layer);
   if(!layers.length||!await confirmar(`O pedido de voo de ${layers.length} talhão(ões) será cancelado.`,{titulo:'Cancelar pedido de voo',ok:'Cancelar pedido',perigo:true}))return;
   selTals=[];
-  await rpcAcao(null,'colheita_cancelar_voo',{p_layers:layers},'Pedido de voo cancelado');
+  await rpcAcao(btn,'colheita_cancelar_voo',{p_layers:layers},'Pedido de voo cancelado');
 }
 function abrirFila(){
   const nomeU=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
@@ -1602,9 +1602,9 @@ function abrirFila(){
 async function marcarTipoC(btn,tipo){
   if(ativaC===null||!selTals.length)return;
   const layers=selTals.map(i=>FZ_C[ativaC].tals[i].layer);
-  document.querySelectorAll('.col-tipo,.col-desfazer').forEach(b=>b.disabled=true);
+  document.querySelectorAll('.col-tipo,.col-desfazer').forEach(b=>{if(b!==btn)b.disabled=true;});
   selTals=[];
-  await rpcAcao(null,'colheita_marcar_tipo',{p_layers:layers,p_tipo:tipo},
+  await rpcAcao(btn,'colheita_marcar_tipo',{p_layers:layers,p_tipo:tipo},
     tipo?`${TIPO_C[tipo].l} · ciclo ${getCiclo()}`:'Tipo de linha desfeito');
 }
 
@@ -1700,10 +1700,13 @@ async function abrirHub(){
   document.getElementById('hub').classList.remove('off');
   if(!['plantio','preparo','colheita','drone'].some(m=>EU.perms[m]))trocar('geotech',document.querySelector(`.ni[onclick*="'geotech'"]`));
 }
-async function sair(){
+async function sair(btn){
+  const hub=document.getElementById('hub');
+  Mo.ocupado(btn);hub.classList.add('mo-saindo');
   await sb.auth.signOut();
-  document.getElementById('hub').classList.add('off');
+  hub.classList.add('off');
   document.getElementById('login').classList.remove('off');
+  setTimeout(()=>hub.classList.remove('mo-saindo'),400);
 }
 // Senha: obrigatória depois de senha provisória (criada/redefinida pelo admin)
 // ou pedida pela própria pessoa no botão "Trocar senha" da barra lateral.
@@ -1946,17 +1949,18 @@ function rCfgGeral(){
       <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Dias de porte para voo</div>
         <div class="cfg-row-sub">Pedido de voo/revoo é agendado quando o talhão completa esses dias depois do corte.</div></div>
         <input class="cfg-inp w-sm" id="cfg-porte" value="${esc(PARAM.colheita_dias_porte||'100')}" inputmode="numeric"></div>
-      <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfgGeral()">Salvar</button></div>
+      <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfgGeral(this)">Salvar</button></div>
     </div>`;
 }
-async function salvarCfgGeral(){
+async function salvarCfgGeral(btn){
   const safra=document.getElementById('cfg-safra').value.trim(),porte=document.getElementById('cfg-porte').value.trim();
-  if(safra!==PARAM.colheita_safra){
-    if(!await confirmar(`A safra atual da Colheita passa de ${PARAM.colheita_safra} para ${safra}. Talhões marcados em safras anteriores aparecem como Reavaliar.`,{titulo:'Trocar a safra',ok:'Trocar safra',perigo:true}))return;
-    if(!await salvarParametro('colheita_safra',safra,'Safra atualizada'))return;
-  }
-  if(porte!==PARAM.colheita_dias_porte&&!await salvarParametro('colheita_dias_porte',porte,'Dias de porte atualizados'))return;
-  await recarregar();rCfgGeral();
+  const trocaSafra=safra!==PARAM.colheita_safra;
+  if(trocaSafra&&!await confirmar(`A safra atual da Colheita passa de ${PARAM.colheita_safra} para ${safra}. Talhões marcados em safras anteriores aparecem como Reavaliar.`,{titulo:'Trocar a safra',ok:'Trocar safra',perigo:true}))return;
+  const fim=Mo.ocupado(btn);
+  if(trocaSafra&&!await salvarParametro('colheita_safra',safra,'Safra atualizada'))return fim(false);
+  if(porte!==PARAM.colheita_dias_porte&&!await salvarParametro('colheita_dias_porte',porte,'Dias de porte atualizados'))return fim(false);
+  const pausa=fim(true,{travado:true});
+  await recarregar();await pausa;rCfgGeral();
 }
 const FONTE_INFO={base_fazendas:['Base Fazendas','Talhões, área, estágio e data de corte (exportação FME diária)'],
   planagri:['PLANAGRI','Demanda de Plantio e Preparo (talhões liberados)'],
@@ -2001,12 +2005,15 @@ function desenharFerramentas(){
     </div>`).join('')+`
     <button class="cfg-card ferr-add" onclick="FERR_ED.push({id:'f'+Date.now(),nome:'',url:'',descricao:'',icone:'apps',cor:'#5b6ee8'});desenharFerramentas()">
       <span class="ico">add_circle</span>Adicionar ferramenta</button>
-    <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarFerramentas()">Salvar ferramentas</button></div>`;
+    <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarFerramentas(this)">Salvar ferramentas</button></div>`;
 }
-async function salvarFerramentas(){
+async function salvarFerramentas(btn){
   const ruim=FERR_ED.find(f=>!f.nome?.trim()||(f.url&&!/^https?:\/\//.test(f.url)));
   if(ruim){showToast(!ruim.nome?.trim()?'Toda ferramenta precisa de nome':'Endereço precisa começar com http:// ou https://');return;}
-  if(await salvarParametro('ferramentas',JSON.stringify(FERR_ED),'Ferramentas salvas'))rGeotech();
+  const fim=Mo.ocupado(btn);
+  const ok=await salvarParametro('ferramentas',JSON.stringify(FERR_ED),'Ferramentas salvas');
+  await fim(ok);
+  if(ok)rGeotech();
 }
 function rCfgPortal(){
   document.getElementById('cfg-portal').innerHTML=`
@@ -2787,6 +2794,11 @@ async function rpcAcao(btn,fn,args,msgOk){
 }
 async function recarregar(alvo){
   if(!alvo)return recarregarTudo();
+  const painel=document.getElementById({plantio:'dpanel',preparo:'dpanel-p'}[alvo.modulo]||'dpanel-c');
+  Mo.carregando(painel,{discreto:true});
+  try{await recarregarFazenda(alvo);}finally{Mo.pronto(painel,{cascata:false});}
+}
+async function recarregarFazenda(alvo){
   const chave=alvo.modulo+'|'+alvo.cod,minha=(RECARGA[chave]=(RECARGA[chave]||0)+1);
   // Avisos em paralelo: a fazenda aparece assim que os dados dela chegam.
   const avisos=carregarAvisos().then(a=>{AVISOS=a;rSino();}).catch(e=>console.warn('avisos',e));
