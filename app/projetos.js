@@ -60,7 +60,7 @@ function pjNTal(n){return n===1?'1 talhão':n+' talhões'}
 function pjNorm(mod,f){
   if(!f||!Array.isArray(f.tals))return null;
   return {modulo:mod,cod:Number(f.cod),nome:f.n,ha:f.ha,
-    talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:Number(t.e)||0})),etapas:pjEtapas(mod)};
+    talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:Number(t.e)||0,sist_conser:t.sist_conser,mes:t.mes,mapeamento:t.mapeamento})),etapas:pjEtapas(mod)};
 }
 function pjContagens(fz){
   const c=Array(fz.etapas.length).fill(0);
@@ -261,7 +261,8 @@ function pjAbrirVolta(c,idx,nums){
   const m=pjModalVolta();
   m._V={c,idx,nums};
   m._busy=false;
-  m.querySelector('[data-pj-volta-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> voltam para <strong>${pjH(c.fz.etapas[idx].l)}</strong>.`;
+  m.querySelector('[data-pj-volta-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> voltam para <strong>${pjH(c.fz.etapas[idx].l)}</strong>.`+
+    (c.mod==='plantio'&&idx===0?' Isso também volta o mapeamento para "Não".':'');
   const ta=m.querySelector('[data-pj-just]');
   ta.value='';
   m.querySelector('[data-pj-volta-erro]').textContent='';
@@ -297,10 +298,10 @@ async function pjConfirmarVolta(btn,m){
     }
   },15000);
   delete PJ.tl[c.key];
-  const barra=c.raiz.querySelector('.pj-stp');
-  if(barra)pjMo().etapa(barra,de.l,alvo.l);
   showToast(`${pjNTal(V.nums.length)} voltaram para ${alvo.l}`);
   await recarregar();
+  const barra=PJ.ctx&&PJ.ctx.raiz.querySelector('.pj-stp');
+  if(barra)pjMo().etapa(barra,de.l,alvo.l);
 }
 
 // ── Modal Nova revisão (D3, pj-modal-rev) ─────────────────────
@@ -458,8 +459,9 @@ function pjRenderRev(m){
   const ok=m.querySelector('[data-pj-rev-ok]');
   ok.disabled=M.enviando;
   ok.textContent=M.enviando?'Enviando…':(M.erroMsg&&M.iniciado?'Tentar de novo':'Enviar');
-  ok.style.background=PJ_COR_P;
-  ok.style.boxShadow=`0 6px 20px ${PJ_COR_P}44`;
+  const cor=M.mod==='plantio'?'#16a76b':PJ_COR_P;
+  ok.style.background=cor;
+  ok.style.boxShadow=`0 6px 20px ${cor}44`;
 }
 function pjProgresso(el,total){
   const t=total||1;
@@ -691,6 +693,7 @@ window.Proj={
       const s=sel.has(String(t.num)),e=et[t.e]||et[0];
       return `<tr class="${s?'pj-tal-sel':''}"><td>${edit?`<input type="checkbox" class="pj-tal-chk" data-pj-num="${pjH(t.num)}"${s?' checked':''} aria-label="Selecionar talhão ${pjH(t.num)}">`:''}</td>`+
         `<td><strong>${pjH(t.num)}</strong></td><td>${fmtNum(t.ha)} ha</td>`+
+        (mod==='plantio'?`<td>${pjH(t.sist_conser||'—')}</td><td>${pjH(t.mes||'—')}</td><td>${pjH(t.mapeamento??'—')}</td>`:'')+
         `<td><span class="ebadge" style="background:${e.c}1a;color:${e.c}">${pjH(e.l)}</span></td></tr>`;
     }).join('');
 
@@ -722,7 +725,9 @@ window.Proj={
 
     return `<div class="pj-painel">`+
       `<div class="dhead"><div class="dhead-l"><div class="dnome">${pjH(fz.nome)}</div><div class="dsub">${fmtNum(fz.ha)} ha · ${tot} talhões · ${nomeMod}</div></div>`+
-      `<span class="dhead-cod">${pjH(fz.cod)}</span></div>`+
+      `<span class="dhead-cod">${pjH(fz.cod)}</span>`+
+      (tot?(e=>`<div class="ebadge" style="background:${e.c}1a;color:${e.c};font-size:11px;padding:4px 10px">${pjH(e.l)}</div>`)(et[Math.min(...fz.talhoes.map(t=>t.e))]):'')+
+      `</div>`+
       `<div class="pj-dist-w"><div class="pj-dist" role="group" aria-label="Talhões por etapa">${dist}</div><div class="pj-dist-leg">${leg}</div></div>`+
       `<div class="pj-stp"><div class="stp-w"><div class="stp-out"><div class="stp-bg"></div>`+
       `<div class="stp-fill" style="background:${et[atual].c};width:calc(17px + ${pct}% * (100% - 34px) / 100%)"></div>`+
@@ -730,7 +735,7 @@ window.Proj={
       (edit?'<div class="pj-dica">Arraste a alça para trás, ou clique numa etapa anterior, para retroceder. Avançar é pelas ações.</div>':'')+
       `</div>`+
       `<div class="tal-wrap"><table class="tal-tab"><thead><tr><th>${edit?`<input type="checkbox" class="pj-todos" aria-label="Selecionar todos"${todosSel?' checked':''}>`:''}</th>`+
-      `<th>Talhão</th><th>Área</th><th>Etapa</th></tr></thead><tbody>${linhas}</tbody></table></div>`+
+      `<th>Talhão</th><th>Área</th>${mod==='plantio'?'<th>Conservação</th><th>Mês plantio</th><th>Mapeamento</th>':''}<th>Etapa</th></tr></thead><tbody>${linhas}</tbody></table></div>`+
       (htmlArq||'')+
       `<div class="acao-w"><div class="acao-head"><span class="acao-lbl">Próximas ações</span></div>${blocos}</div>`+
       (edit?'<div class="pj-rev-w"><button type="button" class="btn-retro" data-pj-nova>↻ Nova revisão</button></div>':'')+
@@ -834,6 +839,8 @@ window.Proj={
 .pj-prog[hidden]{display:none}
 .pj-prog-b{height:100%;width:0;background:${PJ_COR_P};border-radius:999px;transition:width .3s cubic-bezier(.16,1,.3,1)}
 .pj-caixa{max-height:90vh;overflow:auto;max-width:94vw}
+.pj-caixa>*{flex-shrink:0}
+.pj-caixa .modal-botoes{position:sticky;bottom:-22px;background:var(--sf);padding:10px 0 2px;margin-bottom:-2px}
 .pj-modal .modal-botoes{justify-content:flex-end}
 .pj-btn-perigo{background:#c23b3b;box-shadow:0 6px 20px #c23b3b44}
 .tal-wrap{overflow-x:auto}
