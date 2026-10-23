@@ -82,6 +82,14 @@
   background:linear-gradient(90deg,transparent,rgb(255 255 255/.75),transparent);transform:translateX(-100%);animation:mo-luz 1.2s ease-in-out infinite}
 .mo-esboco>.mo-campo{position:absolute;right:16px;top:14px}
 .mo-surge{animation:mo-entra .32s var(--mo-sai) both}
+.mo-carregando.mo-discreto{min-height:0}
+.mo-carregando.mo-discreto>:not(.mo-esboco){opacity:1}
+.mo-discreto>.mo-esboco{inset:0 0 auto 0;height:3px;padding:0;overflow:visible;border-radius:3px}
+.mo-discreto>.mo-esboco::before{content:'';position:absolute;inset:0;border-radius:3px;overflow:hidden;
+  background:linear-gradient(90deg,transparent,var(--mo-c1),var(--mo-c4),transparent);background-size:50% 100%;background-repeat:no-repeat;
+  animation:mo-linha 1s ease-in-out infinite}
+@keyframes mo-linha{from{background-position:-50% 0}to{background-position:150% 0}}
+.mo-discreto>.mo-esboco>.mo-campo{top:12px;right:14px;height:14px}
 
 /* ── Mo.etapa(barra, de, para) ────────────────────────────── */
 .mo-etapa-marca{position:absolute;z-index:3;pointer-events:none;box-sizing:border-box;
@@ -111,6 +119,50 @@
 @keyframes mo-voa{from{transform:translate(-50%,-50%) rotate(0);opacity:1}
   to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--r));opacity:0}}
 
+/* ── Saída do Hub (sair): a tela apaga na hora, troca quando a sessão fecha ── */
+.mo-saindo:not(.off){opacity:.45;filter:saturate(.3) blur(1.5px);transform:scale(.99);pointer-events:none;
+  transition:opacity .25s var(--mo-sai),filter .25s,transform .3s var(--mo-sai)}
+
+/* ── Mo.voo(el) — drone sobrevoando ───────────────────────── */
+/* container-type:size → a rota usa cqw/cqh (fração da área sobrevoada) */
+.mo-voo{position:absolute;inset:0;z-index:3;pointer-events:none;container-type:size;overflow:hidden;--mo-voo-atraso:0ms;
+  animation:mo-entra .3s var(--mo-sai)}
+.mo-voo-rota{position:absolute;left:0;top:0;width:58px;height:58px;margin:-29px 0 0 -29px;
+  animation:mo-voo-rota 12s infinite var(--mo-voo-atraso)}
+/* três passadas (como faixas de aplicação) e volta na diagonal para o início */
+@keyframes mo-voo-rota{
+  0%{transform:translate(12cqw,26cqh);animation-timing-function:cubic-bezier(.45,0,.55,1)}
+  24%{transform:translate(88cqw,26cqh);animation-timing-function:ease-in-out}
+  30%{transform:translate(88cqw,50cqh);animation-timing-function:cubic-bezier(.45,0,.55,1)}
+  54%{transform:translate(12cqw,50cqh);animation-timing-function:ease-in-out}
+  60%{transform:translate(12cqw,74cqh);animation-timing-function:cubic-bezier(.45,0,.55,1)}
+  84%{transform:translate(88cqw,74cqh);animation-timing-function:cubic-bezier(.45,0,.55,1)}
+  100%{transform:translate(12cqw,26cqh)}}
+.mo-voo-rumo{width:100%;height:100%;animation:mo-voo-rumo 12s infinite var(--mo-voo-atraso)}
+@keyframes mo-voo-rumo{
+  0%,22%{transform:rotate(90deg)}26%,28%{transform:rotate(180deg)}32%,52%{transform:rotate(270deg)}
+  56%,58%{transform:rotate(180deg)}62%,82%{transform:rotate(90deg)}86%,97%{transform:rotate(-56deg)}100%{transform:rotate(90deg)}}
+.mo-voo-drone{width:100%;height:100%;animation:mo-voo-paira 1.6s ease-in-out infinite alternate;filter:drop-shadow(0 2px 2px rgb(0 0 0/.18))}
+@keyframes mo-voo-paira{from{transform:scale(1)}to{transform:scale(1.06)}}
+.mo-voo-drone svg{width:100%;height:100%;overflow:visible}
+.mo-voo-corpo{fill:var(--mo-c4)}
+.mo-voo-disco{fill:rgb(91 110 232/.16);stroke:rgb(91 110 232/.35);stroke-width:1}
+.mo-helice{transform-box:fill-box;transform-origin:center;animation:mo-gira .18s linear infinite}
+.mo-helice rect{fill:#2c3440;opacity:.75}
+@keyframes mo-gira{to{transform:rotate(360deg)}}
+.mo-voo-sombra{position:absolute;left:14px;top:22px;width:40px;height:40px;border-radius:50%;background:rgb(20 30 40/.16);filter:blur(5px);
+  transition:transform .4s var(--mo-sai),opacity .4s}
+.mo-voo-txt{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;white-space:nowrap;
+  background:rgb(255 255 255/.94);color:var(--t1,#20262e);font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:999px;
+  box-shadow:0 6px 20px rgb(0 0 0/.12)}
+.mo-voo-txt[hidden]{display:none}
+.mo-voo-txt .mo-campo{height:14px;color:var(--mo-c4)}
+.mo-voo-txt.mo-erro{color:var(--mo-erro)}
+.mo-voo.mo-pousa .mo-voo-rota,.mo-voo.mo-pousa .mo-voo-rumo{animation:none}
+.mo-voo.mo-desce .mo-voo-drone{animation:none;transform:scale(.72);transition:transform .42s var(--mo-sai)}
+.mo-voo.mo-desce .mo-voo-sombra{transform:translate(-6px,-8px) scale(.7);opacity:.5}
+.mo-voo.mo-desce .mo-helice{animation-duration:.6s}
+
 /* ── Menos movimento ──────────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
   .mo-campo i{animation:none;transform:none;opacity:.8}
@@ -122,5 +174,8 @@
   .mo-conc-selo,.mo-conc-txt,.mo-conc-fundo{animation:mo-respira-rm 1.9s linear both}
   .mo-conc-selo path{animation:none;stroke-dashoffset:0}
   .mo-conc-onda,.mo-conc-p{display:none}
+  .mo-voo-rota{animation:none;transform:translate(50cqw,42cqh)}
+  .mo-voo-rumo,.mo-voo-drone,.mo-helice,.mo-voo{animation:none}
+  .mo-discreto>.mo-esboco::before{animation:none;background-position:50% 0}
   @keyframes mo-respira-rm{0%,100%{opacity:0}10%,85%{opacity:1}}
 }

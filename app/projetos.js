@@ -219,12 +219,16 @@ async function pjAcaoRpc(btn,acao,idx){
   }catch(e){}
 }
 async function pjDesfazer(btn,lote,alvo){
+  const volta=PJ.desf&&PJ.desf.lote===lote?PJ.desf:null;
   try{
     const d=await pjChamar(btn,'projeto_desfazer',{p_lote_id:lote});
     PJ.desf=null;
     delete PJ.tl[pjKey(alvo.modulo,alvo.cod)];
     showToast(`Retrocesso desfeito: ${pjNTal(Number(pjVal(d))||0)} voltaram à etapa anterior`);
     await recarregar(alvo);
+    // a barra anda de volta: da etapa do retrocesso para a de antes
+    const barra=PJ.ctx&&PJ.ctx.raiz.querySelector('.pj-stp');
+    if(barra&&volta&&volta.de)pjMo().etapa(barra,volta.para,volta.de,{cor:volta.cor});
   }catch(e){}
 }
 
@@ -351,7 +355,7 @@ async function pjConfirmarVolta(btn,m){
     return;
   }
   const ate=Date.now()+15000;
-  PJ.desf={key:c.key,lote,n:V.nums.length,para:alvo.l,ate};
+  PJ.desf={key:c.key,lote,n:V.nums.length,para:alvo.l,de:de.l,cor:de.c,ate};
   setTimeout(()=>{
     if(PJ.desf&&PJ.desf.lote===lote){
       PJ.desf=null;
@@ -362,7 +366,7 @@ async function pjConfirmarVolta(btn,m){
   showToast(`${pjNTal(V.nums.length)} voltaram para ${alvo.l}`);
   await recarregar(pjAlvo(c));
   const barra=PJ.ctx&&PJ.ctx.raiz.querySelector('.pj-stp');
-  if(barra)pjMo().etapa(barra,de.l,alvo.l);
+  if(barra)pjMo().etapa(barra,de.l,alvo.l,{cor:alvo.c});
 }
 
 // ── Modal Nova revisão (D3, pj-modal-rev) ─────────────────────
@@ -746,7 +750,7 @@ window.Proj={
       const ds=(feito||ativo)?`background:${s.c};border-color:${s.c}`:'';
       const alca=(ativo&&edit)?`<span class="pj-alca" role="slider" tabindex="0" aria-label="Etapa atual: ${pjH(s.l)}. Arraste ou use a seta para a esquerda para voltar." aria-valuemin="0" aria-valuemax="${n-1}" aria-valuenow="${i}" aria-valuetext="${pjH(s.l)}" style="color:${s.c}"><span class="ico">chevron_left</span></span>`:'';
       const volta=(edit&&i<atual)?` data-pj-no="${i}" title="Voltar para ${pjH(s.l)}"`:'';
-      return `<div class="snode${feito?' done':ativo?' act':''}"${volta}><div class="sdot" style="${ds}"><span class="ico">${feito?'check':s.i}</span></div>`+
+      return `<div class="snode${feito?' done':ativo?' act':''}"${volta}><div class="sdot" data-etapa="${pjH(s.l)}" style="${ds}"><span class="ico">${feito?'check':s.i}</span></div>`+
         `<div class="slbl" style="${ativo?`color:${s.c};font-weight:700`:''}">${pjH(s.l)}<br><small>${cont[i]}</small></div>${alca}</div>`;
     }).join('');
 

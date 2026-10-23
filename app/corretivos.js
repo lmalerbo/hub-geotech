@@ -753,13 +753,18 @@ async function crAbrirMapa(mapa) {
   crMapaCriar();
   crRenderPainel();
 }
+// O painel mostra que está atualizando (Mo, modo discreto) até redesenhar.
 async function crRecarregar() {
+  const painel = document.getElementById('cr-painel');
+  Mo.carregando(painel, { discreto: true });
   try {
     CR_ST.det = await crApi().carregarMapa(CR_ST.trab.id);
   } catch (e) {
+    Mo.pronto(painel, { cascata: false });
     crToast('Não foi possível atualizar o mapa. Tente de novo.', true);
     return;
   }
+  Mo.pronto(painel, { cascata: false });
   if (CR_ST.destApl != null && !CR_ST.det.apls.some(a => a.id === CR_ST.destApl)) CR_ST.destApl = null;
   crAtualizarMapa();
   crRenderPainel();
@@ -803,9 +808,12 @@ async function crSalvarArea(t, valor) {
     CR_ST.areaNova[t] = area;
     return crRenderPainel();
   }
+  const painel = document.getElementById('cr-painel');
+  Mo.carregando(painel, { discreto: true });
   try {
     await crApi().salvarArea(CR_ST.trab.id, t, area);
   } catch (e) {
+    Mo.pronto(painel, { cascata: false });
     crToast('Não foi possível salvar a área.', true);
     return;
   }
@@ -814,14 +822,13 @@ async function crSalvarArea(t, valor) {
 async function crAplicarMarcados() {
   if (CR_ST.gravando) return;                   // duplo clique: a segunda chamada é ignorada
   CR_ST.gravando = true;
-  const botao = document.querySelector('[data-aplicar]');
-  if (botao) { botao.disabled = true; botao.setAttribute('aria-busy', 'true'); }
+  const fim = Mo.ocupado(document.querySelector('[data-aplicar]'), { texto: 'Gravando…' });
+  let ok = false;
   try {
-    await crAplicarMarcadosAgora();
+    ok = await crAplicarMarcadosAgora();
   } finally {
     CR_ST.gravando = false;
-    const b = document.querySelector('[data-aplicar]');
-    if (b) b.removeAttribute('aria-busy');
+    fim(ok);   // se o painel já foi redesenhado, o botão antigo saiu da tela e isso não faz nada
   }
 }
 async function crAplicarMarcadosAgora() {
@@ -865,6 +872,7 @@ async function crAplicarMarcadosAgora() {
   CR_ST.areaNova = {};
   if (!dup.length) crToast('Aplicação gravada.');
   await crRecarregar();
+  return true;
 }
 async function crEditarAplicacao(id) {
   const a = CR_ST.det.apls.find(x => x.id === id);
@@ -913,12 +921,15 @@ async function crEditarAplicacao(id) {
     if (dup.length) { erroEl.textContent = `Os talhões ${dup.join(', ')} já têm esta aplicação.`; return; }
     const areas = {};
     for (const t of talhoes) areas[t] = crAreaDe(t);
+    const fim = Mo.ocupado(e.submitter || form.querySelector('[type=submit]'));
     try {
       await crApi().editarAplicacao(CR_ST.trab.id, a.id, { ...dados, areas });
     } catch (err) {
+      fim(false);
       erroEl.textContent = 'Não foi possível salvar. Tente de novo.';
       return;
     }
+    await fim(true);
     fechar();
     crToast('Aplicação atualizada.');
     await crRecarregar();
@@ -932,9 +943,12 @@ async function crExcluirAplicacao(id) {
     { rotulo: 'Excluir', classe: 'cr-btn cr-btn-perigo', valor: true },
   ]);
   if (!ok) return;
+  const painel = document.getElementById('cr-painel');
+  Mo.carregando(painel, { discreto: true });
   try {
     await crApi().excluirAplicacao(CR_ST.trab.id, a.id);
   } catch (e) {
+    Mo.pronto(painel, { cascata: false });
     crToast('Não foi possível excluir a aplicação. Tente de novo.', true);
     return;
   }
@@ -1188,11 +1202,14 @@ async function crSalvarInsumo(e) {
   else if (dose !== null && !(dose > 0)) erro = 'Dose sugerida deve ser maior que zero.';
   else if (codigo !== null && !(Number.isInteger(codigo) && codigo > 0)) erro = 'Código deve ser um número inteiro maior que zero.';
   if (erro) return crDesenharInsumos(v, erro);
+  const fim = Mo.ocupado(e.submitter);
   try {
     await crApi().salvarInsumo({ id: CR_ST.insEdit, codigo, nome, unidade: v.unidade, dose_sugerida: dose });
   } catch (err) {
+    fim(false);
     return crDesenharInsumos(v, /^Já existe/.test(err.message) ? err.message : 'Não foi possível salvar. Tente de novo.');
   }
+  await fim(true);
   CR_ST.insEdit = null;
   await crAtualizarInsumos('Insumo salvo.');
 }

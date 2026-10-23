@@ -22,6 +22,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
 .barra>div.on{background:#16a76b;color:#fff}
 .lista{min-height:160px;display:flex;flex-direction:column;gap:6px}
 .lista>div{padding:8px 10px;border-radius:8px;background:var(--s2);font-size:12px}
+#mapa-voo{height:280px;border-radius:14px;background:#f7f8fa repeating-linear-gradient(90deg,#e3ead9 0 46px,#eef2e6 46px 92px)}
 #faz{height:140px;border-radius:14px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-weight:600}
 </style>
 </head>
@@ -47,6 +48,11 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
   <button class="btn" id="b-conc" onclick="Mo.concluido(document.getElementById('faz'),{texto:'Fazenda em Ok'})">Concluir</button>
 </section>
 <section class="card"><h2>Mo.campo</h2><div id="campo"></div></section>
+<section class="card" style="grid-column:1/-1"><h2>Mo.voo</h2>
+  <div id="mapa-voo"></div>
+  <div style="display:flex;gap:8px"><button class="btn" id="b-voo-ok" onclick="demoVoo(true)">Publicar (dá certo)</button>
+  <button class="btn esc" id="b-voo-erro" onclick="demoVoo(false)">Publicar (falha)</button></div>
+</section>
 <script src="motion.js"></script>
 <script>
 const espera=ms=>new Promise(r=>setTimeout(r,ms));
@@ -64,6 +70,11 @@ async function demoProgresso(){
 async function demoLista(){
   const l=document.getElementById('lista');Mo.carregando(l);await espera(1100);
   l.innerHTML=[1,2,3,4,5,6].map(n=>`<div>Talhão ${n}</div>`).join('');Mo.pronto(l);
+}
+async function demoVoo(ok){
+  const v=Mo.voo(document.getElementById('mapa-voo'),{texto:'Publicando no portal…',desde:Date.now()});
+  await espera(3500);
+  await v.pousar(ok,ok?'Publicado no portal':'Falha ao publicar');
 }
 async function demoEtapa(){
   const b=document.getElementById('barra');await Mo.etapa(b,'ok','andamento');
