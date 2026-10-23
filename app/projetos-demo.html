@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Projetos · demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<style>
+/* Layout da demo. O visual vem do primeiro <style> do index (injetado abaixo). */
+html,body{height:auto!important;overflow:auto!important}
+body{background:var(--bg);margin:0}
+.dm-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;background:var(--sf);border-bottom:1px solid var(--bd)}
+.dm-marca{font-weight:700;font-size:14px}
+.dm-abas{display:flex;gap:6px}
+.dm-aba{border:1px solid var(--bd2);background:var(--sf);border-radius:999px;padding:6px 14px;font:500 12px 'Poppins',sans-serif;cursor:pointer;color:var(--t2)}
+.dm-aba.on{background:var(--t1);color:#fff;border-color:var(--t1)}
+.dm-nota{font-size:12px;color:var(--t3)}
+.dm-main{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;padding:16px;max-width:1200px;margin:0 auto;align-items:start}
+.dm-lista{display:flex;flex-direction:column;gap:10px;min-width:0}
+.dm-painel{background:var(--sf);border-radius:20px;padding:18px;box-shadow:var(--sh-sm);min-width:0}
+.dm-vazio{font-size:13px;color:var(--t3);padding:30px 0;text-align:center}
+.dm-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);background:var(--t1);color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:400;max-width:92vw}
+.dm-toast.on{opacity:1;transform:translateX(-50%)}
+.fcard{align-items:flex-start;flex-direction:row}
+.fcard .finfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fcard .pj-dcard{margin-top:4px}
+@media (max-width:760px){.dm-main{grid-template-columns:1fr;padding:12px}.dm-painel{padding:14px}}
+</style>
+</head>
+<body>
+<header class="dm-top">
+  <div class="dm-marca">Projetos · demo</div>
+  <div class="dm-abas">
+    <button type="button" class="dm-aba on" data-mod="plantio">Plantio</button>
+    <button type="button" class="dm-aba" data-mod="preparo">Preparo</button>
+  </div>
+  <span class="dm-nota" id="dm-nota">Dados fictícios · nada é gravado no banco</span>
+</header>
+<main class="dm-main">
+  <aside class="dm-lista" id="flist"></aside>
+  <section class="dm-painel">
+    <div class="dm-vazio" id="dempty">Escolha uma fazenda na lista</div>
+    <div id="dpanel"></div>
+  </section>
+</main>
+<div class="dm-toast" id="dm-toast"></div>
+
+<script src="projetos.js"></script>
+<script>
+// ── Globais falsas do index ───────────────────────────────────
+const params=new URLSearchParams(location.search);
+window.WORKER_URL='demo';
+const ET=[
+  {l:'Aguard. Map.',c:'#8898c0',i:'pin_drop'},
+  {l:'Pendente',c:'#d4890a',i:'pending_actions'},
+  {l:'Andamento',c:'#2566e8',i:'edit_note'},
+  {l:'Ag. Mapa',c:'#7c5de8',i:'map'},
+  {l:'Ok',c:'#16a76b',i:'check_circle'},
+];
+const ETP_NOME=['Identificação','Escoamento','Observações','Projeto','Ok'];
+const ETP_CODIGO=['identificacao','escoamento','observacoes','projeto'];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtNum=v=>Number(v).toLocaleString('pt-BR',{maximumFractionDigits:1});
+const fmtDataHora=iso=>iso?new Date(iso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
+const podeEditar=()=>!/editar=0/.test(location.search);
+function showToast(msg){
+  const t=document.getElementById('dm-toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(showToast._t);showToast._t=setTimeout(()=>t.classList.remove('on'),2600);
+}
+function confirmar(){return Promise.resolve(true)}
+
+// ── Dados fictícios (mesma forma do index: FZ[i], FZ_P[i]) ─────
+const FZ=[{n:'Fazenda Demo Alfa',cod:'10231',ha:812,t:10,tals:
+  [1,2,3].map(n=>({num:n,ha:81.2,e:4})).concat([4,5].map(n=>({num:n,ha:80.4,e:3})),
+  [6,7,8].map(n=>({num:n,ha:79.9,e:2})),[9,10].map(n=>({num:n,ha:81.0,e:1})))}];
+const FZ_P=[{n:'Fazenda Demo Beta',cod:'10455',ha:640,t:8,tals:
+  [1,2,3,4,5].map(n=>({num:n,ha:80.0,e:4})).concat([6,7,8].map(n=>({num:n,ha:80.0,e:1})))}];
+
+// Estado do banco simulado, por 'modulo|cod'.
+const DB={};
+const ISO=(dia,h)=>new Date(Date.UTC(2026,9,dia,h||12)).toISOString();
+function criarEstado(mod,f,ev,revs,lotes){
+  DB[mod+'|'+f.cod]={f,ev,revisoes:revs,lotes,seq:ev.length?Math.max(...ev.map(e=>e.id)):0,rev:revs.length,lote:Object.keys(lotes).length};
+}
+let evId=0;
+const EV=(tipo,em,texto,detalhe)=>({id:++evId,em,tipo,quem:'Usuário Demo',texto,detalhe:detalhe||{}});
+criarEstado('plantio',FZ[0],
+  [EV('revisao',ISO(10,9),'Rev0 aberta',{revisao_id:1,numero:0,documentos:['exportacao','projeto'],talhoes:[1,2,3,4,5,6,7,8,9,10].map(n=>({num:n,tipo:'novo'})),motivo:null,mapa:false}),
+   EV('avanco',ISO(12,10),'9 talhões avançaram para Pendente',{de:'Aguard. Map.',para:'Pendente',talhoes:[1,2,3,4,5,6,7,8,9,10]}),
+   EV('avanco',ISO(14,10),'7 talhões avançaram para Andamento',{de:'Pendente',para:'Andamento',talhoes:[1,2,3,4,5,6,7]})],
+  [{id:1,numero:0,motivo:null,documentos:['exportacao','projeto'],talhoes:[1,2,3,4,5,6,7,8,9,10].map(n=>({num:n,tipo:'novo'})),mapa:false,em:ISO(10,9)}],
+  {});
+criarEstado('preparo',FZ_P[0],
+  [EV('revisao',ISO(8,9),'Rev0 aberta',{revisao_id:1,numero:0,documentos:['escoamento','projeto','exportacao','sistematizacao'],talhoes:[1,2,3,4,5].map(n=>({num:n,tipo:'novo'})),motivo:null,mapa:false}),
+   EV('avanco',ISO(9,10),'5 talhões avançaram para Escoamento',{de:'Identificação',para:'Escoamento',talhoes:[1,2,3,4,5]}),
+   EV('revisao',ISO(15,11),'Rev1 aberta',{revisao_id:2,numero:1,documentos:['projeto','exportacao','sistematizacao'],talhoes:[{num:2,tipo:'alterado'}],motivo:'Ajuste no projeto após vistoria',mapa:false}),
+   EV('retrocesso',ISO(20,15),'3 talhões voltaram para Escoamento',{lote_id:1,de:'Projeto',para:'Escoamento',talhoes:[6,7,8],justificativa:'Projeto veio com linhas deslocadas',desfeito:false})],
+  [{id:1,numero:0,motivo:null,documentos:['escoamento','projeto','exportacao','sistematizacao'],talhoes:[1,2,3,4,5].map(n=>({num:n,tipo:'novo'})),mapa:false,em:ISO(8,9)},
+   {id:2,numero:1,motivo:'Ajuste no projeto após vistoria',documentos:['projeto','exportacao','sistematizacao'],talhoes:[{num:2,tipo:'alterado'}],mapa:false,em:ISO(15,11)}],
+  {1:{moved:[{num:6,de:3},{num:7,de:3},{num:8,de:3}],evento:evId}});
+// Beta: talhões 6–8 estavam em Projeto e foram retrocedidos (lote 1, ainda desfazível).
+DB['preparo|10455'].f.tals.forEach(t=>{if([6,7,8].includes(t.num))t.e=1});
+// O lote 1 aponta para o evento de retrocesso (o último da fazenda, por isso desfazível).
+DB['preparo|10455'].lotes[1].evento=DB['preparo|10455'].ev.find(e=>e.tipo==='retrocesso').id;
+DB['preparo|10455'].seq=Math.max(...DB['preparo|10455'].ev.map(e=>e.id));
+
+function estadoDe(mod,cod){return DB[mod+'|'+cod]}
+function evento(st,tipo,texto,detalhe){
+  st.seq++;
+  st.ev.push({id:st.seq,em:new Date().toISOString(),tipo,quem:'Usuário Demo',texto,detalhe:detalhe||{}});
+  return st.seq;
+}
+const nomeEtapa=(mod,i)=>mod==='plantio'?ET[i].l:ETP_NOME[i];
+function etapaDeCodigo(mod,p){
+  return mod==='plantio'?ET.findIndex(s=>s.l===p):ETP_CODIGO.indexOf(p);
+}
+const ACAO={
+  plantio:{mapeamento_concluido:[0,1],iniciar:[1,2],exportacao_enviada:[2,3]},
+  preparo:{identificacao:[0,1],escoamento:[1,2],observacoes:[2,3],projeto:[3,4]},
+};
+const RPC={
+  projeto_avancar({p_modulo,p_cod_faz,p_acao,p_talhoes}){
+    const st=estadoDe(p_modulo,p_cod_faz),par=ACAO[p_modulo][p_acao];
+    if(!par)throw new Error('Ação desconhecida: '+p_acao);
+    const [de,para]=par;
+    const alvo=st.f.tals.filter(t=>t.e===de&&(!p_talhoes||p_talhoes.includes(t.num)));
+    alvo.forEach(t=>t.e=para);
+    evento(st,'avanco',`${alvo.length} talhões avançaram para ${nomeEtapa(p_modulo,para)}`,{de:nomeEtapa(p_modulo,de),para:nomeEtapa(p_modulo,para),talhoes:alvo.map(t=>t.num)});
+    return alvo.length;
+  },
+  projeto_retroceder({p_modulo,p_cod_faz,p_para,p_justificativa,p_talhoes}){
+    const st=estadoDe(p_modulo,p_cod_faz),idx=etapaDeCodigo(p_modulo,p_para);
+    if(idx<0)throw new Error('Etapa inválida: '+p_para);
+    if(!p_justificativa)throw new Error('Justificativa obrigatória');
+    const alvo=st.f.tals.filter(t=>t.e>idx&&(!p_talhoes||p_talhoes.includes(t.num)));
+    if(!alvo.length)throw new Error('Nenhum talhão para voltar');
+    const moved=alvo.map(t=>({num:t.num,de:t.e}));
+    alvo.forEach(t=>t.e=idx);
+    const lote=++st.lote;
+    const evId2=evento(st,'retrocesso',`${moved.length} talhões voltaram para ${nomeEtapa(p_modulo,idx)}`,
+      {lote_id:lote,de:nomeEtapa(p_modulo,Math.max(...moved.map(m=>m.de))),para:nomeEtapa(p_modulo,idx),talhoes:moved.map(m=>m.num),justificativa:p_justificativa,desfeito:false});
+    st.lotes[lote]={moved,evento:evId2,desfeito:false};
+    return lote;
+  },
+  projeto_desfazer({p_lote_id}){
+    const st=Object.values(DB).find(s=>s.lotes[p_lote_id]);
+    if(!st)throw new Error('Lote não encontrado');
+    const L=st.lotes[p_lote_id];
+    if(L.desfeito)throw new Error('Este retrocesso já foi desfeito');
+    if(st.seq!==L.evento)throw new Error('Só dá para desfazer o último retrocesso da fazenda.');
+    L.moved.forEach(m=>{st.f.tals.find(x=>x.num===m.num).e=m.de});
+    L.desfeito=true;
+    st.ev.find(e=>e.id===L.evento).detalhe.desfeito=true;
+    evento(st,'desfazer',`Retrocesso desfeito: ${L.moved.length} talhões voltaram à etapa anterior`,{lote_id:p_lote_id,talhoes:L.moved.map(m=>m.num)});
+    return L.moved.length;
+  },
+  projeto_nova_revisao({p_modulo,p_cod_faz,p_motivo,p_documentos,p_talhoes}){
+    const st=estadoDe(p_modulo,p_cod_faz);
+    const max=st.revisoes.length?Math.max(...st.revisoes.map(r=>r.numero)):-1;
+    if(max>=0&&!p_motivo)throw new Error('Motivo obrigatório a partir da Rev1');
+    const numero=max+1;
+    const lim=p_modulo==='plantio'?3:4;
+    const talhoes=(p_talhoes||[]).map(num=>{
+      const t=st.f.tals.find(x=>x.num===num);
+      return {num,tipo:t.e<lim?'novo':'alterado'};
+    });
+    if(p_modulo==='plantio')talhoes.filter(x=>x.tipo==='alterado').forEach(x=>{st.f.tals.find(t=>t.num===x.num).e=3});
+    const id=++st.rev;
+    st.revisoes.push({id,numero,motivo:p_motivo||null,documentos:p_documentos,talhoes,mapa:false,em:new Date().toISOString()});
+    evento(st,'revisao',`Rev${numero} aberta`,{revisao_id:id,numero,documentos:p_documentos,talhoes,motivo:p_motivo||null,mapa:false});
+    return [{revisao_id:id,numero,sufixo:''}];
+  },
+  projeto_linha_do_tempo({p_modulo,p_cod_faz}){
+    const st=estadoDe(p_modulo,p_cod_faz);
+    return st.ev.slice().sort((a,b)=>b.id-a.id).map(({id,...r})=>r);
+  },
+};
+window.sb={
+  auth:{getSession:async()=>({data:{session:{access_token:'demo'}}})},
+  rpc:(fn,args)=>new Promise(res=>setTimeout(()=>{
+    try{res({data:RPC[fn](args),error:null})}
+    catch(e){res({data:null,error:{message:e.message}})}
+  },400+Math.random()*500)),
+};
+
+// revisoesDe do index: lista de revisões do documento, a vigente primeiro.
+function revisoesDe(mod,cod,doc){
+  const st=estadoDe(mod,cod);
+  if(!st)return [];
+  const max=st.revisoes.length?Math.max(...st.revisoes.map(r=>r.numero)):-1;
+  return st.revisoes.filter(r=>r.documentos.includes(doc))
+    .map(r=>({id:r.id,doc,numero:r.numero,motivo:r.motivo,vigente:r.numero===max,criado_em:r.em,
+      arquivos:[{nome_arquivo:`${cod}_${doc}_Rev${r.numero}.${doc==='projeto'?'dwg':'zip'}`,release_url:'#'}]}))
+    .sort((a,b)=>b.numero-a.numero);
+}
+
+// Envio simulado ao Worker (WORKER_URL==='demo'). ?falha=1 falha a primeira vez, para testar "Tentar de novo".
+window.pjEnvioSimulado=(fd,onBytes)=>new Promise((res,rej)=>{
+  const arqs=fd.getAll('arquivo'),total=arqs.reduce((s,f)=>s+f.size,0)||1;
+  const mod=fd.get('modulo'),cod=Number(fd.get('cod_faz')),doc=fd.get('documento');
+  if(params.get('falha')==='1'&&!window._pjFalhou){
+    window._pjFalhou=true;
+    return setTimeout(()=>rej(new Error(`${doc}: falha simulada de conexão`)),500);
+  }
+  const t0=performance.now(),dur=1100;
+  (function tick(){
+    const p=Math.min(1,(performance.now()-t0)/dur);
+    onBytes(total*p);
+    if(p<1)return requestAnimationFrame(tick);
+    // Regra do Worker (registrar_arquivo): mapa de plantio na revisão aberta leva os talhões de Ag. Mapa a Ok.
+    const st=estadoDe(mod,cod);
+    if(mod==='plantio'&&doc==='projeto'&&arqs.some(f=>f.name.toLowerCase().endsWith('.pdf'))&&st){
+      const r=st.revisoes[st.revisoes.length-1];
+      if(r){
+        r.mapa=true;
+        const e=st.ev.find(x=>x.tipo==='revisao'&&x.detalhe.revisao_id===r.id);
+        if(e)e.detalhe.mapa=true;
+        st.f.tals.forEach(t=>{if(t.e===3)t.e=4});
+      }
+    }
+    res();
+  })();
+});
+
+// ── Tela de demonstração ──────────────────────────────────────
+let modAtual='plantio',idxAtual=null;
+const listaDe=mod=>mod==='plantio'?FZ:FZ_P;
+function rLista(){
+  const lista=document.getElementById('flist');
+  lista.innerHTML=listaDe(modAtual).map((f,i)=>{
+    const fz=Proj.fazenda(modAtual,f);
+    const ok=fz.talhoes.filter(t=>t.e===fz.etapas.length-1).length;
+    const bc=ok===fz.talhoes.length?'#16a76b':(modAtual==='plantio'?'#16a76b':'#a07840');
+    return `<div class="fcard${idxAtual===i?' on':''}" data-i="${i}" style="color:${bc}">
+      <div class="fcard-bar" style="background:${bc}"></div>
+      <div class="finfo">
+        <div class="fnome">${esc(f.n)}</div>
+        <div class="fsub"><span class="fcod">${esc(f.cod)}</span> · ${esc(f.ha)} ha</div>
+        ${Proj.distribuicaoHtml(modAtual,f)}
+      </div></div>`;
+  }).join('');
+}
+function rPainel(){
+  const vazio=document.getElementById('dempty'),painel=document.getElementById('dpanel');
+  if(idxAtual===null){vazio.style.display='block';painel.innerHTML='';return}
+  vazio.style.display='none';
+  const f=listaDe(modAtual)[idxAtual];
+  painel.innerHTML=Proj.painelHtml(modAtual,f);
+  Proj.montar(modAtual,f,painel);
+}
+async function recarregar(){
+  rLista();
+  rPainel();
+}
+document.getElementById('flist').addEventListener('click',e=>{
+  const c=e.target.closest('.fcard');
+  if(!c)return;
+  idxAtual=Number(c.dataset.i);
+  rLista();rPainel();
+});
+document.querySelectorAll('.dm-aba').forEach(b=>b.addEventListener('click',()=>{
+  modAtual=b.dataset.mod;idxAtual=null;
+  document.querySelectorAll('.dm-aba').forEach(x=>x.classList.toggle('on',x===b));
+  rLista();rPainel();
+}));
+// Estilo do index: primeiro <style> do index.html, injetado em tempo de execução.
+(async()=>{
+  try{
+    const txt=await (await fetch('index.html')).text();
+    const m=txt.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+    if(m){const s=document.createElement('style');s.id='index-css';s.textContent=m[1];document.head.insertBefore(s,document.head.firstChild)}
+  }catch(e){console.warn('Não foi possível carregar o estilo do index',e)}
+  // Mesmas fontes do index
+  rLista();rPainel();
+})();
+</script>
+</body>
+</html>

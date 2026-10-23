@@ -1192,6 +1192,7 @@ function rFaz(){
       <div class="finfo">
         <div class="fnome">${f.n}</div>
         <div class="fsub"><span class="fcod">${f.cod}</span> · ${f.t} talhões · ${f.tals.filter(t=>t.e===4).length} Ok</div>
+        ${window.Proj?Proj.distribuicaoHtml('plantio',f):''}
       </div>
       <div class="ebadge" style="background:${e.c}1a;color:${e.c}">${e.l}</div>
     </div>`;
@@ -1206,6 +1207,12 @@ function selF(i){
 }
 function rDet(){
   if(ativa===null)return;
+  // Tela de projetos (app/projetos.js): seleção por talhão, barra que volta, revisões e linha do tempo.
+  if(window.Proj){
+    const el=document.getElementById('dpanel');
+    el.innerHTML=Proj.painelHtml('plantio',FZ[ativa],arquivosHtml('plantio',FZ[ativa].cod));
+    Proj.montar('plantio',FZ[ativa],el);return;
+  }
   const f=FZ[ativa],e=ET[f.e],pct=f.e/(ET.length-1)*100;
   const dots=ET.map((s,i)=>{
     const done=i<f.e,act=i===f.e;
@@ -1309,6 +1316,7 @@ function rFazP(){
       <div class="finfo">
         <div class="fnome">${f.n}</div>
         <div class="fsub"><span class="fcod">${f.cod}</span> · ${f.ha} ha</div>
+        ${window.Proj&&f.tals?Proj.distribuicaoHtml('preparo',f):''}
       </div>
       <div class="ebadge" style="background:${bc}1a;color:${bc}">${done?'Concluído':cur>0?cur+'/4':'Aguardando'}</div>
     </div>`;
@@ -1323,6 +1331,12 @@ function selFP(i){
 }
 function rDetP(){
   if(ativaP===null)return;
+  // Tela de projetos só quando a fazenda já vem com a etapa por talhão (f.tals); senão a tela antiga.
+  if(window.Proj&&FZ_P[ativaP].tals){
+    const el=document.getElementById('dpanel-p');
+    el.innerHTML=Proj.painelHtml('preparo',FZ_P[ativaP],arquivosHtml('preparo',FZ_P[ativaP].cod));
+    Proj.montar('preparo',FZ_P[ativaP],el);return;
+  }
   const f=FZ_P[ativaP],v=VOO[f.voo]||VOO.S;
   const curStage=f.ok.indexOf(false),done4=curStage===-1;
   const pct=done4?100:curStage/ET_P.length*100;
@@ -2835,5 +2849,6 @@ MOD_AC['consultas']='var(--t2)';
 sb.auth.getSession().then(({data})=>{if(data.session)abrirHub();});
 </script>
 <script src="drone.js"></script>
+<script src="projetos.js"></script>
 </body>
 </html>
