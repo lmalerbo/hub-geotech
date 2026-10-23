@@ -9,13 +9,14 @@ function pjMo(){return window.Mo||PJ_MO_VAZIO}
 const pjH=v=>esc(v==null?'':String(v));
 
 const PJ_COR_P='#a07840';
-// Preparo: etapas 0–4. p = código enviado em p_para (L5 do plano).
+// Preparo: 5 etapas (0–4). p = rótulo que o banco guarda em talhao_preparo.etapa e recebe em p_para (A1).
+// A etapa 3 aparece como "Projeto" na tela, mas o banco a chama de "Preparo".
 const PJ_ET_P=[
-  {l:'Identificação',c:PJ_COR_P,i:'pin_drop',p:'identificacao'},
-  {l:'Escoamento',c:PJ_COR_P,i:'water',p:'escoamento'},
-  {l:'Observações',c:PJ_COR_P,i:'comment',p:'observacoes'},
-  {l:'Projeto',c:PJ_COR_P,i:'construction',p:'projeto'},
-  {l:'Ok',c:'#16a76b',i:'check_circle',p:null},
+  {l:'Identificação',c:PJ_COR_P,i:'pin_drop',p:'Identificação'},
+  {l:'Escoamento',c:PJ_COR_P,i:'water',p:'Escoamento'},
+  {l:'Observações',c:PJ_COR_P,i:'comment',p:'Observações'},
+  {l:'Projeto',c:PJ_COR_P,i:'construction',p:'Preparo'},
+  {l:'Ok',c:'#16a76b',i:'check_circle',p:'Ok'},
 ];
 function pjEtapas(mod){return mod==='plantio'?ET.map(s=>({l:s.l,c:s.c,i:s.i,p:s.l})):PJ_ET_P}
 
@@ -48,7 +49,7 @@ const PJ_ACOES={
     0:{tipo:'rpc',acao:'identificacao',txt:'Confirmar identificação',ico:'check'},
     1:{tipo:'envio',txt:'Enviar Mapa de Escoamento',ico:'water',campos:['escoamento'],acaoDepois:'escoamento'},
     2:{tipo:'rpc',acao:'observacoes',txt:'Confirmar observações',ico:'check'},
-    3:{tipo:'envio',txt:'Enviar projeto, exportação e sistematização',ico:'construction',campos:['projeto','exportacao','sistematizacao'],acaoDepois:'projeto'},
+    3:{tipo:'envio',txt:'Enviar projeto, exportação e sistematização',ico:'construction',campos:['projeto','exportacao','sistematizacao'],acaoDepois:'preparo'},
   },
 };
 
@@ -56,10 +57,14 @@ const PJ_ACOES={
 const PJ={sel:new Map(),ctx:null,tl:{},ok:{},arq:{},desf:null,drag:null};
 
 function pjKey(mod,cod){return mod+'|'+cod}
+function pjAlvo(c){return {modulo:c.mod,cod:String(c.cod)}}
 function pjNTal(n){return n===1?'1 talhão':n+' talhões'}
+// O banco devolve talhão como número ou {talhao,tipo} e documento como código ou {codigo,nome}.
+function pjNumTal(x){return x&&typeof x==='object'?(x.talhao??x.num):x}
+function pjCodDoc(x){return x&&typeof x==='object'?x.codigo:x}
 function pjNorm(mod,f){
   if(!f||!Array.isArray(f.tals))return null;
-  return {modulo:mod,cod:Number(f.cod),nome:f.n,ha:f.ha,
+  return {modulo:mod,cod:Number(f.cod),nome:f.n,ha:f.ha,obs:f.obs||'',
     talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:Number(t.e)||0,sist_conser:t.sist_conser,mes:t.mes,mapeamento:t.mapeamento})),etapas:pjEtapas(mod)};
 }
 function pjContagens(fz){
@@ -115,11 +120,11 @@ function pjUltimaRev(tl){
   if(!revs.length)return null;
   return revs.reduce((a,b)=>(Number(b.detalhe&&b.detalhe.numero)||0)>(Number((a.detalhe&&a.detalhe.numero))||0)?b:a);
 }
-// Essa revisão já tem o campo? O mapa é identificado por detalhe.mapa (assumido, ver relatório).
+// Essa revisão já tem o campo? O mapa é detalhe.mapa (vem do banco).
 function pjRevTem(rev,cp){
   const d=rev.detalhe||{};
   if(cp.k==='mapa')return d.mapa===true;
-  const docs=d.documentos||(d.documento?[d.documento]:[]);
+  const docs=(d.documentos||(d.documento?[d.documento]:[])).map(pjCodDoc);
   return docs.includes(cp.doc);
 }
 function pjEfetivos(M){
@@ -134,7 +139,7 @@ function pjCompleta(M){
   if(!M.acao||!M.ult)return false;
   const sel=pjTalNums(M).map(String);
   if(!sel.length)return false;
-  const na=((M.ult.detalhe&&M.ult.detalhe.talhoes)||[]).map(x=>String(typeof x==='object'?x.num:x));
+  const na=((M.ult.detalhe&&M.ult.detalhe.talhoes)||[]).map(x=>String(pjNumTal(x)));
   if(!sel.every(n=>na.includes(n)))return false;
   return [...pjEfetivos(M)].every(k=>!pjRevTem(M.ult,M.campos.find(c=>c.k===k)));
 }
@@ -171,8 +176,9 @@ function pjTLHtml(ev){
   const mostraDesf=!!ultRetro&&!(ultRetro.detalhe&&ultRetro.detalhe.desfeito)&&!!(ultRetro.detalhe&&ultRetro.detalhe.lote_id);
   return '<ol class="pj-tl-l">'+ev.map(x=>{
     const d=x.detalhe||{};
-    const tals=(Array.isArray(d.talhoes)?d.talhoes:[]).map(t=>typeof t==='object'?t.num:t);
-    const docs=(d.documentos||(d.documento?[d.documento]:[])).map(c=>PJ_NOME_DOC[c]||c);
+    // Revisão traz talhoes:[{talhao,tipo}]; avanço e retrocesso trazem só mudancas:[{talhao,...}].
+    const tals=(Array.isArray(d.talhoes)?d.talhoes:Array.isArray(d.mudancas)?[...new Set(d.mudancas.map(m=>m.talhao).filter(n=>n!=null))].sort((a,b)=>a-b):[]).map(pjNumTal);
+    const docs=(d.documentos||(d.documento?[d.documento]:[])).map(c=>(c&&typeof c==='object'&&c.nome)||PJ_NOME_DOC[pjCodDoc(c)]||pjCodDoc(c));
     const rev=(x.tipo==='revisao'&&d.numero!=null)?` <span class="ebadge">Rev${pjH(d.numero)}</span>`:'';
     const just=d.justificativa||d.motivo;
     const btn=(x===ultRetro&&mostraDesf)?`<button type="button" class="btn-retro" data-pj-tl-desf="${Number(d.lote_id)}">Desfazer</button>`:'';
@@ -204,21 +210,76 @@ function pjSelEtapa(i){
 async function pjAcaoRpc(btn,acao,idx){
   const c=PJ.ctx;
   const nums=pjUsados(c.fz,c.key,idx).map(t=>t.num);
+  if(acao==='observacoes'){pjAbrirObs(c,idx,nums);return}
   try{
     const d=await pjChamar(btn,'projeto_avancar',{p_modulo:c.mod,p_cod_faz:c.cod,p_acao:acao,p_talhoes:nums});
     delete PJ.tl[c.key];
     showToast(`${pjNTal(Number(pjVal(d))||nums.length)} avançaram`);
-    await recarregar();
+    await recarregar(pjAlvo(c));
   }catch(e){}
 }
-async function pjDesfazer(btn,lote,key){
+async function pjDesfazer(btn,lote,alvo){
   try{
     const d=await pjChamar(btn,'projeto_desfazer',{p_lote_id:lote});
     PJ.desf=null;
-    delete PJ.tl[key];
+    delete PJ.tl[pjKey(alvo.modulo,alvo.cod)];
     showToast(`Retrocesso desfeito: ${pjNTal(Number(pjVal(d))||0)} voltaram à etapa anterior`);
-    await recarregar();
+    await recarregar(alvo);
   }catch(e){}
+}
+
+// Observações (Preparo): a ação pede o texto da observação recebida (A3, p_observacao). Opcional.
+function pjModalObs(){
+  let m=document.getElementById('pj-modal-obs');
+  if(m)return m;
+  m=document.createElement('div');
+  m.id='pj-modal-obs';
+  m.className='modal-fundo off pj-modal';
+  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-obs-t">`+
+    `<div class="modal-t" id="pj-obs-t">Confirmar observações</div>`+
+    `<div class="pj-volta-txt" data-pj-obs-txt></div>`+
+    `<div class="envio-nota-rot">Observações recebidas (opcional)</div>`+
+    `<textarea class="prep-obs-area" data-pj-obs placeholder="Observações de campo"></textarea>`+
+    `<div class="pj-erro" data-pj-obs-erro role="alert"></div>`+
+    `<div class="modal-botoes"><button type="button" class="btn-retro" data-pj-fechar>Cancelar</button>`+
+    `<button type="button" class="btn-acao" data-pj-obs-ok>Confirmar</button></div></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{
+    if(e.target===m||e.target.closest('[data-pj-fechar]'))return pjFecharModal(m);
+    const ok=e.target.closest('[data-pj-obs-ok]');
+    if(ok)pjConfirmarObs(ok,m);
+  });
+  m.addEventListener('keydown',e=>{if(e.key==='Escape')pjFecharModal(m)});
+  return m;
+}
+function pjAbrirObs(c,idx,nums){
+  const m=pjModalObs();
+  m._V={c,idx,nums};
+  m._busy=false;
+  m.querySelector('[data-pj-obs-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> passam para <strong>${pjH(c.fz.etapas[idx+1].l)}</strong>.`;
+  const ta=m.querySelector('[data-pj-obs]');
+  ta.value=c.fz.obs||'';
+  m.querySelector('[data-pj-obs-erro]').textContent='';
+  m.classList.remove('off');
+  setTimeout(()=>ta.focus(),50);
+}
+async function pjConfirmarObs(btn,m){
+  const V=m._V,c=V.c;
+  const obs=m.querySelector('[data-pj-obs]').value.trim();
+  const err=m.querySelector('[data-pj-obs-erro]');
+  err.textContent='';
+  m._busy=true;
+  try{
+    const d=await pjChamar(btn,'projeto_avancar',{p_modulo:c.mod,p_cod_faz:c.cod,p_acao:'observacoes',p_talhoes:V.nums,p_observacao:obs||null},{silencioso:true});
+    m._busy=false;
+    m.classList.add('off');
+    delete PJ.tl[c.key];
+    showToast(`${pjNTal(Number(pjVal(d))||V.nums.length)} avançaram`);
+    await recarregar(pjAlvo(c));
+  }catch(e){
+    m._busy=false;
+    err.textContent=e.message||'Não foi possível confirmar.';
+  }
 }
 
 // Retroceder: alça ou clique numa etapa anterior. Abre a justificativa; depois, aviso com Desfazer.
@@ -299,7 +360,7 @@ async function pjConfirmarVolta(btn,m){
   },15000);
   delete PJ.tl[c.key];
   showToast(`${pjNTal(V.nums.length)} voltaram para ${alvo.l}`);
-  await recarregar();
+  await recarregar(pjAlvo(c));
   const barra=PJ.ctx&&PJ.ctx.raiz.querySelector('.pj-stp');
   if(barra)pjMo().etapa(barra,de.l,alvo.l);
 }
@@ -569,7 +630,7 @@ async function pjConfirmarRev(btn){
   m.classList.add('off');
   delete PJ.tl[M.key];
   showToast(comp?`Arquivos enviados à Rev${M.revNumero}`:`Rev${M.revNumero} aberta com os arquivos`);
-  await recarregar();
+  await recarregar({modulo:M.mod,cod:String(M.cod)});
 }
 
 // ── Ligação de eventos (uma vez por raiz) ────────────────────
@@ -586,8 +647,8 @@ function pjLigar(raiz){
     if(t.closest('[data-pj-nova]'))return pjAbrirRev(null);
     if((el=t.closest('[data-pj-etapa]')))return pjSelEtapa(Number(el.dataset.pjEtapa));
     if((el=t.closest('[data-pj-no]')))return pjVolta(Number(el.dataset.pjNo));
-    if((el=t.closest('[data-pj-desfazer]')))return pjDesfazer(el,Number(el.dataset.pjDesfazer),c.key);
-    if((el=t.closest('[data-pj-tl-desf]')))return pjDesfazer(el,Number(el.dataset.pjTlDesf),c.key);
+    if((el=t.closest('[data-pj-desfazer]')))return pjDesfazer(el,Number(el.dataset.pjDesfazer),pjAlvo(c));
+    if((el=t.closest('[data-pj-tl-desf]')))return pjDesfazer(el,Number(el.dataset.pjTlDesf),pjAlvo(c));
     if(t.closest('[data-pj-tl-retry]')){delete PJ.tl[c.key];return pjTL(raiz,c.key,c.mod,c.cod)}
   });
   raiz.addEventListener('change',e=>{

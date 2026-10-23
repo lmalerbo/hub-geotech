@@ -60,7 +60,9 @@ const ET=[
   {l:'Ok',c:'#16a76b',i:'check_circle'},
 ];
 const ETP_NOME=['Identificação','Escoamento','Observações','Projeto','Ok'];
-const ETP_CODIGO=['identificacao','escoamento','observacoes','projeto'];
+// Rótulos que o banco guarda em talhao_preparo.etapa (e recebe em p_para), na ordem (A1).
+const ETP_DB=['Identificação','Escoamento','Observações','Preparo','Ok'];
+const NOME_DOC={exportacao:'Exportação',projeto:'Projeto',escoamento:'Escoamento',sistematizacao:'Sistematização'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtNum=v=>Number(v).toLocaleString('pt-BR',{maximumFractionDigits:1});
 const fmtDataHora=iso=>iso?new Date(iso).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
@@ -115,19 +117,22 @@ function evento(st,tipo,texto,detalhe){
 }
 const nomeEtapa=(mod,i)=>mod==='plantio'?ET[i].l:ETP_NOME[i];
 function etapaDeCodigo(mod,p){
-  return mod==='plantio'?ET.findIndex(s=>s.l===p):ETP_CODIGO.indexOf(p);
+  return mod==='plantio'?ET.findIndex(s=>s.l===p):ETP_DB.indexOf(p);
 }
+// Ações de avanço (nomes do banco, A1). Preparo: a última é 'preparo' (Preparo -> Ok).
 const ACAO={
   plantio:{mapeamento_concluido:[0,1],iniciar:[1,2],exportacao_enviada:[2,3]},
-  preparo:{identificacao:[0,1],escoamento:[1,2],observacoes:[2,3],projeto:[3,4]},
+  preparo:{identificacao:[0,1],escoamento:[1,2],observacoes:[2,3],preparo:[3,4]},
 };
 const RPC={
-  projeto_avancar({p_modulo,p_cod_faz,p_acao,p_talhoes}){
+  projeto_avancar({p_modulo,p_cod_faz,p_acao,p_talhoes,p_observacao}){
     const st=estadoDe(p_modulo,p_cod_faz),par=ACAO[p_modulo][p_acao];
     if(!par)throw new Error('Ação desconhecida: '+p_acao);
     const [de,para]=par;
     const alvo=st.f.tals.filter(t=>t.e===de&&(!p_talhoes||p_talhoes.includes(t.num)));
     alvo.forEach(t=>t.e=para);
+    // A3: a observação recebida vem em p_observacao, só na ação 'observacoes' do Preparo.
+    if(p_modulo==='preparo'&&p_acao==='observacoes'&&p_observacao)st.f.obs=p_observacao;
     evento(st,'avanco',`${alvo.length} talhões avançaram para ${nomeEtapa(p_modulo,para)}`,{de:nomeEtapa(p_modulo,de),para:nomeEtapa(p_modulo,para),talhoes:alvo.map(t=>t.num)});
     return alvo.length;
   },
@@ -171,11 +176,24 @@ const RPC={
     const id=++st.rev;
     st.revisoes.push({id,numero,motivo:p_motivo||null,documentos:p_documentos,talhoes,mapa:false,em:new Date().toISOString()});
     evento(st,'revisao',`Rev${numero} aberta`,{revisao_id:id,numero,documentos:p_documentos,talhoes,motivo:p_motivo||null,mapa:false});
-    return [{revisao_id:id,numero,sufixo:''}];
+    // A5: uma linha por documento que mudou.
+    return (p_documentos||[]).map(documento=>({revisao_id:id,numero,sufixo:'',documento}));
   },
+  // Forma do banco (A4): revisão traz documentos [{codigo,nome}] e talhoes [{talhao,tipo}];
+  // avanço e retrocesso trazem mudancas [{talhao,campo,...}] em vez de talhoes.
   projeto_linha_do_tempo({p_modulo,p_cod_faz}){
     const st=estadoDe(p_modulo,p_cod_faz);
-    return st.ev.slice().sort((a,b)=>b.id-a.id).map(({id,...r})=>r);
+    return st.ev.slice().sort((a,b)=>b.id-a.id).map(({id,tipo,detalhe,...r})=>{
+      const d={...detalhe};
+      if(tipo==='revisao'){
+        d.documentos=(d.documentos||[]).map(codigo=>({codigo,nome:NOME_DOC[codigo]||codigo}));
+        d.talhoes=(d.talhoes||[]).map(t=>({talhao:t.num??t,tipo:t.tipo}));
+      }else if(d.talhoes){
+        d.mudancas=d.talhoes.map(talhao=>({talhao,campo:'etapa'}));
+        delete d.talhoes;
+      }
+      return {tipo,...r,detalhe:d};
+    });
   },
 };
 window.sb={

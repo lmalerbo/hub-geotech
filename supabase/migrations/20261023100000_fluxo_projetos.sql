@@ -532,11 +532,15 @@ end $$;
 -- Avança os talhões dados (null = todos os que estão na etapa certa). Talhão dado que não está na
 -- etapa certa é erro (nada muda). Ação que exige arquivo registra os talhões na última revisão da
 -- fazenda como "novo" (revisão aberta), para o mapa anexado depois saber quais são.
+-- p_observacao: só na ação 'observacoes' do Preparo; grava a observação da fazenda em etapa_status
+-- (etapa Observações), como o histórico que a tela já lê.
+drop function if exists hub.projeto_avancar(text, int, text, int[]);
 create or replace function hub.projeto_avancar(
-  p_modulo  text,
-  p_cod_faz int,
-  p_acao    text,
-  p_talhoes int[] default null
+  p_modulo      text,
+  p_cod_faz     int,
+  p_acao        text,
+  p_talhoes     int[] default null,
+  p_observacao  text default null
 )
 returns int
 language plpgsql
@@ -587,6 +591,14 @@ begin
   v_qtd := hub.projeto_mudar_etapa(p_modulo, v_alvo, v_def.para, nextval('hub.log_lote_seq'), 'avancar',
                                    null, v_def.mapeamento);
 
+  if p_modulo = 'preparo' and p_acao = 'observacoes' and length(trim(coalesce(p_observacao, ''))) > 0 then
+    insert into hub.etapa_status (etapa_id, entidade_id, ok, usuario_id, concluido_em, observacao)
+    select e.id, p_cod_faz, true, auth.uid(), now(), trim(p_observacao)
+      from hub.etapas e where e.modulo_id = 'preparo' and e.ordem = 3
+    on conflict (etapa_id, entidade_id) do update
+      set usuario_id = auth.uid(), concluido_em = now(), observacao = excluded.observacao;
+  end if;
+
   if cardinality(v_def.exige) > 0 then
     v_projeto := hub.projeto_individual(p_modulo, p_cod_faz, false);
     select max(numero) into v_ultima from hub.projeto_revisoes where projeto_id = v_projeto;
@@ -594,6 +606,15 @@ begin
       insert into hub.revisao_talhoes (revisao_id, layer, tipo)
       select hub.revisao_principal(v_projeto, v_ultima), unnest(v_alvo), 'novo'
       on conflict do nothing;
+      -- Mapa de Plantio enviado junto na mesma revisão: o trigger mapa_anexado rodou antes de os
+      -- talhões chegarem em Ag. Mapa, então eles vão direto para Ok aqui (D3).
+      if p_modulo = 'plantio' and v_def.para = 'Ag. Mapa' and exists (
+           select 1 from hub.projeto_revisoes r
+             join hub.revisao_arquivos a on a.revisao_id = r.id
+            where r.projeto_id = v_projeto and r.numero = v_ultima and r.documento = 'projeto'
+              and hub.ext_arquivo(a.nome_arquivo) = 'pdf') then
+        perform hub.projeto_mudar_etapa(p_modulo, v_alvo, 'Ok', nextval('hub.log_lote_seq'), 'mapa_anexado', null);
+      end if;
     end if;
   end if;
   return v_qtd;
@@ -711,13 +732,15 @@ end $$;
 
 -- Abre a próxima revisão da fazenda com os documentos que mudam e os talhões que ela traz ou altera.
 -- Regras (D3):
---   Plantio: talhão em Andamento = novo → Ag. Mapa (a revisão precisa trazer projeto e exportação);
---            em Ag. Mapa ou Ok = alterado → Ag. Mapa (precisa trazer o projeto). O mapa anexado
---            depois leva os talhões da revisão para Ok.
---   Preparo: o projeto muda → exportação e sistematização vêm junto. Talhão novo avança pelas ações
---            cujos arquivos a revisão traz (escoamento: Escoamento → Observações; projeto:
---            Preparo → Ok). Alterado (já passou dessas etapas) não muda de etapa.
+--   Plantio: talhão em Andamento = novo (a revisão precisa trazer projeto e exportação); em Ag. Mapa
+--            ou Ok = alterado → Ag. Mapa (precisa trazer o projeto). O mapa anexado depois leva os
+--            talhões da revisão para Ok.
+--   Preparo: o projeto muda → exportação e sistematização vêm junto. Talhão novo é só registrado: quem
+--            move é projeto_avancar, depois do envio dos arquivos (escoamento: Escoamento → Observações;
+--            projeto: Preparo → Ok). Alterado (já passou dessas etapas) não muda de etapa.
+-- Talhão novo entra em revisao_talhoes sem mudar de etapa; alterado muda só quando a regra manda.
 -- Devolve uma linha por documento, na ordem de p_documentos.
+drop function if exists hub.projeto_nova_revisao(text, int, text, text[], int[]);
 create or replace function hub.projeto_nova_revisao(
   p_modulo     text,
   p_cod_faz    int,
@@ -725,7 +748,7 @@ create or replace function hub.projeto_nova_revisao(
   p_documentos text[],
   p_talhoes    int[]
 )
-returns table (revisao_id bigint, numero int, sufixo text)
+returns table (revisao_id bigint, numero int, sufixo text, documento text)
 language plpgsql
 security definer
 set search_path = hub
@@ -780,7 +803,8 @@ begin
   end if;
 
   -- Classifica cada talhão antes de gravar qualquer coisa.
-  create temp table if not exists _rev_talhoes (layer bigint, talhao_num int, tipo text, para text) on commit drop;
+  create temp table if not exists _rev_talhoes (layer bigint, talhao_num int, tipo text, para text, mover boolean)
+    on commit drop;
   truncate _rev_talhoes;
   for v_t in select t.* from hub.projeto_talhoes(p_modulo, p_cod_faz) t
               where t.talhao_num = any(coalesce(p_talhoes, '{}')) order by t.talhao_num loop
@@ -822,7 +846,8 @@ begin
         end if;
       end if;
     end if;
-    insert into _rev_talhoes values (v_t.layer, v_t.talhao_num, v_tipo, v_etapa);
+    insert into _rev_talhoes values (v_t.layer, v_t.talhao_num, v_tipo, v_etapa,
+                                     v_tipo = 'alterado' and v_etapa <> v_t.etapa);
   end loop;
 
   foreach v_doc in array p_documentos loop
@@ -834,18 +859,35 @@ begin
   select v_prin, layer, tipo from _rev_talhoes;
 
   v_lote := nextval('hub.log_lote_seq');
-  for v_etapa in select distinct para from _rev_talhoes loop
-    perform hub.projeto_mudar_etapa(p_modulo, (select array_agg(layer) from _rev_talhoes where para = v_etapa),
+  for v_etapa in select distinct para from _rev_talhoes where mover loop
+    perform hub.projeto_mudar_etapa(p_modulo, (select array_agg(layer) from _rev_talhoes
+                                                where para = v_etapa and mover),
                                     v_etapa, v_lote, 'nova_revisao', null);
   end loop;
 
   return query
-  select r.id, r.numero, dt.sufixo
+  select r.id, r.numero, dt.sufixo, r.documento
     from unnest(p_documentos) with ordinality d (doc, ord)
     join hub.projeto_revisoes r on r.projeto_id = v_projeto and r.numero = v_numero and r.documento = d.doc
     join hub.documento_tipos dt on dt.modulo_id = p_modulo and dt.codigo = d.doc
    order by d.ord;
 end $$;
+
+-- Quem pode ver um módulo: admin, ou quem tem o módulo na conta (é o que a tela usa para mostrar a aba).
+create or replace function hub.pode_ver(p_modulo text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = hub
+as $$
+  select exists (
+    select 1 from hub.usuarios u
+     where u.id = auth.uid()
+       and (u.admin
+            or exists (select 1 from hub.usuario_modulos m
+                        where m.usuario_id = u.id and m.modulo_id = p_modulo)));
+$$;
 
 -- Linha do tempo da fazenda no módulo, mais novo primeiro: mudanças de etapa agrupadas por ação
 -- (lote), revisões (motivo, documentos, arquivos, talhões) e desfazer. Revisões antigas aparecem
@@ -863,7 +905,7 @@ begin
   if p_modulo is null or p_modulo not in ('plantio', 'preparo') then
     raise exception 'Módulo inválido: % (use plantio ou preparo)', p_modulo;
   end if;
-  if not hub.pode_editar(p_modulo) then
+  if not hub.pode_ver(p_modulo) then
     raise exception 'Sem permissão para ver o % desta fazenda', initcap(p_modulo);
   end if;
   v_projeto := hub.projeto_individual(p_modulo, p_cod_faz, false);
@@ -925,6 +967,11 @@ begin
          end,
          jsonb_build_object('lote_id', a.lote_id, 'justificativa', a.justificativa, 'para', a.para,
                             'mudancas', a.mudancas)
+           || case when a.origem = 'retroceder' then jsonb_build_object('desfeito', exists (
+                select 1 from hub.log_auditoria d
+                 where d.modulo_id = p_modulo and d.origem = 'desfazer'
+                   and d.justificativa = 'Desfaz a volta (lote ' || a.lote_id || ')'))
+              else '{}'::jsonb end
     from acoes a
     left join hub.usuarios u on u.id = a.usuario_id
   union all
@@ -937,6 +984,9 @@ begin
            'numero', v.numero,
            'unificada', v.unificada,
            'motivo', v.motivo,
+           'mapa', exists (select 1 from hub.revisao_arquivos a join hub.projeto_revisoes r on r.id = a.revisao_id
+                            where a.revisao_id = any(v.ids) and r.documento = 'projeto'
+                              and lower(a.nome_arquivo) like '%.pdf'),
            'documentos', v.documentos,
            'talhoes', (select coalesce(jsonb_agg(jsonb_build_object('talhao', t.talhao_num, 'tipo', rt.tipo)
                                                  order by t.talhao_num), '[]')
@@ -997,15 +1047,7 @@ begin
   if v_acao is null then
     raise exception 'Etapa % do Preparo não existe', p_ordem;
   end if;
-  perform hub.projeto_avancar('preparo', p_cod_faz, v_acao);
-  -- A observação da fazenda continua guardada na etapa Observações de etapa_status.
-  if p_ordem = 3 and length(trim(coalesce(p_observacao, ''))) > 0 then
-    insert into hub.etapa_status (etapa_id, entidade_id, ok, usuario_id, concluido_em, observacao)
-    select e.id, p_cod_faz, true, auth.uid(), now(), trim(p_observacao)
-      from hub.etapas e where e.modulo_id = 'preparo' and e.ordem = 3
-    on conflict (etapa_id, entidade_id) do update
-      set usuario_id = auth.uid(), concluido_em = now(), observacao = excluded.observacao;
-  end if;
+  perform hub.projeto_avancar('preparo', p_cod_faz, v_acao, null, p_observacao);
 end $$;
 
 create or replace function hub.preparo_reabrir_etapa(p_cod_faz int, p_ordem int)
@@ -1034,13 +1076,16 @@ revoke all on function hub.projeto_individual(text, int, boolean) from public, a
 revoke all on function hub.revisao_principal(bigint, int) from public, anon, authenticated;
 revoke all on function hub.revisao_documento(bigint, text, int, text) from public, anon, authenticated;
 
+revoke all on function hub.pode_ver(text) from public, anon;
+grant execute on function hub.pode_ver(text) to authenticated, service_role;
+
 -- RPCs do contrato: a checagem de editor fica dentro de cada uma.
-revoke all on function hub.projeto_avancar(text, int, text, int[]) from public, anon;
+revoke all on function hub.projeto_avancar(text, int, text, int[], text) from public, anon;
 revoke all on function hub.projeto_retroceder(text, int, text, text, int[]) from public, anon;
 revoke all on function hub.projeto_desfazer(bigint) from public, anon;
 revoke all on function hub.projeto_nova_revisao(text, int, text, text[], int[]) from public, anon;
 revoke all on function hub.projeto_linha_do_tempo(text, int) from public, anon;
-grant execute on function hub.projeto_avancar(text, int, text, int[]) to authenticated;
+grant execute on function hub.projeto_avancar(text, int, text, int[], text) to authenticated;
 grant execute on function hub.projeto_retroceder(text, int, text, text, int[]) to authenticated;
 grant execute on function hub.projeto_desfazer(bigint) to authenticated;
 grant execute on function hub.projeto_nova_revisao(text, int, text, text[], int[]) to authenticated;

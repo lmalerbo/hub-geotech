@@ -14,7 +14,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 MIGRACOES = ['20260928120000_hub_schema_inicial.sql', '20260928130000_talhoes_propriedade.sql',
              '20260929090000_projetos_revisoes.sql', '20260929110000_documentos_mapa_e_status_guardado.sql',
              '20260930090000_acoes_plantio_preparo.sql', '20260930120000_envio_de_arquivos.sql',
-             '20261001100000_portal_publico.sql', '20261023090000_fluxo_projetos.sql']
+             '20261001100000_portal_publico.sql', '20261023100000_fluxo_projetos.sql']
 
 
 def _porta_livre():

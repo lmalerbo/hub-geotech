@@ -29,8 +29,8 @@ def enviar(como, uid, modulo, cod, documento, nomes, nova=False, motivo=None):
     return num
 
 
-def avancar(como, uid, modulo, cod, acao, talhoes=None):
-    return como(uid, 'select hub.projeto_avancar(%s, %s, %s, %s)', (modulo, cod, acao, talhoes))
+def avancar(como, uid, modulo, cod, acao, talhoes=None, obs=None):
+    return como(uid, 'select hub.projeto_avancar(%s, %s, %s, %s, %s)', (modulo, cod, acao, talhoes, obs))
 
 
 def retroceder(como, uid, modulo, cod, para, just='conferência', talhoes=None):
@@ -98,6 +98,23 @@ def test_preparo_avanca_por_talhao_com_as_exigencias(banco, como, pessoa, fazend
         enviar(como, uid, 'preparo', cod, doc, [ext])
     assert avancar(como, uid, 'preparo', cod, 'preparo', [1]) == [(1,)]
     assert etapas(banco, 'preparo', cod) == {1: 'Ok', 2: 'Observações', 3: 'Identificação', 4: 'Identificação'}
+
+
+def test_observacao_do_preparo_vai_para_etapa_status(banco, como, pessoa, fazenda):
+    uid, cod = pessoa(), fazenda(2)
+    por(banco, 'preparo', cod, 'Observações', [1])
+    assert avancar(como, uid, 'preparo', cod, 'observacoes', [1], '  parede da grota  ') == [(1,)]
+    assert banco.execute("select s.observacao from hub.etapa_status s join hub.etapas e on e.id = s.etapa_id "
+                         "where e.modulo_id = 'preparo' and e.ordem = 3 and s.entidade_id = %s",
+                         (cod,)).fetchall() == [('parede da grota',)]
+    # a RPC antiga (wrapper) também grava a observação
+    cod2 = fazenda(1)
+    por(banco, 'preparo', cod2, 'Observações')
+    como(uid, 'select hub.preparo_concluir_etapa(%s, 3, %s)', (cod2, 'outra'))
+    assert banco.execute("select s.observacao from hub.etapa_status s join hub.etapas e on e.id = s.etapa_id "
+                         "where e.modulo_id = 'preparo' and e.ordem = 3 and s.entidade_id = %s",
+                         (cod2,)).fetchall() == [('outra',)]
+    assert etapas(banco, 'preparo', cod2) == {1: 'Preparo'}
 
 
 # ── Volta com justificativa e desfazer ───────────────────────────────────────
@@ -179,12 +196,19 @@ def test_plantio_revisao_complementar_novos_e_alterados(banco, como, pessoa, faz
     assert r[0] == 'ERRO' and 'motivo' in r[1]
     r = nova_revisao(como, uid, 'plantio', cod, 'bloco 2', ['exportacao', 'projeto'], [1, 4, 5])
     assert [(n, s) for _, n, s in r] == [(1, ''), (1, '')]
-    assert etapas(banco, 'plantio', cod) == {1: 'Ag. Mapa', 2: 'Ok', 3: 'Ok', 4: 'Ag. Mapa', 5: 'Ag. Mapa', 6: 'Aguard. Map.'}
+    # o alterado muda já; o novo só é registrado (quem move é a tela, depois do envio)
+    assert etapas(banco, 'plantio', cod) == {1: 'Ag. Mapa', 2: 'Ok', 3: 'Ok', 4: 'Andamento', 5: 'Andamento', 6: 'Aguard. Map.'}
     assert banco.execute('select t.talhao_num, rt.tipo from hub.revisao_talhoes rt join hub.talhoes t using (layer) '
                          'where rt.revisao_id = %s order by 1', (r[0][0],)).fetchall() == [(1, 'alterado'), (4, 'novo'), (5, 'novo')]
+    enviar(como, uid, 'plantio', cod, 'exportacao', ['.zip'])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg'])
+    assert avancar(como, uid, 'plantio', cod, 'exportacao_enviada', [4, 5]) == [(2,)]
+    assert etapas(banco, 'plantio', cod) == {1: 'Ag. Mapa', 2: 'Ok', 3: 'Ok', 4: 'Ag. Mapa', 5: 'Ag. Mapa', 6: 'Aguard. Map.'}
+    assert banco.execute('select count(*) from hub.revisao_talhoes where revisao_id = %s',
+                         (r[0][0],)).fetchone() == (3,)                          # avanço não duplica a linha
     # o mapa da Rev1 leva só os talhões dela para Ok
     por(banco, 'plantio', cod, 'Ag. Mapa', [6])
-    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg', '.pdf'])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.pdf'])
     assert etapas(banco, 'plantio', cod) == {1: 'Ok', 2: 'Ok', 3: 'Ok', 4: 'Ok', 5: 'Ok', 6: 'Ag. Mapa'}
 
 
@@ -204,13 +228,41 @@ def test_plantio_regras_de_talhao_na_revisao(banco, como, pessoa, fazenda):
                          'where p.cod_faz = %s', (cod,)).fetchone() == (0,)       # erro não deixa revisão
 
 
-def test_mapa_anexado_junto_vai_direto_para_ok(banco, como, pessoa, fazenda):
+def test_mapa_chega_depois_do_avanco_e_leva_a_ok(banco, como, pessoa, fazenda):
+    uid, cod = pessoa(), fazenda(2)
+    por(banco, 'plantio', cod, 'Andamento')
+    nova_revisao(como, uid, 'plantio', cod, None, ['exportacao', 'projeto'], [1])
+    enviar(como, uid, 'plantio', cod, 'exportacao', ['.zip'])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg'])
+    assert etapas(banco, 'plantio', cod) == {1: 'Andamento', 2: 'Andamento'}   # novo só move com o avanço
+    assert avancar(como, uid, 'plantio', cod, 'exportacao_enviada', [1]) == [(1,)]
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.pdf'])
+    assert etapas(banco, 'plantio', cod) == {1: 'Ok', 2: 'Andamento'}
+
+
+def test_mapa_enviado_junto_vai_direto_para_ok_no_avanco(banco, como, pessoa, fazenda):
     uid, cod = pessoa(), fazenda(2)
     por(banco, 'plantio', cod, 'Andamento')
     nova_revisao(como, uid, 'plantio', cod, None, ['exportacao', 'projeto'], [1])
     enviar(como, uid, 'plantio', cod, 'exportacao', ['.zip'])
     enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg', '.pdf'])
+    assert etapas(banco, 'plantio', cod) == {1: 'Andamento', 2: 'Andamento'}
+    avancar(como, uid, 'plantio', cod, 'exportacao_enviada', [1])
     assert etapas(banco, 'plantio', cod) == {1: 'Ok', 2: 'Andamento'}
+
+
+def test_mapa_de_revisao_anterior_nao_leva_novos_a_ok(banco, como, pessoa, fazenda):
+    uid, cod = pessoa(), fazenda(2)
+    por(banco, 'plantio', cod, 'Andamento')
+    nova_revisao(como, uid, 'plantio', cod, None, ['exportacao', 'projeto'], [1])
+    enviar(como, uid, 'plantio', cod, 'exportacao', ['.zip'])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg', '.pdf'])
+    avancar(como, uid, 'plantio', cod, 'exportacao_enviada', [1])
+    nova_revisao(como, uid, 'plantio', cod, 'bloco 2', ['exportacao', 'projeto'], [2])
+    enviar(como, uid, 'plantio', cod, 'exportacao', ['.zip'])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg'])
+    avancar(como, uid, 'plantio', cod, 'exportacao_enviada', [2])
+    assert etapas(banco, 'plantio', cod) == {1: 'Ok', 2: 'Ag. Mapa'}
 
 
 def test_revisao_so_de_exportacao_nao_muda_etapa(banco, como, pessoa, fazenda):
@@ -220,6 +272,13 @@ def test_revisao_so_de_exportacao_nao_muda_etapa(banco, como, pessoa, fazenda):
     r = nova_revisao(como, uid, 'plantio', cod, 'exportação corrigida', ['exportacao'], None)
     assert [n for _, n, _ in r] == [1]
     assert set(etapas(banco, 'plantio', cod).values()) == {'Ok'}
+
+
+def test_nova_revisao_devolve_o_documento(como, pessoa, fazenda):
+    uid, cod = pessoa(), fazenda(1)
+    r = como(uid, 'select revisao_id, numero, sufixo, documento from hub.projeto_nova_revisao(%s, %s, %s, %s, %s)',
+             ('plantio', cod, 'primeira', ['exportacao', 'projeto'], []))
+    assert [(n, s, d) for _, n, s, d in r] == [(0, '', 'exportacao'), (0, '', 'projeto')]
 
 
 def test_preparo_exemplo_da_spec_fazenda_voada_em_blocos(banco, como, pessoa, fazenda):
@@ -239,12 +298,14 @@ def test_preparo_exemplo_da_spec_fazenda_voada_em_blocos(banco, como, pessoa, fa
     r = nova_revisao(como, uid, 'preparo', cod, 'alteração no projeto', ['projeto', 'exportacao', 'sistematizacao'], [1, 2])
     assert [n for _, n, _ in r] == [1, 1, 1] and [s for _, _, s in r] == ['', '', '-Sistematizacao']
     assert etapas(banco, 'preparo', cod) == {**{n: 'Ok' for n in range(1, 6)}, **{n: 'Identificação' for n in range(6, 11)}}
-    # Rev2 — bloco 2: o escoamento abre a revisão com os talhões 6–10; o projeto depois completa a Rev2
+    # Rev2 — bloco 2: o escoamento abre a revisão com os talhões 6–10 (registrados, sem mudar de etapa);
+    # o envio do escoamento e depois o avanço movem; o projeto depois completa a Rev2
     por(banco, 'preparo', cod, 'Escoamento', [6, 7, 8, 9, 10])
     r = nova_revisao(como, uid, 'preparo', cod, 'bloco 2 voado', ['escoamento'], [6, 7, 8, 9, 10])
     assert [n for _, n, _ in r] == [2]
-    assert set(etapas(banco, 'preparo', cod)[n] for n in range(6, 11)) == {'Observações'}
+    assert set(etapas(banco, 'preparo', cod)[n] for n in range(6, 11)) == {'Escoamento'}
     assert enviar(como, uid, 'preparo', cod, 'escoamento', [arq['escoamento']]) == 2
+    assert avancar(como, uid, 'preparo', cod, 'escoamento', [6, 7, 8, 9, 10]) == [(5,)]
     avancar(como, uid, 'preparo', cod, 'observacoes', [6, 7, 8, 9, 10])
     for d in ('projeto', 'exportacao', 'sistematizacao'):
         assert enviar(como, uid, 'preparo', cod, d, [arq[d]]) == 2              # revisão aberta
@@ -317,16 +378,41 @@ def test_linha_do_tempo_junta_etapas_revisoes_e_desfazer(banco, como, pessoa, fa
     uid, cod = pessoa(), fazenda(3)
     por(banco, 'plantio', cod, 'Andamento')
     nova_revisao(como, uid, 'plantio', cod, None, ['exportacao', 'projeto'], [1, 2])
-    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg', '.pdf'])
+    enviar(como, uid, 'plantio', cod, 'exportacao', ['.zip'])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.dwg'])
+    avancar(como, uid, 'plantio', cod, 'exportacao_enviada', [1, 2])
+    enviar(como, uid, 'plantio', cod, 'projeto', ['.pdf'])
     lote = retroceder(como, uid, 'plantio', cod, 'Andamento', just='erro no projeto')[0][0]
     como(uid, 'select hub.projeto_desfazer(%s)', (lote,))
     linhas = como(uid, 'select tipo, texto, detalhe from hub.projeto_linha_do_tempo(%s, %s)', ('plantio', cod))
-    assert [t for t, _, _ in linhas] == ['desfazer', 'retrocesso', 'mapa', 'revisao']
-    assert 'erro no projeto' in linhas[1][1] and '2 talhão(ões)' in linhas[1][1]
-    rev = linhas[3][2]
+    assert [t for t, _, _ in linhas] == ['desfazer', 'retrocesso', 'mapa', 'avanco', 'revisao']
+    retro = linhas[1]
+    assert 'erro no projeto' in retro[1] and '2 talhão(ões)' in retro[1]
+    assert retro[2]['desfeito'] is True
+    rev = linhas[4][2]
     assert rev['numero'] == 0 and rev['talhoes'] == [{'talhao': 1, 'tipo': 'novo'}, {'talhao': 2, 'tipo': 'novo'}]
-    assert len(rev['arquivos']) == 2
-    assert como(pessoa(papel='leitura'), 'select * from hub.projeto_linha_do_tempo(%s, %s)', ('plantio', cod))[0] == 'ERRO'
+    assert rev['mapa'] is True and len(rev['arquivos']) == 3
+
+
+def test_linha_do_tempo_marca_volta_nao_desfeita_e_revisao_sem_mapa(banco, como, pessoa, fazenda):
+    uid, cod = pessoa(), fazenda(2)
+    por(banco, 'plantio', cod, 'Ok')
+    nova_revisao(como, uid, 'plantio', cod, 'ajuste', ['exportacao'], [])
+    retroceder(como, uid, 'plantio', cod, 'Ag. Mapa', just='conferir')
+    linhas = como(uid, 'select tipo, detalhe from hub.projeto_linha_do_tempo(%s, %s)', ('plantio', cod))
+    assert [d.get('desfeito') for t, d in linhas if t == 'retrocesso'] == [False]
+    assert [d['mapa'] for t, d in linhas if t == 'revisao'] == [False]
+
+
+def test_linha_do_tempo_abre_para_quem_tem_o_modulo_e_nao_para_quem_nao_tem(banco, como, pessoa, fazenda):
+    cod = fazenda(1)
+    assert como(pessoa(papel='leitura'), 'select * from hub.projeto_linha_do_tempo(%s, %s)', ('plantio', cod)) == []
+    r = como(pessoa(modulos=('preparo',)), 'select * from hub.projeto_linha_do_tempo(%s, %s)', ('plantio', cod))
+    assert r[0] == 'ERRO' and 'Sem permissão' in r[1]
+    admin = pessoa(modulos=())
+    banco.execute('update hub.usuarios set admin = true where id = %s', (admin,))
+    assert como(admin, 'select * from hub.projeto_linha_do_tempo(%s, %s)', ('plantio', cod)) == []
+    assert como(pessoa(papel='leitura'), 'select hub.pode_ver(%s)', ('plantio',)) == [(True,)]
 
 
 # ── RPCs antigas (tela atual) ────────────────────────────────────────────────

@@ -31,8 +31,39 @@ test('a fazenda montada sozinha é igual à mesma fazenda montada junto com as o
   assert.strictEqual(juntas[1].ha, 20.1);
 });
 
+const talPrep = (cod, num, etapa, nome = 'Faz') => ({
+  layer: cod * 1000 + num, etapa,
+  talhoes: { cod_faz: cod, talhao_num: num, area_ha: 10.04, fazendas: { nome } },
+});
+
+test('Preparo: cada talhão leva a etapa do banco como índice; a fazenda fica na do menos avançado', () => {
+  const todas = [talPrep(10455, 2, 'Ok', 'Beta'), talPrep(10455, 1, 'Escoamento', 'Beta'), talPrep(10001, 1, 'Preparo', 'Alfa')];
+  const juntas = ctx.montarPreparo(todas, [], [], {}, {});
+  assert.deepStrictEqual(limpo(juntas.map((f) => f.n)), ['Alfa', 'Beta']);
+  assert.deepStrictEqual(limpo(juntas[1].tals), [
+    { layer: 10455001, num: 1, ha: 10.04, e: 1 },
+    { layer: 10455002, num: 2, ha: 10.04, e: 4 },
+  ]);
+  assert.strictEqual(juntas[1].e, 1);                 // o talhão 1 está em Escoamento
+  assert.strictEqual(juntas[0].e, 3);                 // Preparo
+  assert.strictEqual(juntas[1].ha, 20.1);
+});
+
+test('Preparo: fazenda montada sozinha é igual à mesma fazenda montada junto com as outras', () => {
+  const todas = [talPrep(10455, 2, 'Ok', 'Beta'), talPrep(10001, 1, 'Preparo', 'Alfa'), talPrep(10455, 1, 'Escoamento', 'Beta')];
+  const juntas = ctx.montarPreparo(todas, [], [], {}, {});
+  const sozinha = ctx.montarPreparo(todas.filter((r) => r.layer >= 10455000 && r.layer <= 10455999), [], [], {}, {});
+  assert.deepStrictEqual(limpo(sozinha[0]), limpo(juntas.find((f) => f.cod === '10455')));
+});
+
+test('Preparo: etapa desconhecida ou vazia cai em Identificação (índice 0)', () => {
+  const [f] = ctx.montarPreparo([talPrep(10819, 1, undefined)], [], [], {}, {});
+  assert.strictEqual(f.tals[0].e, 0);
+  assert.strictEqual(f.e, 0);
+});
+
 test('Preparo: etapas concluídas por fazenda', () => {
-  const linhas = [{ layer: 10819001, talhoes: { cod_faz: 10819, area_ha: 5, fazendas: { nome: 'X' } } }];
+  const linhas = [talPrep(10819, 1, 'Identificação', 'X')];
   const etapas = [{ id: 1, ordem: 1 }, { id: 2, ordem: 2 }];
   const status = [{ etapa_id: 1, entidade_id: '10819', ok: true, usuario_id: 'u', concluido_em: 'd1', observacao: 'obs' },
                   { etapa_id: 9, entidade_id: '10819', ok: true }];

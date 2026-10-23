@@ -8,7 +8,9 @@
 // ─────────────────────────────────────────────────────────────
 
 const SEL_PLANTIO='layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))';
-const SEL_PREPARO='layer,talhoes(cod_faz,area_ha,fazendas(nome))';
+const SEL_PREPARO='layer,etapa,talhoes(cod_faz,talhao_num,area_ha,fazendas(nome))';
+// Etapas do Preparo, na ordem, como o banco guarda em talhao_preparo.etapa (A1). Índice = e do talhão.
+const ETAPAS_PREPARO=['Identificação','Escoamento','Observações','Preparo','Ok'];
 const SEL_COLHEITA='layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status,voo_id,voo_tipo,voo_status,voo_liberar_em';
 const SEL_VOOS='id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro';
 const SEL_NOTAS='id,entidade_id,valor_novo,usuario_id,criado_em';
@@ -45,10 +47,12 @@ function montarPlantio(linhas){
   });
 }
 
-// Preparo: fazendas da demanda + etapas concluídas (escopo fazenda).
+// Preparo: fazendas da demanda, talhões com a etapa do banco (tals, como o Plantio) e etapas
+// concluídas (etapa_status: ok, quem, quando e a observação). A etapa da fazenda é a do talhão menos avançado.
 function montarPreparo(linhas,etapas,status,nomeUsr,mesFaz){
   const idsEtapa=new Set(etapas.map(e=>e.id));
   const st=new Map(status.filter(s=>idsEtapa.has(s.etapa_id)).map(s=>[s.etapa_id+'|'+s.entidade_id,s]));
+  const idxEtapa=Object.fromEntries(ETAPAS_PREPARO.map((n,i)=>[n,i]));
   const porFaz=new Map();
   for(const r of linhas){
     const t=r.talhoes;
@@ -56,13 +60,17 @@ function montarPreparo(linhas,etapas,status,nomeUsr,mesFaz){
     let f=porFaz.get(t.cod_faz);
     if(!f){
       f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:mesFaz[String(t.cod_faz)]||'',
-         voo:'?',ok:[],usr:[],dt:[],obs:''};
+         voo:'?',ok:[],usr:[],dt:[],obs:'',tals:[],e:ETAPAS_PREPARO.length-1};
       porFaz.set(t.cod_faz,f);
     }
+    const e=idxEtapa[r.etapa]??0;
+    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,e});
+    f.e=Math.min(f.e,e);
     f.ha+=t.area_ha||0;
   }
   return [...porFaz.entries()].sort((a,b)=>a[1].n.localeCompare(b[1].n,'pt-BR')).map(([cod,f])=>{
     f.ha=Math.round(f.ha*10)/10;
+    f.tals.sort((a,b)=>a.num-b.num);
     for(const e of etapas){
       const s=st.get(e.id+'|'+cod);
       f.ok.push(!!s?.ok);
