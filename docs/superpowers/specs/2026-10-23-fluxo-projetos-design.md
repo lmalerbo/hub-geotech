@@ -27,6 +27,22 @@ Toda ação de avançar vale para os talhões marcados (padrão: todos os que es
   - talhões já prontos que foram alterados → voltam para Ag. Mapa até o mapa novo;
   - talhões não marcados → não mudam (continuam Ok mesmo enquanto o mapa novo não chega).
 - **Revisão só de exportação**: nenhum talhão marcado → nenhuma etapa muda.
+- **Revisão aberta**: os arquivos das etapas seguintes dos talhões de uma revisão entram nessa mesma revisão (ex.: bloco 2 sobe o escoamento → abre Rev2 com talhões 6–10; o projeto do bloco 2 depois completa a Rev2). "Nova revisão" (botão) sempre abre a próxima.
+- **Regras por módulo** (talhões *alterados*, isto é, já prontos):
+  - Plantio: voltam para Ag. Mapa (o mapa vem de outro setor) — ou vão direto para Ok se o mapa vier junto.
+  - Preparo: **não mudam de etapa**; a revisão só troca os arquivos (a equipe faz tudo, inclusive a sistematização).
+  - Preparo: se o **projeto** muda, **exportação e sistematização vêm junto** (obrigatórias na mesma revisão). Escoamento é independente e só entra quando muda. Exportação pode ir sozinha.
+
+Exemplo do Preparo (fazenda grande, voada em blocos):
+
+| Revisão | O que aconteceu | Escoamento | Projeto | Exportação | Sistematização | Talhões |
+|---|---|---|---|---|---|---|
+| Rev0 | Bloco 1 voado | Rev0 | Rev0 | Rev0 | Rev0 | 1–5 novos |
+| Rev1 | Alteração no projeto | Rev0 | Rev1 | Rev1 | Rev1 | nenhum muda de etapa |
+| Rev2 | Bloco 2 voado | Rev2 | Rev2 | Rev2 | Rev2 | 6–10 novos |
+| Rev3 | Só exportação corrigida | Rev2 | Rev2 | Rev3 | Rev2 | nenhum |
+
+Na tela e no portal cada documento mostra de qual revisão vem o arquivo vigente ("Escoamento · Rev0").
 - **Mapa opcional na nova revisão**: se o mapa for anexado junto, os talhões marcados vão direto para Ok.
 - Motivo obrigatório a partir da Rev1 (como hoje).
 
