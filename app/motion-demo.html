@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movimento do Hub</title>
+<!-- Vitrine de app/motion.js para as telas e para o teste tests/app/teste_movimento.py. Sem dados. -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link rel="stylesheet" href="motion.css">
+<style>
+:root{--bg:#eff3f7;--sf:#fff;--s2:#edf0f8;--bd:#e5e9ec;--t1:#20262e;--t2:#4d4a57;--t3:#9895a2}
+*{box-sizing:border-box;margin:0}
+body{font-family:Poppins,sans-serif;background:var(--bg);color:var(--t1);padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.ico{font-family:'Material Symbols Outlined';font-style:normal;font-size:20px;line-height:1}
+.card{background:var(--sf);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
+.btn{height:46px;border:none;border-radius:12px;font:600 13px Poppins,sans-serif;color:#fff;background:#16a76b;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn.esc{background:var(--t1)}
+.barra{display:flex;gap:6px}
+.barra>div{flex:1;padding:8px 4px;border-radius:9px;text-align:center;font-size:11px;font-weight:600;background:var(--s2);color:var(--t2)}
+.barra>div.on{background:#16a76b;color:#fff}
+.lista{min-height:160px;display:flex;flex-direction:column;gap:6px}
+.lista>div{padding:8px 10px;border-radius:8px;background:var(--s2);font-size:12px}
+#faz{height:140px;border-radius:14px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-weight:600}
+</style>
+</head>
+<body>
+<section class="card"><h2>Mo.ocupado</h2>
+  <button class="btn" id="b-ok" onclick="demoOcupado(this,true)"><span class="ico">check_circle</span>Mapeamento concluído</button>
+  <button class="btn esc" id="b-erro" onclick="demoOcupado(this,false)">Ação que falha</button>
+</section>
+<section class="card"><h2>Mo.progresso</h2>
+  <div id="prog"></div>
+  <button class="btn esc" id="b-prog" onclick="demoProgresso()">Enviar 3 arquivos (simulado)</button>
+</section>
+<section class="card"><h2>Mo.carregando / Mo.pronto</h2>
+  <div class="lista" id="lista"><div>Talhão 1</div><div>Talhão 2</div></div>
+  <button class="btn esc" id="b-lista" onclick="demoLista()">Recarregar lista</button>
+</section>
+<section class="card"><h2>Mo.etapa</h2>
+  <div class="barra" id="barra"><div data-etapa="andamento">Andamento</div><div data-etapa="ag_mapa">Ag. Mapa</div><div data-etapa="ok" class="on">Ok</div></div>
+  <button class="btn esc" id="b-etapa" onclick="demoEtapa()">Voltar para Andamento</button>
+</section>
+<section class="card"><h2>Mo.concluido</h2>
+  <div id="faz">Fazenda 10095</div>
+  <button class="btn" id="b-conc" onclick="Mo.concluido(document.getElementById('faz'),{texto:'Fazenda em Ok'})">Concluir</button>
+</section>
+<section class="card"><h2>Mo.campo</h2><div id="campo"></div></section>
+<script src="motion.js"></script>
+<script>
+const espera=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById('campo').innerHTML=Mo.campo(true);
+async function demoOcupado(b,ok){const fim=Mo.ocupado(b);await espera(1200);fim(ok);}
+async function demoProgresso(){
+  const tam=[2.4e6,8.1e6,0.6e6],total=tam.reduce((a,b)=>a+b,0),fim=Mo.ocupado(document.getElementById('b-prog'));
+  const p=Mo.progresso(document.getElementById('prog'),{total});let base=0;
+  for(const [i,t] of tam.entries()){
+    for(let b=0;b<=t;b+=t/12){p.atualizar(base+b,`Enviando arquivo ${i+1} de 3`);await espera(70);}
+    p.processando(`Gravando arquivo ${i+1}…`);await espera(400);base+=t;
+  }
+  p.fim(true);fim(true);
+}
+async function demoLista(){
+  const l=document.getElementById('lista');Mo.carregando(l);await espera(1100);
+  l.innerHTML=[1,2,3,4,5,6].map(n=>`<div>Talhão ${n}</div>`).join('');Mo.pronto(l);
+}
+async function demoEtapa(){
+  const b=document.getElementById('barra');await Mo.etapa(b,'ok','andamento');
+  b.querySelectorAll('div').forEach(d=>d.classList.toggle('on',d.dataset.etapa==='andamento'));
+}
+</script>
+</body>
+</html>

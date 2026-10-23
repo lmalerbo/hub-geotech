@@ -614,6 +614,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .confirma-txt{font-size:13px;color:var(--t2);line-height:1.55;white-space:pre-line}
 .flist .fcard{flex-shrink:0}   /* com dezenas de fazendas a lista rola; o cartão não encolhe */
 </style>
+<link rel="stylesheet" href="motion.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -663,6 +664,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
     </label>
     <div class="envio-drop-log" id="envio-drop-log"></div>
     <div id="envio-corpo"></div>
+    <div id="envio-prog"></div>
     <div class="login-erro" id="envio-erro"></div>
     <div class="modal-botoes">
       <button class="btn-retro" onclick="fecharEnvio()">Cancelar</button>
@@ -711,7 +713,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
   </div>
 </div>
 
-<div class="carregando off" id="carregando"><span class="ico">progress_activity</span><span id="carregando-msg">Carregando dados do Hub…</span></div>
+<div class="carregando off" id="carregando"><span class="mo-campo g" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="carregando-msg">Carregando dados do Hub…</span></div>
 
 <!-- HUB -->
 <div id="hub" class="scr off">
@@ -931,6 +933,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="motion.js"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // DADOS — Plantio
@@ -1547,10 +1550,11 @@ async function confirmarVoo(){
   const erro=document.getElementById('voo-erro'),ok=document.getElementById('voo-ok');
   if(!tipo){erro.textContent='Escolha Voar ou Revoar.';return;}
   if(tipo==='revoar'&&!problema){erro.textContent='Descreva o que está errado nas linhas.';return;}
-  ok.disabled=true;ok.textContent='Enviando…';
+  const fim=Mo.ocupado(ok);
   const layers=selTals.map(i=>FZ_C[ativaC].tals[i].layer);
   const {data,error}=await sb.rpc('colheita_pedir_voo',{p_layers:layers,p_tipo:tipo,p_problema:problema||null,p_pedido_por:pedidoPor||null});
-  if(error){erro.textContent=error.message;ok.disabled=false;ok.textContent='Tentar de novo';return;}
+  fim(!error);
+  if(error){erro.textContent=error.message;return;}
   fecharVoo();selTals=[];
   const ign=data.ignorados||[];
   showToast(`${data.criados} pedido(s) de voo`+(ign.length?` · ${ign.length} ignorado(s): ${[...new Set(ign.map(x=>x.motivo))].join('; ')}`:''));
@@ -1654,9 +1658,9 @@ async function entrar(){
   const btn=document.getElementById('btn-entrar');
   erro.textContent='';
   if(!email||!senha){erro.textContent='Informe e-mail e senha.';return;}
-  btn.disabled=true;btn.textContent='Entrando…';
+  const fim=Mo.ocupado(btn);
   const {error}=await sb.auth.signInWithPassword({email,password:senha});
-  btn.disabled=false;btn.textContent='Entrar';
+  fim(!error);
   if(error){
     erro.textContent=/banned/i.test(error.message)
       ?'Acesso bloqueado. Fale com o administrador do Hub.'
@@ -1708,13 +1712,13 @@ async function definirSenha(){
   erro.textContent='';
   if(nova.length<8){erro.textContent='A senha precisa ter pelo menos 8 caracteres.';return;}
   if(nova!==conf){erro.textContent='As duas senhas não são iguais.';return;}
-  btn.disabled=true;btn.textContent='Salvando…';
+  const fim=Mo.ocupado(btn);
   try{
     const {error}=await sb.auth.updateUser({password:nova});
     if(error)throw error;
     const r=await sb.rpc('senha_definida');if(r.error)throw r.error;
-  }catch(e){erro.textContent='Não foi possível salvar: '+(e.message||e);return;}
-  finally{btn.disabled=false;btn.textContent='Salvar senha';}
+  }catch(e){fim(false);erro.textContent='Não foi possível salvar: '+(e.message||e);return;}
+  fim(true);
   fecharTrocaSenha();
   if(trocaObrigatoria){EU.precisaTrocarSenha=false;await abrirHub();}
   else showToast('Senha trocada');
@@ -1945,9 +1949,10 @@ const FONTE_INFO={base_fazendas:['Base Fazendas','Talhões, área, estágio e da
   icol:['ICOL','Demanda da Colheita (frente, período, cortado)']};
 async function rCfgFontes(){
   const el=document.getElementById('cfg-fontes');
-  el.innerHTML='<div class="cfg-card"><div class="col-sel-hint">Carregando…</div></div>';
+  el.innerHTML='<div class="cfg-card" style="min-height:160px"></div>';Mo.carregando(el.firstChild);
   const {data,error}=await sb.from('execucoes_ingestao').select('fonte,status,iniciado_em,finalizado_em,linhas_lidas,linhas_gravadas,detalhes,erro').order('iniciado_em',{ascending:false}).limit(80);
   if(error){el.innerHTML=`<div class="cfg-card">Não foi possível carregar: ${esc(error.message)}</div>`;return;}
+  Mo.pronto(el);
   el.innerHTML=`<div class="cfg-card"><div class="cfg-card-t"><span class="ico">schedule</span>Importação diária (servidor Geo, 07:00)</div>`+
     Object.entries(FONTE_INFO).map(([f,[nome,desc]],i)=>{
       const u=data.find(x=>x.fonte===f),ok=data.find(x=>x.fonte===f&&x.status==='ok');
@@ -2713,7 +2718,20 @@ function distribuirArquivos(lista){
   document.getElementById('modal-envio').addEventListener('drop',e=>e.preventDefault());
 })();
 
-function fecharEnvio(){document.getElementById('modal-envio').classList.add('off');ENVIO=null;}
+// fetch não informa o progresso do upload; XMLHttpRequest informa.
+// Devolve {ok,status,corpo} como o fetch+json de antes.
+function enviarComProgresso(url,token,fd,aoProgredir){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open('POST',url);x.setRequestHeader('Authorization','Bearer '+token);
+    x.upload.onprogress=e=>{if(e.lengthComputable)aoProgredir(e.loaded*(fd.get('arquivo').size/e.total));};
+    x.onload=()=>{let corpo={};try{corpo=JSON.parse(x.responseText);}catch(_){}
+      res({ok:x.status>=200&&x.status<300,status:x.status,corpo});};
+    x.onerror=()=>rej(new Error('Falha de conexão no envio. Confira a internet e tente de novo.'));
+    x.send(fd);
+  });
+}
+function fecharEnvio(){document.getElementById('modal-envio').classList.add('off');document.getElementById('envio-prog').innerHTML='';ENVIO=null;}
 
 async function confirmarEnvio(){
   const erro=document.getElementById('envio-erro'),ok=document.getElementById('envio-ok');
@@ -2725,33 +2743,44 @@ async function confirmarEnvio(){
   if(errado){erro.textContent=`${errado.it.rotulo}: selecione um arquivo .${errado.it.ext}.`;return;}
   const motivo=document.getElementById('envio-motivo')?.value.trim()||'';
   if(ENVIO.precisaMotivo&&!motivo){erro.textContent=ENVIO.colheita?'Escreva a nota explicando por que o arquivo está sendo atualizado.':'Informe o motivo da revisão.';return;}
-  ok.disabled=true;ok.textContent='Enviando…';
+  const fim=Mo.ocupado(ok);
+  // Progresso real: bytes de todos os arquivos que faltam, somados.
+  const total=pend.reduce((s,x)=>s+x.arq.size,0);
+  const prog=Mo.progresso(document.getElementById('envio-prog'),{total});
   const token=(await sb.auth.getSession()).data.session?.access_token;
   try{
     // Um envio por item; se um falhar, os que já foram não são reenviados
     // (reenviar criaria outra revisão).
-    for(const {it,arq} of pend){
+    let enviados=0;
+    for(const [k,{it,arq}] of pend.entries()){
       const fd=new FormData();
       fd.append('modulo',ENVIO.modulo);fd.append('cod_faz',ENVIO.cod);fd.append('documento',it.doc);
       fd.append('nova',it.nova?'1':'0');if(motivo)fd.append('motivo',motivo);fd.append('arquivo',arq);
-      ok.textContent=`Enviando ${it.nomeCurto}…`;
-      const r=await fetch(WORKER_URL+'/enviar',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd});
-      const corpo=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(`${it.rotulo}: ${corpo.erro||'erro '+r.status}`);
-      it.feito=true;
+      const rot=`${it.nomeCurto}${pend.length>1?` (${k+1} de ${pend.length})`:''}`;
+      prog.atualizar(enviados,'Enviando '+rot);
+      const r=await enviarComProgresso(WORKER_URL+'/enviar',token,fd,
+        b=>b>=arq.size?prog.processando(`Gravando ${rot}…`):prog.atualizar(enviados+b,'Enviando '+rot));
+      if(!r.ok)throw new Error(`${it.rotulo}: ${r.corpo.erro||'erro '+r.status}`);
+      enviados+=arq.size;it.feito=true;
     }
     if(ENVIO.depois){
+      prog.processando('Atualizando a etapa…');
       const [fn,args]=ENVIO.depois;
       const {error}=await sb.rpc(fn,args);
       if(error)throw new Error(error.message);
     }
   }catch(e){
-    erro.textContent=e.message;ok.disabled=false;ok.textContent='Tentar de novo';
+    prog.fim(false);fim(false);
+    erro.textContent=e.message;
     return;
   }
+  // O ✓ fica na tela enquanto os dados já recarregam por trás.
+  prog.fim(true);
+  const pausa=fim(true),rec=recarregar();
+  await pausa;
   fecharEnvio();
   showToast('Arquivos enviados');
-  await recarregar();
+  await rec;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2810,16 +2839,20 @@ async function abrirAviso(id){
 function podeEditar(mod){return !!EU&&(EU.admin||(EU.role==='editor'&&EU.perms[mod]));}
 
 // Executa uma ação (função do banco), avisa o resultado e recarrega os dados.
+// O botão fica vivo (Mo.ocupado) do clique até a resposta e mostra ✓ ou ✕;
+// depois do ✓ só volta a aceitar clique quando os dados novos chegaram.
 async function rpcAcao(btn,fn,args,msgOk){
-  if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  const fim=Mo.ocupado(btn);
   const {data,error}=await sb.rpc(fn,args);
+  const pausa=fim(!error,{travado:!error});
   if(error){
     showToast('Não foi possível: '+error.message);
-    if(btn){btn.disabled=false;btn.style.opacity='';}
     return;
   }
   showToast(msgOk+(typeof data==='number'?` — ${data} talhão(ões)`:''));
   await recarregar();
+  await pausa;
+  if(btn?.isConnected)btn.disabled=false;
 }
 async function recarregar(){
   const codP=ativa!==null?FZ[ativa]?.cod:null;
