@@ -1066,13 +1066,23 @@ function crRenderBotaoPdf() {
   } else if (est === 'pronto' || est === 'parado') {
     alvo.innerHTML = `<button class="cr-btn cr-btn-bloco" type="button" data-pdf${vazio ? ' disabled' : ''}>Baixar PDF</button>`;
   } else {
-    alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled aria-busy="true">Preparando o gerador… (só na primeira vez)</button>';
+    // ~20 s só na primeira vez: barra por passo, reaproveitada entre redesenhos para não voltar a 0
+    if (!crProgPdf || !alvo.contains(crProgPdf.el)) {
+      alvo.innerHTML = '<p class="cr-msg">Preparando o gerador de PDF (só na primeira vez)</p>';
+      const api = Mo.progresso(alvo, { total: 4, mb: false });
+      crProgPdf = { api, el: alvo.querySelector('.mo-prog') };
+    }
+    crProgPdf.api.atualizar(crGerador.passo, crGerador.passoTxt);
+    return;
   }
+  crProgPdf = null;
 }
+let crProgPdf = null;
 async function crBaixarPdf() {
   const alvo = document.getElementById('cr-pdf');
   const m = CR_ST.trab;
-  alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled aria-busy="true">Gerando o PDF…</button>';
+  const fim = Mo.ocupado(alvo.querySelector('[data-pdf]'), { texto: 'Gerando o PDF…' });
+  let ok = false;
   try {
     const dados = crMontarDados({ codFaz: CR_ST.faz.cod_faz, nome: CR_ST.faz.nome, operacao: m.operacao, data: m.data,
                                   geradoPor: CR_ST.eu.nome, geo: CR_ST.geo, areas: CR_ST.det.areas, apls: CR_ST.det.apls });
@@ -1082,9 +1092,11 @@ async function crBaixarPdf() {
     a.download = crNomeArquivo(CR_ST.faz.cod_faz, m.operacao, m.data);
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    ok = true;
   } catch (e) {
     crToast('Não foi possível gerar o PDF. Tente de novo.', true);
   }
+  await fim(ok);
   crRenderBotaoPdf();
 }
 // ── Cadastro de insumos (janela Insumos, usada no mapa aéreo) ──

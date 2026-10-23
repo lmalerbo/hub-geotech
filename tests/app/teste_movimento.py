@@ -1,0 +1,122 @@
+"""Teste de app/motion.js (Playwright + Edge) na vitrine app/motion-demo.html. Sem banco, sem conta.
+    python tests/app/teste_movimento.py [pasta_para_capturas]
+Confere cada função do contrato (Mo.*) com e sem prefers-reduced-motion."""
+import functools
+import http.server
+import socketserver
+import sys
+import threading
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+RAIZ = Path(__file__).resolve().parents[2]
+CAPT = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+sys.stdout.reconfigure(encoding='utf-8')
+
+
+class Quieto(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+
+H = functools.partial(Quieto, directory=str(RAIZ / 'app'))
+srv = socketserver.TCPServer(('127.0.0.1', 0), H)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+url = f'http://127.0.0.1:{srv.server_address[1]}/motion-demo.html'
+falhas = []
+
+
+def confere(nome, cond):
+    print(('ok   ' if cond else 'FALHA ') + nome)
+    if not cond:
+        falhas.append(nome)
+
+
+def foto(pg, nome):
+    if CAPT:
+        CAPT.mkdir(parents=True, exist_ok=True)
+        pg.screenshot(path=str(CAPT / f'{nome}.png'))
+
+
+def rodar(pg, calmo):
+    sufixo = ' (menos movimento)' if calmo else ''
+    erros = []
+    pg.on('pageerror', lambda e: erros.append(str(e)))
+    pg.goto(url)
+
+    # ocupado → ✓ e volta ao normal com o rótulo intacto
+    b = pg.locator('#b-ok')
+    rotulo = b.inner_text()
+    b.click()
+    pg.wait_for_timeout(150)
+    confere('ocupado: desabilita e mostra o campo' + sufixo,
+            b.evaluate("b=>b.disabled&&b.classList.contains('mo-ocupado')&&!!b.querySelector('.mo-campo')"))
+    if not calmo:
+        foto(pg, '1-ocupado')
+    pg.wait_for_timeout(1250)
+    confere('ocupado: ✓ no fim' + sufixo, b.evaluate("b=>b.classList.contains('mo-ok')"))
+    pg.wait_for_timeout(1000)
+    confere('ocupado: volta ao normal' + sufixo,
+            b.evaluate("b=>!b.disabled&&!b.className.match(/mo-(ok|ocupado|fim)/)") and b.inner_text() == rotulo)
+    pg.locator('#b-erro').click()
+    pg.wait_for_timeout(1300)
+    confere('ocupado: ✕ no erro' + sufixo, pg.locator('#b-erro').evaluate("b=>b.classList.contains('mo-erro')"))
+
+    # progresso → % e MB reais, termina em ✓
+    pg.locator('#b-prog').click()
+    pg.wait_for_timeout(600)
+    meio = pg.locator('#prog .mo-prog-pct').inner_text()
+    mb = pg.locator('#prog .mo-prog-mb').inner_text()
+    confere(f'progresso: % parcial ({meio}) e MB ({mb})' + sufixo, meio.endswith('%') and meio != '0%' and 'MB' in mb)
+    if not calmo:
+        foto(pg, '2-progresso')
+    pg.wait_for_timeout(4500)
+    confere('progresso: termina em ✓' + sufixo, pg.locator('#prog .mo-prog').evaluate("p=>p.classList.contains('mo-ok')"))
+
+    # carregando/pronto → esboço aparece e some, conteúdo novo entra
+    pg.locator('#b-lista').click()
+    pg.wait_for_timeout(200)
+    confere('carregando: esboço visível' + sufixo, pg.locator('#lista .mo-esboco').count() == 1)
+    if not calmo:
+        foto(pg, '3-carregando')
+    pg.wait_for_timeout(1500)
+    confere('pronto: esboço removido e 6 itens' + sufixo,
+            pg.locator('#lista .mo-esboco').count() == 0 and pg.locator('#lista > div').count() == 6)
+
+    # etapa → marca aparece (sem ela com menos movimento) e a Promise resolve
+    pg.locator('#b-etapa').click()
+    pg.wait_for_timeout(250)
+    tem_marca = pg.locator('#barra .mo-etapa-marca').count() == 1
+    confere('etapa: marca deslizando' + sufixo, tem_marca != calmo)
+    if not calmo:
+        foto(pg, '4-etapa')
+    pg.wait_for_timeout(1300)
+    confere('etapa: termina e redesenha' + sufixo,
+            pg.locator('#barra .mo-etapa-marca').count() == 0
+            and pg.locator('#barra [data-etapa=andamento]').evaluate("d=>d.classList.contains('on')"))
+
+    # concluido → selo + confete (sem confete com menos movimento), some sozinho
+    pg.locator('#b-conc').click()
+    pg.wait_for_timeout(450)
+    confere('concluido: selo e texto' + sufixo,
+            pg.locator('#faz .mo-conc-selo').count() == 1 and pg.locator('#faz .mo-conc-txt').inner_text() == 'Fazenda em Ok')
+    confere('concluido: confete só com movimento' + sufixo, (pg.locator('#faz .mo-conc-p').count() > 0) != calmo)
+    if not calmo:
+        foto(pg, '5-concluido')
+    pg.wait_for_timeout(1700)
+    confere('concluido: some sozinho' + sufixo, pg.locator('#faz .mo-conc').count() == 0)
+
+    confere('sem erro de JS' + sufixo, not erros)
+
+
+with sync_playwright() as p:
+    nav = p.chromium.launch(channel='msedge')
+    for calmo in (False, True):
+        ctx = nav.new_context(viewport={'width': 1200, 'height': 800}, reduced_motion='reduce' if calmo else 'no-preference')
+        rodar(ctx.new_page(), calmo)
+        ctx.close()
+    nav.close()
+srv.shutdown()
+print(f'\n{len(falhas)} falha(s)')
+sys.exit(1 if falhas else 0)
