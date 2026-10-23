@@ -92,7 +92,7 @@ async function drCarregarPainel(){
   const cat=s.filter(x=>x.tipo==='catacao'&&!(x.geracao&&x.geracao.status==='pronta'));
   const prev=s.filter(x=>x.geracao&&x.geracao.status==='pronta');
   const inc=DR.painel.incompletas||[],obs=DR.painel.obstaculos_antigos||[],fora=DR.painel.fora_da_base||[];
-  const nova=(podeEditar('drone')||(EU&&EU.role==='solicitante'&&EU.perms.drone))
+  const nova=(podeEditar('drone')||(EU&&EU.niveis.drone==='solicitante'))
     ?`<button class="dr-btn2" style="margin-bottom:12px" onclick="drNovaSolicitacao()"><span class="ico">add</span> Nova solicitação</button>`:'';
   const ajuda=`<a class="dr-msg" style="display:block;text-align:right;margin:-4px 0 8px" target="_blank" rel="noreferrer"
     href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md"><span class="ico" style="font-size:15px">help</span> Ajuda</a>`;

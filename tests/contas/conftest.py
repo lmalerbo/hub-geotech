@@ -11,7 +11,7 @@ import psycopg
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
-MIGRACOES = ['20261005090000_admin_acessos_ferramentas.sql', '20261012090000_login_unico.sql']
+MIGRACOES = ['20261005090000_admin_acessos_ferramentas.sql', '20261012090000_login_unico.sql', '20261023090000_niveis_por_modulo.sql']
 
 
 def _porta_livre():
@@ -32,6 +32,7 @@ def banco(tmp_path_factory):
     try:
         con = psycopg.connect(f'host=127.0.0.1 port={porta} user=postgres dbname=postgres', autocommit=True)
         con.execute((Path(__file__).parent / 'stub_supabase.sql').read_text(encoding='utf-8'))
+        con.execute("set check_function_bodies = off")
         for m in MIGRACOES:
             con.execute((RAIZ / 'supabase' / 'migrations' / m).read_text(encoding='utf-8'))
         yield con
