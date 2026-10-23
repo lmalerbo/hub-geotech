@@ -931,6 +931,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="dados.js"></script>
 <script>
 // ─────────────────────────────────────────────────────────────
 // DADOS — Plantio
@@ -1554,7 +1555,7 @@ async function confirmarVoo(){
   fecharVoo();selTals=[];
   const ign=data.ignorados||[];
   showToast(`${data.criados} pedido(s) de voo`+(ign.length?` · ${ign.length} ignorado(s): ${[...new Set(ign.map(x=>x.motivo))].join('; ')}`:''));
-  await recarregar();
+  await recarregar(alvoDaAcao('colheita_pedir_voo',{p_layers:layers}));
 }
 async function cancelarVoo(){
   const f=FZ_C[ativaC];
@@ -2367,54 +2368,34 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,lidos,voosC,notasC,params,modulos]=await Promise.all([
+  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,voosC,notasC,params,modulos,geomap,droneResumo]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,papel,admin,precisa_trocar_senha,usuario_modulos(modulo_id)').order('nome')),
-    lerTudo(()=>sb.from('talhao_plantio').select('layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))').order('layer')),
-    lerTudo(()=>sb.from('talhao_preparo').select('layer,talhoes(cod_faz,area_ha,fazendas(nome))').order('layer')),
+    lerTudo(()=>sb.from('talhao_plantio').select(SEL_PLANTIO).order('layer')),
+    lerTudo(()=>sb.from('talhao_preparo').select(SEL_PREPARO).order('layer')),
     lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
-    lerTudo(()=>sb.from('etapa_status').select('etapa_id,entidade_id,ok,usuario_id,concluido_em,observacao').order('etapa_id').order('entidade_id')),
+    lerTudo(()=>sb.from('etapa_status').select(SEL_ETAPA_STATUS).order('etapa_id').order('entidade_id')),
     sb.from('execucoes_ingestao').select('fonte,finalizado_em').eq('status','ok')
       .in('fonte',FONTES_DIARIAS).order('finalizado_em',{ascending:false}).limit(60)
-      .then(({data,error})=>{if(error)throw error;return data;}),
+      .then(resultado),
     lerTudo(()=>sb.from('documento_tipos').select('modulo_id,codigo,nome,marcador,ordem').order('ordem')),
-    lerTudo(()=>sb.from('projeto_revisoes').select(
-      'id,documento,numero,motivo,vigente,criado_em,projetos(id,modulo_id,tipo,cod_faz,nome),'
-      +'revisao_arquivos(nome_arquivo,release_url),revisao_origens!revisao_origens_revisao_id_fkey(origem_revisao_id)')
-      .order('numero',{ascending:false}).order('id')),
-    lerTudo(()=>sb.from('colheita_talhoes').select('layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status,voo_id,voo_tipo,voo_status,voo_liberar_em').order('layer')),
+    lerTudo(()=>sb.from('projeto_revisoes').select(SEL_REVISOES).order('numero',{ascending:false}).order('id')),
+    lerTudo(()=>sb.from('colheita_talhoes').select(SEL_COLHEITA).order('layer')),
     lerTudo(()=>sb.from('fazendas').select('cod_faz,nome').order('cod_faz')),
-    sb.rpc('safra_colheita').then(({data,error})=>{if(error)throw error;return data;}),
-    lerTudo(()=>sb.from('avisos').select('id,modulo_id,tipo,cod_faz,titulo,texto,atualizado_em').is('resolvido_em',null).order('atualizado_em',{ascending:false})),
-    lerTudo(()=>sb.from('avisos_lidos').select('aviso_id').order('aviso_id')),
-    lerTudo(()=>sb.from('colheita_voos').select('id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro').not('status','in','(concluido,cancelado)').order('id')),
-    lerTudo(()=>sb.from('log_auditoria').select('id,entidade_id,valor_novo,usuario_id,criado_em').eq('modulo_id','colheita').eq('campo','arquivo').order('id',{ascending:false})),
+    sb.rpc('safra_colheita').then(resultado),
+    carregarAvisos(),
+    lerTudo(()=>sb.from('colheita_voos').select(SEL_VOOS).not('status','in',VOOS_FECHADOS).order('id')),
+    lerTudo(()=>sb.from('log_auditoria').select(SEL_NOTAS).eq('modulo_id','colheita').eq('campo','arquivo').order('id',{ascending:false})),
     lerTudo(()=>sb.from('parametros').select('chave,valor').order('chave')),
     lerTudo(()=>sb.from('modulos').select('id,nome,ordem').order('ordem')),
+    sb.rpc('meu_acesso_geomap').then(r=>!!r.data),
+    sb.rpc('drone_resumo').then(({data,error})=>error?[]:(data||[])),
   ]);
   PARAM=Object.fromEntries(params.map(x=>[x.chave,x.valor]));
   MODULOS=modulos;
 
-  // Arquivos: agrupa revisões por projeto e documento; personalizado aparece
-  // em cada fazenda de onde vieram as revisões de origem.
   DOC_TIPOS=tipos;
-  const projetos=new Map(), codDaRevisao=new Map();
-  for(const r of revisoes){
-    const p=r.projetos;
-    if(!projetos.has(p.id))projetos.set(p.id,{...p,docs:{},origens:new Set()});
-    const pr=projetos.get(p.id);
-    (pr.docs[r.documento]??=[]).push({id:r.id,doc:r.documento,modulo:p.modulo_id,numero:r.numero,motivo:r.motivo,
-      vigente:r.vigente,criado_em:r.criado_em,arquivos:r.revisao_arquivos||[]});
-    (r.revisao_origens||[]).forEach(o=>pr.origens.add(o.origem_revisao_id));
-    if(p.tipo==='individual')codDaRevisao.set(r.id,p.cod_faz);
-  }
   for(const k in ARQ)delete ARQ[k];
-  const entrada=(mod,cod)=>(ARQ[mod+'|'+cod]??={docs:{},blocos:[]});
-  for(const p of projetos.values()){
-    Object.values(p.docs).forEach(rs=>rs.sort((a,b)=>(b.vigente-a.vigente)||(b.numero-a.numero)));
-    if(p.tipo==='individual')entrada(p.modulo_id,p.cod_faz).docs=p.docs;
-    else new Set([...p.origens].map(id=>codDaRevisao.get(id)).filter(Boolean))
-      .forEach(cod=>entrada(p.modulo_id,cod).blocos.push(p));
-  }
+  Object.assign(ARQ,montarArquivos(revisoes));
 
   const ultima=Object.fromEntries(FONTES_DIARIAS.map(f=>[f,execucoes.find(e=>e.fonte===f)?.finalizado_em]));
   const faltando=FONTES_DIARIAS.filter(f=>!ultima[f]);
@@ -2434,86 +2415,21 @@ async function carregarDados(){
   }
   EU=USUARIOS.find(u=>u.id===user.id)||null;
   if(EU)EU.email=user.email;
-  if(EU)EU.geomap=!!(await sb.rpc('meu_acesso_geomap')).data;
-  {const {data,error}=await sb.rpc('drone_resumo');DRONE_RESUMO=error?[]:(data||[]);}
+  if(EU)EU.geomap=geomap;
+  DRONE_RESUMO=droneResumo;
   const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
 
-  // Plantio: agrupa os talhões por fazenda.
-  const idxEtapa=Object.fromEntries(ET.map((e,i)=>[e.l,i]));
-  const porFaz=new Map();
-  for(const r of plantio){
-    const t=r.talhoes;
-    if(!t)continue;
-    let f=porFaz.get(t.cod_faz);
-    if(!f){
-      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),t:0,ha:0,e:ET.length-1,mes:'',_mesIso:null,tals:[]};
-      porFaz.set(t.cod_faz,f);
-    }
-    const e=idxEtapa[r.projeto]??0;
-    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,sist_conser:t.sist_conser,
-                 mes:mesLabel(r.mes_plantio),mapeamento:r.mapeamento,e});
-    f.t++;f.ha+=t.area_ha||0;f.e=Math.min(f.e,e);
-    if(r.mes_plantio&&(!f._mesIso||r.mes_plantio<f._mesIso)){f._mesIso=r.mes_plantio;f.mes=mesLabel(r.mes_plantio);}
-  }
-  FZ.length=0;
-  [...porFaz.values()].sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(f=>{
-    f.ha=Math.round(f.ha*10)/10;f.tals.sort((a,b)=>a.num-b.num);FZ.push(f);
-  });
+  FZ.length=0;FZ.push(...montarPlantio(plantio));
 
-  // Colheita: talhões do ICOL por fazenda; status vem calculado do banco.
   SAFRA_C=safra||'';
-  const nomeFaz=Object.fromEntries(fazendas.map(f=>[f.cod_faz,f.nome]));
-  const porFazC=new Map();
-  for(const r of colheita){
-    let f=porFazC.get(r.cod_faz);
-    if(!f){f={n:nomeFaz[r.cod_faz]||String(r.cod_faz),cod:String(r.cod_faz),fr:'',per:'',desat:false,tals:[],_fr:{}};porFazC.set(r.cod_faz,f);}
-    f.tals.push({layer:r.layer,id:r.talhao_num,ha:r.area_ha||0,est:r.estagio||'',st:r.status,tipo:r.tipo_linha,
-                 ciclo:r.ciclo,desat:r.projeto_desatualizado,cortado:r.cortado,corte:r.data_ultimo_corte,voo:r.voo_id?{tipo:r.voo_tipo,status:r.voo_status,liberar:r.voo_liberar_em}:null,
-                 mes:r.periodo_op?'Período '+r.periodo_op:''});
-    if(r.frente)f._fr[r.frente]=(f._fr[r.frente]||0)+1;
-    if(r.periodo_op&&!f.per)f.per=String(r.periodo_op);
-    if(r.projeto_desatualizado)f.desat=true;
-  }
-  FZ_C.length=0;
-  for(const f of porFazC.values())f.porte=Math.max(-1,...f.tals.map(t=>tagPorte(t)??-1));
-  [...porFazC.values()].sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(f=>{
-    f.fr=Object.entries(f._fr).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).join(', ')||'—';
-    f.tals.sort((a,b)=>a.id-b.id);FZ_C.push(f);
-  });
+  FZ_C.length=0;FZ_C.push(...montarColheita(colheita,Object.fromEntries(fazendas.map(f=>[f.cod_faz,f.nome]))));
   VOOS_C=voosC;
   NOTAS_C={};
   for(const n of notasC)(NOTAS_C[n.entidade_id]??=[]).push(n);
-  const lidosSet=new Set(lidos.map(l=>l.aviso_id));
-  AVISOS=avisos.map(a=>({...a,lido:lidosSet.has(a.id)}));
+  AVISOS=avisos;
 
-  // Preparo: fazendas da demanda + etapas concluídas (escopo fazenda).
-  const idsEtapa=new Set(etapas.map(e=>e.id));
-  const st=new Map(status.filter(s=>idsEtapa.has(s.etapa_id)).map(s=>[s.etapa_id+'|'+s.entidade_id,s]));
   const mesFaz=Object.fromEntries(FZ.map(f=>[f.cod,f.mes]));
-  const porFazP=new Map();
-  for(const r of preparo){
-    const t=r.talhoes;
-    if(!t)continue;
-    let f=porFazP.get(t.cod_faz);
-    if(!f){
-      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:mesFaz[String(t.cod_faz)]||'',
-         voo:'?',ok:[],usr:[],dt:[],obs:''};
-      porFazP.set(t.cod_faz,f);
-    }
-    f.ha+=t.area_ha||0;
-  }
-  FZ_P.length=0;
-  [...porFazP.entries()].sort((a,b)=>a[1].n.localeCompare(b[1].n,'pt-BR')).forEach(([cod,f])=>{
-    f.ha=Math.round(f.ha*10)/10;
-    for(const e of etapas){
-      const s=st.get(e.id+'|'+cod);
-      f.ok.push(!!s?.ok);
-      f.usr.push(s?.ok?(nomeUsr[s.usuario_id]||'—'):'');
-      f.dt.push(s?.ok?fmtDataHora(s.concluido_em):'');
-      if(s?.observacao)f.obs=s.observacao;
-    }
-    FZ_P.push(f);
-  });
+  FZ_P.length=0;FZ_P.push(...montarPreparo(preparo,etapas,status,nomeUsr,mesFaz));
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2749,9 +2665,10 @@ async function confirmarEnvio(){
     erro.textContent=e.message;ok.disabled=false;ok.textContent='Tentar de novo';
     return;
   }
+  const alvo={modulo:ENVIO.modulo,cod:String(ENVIO.cod)};
   fecharEnvio();
   showToast('Arquivos enviados');
-  await recarregar();
+  await recarregar(alvo);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2819,16 +2736,39 @@ async function rpcAcao(btn,fn,args,msgOk){
     return;
   }
   showToast(msgOk+(typeof data==='number'?` — ${data} talhão(ões)`:''));
-  await recarregar();
+  await recarregar(alvoDaAcao(fn,args));
 }
-async function recarregar(){
-  const codP=ativa!==null?FZ[ativa]?.cod:null;
-  const codPr=ativaP!==null?FZ_P[ativaP]?.cod:null;
-  const codC=ativaC!==null?FZ_C[ativaC]?.cod:null;
+async function recarregar(alvo){
+  if(!alvo)return recarregarTudo();
+  const chave=alvo.modulo+'|'+alvo.cod,minha=(RECARGA[chave]=(RECARGA[chave]||0)+1);
+  // Avisos em paralelo: a fazenda aparece assim que os dados dela chegam.
+  const avisos=carregarAvisos().then(a=>{AVISOS=a;rSino();}).catch(e=>console.warn('avisos',e));
+  let aplicar;
+  try{aplicar=await carregarFazenda(alvo);}
+  catch(e){console.warn('recarga da fazenda falhou, recarregando tudo',e);await avisos;return recarregarTudo();}
+  if(RECARGA[chave]===minha){   // uma recarga mais nova da mesma fazenda ganha
+    const cods=lembrarAtivas();
+    aplicar();
+    restaurarAtivas(cods);
+    rDash();
+    if(alvo.modulo==='plantio'){rFaz();rDet();}
+    else if(alvo.modulo==='preparo'){rFazP();rDetP();}
+    else{rFazC();rDetC();}
+  }
+  await avisos;
+}
+const RECARGA={};   // modulo|cod → nº da última recarga pedida
+function lembrarAtivas(){
+  return {p:ativa!==null?FZ[ativa]?.cod:null,pr:ativaP!==null?FZ_P[ativaP]?.cod:null,c:ativaC!==null?FZ_C[ativaC]?.cod:null};
+}
+function restaurarAtivas({p,pr,c}){
+  const idx=(lista,cod)=>{if(!cod)return null;const i=lista.findIndex(f=>f.cod===cod);return i<0?null:i;};
+  ativa=idx(FZ,p);ativaP=idx(FZ_P,pr);ativaC=idx(FZ_C,c);
+}
+async function recarregarTudo(){
+  const cods=lembrarAtivas();
   await carregarDados();
-  ativaC=codC?FZ_C.findIndex(f=>f.cod===codC):null; if(ativaC===-1)ativaC=null;
-  ativa=codP?FZ.findIndex(f=>f.cod===codP):null;   if(ativa===-1)ativa=null;
-  ativaP=codPr?FZ_P.findIndex(f=>f.cod===codPr):null; if(ativaP===-1)ativaP=null;
+  restaurarAtivas(cods);
   rDash();rFaz();rDet();rFazP();rDetP();rFazC();rDetC();rSino();
 }
 
