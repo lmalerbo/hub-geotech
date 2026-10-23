@@ -16,7 +16,7 @@ create function auth.uid() returns uuid language sql stable as $$
 create schema hub;
 grant usage on schema hub, auth to anon, authenticated, service_role;
 create table hub.modulos (id text primary key, nome text not null, ordem int not null, ativo boolean not null default true);
-insert into hub.modulos values ('plantio','Plantio',1,true),('preparo','Preparo',2,true),('colheita','Colheita',3,true),('drone','Drone',4,true);
+insert into hub.modulos values ('plantio','Plantio',1,true),('preparo','Preparo',2,true),('colheita','Colheita',3,true),('drone','Drone',4,true),('corretivos','Mapas de aplicação',6,true);
 create table hub.usuarios (
   id uuid primary key references auth.users (id) on delete cascade, nome text not null,
   papel text not null default 'leitura' check (papel in ('editor','leitura','solicitante')),
