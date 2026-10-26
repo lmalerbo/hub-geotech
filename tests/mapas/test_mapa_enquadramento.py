@@ -54,3 +54,17 @@ def test_numero_de_todos_os_talhoes_da_fazenda():
     numeros = {t.get_text(): t.get_fontsize() for ax in pg.fig.axes for t in ax.texts if t.get_text().isdigit()}
     assert {str(t) for t in range(1, 17)} <= set(numeros)
     assert min(numeros[str(t)] for t in range(1, 17)) >= 9          # 16/10: números maiores (eram 6,5 pt)
+
+
+def test_talhao_com_auto_intersecao_vira_geometria_valida():
+    """Talhão em 'gravata' (auto-interseção, como o 1 da fazenda 10650): o GEOS do Pyodide quebra no union_all
+    do enquadramento (TopologyException fatal no navegador), então _gdf conserta a geometria na entrada."""
+    d = _dados([1, 2])
+    x, y = 300000, 7600000
+    gravata = {'type': 'Polygon', 'coordinates': [[PARA_4326(*p) for p in
+               [(x, y), (x + 250, y + 230), (x + 250, y), (x, y + 230), (x, y)]]]}
+    d['talhoes_geo']['features'][0]['geometry'] = gravata
+    gdf = corretivo_pdf._gdf(d)
+    assert gdf.geometry.is_valid.all()
+    assert set(gdf.geometry.geom_type) <= {'Polygon', 'MultiPolygon'}
+    assert gdf.geometry.iloc[0].area > 20000          # as duas metades da gravata continuam lá

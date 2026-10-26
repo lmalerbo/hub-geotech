@@ -20,7 +20,9 @@ import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.patches import FancyBboxPatch
+from shapely import make_valid
 from shapely.geometry import box
+from shapely.ops import unary_union
 
 from mapas.corretivo_dados import (
     OPERACOES, SEM_APLICACAO, aerea, area_total, chave_cor, cores_do_mapa, faixas, linhas_tabela, lista_os, rotulo,
@@ -91,9 +93,21 @@ RETRATO, PAISAGEM = Folha(210, 297), Folha(297, 210)
 
 # ---------- dados ----------
 
+def _valida(geom):
+    """Talhão com auto-interseção vira geometria válida (só a parte de área). Sem isso o GEOS do Pyodide quebra
+    no union_all do enquadramento com TopologyException, que no navegador derruba o Python inteiro."""
+    if geom is None or geom.is_valid:
+        return geom
+    v = make_valid(geom)
+    if v.geom_type == 'GeometryCollection':
+        v = unary_union([p for p in v.geoms if p.geom_type in ('Polygon', 'MultiPolygon')])
+    return v
+
+
 def _gdf(dados) -> gpd.GeoDataFrame:
-    gdf = gpd.GeoDataFrame.from_features(dados['talhoes_geo']['features'], crs='EPSG:4326')
-    return gdf.to_crs(EPSG_UTM)
+    gdf = gpd.GeoDataFrame.from_features(dados['talhoes_geo']['features'], crs='EPSG:4326').to_crs(EPSG_UTM)
+    gdf['geometry'] = gdf.geometry.apply(_valida)
+    return gdf
 
 
 def _data(dados) -> datetime.date:
