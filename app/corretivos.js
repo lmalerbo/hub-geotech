@@ -549,6 +549,7 @@ async function crExcluir(id) {
     return;
   }
   CR_ST.mapas = CR_ST.mapas.filter(x => x.id !== m.id);
+  crGuardarRecentes(crRecentesSem(crRecentes(), m.id));
   crRenderMapas();
   crToast('Mapa excluído.');
 }
@@ -943,6 +944,7 @@ function crSelecionarTodos() {
 }
 function crLimparSel() {
   CR_ST.sel = new Set();
+  CR_ST.areasAbertas = false;
   crAtualizarEstados();
   crRenderPainel();
 }
@@ -1133,6 +1135,7 @@ function crMenu(botao, itens) {
   crMenu.aberto = el;
   setTimeout(() => document.addEventListener('click', crFecharMenuFora), 0);
   document.addEventListener('keydown', crMenuEsc);
+  document.addEventListener('scroll', crFecharMenu, true);
   el.querySelector('button').focus();
 }
 function crFecharMenuFora(e) { if (crMenu.aberto && !crMenu.aberto.contains(e.target)) crFecharMenu(); }
@@ -1141,6 +1144,7 @@ function crFecharMenu() {
   if (crMenu.aberto) { crMenu.aberto.remove(); crMenu.aberto = null; }
   document.removeEventListener('click', crFecharMenuFora);
   document.removeEventListener('keydown', crMenuEsc);
+  document.removeEventListener('scroll', crFecharMenu, true);
 }
 
 // ── Painel ──
