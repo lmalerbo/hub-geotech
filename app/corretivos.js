@@ -552,14 +552,57 @@ async function crExcluir(id) {
   crRenderMapas();
   crToast('Mapa excluído.');
 }
+// Janela "Novo mapa": primeiro Corretivo ou Aplicação aérea; para corretivo, a operação. Devolve a operação ou null.
+function crEscolherNovoMapa() {
+  return new Promise(resolver => {
+    const fundo = document.getElementById('cr-modal-fundo');
+    const est = { grupo: 'corretivo', op: 'subsolagem' };
+    const ops = [['subsolagem', 'SubSolagem'], ['supergrade', 'SuperGrade'], ['arado', 'Arado']];
+    const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; resolver(valor); };
+    const desenhar = () => {
+      const aerea = est.grupo === 'aerea';
+      fundo.innerHTML = `<form class="cr-modal cr-modal-novo" role="dialog" aria-modal="true" aria-labelledby="cr-nm-tit">
+        <div><h3 id="cr-nm-tit">Novo mapa em ${crEsc(CR_ST.faz.nome)}</h3><p>Escolha o que o mapa vai mostrar.</p></div>
+        <div class="cr-nm-grupos">
+          <button class="cr-nm-g${aerea ? '' : ' on'}" type="button" data-grupo="corretivo" aria-pressed="${!aerea}">
+            <span class="ico" aria-hidden="true">agriculture</span><b>Corretivo</b>
+            <span>Calcário, fosfato ou blend, aplicado junto com uma operação de preparo do solo.</span></button>
+          <button class="cr-nm-g${aerea ? ' on' : ''}" type="button" data-grupo="aerea" aria-pressed="${aerea}">
+            <span class="ico" aria-hidden="true">flight</span><b>Aplicação aérea</b>
+            <span>Insumos aplicados por avião, com dose na unidade de cada insumo e 5% de margem na área.</span></button>
+        </div>
+        ${aerea ? '' : `<fieldset class="cr-fs"><legend class="cr-lbl">Operação de preparo</legend>
+          <div class="cr-seg">${ops.map(([v, r]) => `<label class="cr-seg-o"><input type="radio" name="cr-nm-op" value="${v}" data-op="${v}"${est.op === v ? ' checked' : ''}><span>${r}</span></label>`).join('')}</div>
+        </fieldset>`}
+        <div class="cr-md-acoes">
+          <button class="cr-btn2" type="button" data-cancel>Cancelar</button>
+          <button class="cr-btn" type="submit" data-criar>${aerea ? 'Criar mapa de aplicação aérea' : `Criar mapa de ${CR_OPERACOES[est.op]}`}</button>
+        </div>
+      </form>`;
+      const form = fundo.querySelector('form');
+      form.querySelector('[data-cancel]').onclick = () => fechar(null);
+      form.onclick = e => {
+        const g = e.target.closest('[data-grupo]');
+        if (!g || g.dataset.grupo === est.grupo) return;
+        est.grupo = g.dataset.grupo;
+        desenhar();
+        fundo.querySelector(`[data-grupo="${est.grupo}"]`).focus();
+      };
+      form.onchange = e => {
+        if (!e.target.dataset.op) return;
+        est.op = e.target.value;
+        form.querySelector('[data-criar]').textContent = `Criar mapa de ${CR_OPERACOES[est.op]}`;
+      };
+      form.onsubmit = e => { e.preventDefault(); fechar(est.grupo === 'aerea' ? 'aerea' : est.op); };
+    };
+    fundo.onclick = e => { if (e.target === fundo) fechar(null); };
+    desenhar();
+    fundo.classList.remove('off');
+    fundo.querySelector('[data-grupo]').focus();
+  });
+}
 async function crNovoMapa() {
-  const op = await crDialogo('Novo mapa', 'Escolha a operação do novo mapa.', [
-    { rotulo: 'Cancelar', classe: 'cr-btn2', valor: null },
-    { rotulo: 'SubSolagem', classe: 'cr-btn', valor: 'subsolagem' },
-    { rotulo: 'SuperGrade', classe: 'cr-btn', valor: 'supergrade' },
-    { rotulo: 'Arado', classe: 'cr-btn', valor: 'arado' },
-    { rotulo: 'Aplicação aérea', classe: 'cr-btn', valor: 'aerea' },
-  ]);
+  const op = await crEscolherNovoMapa();
   if (!op) return;
   let id;
   try {

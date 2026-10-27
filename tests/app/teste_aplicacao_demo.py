@@ -134,6 +134,23 @@ try:
         confere(pg.locator('#cr-trabalho').is_visible(), 'clicar na linha abre o mapa')
         pg.click('#cr-voltar')
 
+        # ── Tarefa 6: novo mapa em dois passos ──
+        pg.click('#cr-novo')
+        confere(pg.locator('.cr-nm-g').count() == 2, 'novo mapa: Corretivo e Aplicação aérea')
+        confere(pg.locator('[data-criar]').inner_text() == 'Criar mapa de SubSolagem', 'começa em Corretivo, SubSolagem')
+        pg.click('.cr-seg-o:has([data-op="arado"])')
+        confere(pg.locator('[data-criar]').inner_text() == 'Criar mapa de Arado', 'botão acompanha a operação')
+        pg.click('[data-grupo="aerea"]')
+        confere(pg.locator('[data-op]').count() == 0, 'aérea não pede operação')
+        confere(pg.locator('[data-criar]').inner_text() == 'Criar mapa de aplicação aérea', 'botão da aérea')
+        pg.screenshot(path=str(PRINTS / 'aplicacao_novo.png'))
+        pg.click('[data-cancel]')
+        confere(pg.locator('#cr-modal-fundo.off').count() == 1, 'Cancelar fecha a janela')
+        pg.click('#cr-novo')
+        pg.click('[data-criar]')
+        pg.wait_for_function("CR_ST.trab && CR_ST.trab.operacao === 'subsolagem' && CR_ST.det", timeout=30000)
+        confere(pg.locator('#cr-trabalho').is_visible(), 'Criar abre o mapa novo')
+
         # fim das conferências
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')
         nav.close()
