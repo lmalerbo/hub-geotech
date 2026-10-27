@@ -744,9 +744,11 @@ function crMapaCriar() {
     m.on('click', e => {
       const f = m.queryRenderedFeatures(e.point, { layers: ['cr-fill'] })[0];
       if (f) crToggleSel(f.properties.talhao);
+      if (f) crMostrarDica(f.properties.talhao, e.point);
     });
     m.on('mouseenter', 'cr-fill', () => { m.getCanvas().style.cursor = 'pointer'; });
-    m.on('mouseleave', 'cr-fill', () => { m.getCanvas().style.cursor = ''; });
+    m.on('mousemove', 'cr-fill', e => crMostrarDica(e.features[0].properties.talhao, e.point));
+    m.on('mouseleave', 'cr-fill', () => { m.getCanvas().style.cursor = ''; crEsconderDica(); });
     crAtualizarMapa(true);
   });
 }
@@ -773,6 +775,22 @@ function crAtualizarEstados() {
     const t = f.properties.talhao;
     m.setFeatureState({ source: 'cr-tal', id: t }, { sel: CR_ST.sel.has(t), dest: dest.has(t) });
   }
+}
+// Dica ao passar o mouse: segue o ponteiro e vira para dentro perto das bordas do mapa.
+function crMostrarDica(t, ponto) {
+  const el = document.getElementById('cr-dica');
+  if (!el || !CR_ST.det) return;
+  const d = crDicaTalhao(t, crAreaDe(t).area_ha, CR_ST.det.apls, CR_ST.sel.has(t));
+  el.innerHTML = `<b>${crEsc(d.titulo)}</b>${d.linhas.map(l => `<span>${crEsc(l)}</span>`).join('')}<span class="cr-dica-acao">${d.acao}</span>`;
+  el.classList.remove('off');
+  const box = el.parentElement.getBoundingClientRect();
+  const x = Math.min(ponto.x + 14, box.width - el.offsetWidth - 8);
+  const y = ponto.y + 14 + el.offsetHeight > box.height ? ponto.y - el.offsetHeight - 10 : ponto.y + 14;
+  el.style.transform = `translate(${Math.max(8, x)}px, ${Math.max(8, y)}px)`;
+}
+function crEsconderDica() {
+  const el = document.getElementById('cr-dica');
+  if (el) el.classList.add('off');
 }
 
 // ── Abertura, recarga e navegação ──
@@ -823,6 +841,7 @@ async function crRecarregar() {
 }
 function crVoltarLista() {
   crFecharMenu();
+  crEsconderDica();
   if (CR_ST.map) { CR_ST.map.remove(); CR_ST.map = null; }
   crTela('lista');
   crCarregarMapas();

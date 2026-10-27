@@ -94,6 +94,23 @@ try:
         pg.click('#cr-selbar [data-limpar]')
         confere(pg.locator('.cr-nova').count() == 0, 'Limpar fecha a Nova aplicação')
 
+        # ── Tarefa 4: dica ao passar o mouse ──
+        ponto = pg.evaluate("""() => {
+            const f = CR_ST.geo.features[0];
+            const anel = (f.geometry.type === 'Polygon' ? f.geometry.coordinates : f.geometry.coordinates[0])[0];
+            const lng = anel.reduce((s, c) => s + c[0], 0) / anel.length, lat = anel.reduce((s, c) => s + c[1], 0) / anel.length;
+            const p = CR_ST.map.project([lng, lat]);
+            return { x: p.x, y: p.y, t: f.properties.talhao };
+        }""")
+        caixa = pg.locator('#cr-mapa').bounding_box()
+        pg.mouse.move(caixa['x'] + ponto['x'], caixa['y'] + ponto['y'])
+        pg.wait_for_selector('#cr-dica:not(.off)', timeout=5000)
+        confere(f"Talhão {ponto['t']}," in pg.locator('#cr-dica').inner_text(), 'dica mostra o talhão sob o mouse')
+        pg.screenshot(path=str(PRINTS / 'aplicacao_dica.png'))
+        pg.mouse.move(caixa['x'] + 5, caixa['y'] + caixa['height'] - 5)
+        pg.mouse.move(0, 0)
+        confere(pg.locator('#cr-dica.off').count() == 1, 'dica some ao sair do mapa')
+
         # fim das conferências
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')
         nav.close()

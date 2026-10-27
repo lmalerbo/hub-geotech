@@ -57,6 +57,10 @@ button,input{font:inherit}
 .cr-nome{font-size:12px;color:var(--t2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Conteúdo ─────────────────────────────────────────────── */
+.cr-dica{position:absolute;left:0;top:0;z-index:3;pointer-events:none;background:var(--sf);border-radius:10px;box-shadow:0 8px 24px rgb(0 0 0/.14);padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;max-width:280px}
+.cr-dica b{font-size:13px;font-weight:600}
+.cr-dica span{color:var(--t2)}
+.cr-dica-acao{margin-top:2px}
 .cr-main{max-width:1040px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .cr-busca{background:var(--sf);border-radius:14px;padding:14px;box-shadow:0 1px 3px #0000000d;min-width:0}
 .cr-res{margin-top:10px;display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto}
