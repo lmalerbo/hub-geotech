@@ -57,6 +57,43 @@ try:
         pg.wait_for_function('CR_ST.geo && CR_ST.det', timeout=30000)
         pg.wait_for_selector('#cr-mapa canvas', timeout=30000)
 
+        # ── Tarefa 3: coluna da direita e barra de seleção ──
+        confere(pg.locator('.cr-nova').count() == 0, 'sem talhão marcado, a Nova aplicação fica fechada')
+        confere('Clique nos talhões' in pg.locator('#cr-selbar').inner_text(), 'barra diz como marcar')
+        ts = pg.evaluate("() => { const ts = CR_ST.geo.features.map(f => f.properties.talhao).sort((a, b) => a - b).slice(0, 2);"
+                         " ts.forEach(t => crToggleSel(t)); return ts; }")
+        confere(pg.locator('.cr-nova h2').inner_text() == 'Nova aplicação nos 2 talhões', 'título da Nova aplicação')
+        confere('2 talhões marcados' in pg.locator('#cr-selbar').inner_text(), 'barra conta os marcados')
+        if pg.evaluate("CR_ST.trab.operacao === 'aerea'"):
+            pg.select_option('#cr-f-insumo', index=1)
+        pg.fill('#cr-f-dose', '2')
+        if pg.locator('#cr-f-gesso').count():
+            pg.fill('#cr-f-gesso', '1')
+        rot = pg.locator('[data-aplicar]').inner_text()
+        confere(bool(re.match(r'^Aplicar nos 2 talhões \([\d.,]+\s\S+\)$', rot)), f'botão com total previsto ({rot})')
+        pg.fill('#cr-f-dose', '')
+        confere('NaN' not in pg.locator('[data-aplicar]').inner_text(), 'dose vazia não mostra NaN')
+        confere(pg.locator('[data-area]').count() == 0, 'áreas por talhão começam recolhidas')
+        pg.click('[data-areas]')
+        confere(pg.locator('[data-area]').count() == 2, 'Ajustar a área abre um campo por talhão')
+        confere(pg.locator('.cr-painel-tot').is_visible(), 'total do mapa no pé da coluna')
+        n_apl = pg.locator('[data-menu-apl]').count()
+        confere(n_apl > 0, 'demonstração tem aplicações para conferir o menu')
+        if n_apl:
+            pg.locator('[data-menu-apl]').first.click()
+            confere(pg.locator('.cr-menu button:has-text("Editar")').is_visible(), 'menu de ações com Editar')
+            pg.keyboard.press('Escape')
+            confere(pg.locator('.cr-menu').count() == 0, 'Esc fecha o menu')
+            pg.locator('[data-menu-apl]').first.click()
+            pg.click('#cr-trab-tit')
+            confere(pg.locator('.cr-menu').count() == 0, 'clicar fora fecha o menu')
+        pg.screenshot(path=str(PRINTS / 'aplicacao_selecao.png'))
+        pg.evaluate('crSelecionarTodos()')
+        largura = pg.locator('#cr-selbar').bounding_box()['width']
+        confere(largura < pg.locator('#cr-mapa').bounding_box()['width'], 'barra com todos marcados não estoura o mapa')
+        pg.click('#cr-selbar [data-limpar]')
+        confere(pg.locator('.cr-nova').count() == 0, 'Limpar fecha a Nova aplicação')
+
         # fim das conferências
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')
         nav.close()

@@ -101,8 +101,6 @@ button,input{font:inherit}
 .cr-painel{display:flex;flex-direction:column;min-height:0;background:var(--sf);border-left:1px solid var(--bd)}
 .cr-sec{display:flex;flex-direction:column;gap:10px;min-width:0}
 .cr-sec h2{font-size:13px;font-weight:600}
-.cr-sec-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.cr-acoes-sel{display:flex;gap:6px;flex-wrap:wrap}
 .cr-sel-lista{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto}
 .cr-sel-l{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--t2);min-width:0}
 .cr-sel-l span{min-width:0;overflow-wrap:anywhere}
@@ -122,11 +120,6 @@ button,input{font:inherit}
 .cr-ap-main{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:none;border:0;text-align:left;cursor:pointer;color:var(--t1);font-size:12px;padding:2px;border-radius:6px}
 .cr-ap-main b{font-size:13px;font-weight:600}
 .cr-ap-main small{color:var(--t2);font-size:11px;overflow-wrap:anywhere}
-.cr-ap-acoes{display:flex;gap:2px;flex-shrink:0}
-.cr-tot-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cr-tot{border:1px solid var(--bd);border-radius:var(--r-md);padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:12px;min-width:0}
-.cr-tot small{color:var(--t2);font-size:11px}
-.cr-tot b{font-size:15px;font-weight:600}
 .cr-cks{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
 .cr-ck{display:flex;align-items:center;gap:6px;font-size:13px}
 .cr-ck input{accent-color:var(--plantio);width:16px;height:16px}
@@ -135,6 +128,28 @@ button,input{font:inherit}
 .cr-ins-linha{display:flex;gap:8px;align-items:center}
 .cr-ins-linha select{flex:1;min-width:0}
 .cr-ins-linha .cr-btn2{flex-shrink:0}
+.cr-painel-rol{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:22px;min-height:0}
+.cr-painel-tot{border-top:1px solid var(--bd);background:#fbfcfd;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.cr-painel-tot h2{font-size:13px;font-weight:600}
+.cr-tot-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px}
+.cr-tot-l{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 8px;font-size:12px;min-width:0}
+.cr-tot-l span{color:var(--t2)}
+.cr-tot-l b{font-weight:600}
+.cr-tot-l small{flex-basis:100%;color:var(--t2);font-size:11px}
+.cr-nova{border:2px solid var(--plantio);border-radius:14px;padding:14px}
+.cr-nova h2{font-size:15px}
+.cr-link{display:inline-flex;align-items:center;gap:4px;background:none;border:0;padding:0;color:var(--t2);font-size:12px;cursor:pointer;align-self:flex-start}
+.cr-link .ico{font-size:18px}
+.cr-ap-sem{display:flex;align-items:center;gap:10px;padding:4px 10px;color:var(--t2);font-size:12px}
+.cr-selbar{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;background:var(--t1);color:#fff;border-radius:14px;padding:8px 8px 8px 18px;box-shadow:var(--sh-md);max-width:calc(100% - 32px);z-index:2}
+.cr-selbar-tit{font-weight:600;white-space:nowrap}
+.cr-selbar-sub{color:#c9ced6;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-selbar-b{background:transparent;color:#fff;border:1px solid #4d5560;border-radius:10px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.cr-selbar-b2{background:var(--plantio);color:#fff;border:0;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.cr-menu{position:fixed;z-index:70;background:var(--sf);border-radius:12px;box-shadow:var(--sh-md);padding:6px;display:flex;flex-direction:column;min-width:170px}
+.cr-menu button{display:flex;align-items:center;gap:8px;border:0;background:none;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;color:var(--t1);font-size:13px}
+.cr-menu button:hover,.cr-menu button:focus-visible{background:var(--s2)}
+.cr-menu button.perigo{color:#b03030}
 @media (max-width:899px){
   #cr-app.cr-modo-trab{height:auto;overflow:visible}
   .cr-trab-grid{grid-template-columns:1fr;height:auto}
