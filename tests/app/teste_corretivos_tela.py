@@ -70,7 +70,7 @@ try:
         pg.fill('#cr-busca', str(FAZ)); pg.wait_for_selector('#cr-res .cr-it'); pg.click('#cr-res .cr-it')
         pg.wait_for_selector('[data-novo]:visible', timeout=20000)
         antes = {m['id'] for m in b.selecionar('corretivo_mapas', 'id', {'cod_faz': f'eq.{FAZ}'})}
-        pg.click('[data-novo]'); pg.click('#cr-modal-fundo button:has-text("Arado")')
+        pg.click('[data-novo]'); pg.click('.cr-seg-o:has([data-op="arado"])'); pg.click('[data-criar]')
         pg.wait_for_selector('#cr-mapa canvas', timeout=30000)
         pg.wait_for_function('CR_ST.geo && CR_ST.det', timeout=30000)
         novos = [m['id'] for m in b.selecionar('corretivo_mapas', 'id', {'cod_faz': f'eq.{FAZ}'}) if m['id'] not in antes]
@@ -130,8 +130,8 @@ try:
         for esperado in ['CORRETIVO · ARADO', 'E2E-1', 'Blend PH7', '7,77*']:
             confere(esperado in texto, f'PDF contém "{esperado}"')
 
-        pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-excluir="{mapa_id}"]', timeout=20000)
-        pg.click(f'[data-excluir="{mapa_id}"]'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
+        pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-menu-mapa="{mapa_id}"]', timeout=20000)
+        pg.click(f'[data-menu-mapa="{mapa_id}"]'); pg.click('.cr-menu button:has-text("Excluir mapa")'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
         pg.wait_for_timeout(2500)
         confere(not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_id}'}), 'mapa excluído pela tela')
         log = b.selecionar('log_auditoria', 'id', {'modulo_id': 'eq.corretivos', 'campo': 'eq.mapa_corretivo',
@@ -142,7 +142,7 @@ try:
 
         # Aplicação aérea (16/10): insumo do cadastro, nome e unidade copiados, talhão 400 e margem no PDF.
         antes = {m['id'] for m in b.selecionar('corretivo_mapas', 'id', {'cod_faz': f'eq.{FAZ}'})}
-        pg.click('#cr-novo'); pg.click('#cr-modal-fundo button:has-text("Aplicação aérea")')
+        pg.click('#cr-novo'); pg.click('[data-grupo="aerea"]'); pg.click('[data-criar]')
         pg.wait_for_function('CR_ST.geo && CR_ST.det && CR_ST.insumos.length', timeout=30000)
         novos = [m['id'] for m in b.selecionar('corretivo_mapas', 'id', {'cod_faz': f'eq.{FAZ}'}) if m['id'] not in antes]
         confere(len(novos) == 1, 'mapa aéreo criado no banco')
@@ -163,8 +163,8 @@ try:
         for esperado in ['APLICAÇÃO AÉREA', 'Inseticida Revolux', 'E2E-A1', '0,15 L', 'TALHÕES + 5%']:
             confere(esperado in texto, f'PDF aéreo contém "{esperado}"')
         confere(bool(re.search(r'^400$', texto, re.M)), 'PDF aéreo tem a linha do talhão 400')
-        pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-excluir="{mapa_aereo}"]', timeout=20000)
-        pg.click(f'[data-excluir="{mapa_aereo}"]'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
+        pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-menu-mapa="{mapa_aereo}"]', timeout=20000)
+        pg.click(f'[data-menu-mapa="{mapa_aereo}"]'); pg.click('.cr-menu button:has-text("Excluir mapa")'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
         pg.wait_for_timeout(2500)
         if not b.selecionar('corretivo_mapas', 'id', {'id': f'eq.{mapa_aereo}'}):
             confere(True, 'mapa aéreo excluído pela tela')

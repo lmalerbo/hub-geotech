@@ -71,6 +71,7 @@
         <input class="cr-inp" id="cr-busca" type="search" autocomplete="off" placeholder="Código ou nome da fazenda">
         <div class="cr-res" id="cr-res" aria-live="polite"></div>
       </div>
+      <div class="cr-recentes off" id="cr-recentes"></div>
       <div class="cr-pnl off" id="cr-pnl">
         <div class="cr-ph">
           <div>
@@ -82,17 +83,19 @@
         <div id="cr-mapas"></div>
       </div>
     </section>
-
-    <section id="cr-trabalho" class="off" aria-label="Mapa em edição">
-      <div class="cr-pnl">
-        <div class="cr-ph">
-          <button class="cr-btn2" type="button" id="cr-voltar"><span class="ico">arrow_back</span> Voltar</button>
-          <div class="nm" id="cr-trab-tit"></div>
-        </div>
-        <div class="cr-trab-corpo" id="cr-trab-corpo"></div>
-      </div>
-    </section>
   </main>
+
+  <section id="cr-trabalho" class="cr-trab off" aria-label="Mapa em edição">
+    <header class="cr-trab-top">
+      <button class="cr-btn2" type="button" id="cr-voltar"><span class="ico">arrow_back</span> Mapas da fazenda</button>
+      <div class="cr-trab-id">
+        <h1 class="cr-trab-tit" id="cr-trab-tit"></h1>
+        <span class="cr-trab-sub" id="cr-trab-sub"></span>
+      </div>
+      <div class="cr-trab-pdf" id="cr-pdf"></div>
+    </header>
+    <div class="cr-trab-corpo" id="cr-trab-corpo"></div>
+  </section>
 </div>
 
 <div class="cr-modal-fundo off" id="cr-modal-fundo"></div>

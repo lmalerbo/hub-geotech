@@ -130,6 +130,54 @@ function crNomeArquivo(codFaz, operacao, data) {
   return crAerea(operacao) ? `aplicacao_aerea_${codFaz}_${data}.pdf` : `corretivo_${codFaz}_${operacao}_${data}.pdf`;
 }
 
+// ── Layout (27/10): textos e contas das telas, sem DOM ──
+// Lista de talhões para textos: '11', '11 e 12', '11, 12 e 14'; acima de max, '1, 2, 3, 4, 5, 6 e mais 4'.
+function crListaTalhoes(ts, max = 6) {
+  const o = [...ts].sort((a, b) => a - b);
+  if (o.length <= 1) return o.join('');
+  if (o.length > max) return `${o.slice(0, max).join(', ')} e mais ${o.length - max}`;
+  return `${o.slice(0, -1).join(', ')} e ${o[o.length - 1]}`;
+}
+function crSemAplicacao(talhoes, apls) {
+  const com = new Set(apls.flatMap(a => a.talhoes));
+  return talhoes.filter(t => !com.has(t)).sort((a, b) => a - b);
+}
+function crTextoDose(a) {
+  if (a.tipo === 'insumo') return `${crBrDose(a.dose)} ${crUnidade(a)}/ha`;
+  return `${crBr(a.dose)} t/ha` + (a.tipo === 'blend' ? ` + gesso ${crBr(a.dose_gesso)} t/ha` : '');
+}
+// Total previsto da nova aplicação, com a mesma conta do cartão (crTotalApl). null enquanto a dose não vale.
+// Os campos vêm de <input type="number"> (ponto decimal), por isso Number e não crNum.
+function crPrevisto(f, aerea, talhoes, areas) {
+  const dose = Number(f.dose);
+  if (!(dose > 0) || !talhoes.length) return null;
+  const tipo = aerea ? 'insumo' : f.tipo;
+  const gesso = tipo === 'blend' ? Number(f.gesso) : 0;
+  if (tipo === 'blend' && !(gesso > 0)) return null;
+  return crTotalApl({ tipo, dose, dose_gesso: gesso, talhoes }, areas);
+}
+function crDicaTalhao(t, areaHa, apls, marcado) {
+  const doTalhao = crOrdenadas(apls).filter(a => a.talhoes.includes(t));
+  return {
+    titulo: `Talhão ${t}, ${crBr(areaHa)} ha`,
+    linhas: doTalhao.length ? doTalhao.map(a => `${crRotulo(a)} ${crTextoDose(a)}, O.S. ${a.os}`) : ['Sem aplicação'],
+    acao: marcado ? 'Clique para desmarcar' : 'Clique para marcar',
+  };
+}
+// "Abertos por último": o texto guardado no navegador pode estar vazio ou estragado.
+function crLerRecentes(texto) {
+  try {
+    const v = JSON.parse(texto || '[]');
+    return Array.isArray(v) ? v.filter(r => r && r.id != null && r.cod_faz != null) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function crRecentesCom(lista, item, max = 3) {
+  return [item, ...lista.filter(r => String(r.id) !== String(item.id))].slice(0, max);
+}
+function crRecentesSem(lista, id) { return lista.filter(r => String(r.id) !== String(id)); }
+
 // ===== Corretivos: meio a meio por geometria (faixas diagonais) =====
 // crFaixas corta um talhão em n faixas por retas x+y = constante, igualmente espaçadas entre min e max de x+y.
 // Sutherland–Hodgman contra os dois semiplanos de cada faixa; externo e furos são recortados separadamente.
@@ -290,6 +338,7 @@ function crMostrar(tela) {
 function crTela(nome) {
   document.getElementById('cr-lista').classList.toggle('off', nome !== 'lista');
   document.getElementById('cr-trabalho').classList.toggle('off', nome !== 'trabalho');
+  document.getElementById('cr-app').classList.toggle('cr-modo-trab', nome === 'trabalho');
 }
 function crToast(msg, erro = false) {
   const t = document.getElementById('cr-toast');
@@ -382,6 +431,7 @@ async function crCarregarFazendas() {
     document.getElementById('cr-tentar-faz').onclick = crCarregarFazendas;
     return;
   }
+  crRenderRecentes();
   if (CR_DEMO && CR_ST.fazendas.length && !CR_ST.faz) crEscolherFazenda(CR_ST.fazendas[0], true);
   else crFiltrar();
 }
@@ -401,54 +451,87 @@ async function crEscolherFazenda(f, abrirPrimeiro = false) {
   document.getElementById('cr-faz-nome').textContent = f.nome;
   document.getElementById('cr-faz-sub').textContent = `Código ${f.cod_faz}`;
   document.getElementById('cr-pnl').classList.remove('off');
-  await crCarregarMapas();
-  if (abrirPrimeiro && CR_DEMO && CR_ST.mapas.length) crAbrirMapa(CR_ST.mapas[0]);
+  const ok = await crCarregarMapas();
+  if (ok && abrirPrimeiro && CR_DEMO && CR_ST.mapas.length) crAbrirMapa(CR_ST.mapas[0]);
+  return ok;
+}
+
+// ── Abertos por último (só neste navegador; a demonstração usa outra chave) ──
+const CR_RECENTES_CHAVE = CR_DEMO ? 'cr-recentes-demo' : 'cr-recentes';
+function crRecentes() {
+  try { return crLerRecentes(localStorage.getItem(CR_RECENTES_CHAVE)); } catch (e) { return []; }
+}
+function crGuardarRecentes(lista) {
+  try { localStorage.setItem(CR_RECENTES_CHAVE, JSON.stringify(lista)); } catch (e) { /* sem armazenamento: só não lembra */ }
+  crRenderRecentes();
+}
+function crRenderRecentes() {
+  const alvo = document.getElementById('cr-recentes');
+  const lista = crRecentes();
+  alvo.classList.toggle('off', !lista.length);
+  alvo.innerHTML = '<span class="cr-recentes-tit">Abertos por último:</span>'
+    + lista.map(r => `<button class="cr-chip" type="button" data-recente="${crEsc(r.id)}">${crEsc(`${r.cod_faz}, ${CR_OPERACOES[r.operacao] || r.operacao} ${crDataIso(r.data).slice(0, 5)}`)}</button>`).join('');
+}
+async function crAbrirRecente(id) {
+  const esquecer = msg => { crGuardarRecentes(crRecentesSem(crRecentes(), id)); crToast(msg, true); };
+  const r = crRecentes().find(x => String(x.id) === String(id));
+  const f = r && CR_ST.fazendas.find(x => String(x.cod_faz) === String(r.cod_faz));
+  if (!f) return esquecer('Esse mapa não está mais disponível.');
+  if (!(await crEscolherFazenda(f))) return;          // falha de rede: mantém o atalho
+  const m = CR_ST.mapas.find(x => String(x.id) === String(id));
+  if (!m) return esquecer('Esse mapa não existe mais.');
+  await crAbrirMapa(m);
 }
 
 // ── Lista de mapas ──
 async function crCarregarMapas() {
   const alvo = document.getElementById('cr-mapas');
   const faz = CR_ST.faz;
-  alvo.innerHTML = '<div class="cr-grid" aria-label="Carregando mapas"><div class="cr-esq"></div><div class="cr-esq"></div></div>';
+  alvo.innerHTML = '<div class="cr-tab" aria-label="Carregando mapas" style="padding:16px;gap:8px"><div class="cr-esq"></div><div class="cr-esq"></div></div>';
   try {
     const mapas = await crApi().mapas(faz.cod_faz);
-    if (CR_ST.faz !== faz) return;
+    if (CR_ST.faz !== faz) return false;
     CR_ST.mapas = mapas;
     crRenderMapas();
+    return true;
   } catch (e) {
-    if (CR_ST.faz !== faz) return;
+    if (CR_ST.faz !== faz) return false;
     alvo.innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível carregar os mapas.</span>'
       + '<button class="cr-btn2" type="button" data-tentar>Tentar de novo</button></div>';
+    return false;
   }
 }
 function crRenderMapas() {
+  crFecharMenu();
   const alvo = document.getElementById('cr-mapas');
-  if (!CR_ST.mapas.length) {
+  const n = CR_ST.mapas.length;
+  document.getElementById('cr-faz-sub').textContent = `Código ${CR_ST.faz.cod_faz}. ${n === 1 ? '1 mapa' : `${n} mapas`}`;
+  if (!n) {
     alvo.innerHTML = '<div class="cr-vazio"><span class="ico">compost</span><span>Nenhum mapa nesta fazenda.</span>'
       + '<button class="cr-btn" type="button" data-novo><span class="ico">add</span> Novo mapa</button></div>';
     return;
   }
-  alvo.innerHTML = `<div class="cr-grid">${CR_ST.mapas.map(crCardMapa).join('')}</div>`;
+  alvo.innerHTML = `<div class="cr-tab">
+    <div class="cr-lin cr-tab-cab" aria-hidden="true"><div class="cr-lin-abrir">
+      <span>Tipo</span><span>Data</span><span>O.S.</span><span class="num">Talhões</span><span class="num">Total</span><span>Alterado</span>
+    </div><span class="cr-x-esp"></span></div>
+    ${CR_ST.mapas.map(crLinhaMapa).join('')}
+  </div>`;
 }
-function crCardMapa(m) {
+function crLinhaMapa(m) {
   const op = CR_OPERACOES[m.operacao] || m.operacao;
-  const os = m.os.length ? m.os.join(', ') : '—';
-  return `<article class="cr-mapa">
-    <div class="cr-mapa-top">
-      <span class="cr-op" style="--c:var(${CR_OP_VAR[m.operacao]})">${crEsc(op)}</span>
-      <span class="cr-data">${crDataIso(m.data)}</span>
-      <button class="cr-x" type="button" data-excluir="${m.id}" aria-label="Excluir mapa ${crEsc(op)} de ${crDataIso(m.data)}" title="Excluir mapa"><span class="ico">delete</span></button>
-    </div>
-    <div class="cr-os">O.S. ${crEsc(os)}</div>
-    <div class="cr-stats">
-      <div class="cr-stat"><small>Talhões</small><b>${m.talhoes}</b></div>
-      ${crAerea(m.operacao)
-        ? `<div class="cr-stat"><small>Insumos</small><b>${m.insumos}</b></div>`
-        : `<div class="cr-stat"><small>Total</small><b>${crTon(m.toneladas)}</b></div>`}
-    </div>
-    <div class="cr-rod">alterado por ${crEsc(m.alterado_por_nome)} em ${crDiaMes(m.alterado_em)}</div>
-    <button class="cr-btn2" type="button" data-abrir="${m.id}">Abrir mapa</button>
-  </article>`;
+  const total = crAerea(m.operacao) ? (m.insumos === 1 ? '1 insumo' : `${m.insumos} insumos`) : crTon(m.toneladas);
+  return `<div class="cr-lin">
+    <button class="cr-lin-abrir" type="button" data-abrir="${m.id}" aria-label="Abrir mapa ${crEsc(op)} de ${crDataIso(m.data)}">
+      <span><span class="cr-op" style="--c:var(${CR_OP_VAR[m.operacao]})">${crEsc(op)}</span></span>
+      <span class="cr-lin-data">${crDataIso(m.data)}</span>
+      <span class="cr-lin-os">${m.os.length ? crEsc(m.os.join(', ')) : '—'}</span>
+      <span class="num">${m.talhoes}</span>
+      <span class="num">${total}</span>
+      <span class="cr-lin-alt">${crEsc(m.alterado_por_nome)}, ${crDiaMes(m.alterado_em)}</span>
+    </button>
+    <button class="cr-x" type="button" data-menu-mapa="${m.id}" aria-haspopup="menu" aria-label="Ações do mapa ${crEsc(op)} de ${crDataIso(m.data)}"><span class="ico">more_horiz</span></button>
+  </div>`;
 }
 async function crExcluir(id) {
   const m = CR_ST.mapas.find(x => String(x.id) === String(id));
@@ -466,17 +549,61 @@ async function crExcluir(id) {
     return;
   }
   CR_ST.mapas = CR_ST.mapas.filter(x => x.id !== m.id);
+  crGuardarRecentes(crRecentesSem(crRecentes(), m.id));
   crRenderMapas();
   crToast('Mapa excluído.');
 }
+// Janela "Novo mapa": primeiro Corretivo ou Aplicação aérea; para corretivo, a operação. Devolve a operação ou null.
+function crEscolherNovoMapa() {
+  return new Promise(resolver => {
+    const fundo = document.getElementById('cr-modal-fundo');
+    const est = { grupo: 'corretivo', op: 'subsolagem' };
+    const ops = [['subsolagem', 'SubSolagem'], ['supergrade', 'SuperGrade'], ['arado', 'Arado']];
+    const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; resolver(valor); };
+    const desenhar = () => {
+      const aerea = est.grupo === 'aerea';
+      fundo.innerHTML = `<form class="cr-modal cr-modal-novo" role="dialog" aria-modal="true" aria-labelledby="cr-nm-tit">
+        <div><h3 id="cr-nm-tit">Novo mapa em ${crEsc(CR_ST.faz.nome)}</h3><p>Escolha o que o mapa vai mostrar.</p></div>
+        <div class="cr-nm-grupos">
+          <button class="cr-nm-g${aerea ? '' : ' on'}" type="button" data-grupo="corretivo" aria-pressed="${!aerea}">
+            <span class="ico" aria-hidden="true">agriculture</span><b>Corretivo</b>
+            <span>Calcário, fosfato ou blend, aplicado junto com uma operação de preparo do solo.</span></button>
+          <button class="cr-nm-g${aerea ? ' on' : ''}" type="button" data-grupo="aerea" aria-pressed="${aerea}">
+            <span class="ico" aria-hidden="true">flight</span><b>Aplicação aérea</b>
+            <span>Insumos aplicados por avião, com dose na unidade de cada insumo e 5% de margem na área.</span></button>
+        </div>
+        ${aerea ? '' : `<fieldset class="cr-fs"><legend class="cr-lbl">Operação de preparo</legend>
+          <div class="cr-seg">${ops.map(([v, r]) => `<label class="cr-seg-o"><input type="radio" name="cr-nm-op" value="${v}" data-op="${v}"${est.op === v ? ' checked' : ''}><span>${r}</span></label>`).join('')}</div>
+        </fieldset>`}
+        <div class="cr-md-acoes">
+          <button class="cr-btn2" type="button" data-cancel>Cancelar</button>
+          <button class="cr-btn" type="submit" data-criar>${aerea ? 'Criar mapa de aplicação aérea' : `Criar mapa de ${CR_OPERACOES[est.op]}`}</button>
+        </div>
+      </form>`;
+      const form = fundo.querySelector('form');
+      form.querySelector('[data-cancel]').onclick = () => fechar(null);
+      form.onclick = e => {
+        const g = e.target.closest('[data-grupo]');
+        if (!g || g.dataset.grupo === est.grupo) return;
+        est.grupo = g.dataset.grupo;
+        desenhar();
+        fundo.querySelector(`[data-grupo="${est.grupo}"]`).focus();
+      };
+      form.onchange = e => {
+        if (!e.target.dataset.op) return;
+        est.op = e.target.value;
+        form.querySelector('[data-criar]').textContent = `Criar mapa de ${CR_OPERACOES[est.op]}`;
+      };
+      form.onsubmit = e => { e.preventDefault(); fechar(est.grupo === 'aerea' ? 'aerea' : est.op); };
+    };
+    fundo.onclick = e => { if (e.target === fundo) fechar(null); };
+    desenhar();
+    fundo.classList.remove('off');
+    fundo.querySelector('[data-grupo]').focus();
+  });
+}
 async function crNovoMapa() {
-  const op = await crDialogo('Novo mapa', 'Escolha a operação do novo mapa.', [
-    { rotulo: 'Cancelar', classe: 'cr-btn2', valor: null },
-    { rotulo: 'SubSolagem', classe: 'cr-btn', valor: 'subsolagem' },
-    { rotulo: 'SuperGrade', classe: 'cr-btn', valor: 'supergrade' },
-    { rotulo: 'Arado', classe: 'cr-btn', valor: 'arado' },
-    { rotulo: 'Aplicação aérea', classe: 'cr-btn', valor: 'aerea' },
-  ]);
+  const op = await crEscolherNovoMapa();
   if (!op) return;
   let id;
   try {
@@ -504,8 +631,12 @@ async function crIniciar() {
     if (e.target.closest('[data-novo]')) return crNovoMapa();
     const a = e.target.closest('[data-abrir]');
     if (a) return crAbrirMapa(CR_ST.mapas.find(m => String(m.id) === a.dataset.abrir));
-    const x = e.target.closest('[data-excluir]');
-    if (x) crExcluir(x.dataset.excluir);
+    const mm = e.target.closest('[data-menu-mapa]');
+    if (mm) crMenu(mm, [{ rotulo: 'Excluir mapa', ico: 'delete', perigo: true, acao: () => crExcluir(mm.dataset.menuMapa) }]);
+  };
+  document.getElementById('cr-recentes').onclick = e => {
+    const b = e.target.closest('[data-recente]');
+    if (b) crAbrirRecente(b.dataset.recente);
   };
   document.querySelectorAll('[data-sair]').forEach(b => { b.onclick = crSair; });
   document.getElementById('cr-demo').classList.toggle('off', !CR_DEMO);
@@ -695,9 +826,11 @@ function crMapaCriar() {
     m.on('click', e => {
       const f = m.queryRenderedFeatures(e.point, { layers: ['cr-fill'] })[0];
       if (f) crToggleSel(f.properties.talhao);
+      if (f) crMostrarDica(f.properties.talhao, e.point);
     });
     m.on('mouseenter', 'cr-fill', () => { m.getCanvas().style.cursor = 'pointer'; });
-    m.on('mouseleave', 'cr-fill', () => { m.getCanvas().style.cursor = ''; });
+    m.on('mousemove', 'cr-fill', e => crMostrarDica(e.features[0].properties.talhao, e.point));
+    m.on('mouseleave', 'cr-fill', () => { m.getCanvas().style.cursor = ''; crEsconderDica(); });
     crAtualizarMapa(true);
   });
 }
@@ -725,15 +858,34 @@ function crAtualizarEstados() {
     m.setFeatureState({ source: 'cr-tal', id: t }, { sel: CR_ST.sel.has(t), dest: dest.has(t) });
   }
 }
+// Dica ao passar o mouse: segue o ponteiro e vira para dentro perto das bordas do mapa.
+function crMostrarDica(t, ponto) {
+  const el = document.getElementById('cr-dica');
+  if (!el || !CR_ST.det) return;
+  const d = crDicaTalhao(t, crAreaDe(t).area_ha, CR_ST.det.apls, CR_ST.sel.has(t));
+  el.innerHTML = `<b>${crEsc(d.titulo)}</b>${d.linhas.map(l => `<span>${crEsc(l)}</span>`).join('')}<span class="cr-dica-acao">${d.acao}</span>`;
+  el.classList.remove('off');
+  const box = el.parentElement.getBoundingClientRect();
+  const x = Math.min(ponto.x + 14, box.width - el.offsetWidth - 8);
+  const y = ponto.y + 14 + el.offsetHeight > box.height ? ponto.y - el.offsetHeight - 10 : ponto.y + 14;
+  el.style.transform = `translate(${Math.max(8, x)}px, ${Math.max(8, y)}px)`;
+}
+function crEsconderDica() {
+  const el = document.getElementById('cr-dica');
+  if (el) el.classList.add('off');
+}
 
 // ── Abertura, recarga e navegação ──
 async function crAbrirMapa(mapa) {
   if (!mapa) return;
   if (CR_ST.map) { CR_ST.map.remove(); CR_ST.map = null; }
-  Object.assign(CR_ST, { trab: mapa, sel: new Set(), destApl: null, areaNova: {}, formMsg: null, det: null, geo: null, insumos: [],
+  Object.assign(CR_ST, { trab: mapa, sel: new Set(), destApl: null, areaNova: {}, areasAbertas: false, formMsg: null, det: null, geo: null, insumos: [],
     form: crAerea(mapa.operacao) ? { tipo: 'insumo', insumo_id: '', dose: '', os: '' }
       : { tipo: 'calcario', calcario: 'dolomitico', dose: '', gesso: '', os: '' } });
-  document.getElementById('cr-trab-tit').textContent = `Mapa ${CR_OPERACOES[mapa.operacao]} · ${crDataIso(mapa.data)}`;
+  document.getElementById('cr-trab-tit').textContent = `${CR_OPERACOES[mapa.operacao]}, ${crDataIso(mapa.data)}`;
+  const resumo = CR_ST.mapas.find(m => String(m.id) === String(mapa.id));
+  document.getElementById('cr-trab-sub').textContent = `${CR_ST.faz.cod_faz} ${CR_ST.faz.nome}`
+    + (resumo ? `. Alterado por ${resumo.alterado_por_nome} em ${crDiaMes(resumo.alterado_em)}` : '');
   crTela('trabalho');
   document.getElementById('cr-mapa').innerHTML = '<div class="cr-esq cr-mapa-esq" aria-hidden="true"></div>';
   document.getElementById('cr-painel').innerHTML = '<div class="cr-sec" role="status"><div class="cr-esq"></div><div class="cr-esq curto"></div></div>';
@@ -743,6 +895,8 @@ async function crAbrirMapa(mapa) {
     CR_ST.geo = geo;
     CR_ST.det = det;
     CR_ST.insumos = insumos;
+    crGuardarRecentes(crRecentesCom(crRecentes(), { id: mapa.id, cod_faz: CR_ST.faz.cod_faz, operacao: mapa.operacao,
+                                                    data: String(mapa.data).slice(0, 10) }));
   } catch (e) {
     document.getElementById('cr-mapa').innerHTML = '';
     document.getElementById('cr-painel').innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível abrir o mapa.</span>'
@@ -770,6 +924,8 @@ async function crRecarregar() {
   crRenderPainel();
 }
 function crVoltarLista() {
+  crFecharMenu();
+  crEsconderDica();
   if (CR_ST.map) { CR_ST.map.remove(); CR_ST.map = null; }
   crTela('lista');
   crCarregarMapas();
@@ -788,6 +944,7 @@ function crSelecionarTodos() {
 }
 function crLimparSel() {
   CR_ST.sel = new Set();
+  CR_ST.areasAbertas = false;
   crAtualizarEstados();
   crRenderPainel();
 }
@@ -869,6 +1026,7 @@ async function crAplicarMarcadosAgora() {
   }
   CR_ST.formMsg = dup.length ? { tipo: 'info', texto: `Os talhões ${dup.join(', ')} já têm esta aplicação. Gravei nos demais.` } : null;
   CR_ST.sel = new Set();
+  CR_ST.areasAbertas = false;
   CR_ST.areaNova = {};
   if (!dup.length) crToast('Aplicação gravada.');
   await crRecarregar();
@@ -957,27 +1115,52 @@ async function crExcluirAplicacao(id) {
   await crRecarregar();
 }
 
+// Menu "⋯": abre embaixo do botão, alinhado à direita; fecha ao escolher, ao clicar fora ou com Esc.
+function crMenu(botao, itens) {
+  crFecharMenu();
+  const el = document.createElement('div');
+  el.className = 'cr-menu';
+  el.setAttribute('role', 'menu');
+  el.innerHTML = itens.map((it, i) => `<button type="button" role="menuitem" data-i="${i}"${it.perigo ? ' class="perigo"' : ''}><span class="ico" aria-hidden="true">${it.ico}</span> ${crEsc(it.rotulo)}</button>`).join('');
+  document.body.appendChild(el);
+  const r = botao.getBoundingClientRect();
+  el.style.top = `${Math.min(r.bottom + 4, window.innerHeight - el.offsetHeight - 8)}px`;
+  el.style.left = `${Math.max(8, r.right - el.offsetWidth)}px`;
+  el.onclick = e => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    crFecharMenu();
+    itens[Number(b.dataset.i)].acao();
+  };
+  crMenu.aberto = el;
+  setTimeout(() => document.addEventListener('click', crFecharMenuFora), 0);
+  document.addEventListener('keydown', crMenuEsc);
+  document.addEventListener('scroll', crFecharMenu, true);
+  el.querySelector('button').focus();
+}
+function crFecharMenuFora(e) { if (crMenu.aberto && !crMenu.aberto.contains(e.target)) crFecharMenu(); }
+function crMenuEsc(e) { if (e.key === 'Escape') crFecharMenu(); }
+function crFecharMenu() {
+  if (crMenu.aberto) { crMenu.aberto.remove(); crMenu.aberto = null; }
+  document.removeEventListener('click', crFecharMenuFora);
+  document.removeEventListener('keydown', crMenuEsc);
+  document.removeEventListener('scroll', crFecharMenu, true);
+}
+
 // ── Painel ──
 function crCardAplicacao(a, areas, cores) {
   const cor = cores[crChaveCor(a)];
   const on = CR_ST.destApl === a.id;
-  const un = crUnidade(a);
   const total = crTotalApl(a, areas);
-  const doses = a.tipo === 'insumo'
-    ? `dose ${crBrDose(a.dose)} ${un}/ha`
-    : `dose ${crBr(a.dose)} t/ha` + (a.tipo === 'blend' ? ` · gesso ${crBr(a.dose_gesso)} t/ha` : '');
-  const quanto = a.tipo === 'insumo' ? `${crBr(total)} ${un}` : crTon(total);
+  const quanto = a.tipo === 'insumo' ? `${crBr(total)} ${crUnidade(a)}` : crTon(total);
+  const ts = a.talhoes;
   return `<div class="cr-ap${on ? ' on' : ''}">
     <span class="cr-ap-sw" style="background:${cor}" aria-hidden="true"></span>
     <button class="cr-ap-main" type="button" data-dest="${a.id}" aria-pressed="${on}">
-      <b>${crEsc(crRotulo(a))}</b>
-      <small>${doses} · O.S. ${crEsc(a.os)}</small>
-      <small>Talhões ${a.talhoes.slice().sort((x, y) => x - y).join(', ')} · ${quanto}</small>
+      <b>${crEsc(crRotulo(a))}, ${crEsc(crTextoDose(a))}</b>
+      <small>O.S. ${crEsc(a.os)}. ${ts.length === 1 ? 'Talhão' : 'Talhões'} ${crListaTalhoes(ts, Infinity)}. ${quanto}</small>
     </button>
-    <div class="cr-ap-acoes">
-      <button class="cr-x" type="button" data-editar="${a.id}" aria-label="Editar ${crEsc(crRotulo(a))} O.S. ${crEsc(a.os)}" title="Editar"><span class="ico">edit</span></button>
-      <button class="cr-x" type="button" data-excluir-apl="${a.id}" aria-label="Excluir ${crEsc(crRotulo(a))} O.S. ${crEsc(a.os)}" title="Excluir"><span class="ico">delete</span></button>
-    </div>
+    <button class="cr-x" type="button" data-menu-apl="${a.id}" aria-haspopup="menu" aria-label="Ações de ${crEsc(crRotulo(a))}, O.S. ${crEsc(a.os)}"><span class="ico">more_vert</span></button>
   </div>`;
 }
 // Campos do formulário de corretivo (calcário, fosfato, blend).
@@ -1019,49 +1202,88 @@ function crLinhaArea(areas, operacao) {
   const soma = Object.values(areas).reduce((s, v) => s + Number(v.area_ha), 0);
   return `<p class="cr-info">Área: ${crBr(soma)} ha + 5% (talhão 400: ${crBr(crMargem(areas, operacao))} ha) = ${crBr(crAreaTotal(areas, operacao))} ha</p>`;
 }
-function crRenderPainel() {
-  const alvo = document.getElementById('cr-painel');
-  if (!CR_ST.det || !CR_ST.geo) return;
-  const { areas, apls } = CR_ST.det;
-  const fora = crTalhoesForaDaBase(areas, CR_ST.geo);
-  const sel = crSelecionados();
-  const f = CR_ST.form;
+// Texto do botão Aplicar: alvo e, quando a dose já vale, o total previsto.
+function crTextoAplicar(sel) {
   const aerea = crAerea(CR_ST.trab.operacao);
-  const msg = CR_ST.formMsg ? `<p class="${CR_ST.formMsg.tipo === 'erro' ? 'cr-erro' : 'cr-info'}" role="${CR_ST.formMsg.tipo === 'erro' ? 'alert' : 'status'}">${crEsc(CR_ST.formMsg.texto)}</p>` : '';
-  const cores = crCoresDoMapa(apls);
-  const tot = crTotaisPorProduto(apls, areas, CR_ST.trab.operacao);
-  alvo.innerHTML = `
-    ${fora.length ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Talhões que saíram da Base: ${fora.join(', ')}. Eles continuam no PDF, sem desenho.</span></div>` : ''}
-    <section class="cr-sec" aria-labelledby="cr-h-nova">
-      <div class="cr-sec-top">
-        <h2 id="cr-h-nova">Nova aplicação</h2>
-        <div class="cr-acoes-sel">
-          <button class="cr-btn2" type="button" data-todos>Selecionar todos</button>
-          <button class="cr-btn2" type="button" data-limpar>Limpar seleção</button>
-        </div>
-      </div>
-      ${sel.length
-        ? `<div class="cr-sel-lista">${sel.map(t => `<label class="cr-sel-l"><span>Talhão ${t} · área (ha)</span>
-            <input class="cr-inp cr-inp-sm" type="number" step="0.01" min="0" value="${crAreaDe(t).area_ha}" data-area="${t}"></label>`).join('')}</div>`
-        : '<p class="cr-msg">Marque talhões no mapa, ou use Selecionar todos.</p>'}
+  const f = CR_ST.form;
+  const areas = {};
+  for (const t of sel) areas[t] = crAreaDe(t);
+  const prev = crPrevisto(f, aerea, sel, areas);
+  const ins = aerea ? CR_ST.insumos.find(i => String(i.id) === String(f.insumo_id)) : null;
+  const un = aerea ? (ins ? CR_UNIDADE[ins.unidade] : '') : 't';
+  const alvo = sel.length === 1 ? `no talhão ${sel[0]}` : `nos ${sel.length} talhões`;
+  return `Aplicar ${alvo}` + (prev != null && un ? ` (${crBr(prev)} ${un})` : '');
+}
+function crMsgForm() {
+  const m = CR_ST.formMsg;
+  return m ? `<p class="${m.tipo === 'erro' ? 'cr-erro' : 'cr-info'}" role="${m.tipo === 'erro' ? 'alert' : 'status'}">${crEsc(m.texto)}</p>` : '';
+}
+// Sem talhão marcado: só a orientação (e o recado da última gravação, se houver).
+function crSecaoDica() {
+  return `<section class="cr-sec cr-nova-dica"><p class="cr-msg">Marque talhões no mapa para lançar uma nova aplicação.</p>${crMsgForm()}</section>`;
+}
+function crSecaoNova(sel, aerea) {
+  const f = CR_ST.form;
+  const abertas = CR_ST.areasAbertas;
+  const alvo = sel.length === 1 ? `no talhão ${sel[0]}` : `nos ${sel.length} talhões`;
+  return `<section class="cr-sec cr-nova" aria-labelledby="cr-h-nova">
+      <h2 id="cr-h-nova">Nova aplicação ${alvo}</h2>
       ${aerea ? crCamposAerea(f) : crCamposCorretivo(f)}
       <div><label class="cr-lbl" for="cr-f-os">O.S.</label>
         <input class="cr-inp" id="cr-f-os" type="text" data-f="os" value="${crEsc(f.os)}"></div>
-      ${msg}
-      <button class="cr-btn cr-btn-bloco" type="button" data-aplicar${sel.length ? '' : ' disabled'}>Aplicar aos marcados</button>
-    </section>
-    <section class="cr-sec" aria-labelledby="cr-h-lista">
-      <h2 id="cr-h-lista">Aplicações do mapa</h2>
-      ${apls.length ? crOrdenadas(apls).map(a => crCardAplicacao(a, areas, cores)).join('') : '<p class="cr-msg">Nenhuma aplicação neste mapa ainda.</p>'}
-    </section>
-    <section class="cr-sec" aria-labelledby="cr-h-res">
-      <h2 id="cr-h-res">Resumo</h2>
+      <button class="cr-link" type="button" data-areas aria-expanded="${abertas}"><span class="ico" aria-hidden="true">${abertas ? 'expand_more' : 'chevron_right'}</span> Ajustar a área de algum talhão</button>
+      ${abertas ? `<div class="cr-sel-lista">${sel.map(t => `<label class="cr-sel-l"><span>Talhão ${t}, área (ha)</span>
+          <input class="cr-inp cr-inp-sm" type="number" step="0.01" min="0" value="${crAreaDe(t).area_ha}" data-area="${t}"></label>`).join('')}</div>` : ''}
+      ${crMsgForm()}
+      <button class="cr-btn cr-btn-bloco" type="button" data-aplicar>${crEsc(crTextoAplicar(sel))}</button>
+    </section>`;
+}
+// Barra sobre o mapa: quantos talhões estão marcados, quais e quantos hectares.
+function crRenderSelBar() {
+  const alvo = document.getElementById('cr-selbar');
+  if (!alvo || !CR_ST.geo) return;
+  const sel = crSelecionados();
+  if (!sel.length) {
+    alvo.innerHTML = '<span class="cr-selbar-tit">Clique nos talhões para marcar</span>'
+      + '<button class="cr-selbar-b2" type="button" data-todos>Selecionar todos</button>';
+    return;
+  }
+  const ha = sel.reduce((s, t) => s + Number(crAreaDe(t).area_ha), 0);
+  const todos = sel.length === CR_ST.geo.features.length;
+  alvo.innerHTML = `<span class="cr-selbar-tit">${sel.length === 1 ? '1 talhão marcado' : `${sel.length} talhões marcados`}</span>
+    <span class="cr-selbar-sub">${crListaTalhoes(sel)}, somando ${crBr(ha)} ha</span>
+    <button class="cr-selbar-b" type="button" data-limpar>Limpar</button>
+    ${todos ? '' : '<button class="cr-selbar-b2" type="button" data-todos>Selecionar todos</button>'}`;
+}
+function crRenderPainel() {
+  const alvo = document.getElementById('cr-painel');
+  if (!CR_ST.det || !CR_ST.geo) return;
+  crFecharMenu();
+  const { areas, apls } = CR_ST.det;
+  const fora = crTalhoesForaDaBase(areas, CR_ST.geo);
+  const sel = crSelecionados();
+  const aerea = crAerea(CR_ST.trab.operacao);
+  const cores = crCoresDoMapa(apls);
+  const tot = crTotaisPorProduto(apls, areas, CR_ST.trab.operacao);
+  const sem = crSemAplicacao(CR_ST.geo.features.map(f => f.properties.talhao), apls);
+  alvo.innerHTML = `
+    <div class="cr-painel-rol">
+      ${fora.length ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Talhões que saíram da Base: ${fora.join(', ')}. Eles continuam no PDF, sem desenho.</span></div>` : ''}
+      ${sel.length ? crSecaoNova(sel, aerea) : crSecaoDica()}
+      <section class="cr-sec" aria-labelledby="cr-h-lista">
+        <h2 id="cr-h-lista">Aplicações do mapa</h2>
+        ${apls.length ? crOrdenadas(apls).map(a => crCardAplicacao(a, areas, cores)).join('') : '<p class="cr-msg">Nenhuma aplicação neste mapa ainda.</p>'}
+        ${sem.length ? `<div class="cr-ap-sem"><span class="cr-ap-sw" style="background:#ffffff" aria-hidden="true"></span><span>Sem aplicação: ${sem.length === 1 ? 'talhão' : 'talhões'} ${crListaTalhoes(sem, 12)}</span></div>` : ''}
+      </section>
+    </div>
+    <footer class="cr-painel-tot" aria-labelledby="cr-h-res">
+      <h2 id="cr-h-res">Total do mapa</h2>
       ${tot.length
-        ? `<div class="cr-tot-grid">${tot.map(t => `<div class="cr-tot"><small>${crEsc(t.titulo)}</small><b>${crBr(t.total)} ${t.unidade}</b>${t.detalhe ? `<small>${crEsc(t.detalhe.replace(/ t\b/g, '\u00a0t'))}</small>` : ''}</div>`).join('')}</div>`
+        ? `<div class="cr-tot-lista">${tot.map(t => `<div class="cr-tot-l"><span>${crEsc(t.titulo)}</span><b>${crBr(t.total)} ${t.unidade}</b>${t.detalhe ? `<small>${crEsc(t.detalhe.replace(/ t\b/g, ' t'))}</small>` : ''}</div>`).join('')}</div>`
         : '<p class="cr-msg">Sem aplicações ainda.</p>'}
       ${aerea ? crLinhaArea(areas, CR_ST.trab.operacao) : ''}
-      <div id="cr-pdf"></div>
-    </section>`;
+    </footer>`;
+  crRenderSelBar();
   crRenderBotaoPdf();
 }
 // ── PDF (gerado no navegador por corretivos-pdf.js) ──
@@ -1070,19 +1292,19 @@ function crRenderBotaoPdf() {
   if (!alvo) return;
   const vazio = !(CR_ST.det && CR_ST.det.apls.length);
   if (CR_DEMO || !window.crGerador) {
-    alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled>Baixar PDF (indisponível na demonstração)</button>';
+    alvo.innerHTML = '<button class="cr-btn" type="button" disabled title="Indisponível na demonstração"><span class="ico">download</span> Baixar PDF</button>';
     return;
   }
   const est = crGerador.estado;
   if (est === 'erro') {
-    alvo.innerHTML = '<p class="cr-msg cr-erro-bloco" role="alert">Não foi possível preparar o gerador de PDF. Os dados do mapa estão salvos.</p>'
-      + '<button class="cr-btn2 cr-btn-bloco" type="button" data-pdf-tentar>Tentar de novo</button>';
+    alvo.innerHTML = '<span class="cr-erro-bloco" role="alert">O gerador de PDF não carregou.</span>'
+      + '<button class="cr-btn2" type="button" data-pdf-tentar>Tentar de novo</button>';
   } else if (est === 'pronto' || est === 'parado') {
-    alvo.innerHTML = `<button class="cr-btn cr-btn-bloco" type="button" data-pdf${vazio ? ' disabled' : ''}>Baixar PDF</button>`;
+    alvo.innerHTML = `<button class="cr-btn" type="button" data-pdf${vazio ? ' disabled title="Lance uma aplicação para baixar o PDF"' : ''}><span class="ico">download</span> Baixar PDF</button>`;
   } else {
     // ~20 s só na primeira vez: barra por passo, reaproveitada entre redesenhos para não voltar a 0
     if (!crProgPdf || !alvo.contains(crProgPdf.el)) {
-      alvo.innerHTML = '<p class="cr-msg">Preparando o gerador de PDF (só na primeira vez)</p>';
+      alvo.innerHTML = '<span class="cr-trab-sub">Preparando o PDF (só na primeira vez)</span>';
       const api = Mo.progresso(alvo, { total: 4, mb: false });
       crProgPdf = { api, el: alvo.querySelector('.mo-prog') };
     }
@@ -1247,24 +1469,36 @@ async function crAtualizarInsumos(msg) {
 function crLigarTrabalho() {
   document.getElementById('cr-voltar').onclick = crVoltarLista;
   document.getElementById('cr-trab-corpo').innerHTML = `<div class="cr-trab-grid">
-    <div class="cr-mapa-box"><div id="cr-mapa"></div></div>
+    <div class="cr-mapa-box">
+      <div id="cr-mapa"></div>
+      <div class="cr-dica off" id="cr-dica" aria-hidden="true"></div>
+      <div class="cr-selbar" id="cr-selbar"></div>
+    </div>
     <aside class="cr-painel" id="cr-painel" aria-label="Aplicações do mapa"></aside>
   </div>`;
+  document.getElementById('cr-pdf').onclick = e => {
+    const b = e.target.closest('[data-pdf],[data-pdf-tentar]');
+    if (!b || b.disabled) return;
+    if ('pdfTentar' in b.dataset) { crGerador.preparar().catch(() => {}); crRenderBotaoPdf(); }
+    else crBaixarPdf();
+  };
   const painel = document.getElementById('cr-painel');
   painel.onclick = e => {
-    const b = e.target.closest('[data-todos],[data-limpar],[data-dest],[data-editar],[data-excluir-apl],[data-aplicar],[data-insumos],[data-tentar-trab],[data-pdf],[data-pdf-tentar]');
+    const b = e.target.closest('[data-dest],[data-menu-apl],[data-areas],[data-aplicar],[data-insumos],[data-tentar-trab]');
     if (!b || b.disabled) return;
     const d = b.dataset;
-    if ('todos' in d) crSelecionarTodos();
-    else if ('limpar' in d) crLimparSel();
-    else if (d.dest) crDestacar(Number(d.dest));
-    else if (d.editar) crEditarAplicacao(Number(d.editar));
-    else if (d.excluirApl) crExcluirAplicacao(Number(d.excluirApl));
+    if (d.dest) crDestacar(Number(d.dest));
+    else if (d.menuApl) {
+      const id = Number(d.menuApl);
+      crMenu(b, [
+        { rotulo: 'Editar', ico: 'edit', acao: () => crEditarAplicacao(id) },
+        { rotulo: 'Excluir', ico: 'delete', perigo: true, acao: () => crExcluirAplicacao(id) },
+      ]);
+    }
+    else if ('areas' in d) { CR_ST.areasAbertas = !CR_ST.areasAbertas; crRenderPainel(); }
     else if ('insumos' in d) crAbrirInsumos();
     else if ('aplicar' in d) crAplicarMarcados();
     else if ('tentarTrab' in d) crAbrirMapa(CR_ST.trab);
-    else if ('pdfTentar' in d) { crGerador.preparar().catch(() => {}); crRenderBotaoPdf(); }
-    else if ('pdf' in d) crBaixarPdf();
   };
   painel.onchange = e => {
     const el = e.target;
@@ -1278,7 +1512,17 @@ function crLigarTrabalho() {
     }
     if (el.dataset.f) CR_ST.form[el.dataset.f] = el.value;
   };
-  painel.oninput = e => { if (e.target.dataset.f) CR_ST.form[e.target.dataset.f] = e.target.value; };
+  painel.oninput = e => {
+    if (!e.target.dataset.f) return;
+    CR_ST.form[e.target.dataset.f] = e.target.value;
+    const b = painel.querySelector('[data-aplicar]');
+    if (b && !CR_ST.gravando) b.textContent = crTextoAplicar(crSelecionados());
+  };
+  document.getElementById('cr-selbar').onclick = e => {
+    const b = e.target.closest('[data-todos],[data-limpar]');
+    if (!b) return;
+    if ('todos' in b.dataset) crSelecionarTodos(); else crLimparSel();
+  };
 }
 
 if (typeof document !== 'undefined' && document.getElementById) crIniciar();

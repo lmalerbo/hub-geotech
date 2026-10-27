@@ -7,32 +7,33 @@ A ferramenta **Mapas de aplicação** do Hub (antes chamada Corretivos) monta do
 
 Você escolhe a fazenda, marca os talhões, lança as aplicações e baixa um PDF pronto para o operador de campo.
 O endereço antigo (`corretivos.html`) continua funcionando e leva para o novo.
-
 ## Onde fica e quem acessa
 
 - No Hub, abra o menu **Ferramentas** e clique em **Mapas de aplicação**. A ferramenta não aparece no menu de módulos.
 - O administrador libera o acesso na tela de **Usuários**, marcando o módulo **Mapas de aplicação**. Quem é admin já tem acesso.
 - Sem acesso, a tela mostra: "Sua conta não tem acesso aos Mapas de aplicação. Peça ao administrador."
-
 ## Conceitos
 
 - **Mapa:** uma fazenda, uma operação (SubSolagem, SuperGrade, Arado ou Aplicação aérea) e uma data. A fazenda pode ter vários mapas. Não há versões: edite o mapa e baixe o PDF de novo.
 - **Aplicação:** um produto com dose e O.S., lançado em um ou mais talhões. Um talhão pode receber mais de uma aplicação.
 - **Total:** área do talhão × dose (toneladas no corretivo; L ou kg no aéreo). Não fica gravado; é recalculado sempre.
-
 ## Criar um mapa
 
 1. Digite o código ou o nome da fazenda na busca e escolha a fazenda na lista.
-2. Clique em **Novo mapa** e escolha a operação.
-3. O mapa abre com a data de hoje.
-4. Para abrir um mapa que já existe, clique em **Abrir mapa** no cartão.
+2. Clique em **Novo mapa** e escolha **Corretivo** ou **Aplicação aérea**.
+3. No corretivo, escolha a operação: SubSolagem, SuperGrade ou Arado. O botão de criar diz qual mapa vai ser criado.
+4. O mapa abre com a data de hoje.
+
+Os mapas da fazenda aparecem em linhas na lista. Para abrir um, clique na linha. Embaixo da busca, **Abertos por último** leva direto aos 3 últimos mapas abertos neste computador.
 
 ## Marcar talhões
 
+O mapa ocupa a tela, e o botão **Baixar PDF** fica no alto, à direita.
+
+- Passe o mouse num talhão para ver a área e o que já foi aplicado nele.
 - Clique num talhão para marcar ou desmarcar. Ele ganha contorno verde.
-- **Selecionar todos** marca todos os talhões da fazenda.
-- **Limpar seleção** desmarca tudo.
-- Os talhões marcados aparecem em **Nova aplicação**, com a área de cada um.
+- A barra embaixo do mapa mostra quantos talhões estão marcados e a soma em hectares. Nela, **Selecionar todos** marca todos os talhões da fazenda e **Limpar** desmarca tudo.
+- Com talhões marcados, a coluna da direita abre **Nova aplicação**, com a área de cada um.
 
 ## Lançar uma aplicação (corretivo)
 
@@ -45,7 +46,6 @@ O endereço antigo (`corretivos.html`) continua funcionando e leva para o novo.
 7. Clique em **Aplicar aos marcados**. A aplicação é gravada na hora e a seleção é limpa.
 
 Se a mesma aplicação (mesmo produto, dose e O.S.) já existir em algum dos talhões, ela não é gravada de novo nesses talhões. A tela avisa quais são e grava nos demais.
-
 ## Lançar uma aplicação (aplicação aérea)
 
 1. Marque os talhões no mapa.
@@ -71,16 +71,14 @@ Clique em **Insumos**, ao lado da lista de insumos:
 - **Remover:** tira o insumo da lista. Mapas já feitos continuam com ele.
 
 O cadastro começou com os 34 insumos do arquivo "INSUMOS AVIÃO" (16/10/2026).
-
 ## Talhão com duas aplicações
 
 - O talhão recebe as duas aplicações **meio a meio**, na diagonal, na ordem em que foram lançadas. Com três ou mais, as faixas são iguais.
 - O mesmo vale para o PDF.
 - Na tabela do PDF, cada aplicação ocupa uma linha.
-
 ## Editar a área de um talhão
 
-1. Com o talhão marcado, altere o valor em **Talhão X · área (ha)**.
+1. Com o talhão marcado, use **Ajustar a área de algum talhão** e altere a área dele. Fora dali, a área do talhão não muda.
 2. A alteração é salva quando você sai do campo.
 3. A nova área vale para **todas** as aplicações daquele talhão neste mapa.
 4. No PDF, a área editada aparece com `*` e uma nota.
@@ -89,18 +87,18 @@ Se o talhão ainda não tiver aplicação, a área fica guardada para a próxima
 
 ## Ver, editar e excluir aplicações
 
-Na seção **Aplicações do mapa**:
+A lista **Aplicações do mapa** é a legenda das cores:
 
-- Clique numa aplicação para destacar os talhões dela no mapa. Clique de novo para tirar o destaque.
-- **Editar** (lápis) muda dose, dose do gesso, O.S. e talhões. Produto e calcário não mudam; para trocar, exclua e lance de novo.
-- **Excluir** (lixeira) pede confirmação. Não dá para desfazer.
+- Clique num cartão para destacar os talhões dela no mapa. Clique de novo para tirar o destaque.
+- Use o **⋯** do cartão para **Editar** (dose, dose do gesso, O.S. e talhões) ou **Excluir**. Produto e calcário não mudam; para trocar, exclua e lance de novo.
+- **Excluir** pede confirmação. Não dá para desfazer.
 - Talhão que fica sem nenhuma aplicação sai do mapa.
 
-O bloco **Resumo** mostra o total por produto.
+O bloco **Resumo** mostra o total por produto. O total do mapa fica sempre no pé da coluna.
 
 ## Baixar o PDF
 
-1. Clique em **Baixar PDF**.
+1. Clique em **Baixar PDF**, no alto à direita da tela do mapa.
 2. Na primeira vez, o botão mostra "Preparando o gerador… (só na primeira vez)". Leva uns 20 segundos. O gerador começa a carregar assim que a página abre, então muitas vezes já está pronto.
 3. Depois disso, o PDF sai em poucos segundos.
 
@@ -114,9 +112,10 @@ O PDF tem:
   na primeira folha, tabela a partir da segunda). A letra da tabela é grande, para leitura no campo;
 - o arquivo se chama `corretivo_<código da fazenda>_<operação>_<data>.pdf`, ou `aplicacao_aerea_<código>_<data>.pdf` no aéreo.
 
+
 ## Excluir um mapa
 
-1. Na lista de mapas, clique na lixeira do cartão.
+1. Na lista de mapas, clique no **⋯** da linha do mapa e escolha **Excluir mapa**.
 2. Confirme em **Excluir**. Em **Cancelar** nada acontece.
 3. A exclusão fica registrada.
 
@@ -133,7 +132,6 @@ O PDF tem:
 No aéreo, cada insumo ganha uma cor na ordem em que foi lançado no mapa (azul, laranja, verde-água, roxo, vermelho…).
 
 Talhão com duas aplicações aparece dividido, metade de cada cor.
-
 ## Quando algo dá errado
 
 | Mensagem na tela | O que fazer |
