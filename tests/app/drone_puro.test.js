@@ -55,3 +55,15 @@ test('quem pode cancelar uma solicitação', () => {
   assert.strictEqual(ctx.drPodeCancelar(sol, { status: 'pronta' }, solic), false);              // já tem prévia
   assert.strictEqual(ctx.drPodeCancelar({ ...sol, solicitante_id: 'outro' }, null, solic), false); // de outra pessoa
 });
+
+test('último envio de um tipo: erro antigo não vale depois de um envio novo ok', () => {
+  const envios = [   // do mais novo para o mais antigo, como vem do banco
+    { id: 9, tipo: 'ajuste', status: 'erro' },
+    { id: 8, tipo: 'obstaculos', status: 'ok' },
+    { id: 7, tipo: 'obstaculos', status: 'erro' },
+  ];
+  assert.strictEqual(ctx.drUltimoEnvio(envios, 'obstaculos').id, 8);
+  assert.strictEqual(ctx.drUltimoEnvio(envios, 'ajuste').id, 9);
+  assert.strictEqual(ctx.drUltimoEnvio(envios, 'infestacao'), null);
+  assert.strictEqual(ctx.drUltimoEnvio(null, 'obstaculos'), null);
+});

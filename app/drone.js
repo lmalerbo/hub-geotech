@@ -313,8 +313,9 @@ function drFonte(f){DR.fonte=f;for(const k of DR.sel.keys())DR.sel.set(k,f);drPa
 function drObstaculosHtml(){
   const linhas=[15,25,50].map(c=>{const v=DR.info.obst.find(o=>o.classe_m===c);
     return`<div class="dr-row"><span>${c} m</span><span>${v?'v'+v.versao+' · '+new Date(v.enviado_em).toLocaleDateString('pt-BR'):'sem cadastro'}</span></div>`;}).join('');
-  const env=DR.info.envios.find(e=>e.status==='fila'||e.status==='processando');
-  const err=DR.info.envios.find(e=>e.status==='erro');
+  const ult=drUltimoEnvio(DR.info.envios,'obstaculos');
+  const env=ult&&['fila','processando'].includes(ult.status)?ult:null;
+  const err=ult&&ult.status==='erro'?ult:null;
   return`<div class="dr-box"><h3><span class="ico">warning</span> Obstáculos</h3>${linhas}
     ${env?`<div class="dr-msg">processando envio…</div>`:''}${err?`<div class="dr-err">Último envio: ${esc(err.erro)}</div>`:''}
     ${podeEditar('drone')?`<button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('obstaculos')"><span class="ico">upload</span> Enviar obstáculos</button>`:''}</div>`;
@@ -835,3 +836,6 @@ function drRotuloShape(envio){
   if(envio.status==='ok')return'Shape enviado ✓ (trocar)';
   return'Shape em processamento…';
 }
+
+// Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
+function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||null;}
