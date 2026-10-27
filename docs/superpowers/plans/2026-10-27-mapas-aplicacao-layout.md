@@ -803,7 +803,7 @@ git commit -m "Mapas de aplicacao: coluna com nova aplicacao contextual, aplicac
 **Interfaces:**
 - Consome (Tarefa 1): `crDicaTalhao`. Consome (Tarefa 2): `#cr-dica`.
 
-- [ ] **Passo 1: Acrescentar a conferência (falha)**
+- [x] **Passo 1: Acrescentar a conferência (falha)**
 
 Antes de `# fim das conferências`:
 
@@ -828,7 +828,7 @@ Antes de `# fim das conferências`:
 
 Rodar e ver FALHAR em "dica mostra o talhão" (tempo esgotado).
 
-- [ ] **Passo 2: Implementar**
+- [x] **Passo 2: Implementar**
 
 Acrescentar logo depois de `crAtualizarEstados`:
 
@@ -868,11 +868,11 @@ CSS, na seção "Conteúdo":
 .cr-dica-acao{margin-top:2px}
 ```
 
-- [ ] **Passo 3: Rodar e ver passar**
+- [x] **Passo 3: Rodar e ver passar**
 
 Rodar: `python tests/app/teste_aplicacao_demo.py`. Esperado: PASSA. Olhar `.prints/aplicacao_dica.png`.
 
-- [ ] **Passo 4: Commit**
+- [x] **Passo 4: Commit**
 
 ```bash
 git add app/corretivos.js app/corretivos.css tests/app/teste_aplicacao_demo.py
@@ -896,7 +896,7 @@ git commit -m "Mapas de aplicacao: dica do talhao ao passar o mouse"
   mapas carregou e `false` quando falhou.
 - Seletores que o E2E da Tarefa 7 usa: `[data-abrir="<id>"]` (linha) e `[data-menu-mapa="<id>"]` (menu "⋯").
 
-- [ ] **Passo 1: Acrescentar as conferências (falham)**
+- [x] **Passo 1: Acrescentar as conferências (falham)**
 
 Antes de `# fim das conferências`:
 
@@ -926,7 +926,7 @@ Antes de `# fim das conferências`:
 
 Rodar e ver FALHAR em "uma linha por mapa".
 
-- [ ] **Passo 2: HTML**
+- [x] **Passo 2: HTML**
 
 Em `app/aplicacao.html`, logo depois do `</div>` que fecha `<div class="cr-busca">`:
 
@@ -934,7 +934,7 @@ Em `app/aplicacao.html`, logo depois do `</div>` que fecha `<div class="cr-busca
       <div class="cr-recentes off" id="cr-recentes"></div>
 ```
 
-- [ ] **Passo 3: Recentes (JS)**
+- [x] **Passo 3: Recentes (JS)**
 
 Acrescentar antes de `// ── Lista de mapas ──`:
 
@@ -986,7 +986,7 @@ Em `crIniciar`, acrescentar:
   };
 ```
 
-- [ ] **Passo 4: Lista em linhas (JS)**
+- [x] **Passo 4: Lista em linhas (JS)**
 
 `crEscolherFazenda`: trocar `await crCarregarMapas();` e a linha seguinte por:
 
@@ -1047,7 +1047,7 @@ Em `crIniciar`, no `onclick` de `cr-mapas`, trocar o ramo de `[data-excluir]` po
 (A chamada `crAbrirMapa(CR_ST.mapas.find(…))` do ramo `[data-abrir]` continua igual. O subtítulo `cr-faz-sub` que
 `crEscolherFazenda` preenche é sobrescrito por `crRenderMapas` com o número de mapas.)
 
-- [ ] **Passo 5: CSS**
+- [x] **Passo 5: CSS**
 
 Apagar as regras `.cr-grid`, `.cr-mapa`, `.cr-mapa-top`, `.cr-data`, `.cr-os`, `.cr-stats`, `.cr-stat small`,
 `.cr-stat b` e `.cr-rod` (`.cr-esq` dentro de `.cr-grid` é o carregando da lista: em `crCarregarMapas`, trocar
@@ -1075,12 +1075,12 @@ Acrescentar:
 }
 ```
 
-- [ ] **Passo 6: Rodar e ver passar**
+- [x] **Passo 6: Rodar e ver passar**
 
 Rodar: `node --test tests/app/*.test.js` e `python tests/app/teste_aplicacao_demo.py`. Esperado: tudo PASSA. Comparar
 `.prints/aplicacao_lista.png` com o artboard "Lista" do canvas.
 
-- [ ] **Passo 7: Commit**
+- [x] **Passo 7: Commit**
 
 ```bash
 git add app/aplicacao.html app/corretivos.js app/corretivos.css tests/app/teste_aplicacao_demo.py
