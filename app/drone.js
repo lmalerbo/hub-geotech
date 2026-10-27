@@ -163,17 +163,38 @@ async function drRecarregarFazenda(){
   drRender();
 }
 
-function drRender(){
+function drCabecalhoHtml(){
   const g=DR.geo,i=DR.info,tal=g.features.filter(f=>f.properties.camada==='talhao');
   const area=tal.filter(f=>f.properties.status!=='fora_da_base').reduce((s,f)=>s+(f.properties.area_ha||0),0);
   const pct=g.cobertura_pct;
   const card=(doc,tit,x,extra)=>`<div class="dr-doc${DR.doc===doc?' on':''}" onclick="DR.doc='${doc}';DR.sel=new Map();DR.rem=new Set();drRender()">
     <b>${tit} · ${x?'Rev'+x.revisao:'sem projeto'}</b>${extra}<small>${x?fmtNum(x.area_ha)+' ha · '+new Date(x.em).toLocaleDateString('pt-BR'):'—'}</small></div>`;
-  document.getElementById('dr-faz').innerHTML=`
-    <div class="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
+  return`<div class="dr-ph" id="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
       <div><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
       <div class="dr-docs">${card('normal','Normal',g.normal,pct!=null&&pct<100?`<span class="dr-tag">${Math.floor(pct)}% DA FAZENDA</span>`:'')}
-        ${card('catacao','Catação',g.catacao,'')}</div></div>
+        ${card('catacao','Catação',g.catacao,'')}</div></div>`;
+}
+
+// Atualiza os dados do mapa que já existe, sem recriá-lo (o polling passa por aqui).
+function drAtualizarFontesMapa(){
+  const m=DR.mapa;
+  m.getSource('tal').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')});
+  m.getSource('apl').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)});
+  drAtualizarSelecaoMapa();
+  if(DR.mostrarObst&&!DR.obstGeo)drObstaculos(true);
+}
+
+// Mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa existe.
+function drMapaReaproveitavel(antes,agora,temMapa){return !!temMapa&&antes===agora;}
+
+function drRender(){
+  const temMapa=!!(DR.mapa&&document.getElementById('dr-map')&&DR.mapa.getSource('tal'));
+  if(drMapaReaproveitavel(DR.mapaChave,DR.cod+'|'+DR.doc,temMapa)){
+    document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+    drAtualizarFontesMapa();drPainelLateral();drVooPublicacao();
+    return;
+  }
+  document.getElementById('dr-faz').innerHTML=drCabecalhoHtml()+`
     <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
       <div class="dr-leg"><span><i style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>
         <span><i style="background:${DR_COR.sem}"></i>sem projeto</span><span><i style="background:#fff;border-color:${DR_COR.fora}"></i>fora da Base</span>
@@ -194,7 +215,7 @@ function drVooPublicacao(){
   const {ger}=drAtual();
   if(ger&&ger.publicar_pedido_em&&!ger.publicacao_erro){
     if(!DR.voo||DR.voo.id!==ger.id)DR.voo={id:ger.id,desde:Date.now()};
-    Mo.voo(mapa,{texto:'Publicando no portal…',desde:DR.voo.desde});
+    if(!mapa.querySelector(':scope>.mo-voo'))Mo.voo(mapa,{texto:'Publicando no portal…',desde:DR.voo.desde});
   }else if(DR.voo){
     const erro=ger&&ger.id===DR.voo.id&&ger.publicacao_erro;
     Mo.voo(mapa,{desde:DR.voo.desde}).pousar(!erro,erro?'Falha ao publicar':'Publicado no portal');

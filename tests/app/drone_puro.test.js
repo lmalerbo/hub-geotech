@@ -78,3 +78,11 @@ test('assinatura dos obstáculos muda quando chega versão nova (descarta o dese
   assert.strictEqual(ctx.drAssinaturaObst([]), '');
   assert.strictEqual(ctx.drAssinaturaObst(null), '');
 });
+
+test('mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa existe', () => {
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|normal', true), true);
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|catacao', true), false);
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10156|normal', true), false);
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|normal', false), false);
+  assert.strictEqual(ctx.drMapaReaproveitavel(undefined, '10372|normal', true), false);
+});
