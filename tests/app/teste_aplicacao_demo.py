@@ -14,6 +14,7 @@ from playwright.sync_api import sync_playwright
 RAIZ = Path(__file__).resolve().parents[2]
 PRINTS = RAIZ / '.prints'
 falhas = []
+sys.stdout.reconfigure(encoding='utf-8')  # o console do Windows (cp1252) não imprime "⋯"
 
 
 def confere(cond, msg):
