@@ -431,6 +431,7 @@ async function crCarregarFazendas() {
     document.getElementById('cr-tentar-faz').onclick = crCarregarFazendas;
     return;
   }
+  crRenderRecentes();
   if (CR_DEMO && CR_ST.fazendas.length && !CR_ST.faz) crEscolherFazenda(CR_ST.fazendas[0], true);
   else crFiltrar();
 }
@@ -450,54 +451,87 @@ async function crEscolherFazenda(f, abrirPrimeiro = false) {
   document.getElementById('cr-faz-nome').textContent = f.nome;
   document.getElementById('cr-faz-sub').textContent = `Código ${f.cod_faz}`;
   document.getElementById('cr-pnl').classList.remove('off');
-  await crCarregarMapas();
-  if (abrirPrimeiro && CR_DEMO && CR_ST.mapas.length) crAbrirMapa(CR_ST.mapas[0]);
+  const ok = await crCarregarMapas();
+  if (ok && abrirPrimeiro && CR_DEMO && CR_ST.mapas.length) crAbrirMapa(CR_ST.mapas[0]);
+  return ok;
+}
+
+// ── Abertos por último (só neste navegador; a demonstração usa outra chave) ──
+const CR_RECENTES_CHAVE = CR_DEMO ? 'cr-recentes-demo' : 'cr-recentes';
+function crRecentes() {
+  try { return crLerRecentes(localStorage.getItem(CR_RECENTES_CHAVE)); } catch (e) { return []; }
+}
+function crGuardarRecentes(lista) {
+  try { localStorage.setItem(CR_RECENTES_CHAVE, JSON.stringify(lista)); } catch (e) { /* sem armazenamento: só não lembra */ }
+  crRenderRecentes();
+}
+function crRenderRecentes() {
+  const alvo = document.getElementById('cr-recentes');
+  const lista = crRecentes();
+  alvo.classList.toggle('off', !lista.length);
+  alvo.innerHTML = '<span class="cr-recentes-tit">Abertos por último:</span>'
+    + lista.map(r => `<button class="cr-chip" type="button" data-recente="${crEsc(r.id)}">${crEsc(`${r.cod_faz}, ${CR_OPERACOES[r.operacao] || r.operacao} ${crDataIso(r.data).slice(0, 5)}`)}</button>`).join('');
+}
+async function crAbrirRecente(id) {
+  const esquecer = msg => { crGuardarRecentes(crRecentesSem(crRecentes(), id)); crToast(msg, true); };
+  const r = crRecentes().find(x => String(x.id) === String(id));
+  const f = r && CR_ST.fazendas.find(x => String(x.cod_faz) === String(r.cod_faz));
+  if (!f) return esquecer('Esse mapa não está mais disponível.');
+  if (!(await crEscolherFazenda(f))) return;          // falha de rede: mantém o atalho
+  const m = CR_ST.mapas.find(x => String(x.id) === String(id));
+  if (!m) return esquecer('Esse mapa não existe mais.');
+  await crAbrirMapa(m);
 }
 
 // ── Lista de mapas ──
 async function crCarregarMapas() {
   const alvo = document.getElementById('cr-mapas');
   const faz = CR_ST.faz;
-  alvo.innerHTML = '<div class="cr-grid" aria-label="Carregando mapas"><div class="cr-esq"></div><div class="cr-esq"></div></div>';
+  alvo.innerHTML = '<div class="cr-tab" aria-label="Carregando mapas" style="padding:16px;gap:8px"><div class="cr-esq"></div><div class="cr-esq"></div></div>';
   try {
     const mapas = await crApi().mapas(faz.cod_faz);
-    if (CR_ST.faz !== faz) return;
+    if (CR_ST.faz !== faz) return false;
     CR_ST.mapas = mapas;
     crRenderMapas();
+    return true;
   } catch (e) {
-    if (CR_ST.faz !== faz) return;
+    if (CR_ST.faz !== faz) return false;
     alvo.innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível carregar os mapas.</span>'
       + '<button class="cr-btn2" type="button" data-tentar>Tentar de novo</button></div>';
+    return false;
   }
 }
 function crRenderMapas() {
+  crFecharMenu();
   const alvo = document.getElementById('cr-mapas');
-  if (!CR_ST.mapas.length) {
+  const n = CR_ST.mapas.length;
+  document.getElementById('cr-faz-sub').textContent = `Código ${CR_ST.faz.cod_faz}. ${n === 1 ? '1 mapa' : `${n} mapas`}`;
+  if (!n) {
     alvo.innerHTML = '<div class="cr-vazio"><span class="ico">compost</span><span>Nenhum mapa nesta fazenda.</span>'
       + '<button class="cr-btn" type="button" data-novo><span class="ico">add</span> Novo mapa</button></div>';
     return;
   }
-  alvo.innerHTML = `<div class="cr-grid">${CR_ST.mapas.map(crCardMapa).join('')}</div>`;
+  alvo.innerHTML = `<div class="cr-tab">
+    <div class="cr-lin cr-tab-cab" aria-hidden="true"><div class="cr-lin-abrir">
+      <span>Tipo</span><span>Data</span><span>O.S.</span><span class="num">Talhões</span><span class="num">Total</span><span>Alterado</span>
+    </div><span class="cr-x-esp"></span></div>
+    ${CR_ST.mapas.map(crLinhaMapa).join('')}
+  </div>`;
 }
-function crCardMapa(m) {
+function crLinhaMapa(m) {
   const op = CR_OPERACOES[m.operacao] || m.operacao;
-  const os = m.os.length ? m.os.join(', ') : '—';
-  return `<article class="cr-mapa">
-    <div class="cr-mapa-top">
-      <span class="cr-op" style="--c:var(${CR_OP_VAR[m.operacao]})">${crEsc(op)}</span>
-      <span class="cr-data">${crDataIso(m.data)}</span>
-      <button class="cr-x" type="button" data-excluir="${m.id}" aria-label="Excluir mapa ${crEsc(op)} de ${crDataIso(m.data)}" title="Excluir mapa"><span class="ico">delete</span></button>
-    </div>
-    <div class="cr-os">O.S. ${crEsc(os)}</div>
-    <div class="cr-stats">
-      <div class="cr-stat"><small>Talhões</small><b>${m.talhoes}</b></div>
-      ${crAerea(m.operacao)
-        ? `<div class="cr-stat"><small>Insumos</small><b>${m.insumos}</b></div>`
-        : `<div class="cr-stat"><small>Total</small><b>${crTon(m.toneladas)}</b></div>`}
-    </div>
-    <div class="cr-rod">alterado por ${crEsc(m.alterado_por_nome)} em ${crDiaMes(m.alterado_em)}</div>
-    <button class="cr-btn2" type="button" data-abrir="${m.id}">Abrir mapa</button>
-  </article>`;
+  const total = crAerea(m.operacao) ? (m.insumos === 1 ? '1 insumo' : `${m.insumos} insumos`) : crTon(m.toneladas);
+  return `<div class="cr-lin">
+    <button class="cr-lin-abrir" type="button" data-abrir="${m.id}" aria-label="Abrir mapa ${crEsc(op)} de ${crDataIso(m.data)}">
+      <span><span class="cr-op" style="--c:var(${CR_OP_VAR[m.operacao]})">${crEsc(op)}</span></span>
+      <span class="cr-lin-data">${crDataIso(m.data)}</span>
+      <span class="cr-lin-os">${m.os.length ? crEsc(m.os.join(', ')) : '—'}</span>
+      <span class="num">${m.talhoes}</span>
+      <span class="num">${total}</span>
+      <span class="cr-lin-alt">${crEsc(m.alterado_por_nome)}, ${crDiaMes(m.alterado_em)}</span>
+    </button>
+    <button class="cr-x" type="button" data-menu-mapa="${m.id}" aria-haspopup="menu" aria-label="Ações do mapa ${crEsc(op)} de ${crDataIso(m.data)}"><span class="ico">more_horiz</span></button>
+  </div>`;
 }
 async function crExcluir(id) {
   const m = CR_ST.mapas.find(x => String(x.id) === String(id));
@@ -553,8 +587,12 @@ async function crIniciar() {
     if (e.target.closest('[data-novo]')) return crNovoMapa();
     const a = e.target.closest('[data-abrir]');
     if (a) return crAbrirMapa(CR_ST.mapas.find(m => String(m.id) === a.dataset.abrir));
-    const x = e.target.closest('[data-excluir]');
-    if (x) crExcluir(x.dataset.excluir);
+    const mm = e.target.closest('[data-menu-mapa]');
+    if (mm) crMenu(mm, [{ rotulo: 'Excluir mapa', ico: 'delete', perigo: true, acao: () => crExcluir(mm.dataset.menuMapa) }]);
+  };
+  document.getElementById('cr-recentes').onclick = e => {
+    const b = e.target.closest('[data-recente]');
+    if (b) crAbrirRecente(b.dataset.recente);
   };
   document.querySelectorAll('[data-sair]').forEach(b => { b.onclick = crSair; });
   document.getElementById('cr-demo').classList.toggle('off', !CR_DEMO);
@@ -813,6 +851,8 @@ async function crAbrirMapa(mapa) {
     CR_ST.geo = geo;
     CR_ST.det = det;
     CR_ST.insumos = insumos;
+    crGuardarRecentes(crRecentesCom(crRecentes(), { id: mapa.id, cod_faz: CR_ST.faz.cod_faz, operacao: mapa.operacao,
+                                                    data: String(mapa.data).slice(0, 10) }));
   } catch (e) {
     document.getElementById('cr-mapa').innerHTML = '';
     document.getElementById('cr-painel').innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível abrir o mapa.</span>'

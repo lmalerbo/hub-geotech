@@ -111,6 +111,28 @@ try:
         pg.mouse.move(0, 0)
         confere(pg.locator('#cr-dica.off').count() == 1, 'dica some ao sair do mapa')
 
+        # ── Tarefa 5: lista em linhas e abertos por último ──
+        pg.click('#cr-voltar')
+        pg.wait_for_selector('button.cr-lin-abrir', timeout=10000)
+        n_mapas = pg.evaluate('CR_ST.mapas.length')
+        confere(pg.locator('button.cr-lin-abrir').count() == n_mapas and n_mapas > 0, 'uma linha por mapa')
+        confere(pg.locator('.cr-mapa').count() == 0, 'sem os cartões antigos')
+        confere(pg.locator('#cr-recentes [data-recente]').count() >= 1, 'mapa aberto aparece em Abertos por último')
+        pg.locator('[data-menu-mapa]').first.click()
+        confere(pg.locator('.cr-menu button:has-text("Excluir mapa")').is_visible(), 'menu ⋯ da linha com Excluir mapa')
+        pg.keyboard.press('Escape')
+        pg.screenshot(path=str(PRINTS / 'aplicacao_lista.png'))
+        pg.evaluate("localStorage.setItem('cr-recentes-demo', JSON.stringify([{ id: 999999, cod_faz: CR_ST.faz.cod_faz,"
+                    " operacao: 'arado', data: '2026-01-01' }])); crRenderRecentes();")
+        pg.click('[data-recente="999999"]')
+        pg.wait_for_selector('#cr-toast.show', timeout=5000)
+        confere('não existe mais' in pg.locator('#cr-toast').inner_text(), 'recente de mapa excluído avisa')
+        confere(pg.locator('#cr-recentes.off').count() == 1, 'recente de mapa excluído sai da lista')
+        pg.locator('button.cr-lin-abrir').first.click()
+        pg.wait_for_function('CR_ST.geo && CR_ST.det', timeout=30000)
+        confere(pg.locator('#cr-trabalho').is_visible(), 'clicar na linha abre o mapa')
+        pg.click('#cr-voltar')
+
         # fim das conferências
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')
         nav.close()
