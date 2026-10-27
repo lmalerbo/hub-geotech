@@ -57,7 +57,7 @@ button,input{font:inherit}
 .cr-nome{font-size:12px;color:var(--t2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Conteúdo ─────────────────────────────────────────────── */
-.cr-main{max-width:880px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.cr-main{max-width:1040px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .cr-busca{background:var(--sf);border-radius:14px;padding:14px;box-shadow:0 1px 3px #0000000d;min-width:0}
 .cr-res{margin-top:10px;display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto}
 .cr-it{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;cursor:pointer;font-size:13px;background:none;border:0;width:100%;text-align:left;color:var(--t1);min-width:0}
@@ -84,12 +84,19 @@ button,input{font:inherit}
 .cr-x:hover{color:#c23b3b;background:#fbe0e0}
 .cr-vazio{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:32px 16px;color:var(--t2)}
 .cr-erro-bloco{color:#c23b3b;font-size:13px}
-.cr-trab-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;align-items:start;min-width:0}
-#cr-trabalho .cr-pnl{overflow:visible}
-.cr-mapa-box{position:sticky;top:16px;height:calc(100vh - 140px);min-height:480px;min-width:0;border-right:1px solid var(--bd)}
-#cr-mapa{position:absolute;inset:0;background:#f7f8fa}
-.cr-mapa-esq{position:absolute;inset:0;height:auto;border-radius:0}
-.cr-painel{display:flex;flex-direction:column;gap:16px;padding:14px 16px;min-width:0}
+#cr-app.cr-modo-trab{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.cr-modo-trab .cr-top{display:none}
+.cr-trab{flex:1;min-height:0;display:flex;flex-direction:column}
+.cr-trab-top{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--sf);border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.cr-trab-id{display:flex;flex-direction:column;min-width:0}
+.cr-trab-tit{font-size:18px;font-weight:600;letter-spacing:-.2px}
+.cr-trab-sub{font-size:12px;color:var(--t2)}
+.cr-trab-pdf{margin-left:auto;display:flex;align-items:center;gap:8px;min-width:0}
+.cr-trab-pdf .mo-prog{width:220px}
+.cr-trab-corpo{flex:1;min-height:0}
+.cr-trab-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;height:100%;min-height:0}
+.cr-mapa-box{position:relative;min-width:0;min-height:0}
+.cr-painel{display:flex;flex-direction:column;min-height:0;background:var(--sf);border-left:1px solid var(--bd)}
 .cr-sec{display:flex;flex-direction:column;gap:10px;min-width:0}
 .cr-sec h2{font-size:13px;font-weight:600}
 .cr-sec-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -127,9 +134,10 @@ button,input{font:inherit}
 .cr-ins-linha select{flex:1;min-width:0}
 .cr-ins-linha .cr-btn2{flex-shrink:0}
 @media (max-width:899px){
-  .cr-trab-grid{grid-template-columns:1fr}
-  .cr-mapa-box{position:relative;height:50vh;min-height:300px;border-right:0;border-bottom:1px solid var(--bd)}
-  .cr-painel{max-height:none;overflow:visible}
+  #cr-app.cr-modo-trab{height:auto;overflow:visible}
+  .cr-trab-grid{grid-template-columns:1fr;height:auto}
+  .cr-mapa-box{height:55vh;min-height:320px}
+  .cr-painel{border-left:0;border-top:1px solid var(--bd)}
 }
 
 /* ── Diálogo ──────────────────────────────────────────────── */

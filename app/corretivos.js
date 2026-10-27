@@ -338,6 +338,7 @@ function crMostrar(tela) {
 function crTela(nome) {
   document.getElementById('cr-lista').classList.toggle('off', nome !== 'lista');
   document.getElementById('cr-trabalho').classList.toggle('off', nome !== 'trabalho');
+  document.getElementById('cr-app').classList.toggle('cr-modo-trab', nome === 'trabalho');
 }
 function crToast(msg, erro = false) {
   const t = document.getElementById('cr-toast');
@@ -781,7 +782,10 @@ async function crAbrirMapa(mapa) {
   Object.assign(CR_ST, { trab: mapa, sel: new Set(), destApl: null, areaNova: {}, formMsg: null, det: null, geo: null, insumos: [],
     form: crAerea(mapa.operacao) ? { tipo: 'insumo', insumo_id: '', dose: '', os: '' }
       : { tipo: 'calcario', calcario: 'dolomitico', dose: '', gesso: '', os: '' } });
-  document.getElementById('cr-trab-tit').textContent = `Mapa ${CR_OPERACOES[mapa.operacao]} · ${crDataIso(mapa.data)}`;
+  document.getElementById('cr-trab-tit').textContent = `${CR_OPERACOES[mapa.operacao]}, ${crDataIso(mapa.data)}`;
+  const resumo = CR_ST.mapas.find(m => String(m.id) === String(mapa.id));
+  document.getElementById('cr-trab-sub').textContent = `${CR_ST.faz.cod_faz} ${CR_ST.faz.nome}`
+    + (resumo ? `. Alterado por ${resumo.alterado_por_nome} em ${crDiaMes(resumo.alterado_em)}` : '');
   crTela('trabalho');
   document.getElementById('cr-mapa').innerHTML = '<div class="cr-esq cr-mapa-esq" aria-hidden="true"></div>';
   document.getElementById('cr-painel').innerHTML = '<div class="cr-sec" role="status"><div class="cr-esq"></div><div class="cr-esq curto"></div></div>';
@@ -1108,7 +1112,6 @@ function crRenderPainel() {
         ? `<div class="cr-tot-grid">${tot.map(t => `<div class="cr-tot"><small>${crEsc(t.titulo)}</small><b>${crBr(t.total)} ${t.unidade}</b>${t.detalhe ? `<small>${crEsc(t.detalhe.replace(/ t\b/g, '\u00a0t'))}</small>` : ''}</div>`).join('')}</div>`
         : '<p class="cr-msg">Sem aplicações ainda.</p>'}
       ${aerea ? crLinhaArea(areas, CR_ST.trab.operacao) : ''}
-      <div id="cr-pdf"></div>
     </section>`;
   crRenderBotaoPdf();
 }
@@ -1118,19 +1121,18 @@ function crRenderBotaoPdf() {
   if (!alvo) return;
   const vazio = !(CR_ST.det && CR_ST.det.apls.length);
   if (CR_DEMO || !window.crGerador) {
-    alvo.innerHTML = '<button class="cr-btn2 cr-btn-bloco" type="button" disabled>Baixar PDF (indisponível na demonstração)</button>';
+    alvo.innerHTML = '<button class="cr-btn" type="button" disabled title="Indisponível na demonstração"><span class="ico">download</span> Baixar PDF</button>';
     return;
   }
   const est = crGerador.estado;
   if (est === 'erro') {
-    alvo.innerHTML = '<p class="cr-msg cr-erro-bloco" role="alert">Não foi possível preparar o gerador de PDF. Os dados do mapa estão salvos.</p>'
-      + '<button class="cr-btn2 cr-btn-bloco" type="button" data-pdf-tentar>Tentar de novo</button>';
+    alvo.innerHTML = '<span class="cr-erro-bloco" role="alert">O gerador de PDF não carregou.</span>'
+      + '<button class="cr-btn2" type="button" data-pdf-tentar>Tentar de novo</button>';
   } else if (est === 'pronto' || est === 'parado') {
-    alvo.innerHTML = `<button class="cr-btn cr-btn-bloco" type="button" data-pdf${vazio ? ' disabled' : ''}>Baixar PDF</button>`;
+    alvo.innerHTML = `<button class="cr-btn" type="button" data-pdf${vazio ? ' disabled title="Lance uma aplicação para baixar o PDF"' : ''}><span class="ico">download</span> Baixar PDF</button>`;
   } else {
-    // ~20 s só na primeira vez: barra por passo, reaproveitada entre redesenhos para não voltar a 0
     if (!crProgPdf || !alvo.contains(crProgPdf.el)) {
-      alvo.innerHTML = '<p class="cr-msg">Preparando o gerador de PDF (só na primeira vez)</p>';
+      alvo.innerHTML = '<span class="cr-trab-sub">Preparando o PDF (só na primeira vez)</span>';
       const api = Mo.progresso(alvo, { total: 4, mb: false });
       crProgPdf = { api, el: alvo.querySelector('.mo-prog') };
     }
@@ -1295,12 +1297,22 @@ async function crAtualizarInsumos(msg) {
 function crLigarTrabalho() {
   document.getElementById('cr-voltar').onclick = crVoltarLista;
   document.getElementById('cr-trab-corpo').innerHTML = `<div class="cr-trab-grid">
-    <div class="cr-mapa-box"><div id="cr-mapa"></div></div>
+    <div class="cr-mapa-box">
+      <div id="cr-mapa"></div>
+      <div class="cr-dica off" id="cr-dica" aria-hidden="true"></div>
+      <div class="cr-selbar" id="cr-selbar"></div>
+    </div>
     <aside class="cr-painel" id="cr-painel" aria-label="Aplicações do mapa"></aside>
   </div>`;
+  document.getElementById('cr-pdf').onclick = e => {
+    const b = e.target.closest('[data-pdf],[data-pdf-tentar]');
+    if (!b || b.disabled) return;
+    if ('pdfTentar' in b.dataset) { crGerador.preparar().catch(() => {}); crRenderBotaoPdf(); }
+    else crBaixarPdf();
+  };
   const painel = document.getElementById('cr-painel');
   painel.onclick = e => {
-    const b = e.target.closest('[data-todos],[data-limpar],[data-dest],[data-editar],[data-excluir-apl],[data-aplicar],[data-insumos],[data-tentar-trab],[data-pdf],[data-pdf-tentar]');
+    const b = e.target.closest('[data-todos],[data-limpar],[data-dest],[data-editar],[data-excluir-apl],[data-aplicar],[data-insumos],[data-tentar-trab]');
     if (!b || b.disabled) return;
     const d = b.dataset;
     if ('todos' in d) crSelecionarTodos();
@@ -1311,8 +1323,6 @@ function crLigarTrabalho() {
     else if ('insumos' in d) crAbrirInsumos();
     else if ('aplicar' in d) crAplicarMarcados();
     else if ('tentarTrab' in d) crAbrirMapa(CR_ST.trab);
-    else if ('pdfTentar' in d) { crGerador.preparar().catch(() => {}); crRenderBotaoPdf(); }
-    else if ('pdf' in d) crBaixarPdf();
   };
   painel.onchange = e => {
     const el = e.target;
