@@ -1131,6 +1131,7 @@ function crRenderBotaoPdf() {
   } else if (est === 'pronto' || est === 'parado') {
     alvo.innerHTML = `<button class="cr-btn" type="button" data-pdf${vazio ? ' disabled title="Lance uma aplicação para baixar o PDF"' : ''}><span class="ico">download</span> Baixar PDF</button>`;
   } else {
+    // ~20 s só na primeira vez: barra por passo, reaproveitada entre redesenhos para não voltar a 0
     if (!crProgPdf || !alvo.contains(crProgPdf.el)) {
       alvo.innerHTML = '<span class="cr-trab-sub">Preparando o PDF (só na primeira vez)</span>';
       const api = Mo.progresso(alvo, { total: 4, mb: false });
