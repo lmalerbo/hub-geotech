@@ -95,6 +95,7 @@ button,input{font:inherit}
 }
 .cr-x{border:0;background:none;color:var(--t2);cursor:pointer;padding:4px;border-radius:6px;display:flex}
 .cr-x:hover{color:#c23b3b;background:#fbe0e0}
+.cr-x[aria-haspopup]:hover,.cr-x[aria-haspopup]:focus-visible{color:var(--t1);background:var(--s2)}
 .cr-vazio{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:32px 16px;color:var(--t2)}
 .cr-erro-bloco{color:#c23b3b;font-size:13px}
 #cr-app.cr-modo-trab{height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -144,7 +145,7 @@ button,input{font:inherit}
 .cr-painel-rol{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:22px;min-height:0}
 .cr-painel-tot{border-top:1px solid var(--bd);background:#fbfcfd;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
 .cr-painel-tot h2{font-size:13px;font-weight:600}
-.cr-tot-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px}
+.cr-tot-lista{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
 .cr-tot-l{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 8px;font-size:12px;min-width:0}
 .cr-tot-l span{color:var(--t2)}
 .cr-tot-l b{font-weight:600}
