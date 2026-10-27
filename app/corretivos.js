@@ -130,6 +130,54 @@ function crNomeArquivo(codFaz, operacao, data) {
   return crAerea(operacao) ? `aplicacao_aerea_${codFaz}_${data}.pdf` : `corretivo_${codFaz}_${operacao}_${data}.pdf`;
 }
 
+// ── Layout (27/10): textos e contas das telas, sem DOM ──
+// Lista de talhões para textos: '11', '11 e 12', '11, 12 e 14'; acima de max, '1, 2, 3, 4, 5, 6 e mais 4'.
+function crListaTalhoes(ts, max = 6) {
+  const o = [...ts].sort((a, b) => a - b);
+  if (o.length <= 1) return o.join('');
+  if (o.length > max) return `${o.slice(0, max).join(', ')} e mais ${o.length - max}`;
+  return `${o.slice(0, -1).join(', ')} e ${o[o.length - 1]}`;
+}
+function crSemAplicacao(talhoes, apls) {
+  const com = new Set(apls.flatMap(a => a.talhoes));
+  return talhoes.filter(t => !com.has(t)).sort((a, b) => a - b);
+}
+function crTextoDose(a) {
+  if (a.tipo === 'insumo') return `${crBrDose(a.dose)} ${crUnidade(a)}/ha`;
+  return `${crBr(a.dose)} t/ha` + (a.tipo === 'blend' ? ` + gesso ${crBr(a.dose_gesso)} t/ha` : '');
+}
+// Total previsto da nova aplicação, com a mesma conta do cartão (crTotalApl). null enquanto a dose não vale.
+// Os campos vêm de <input type="number"> (ponto decimal), por isso Number e não crNum.
+function crPrevisto(f, aerea, talhoes, areas) {
+  const dose = Number(f.dose);
+  if (!(dose > 0) || !talhoes.length) return null;
+  const tipo = aerea ? 'insumo' : f.tipo;
+  const gesso = tipo === 'blend' ? Number(f.gesso) : 0;
+  if (tipo === 'blend' && !(gesso > 0)) return null;
+  return crTotalApl({ tipo, dose, dose_gesso: gesso, talhoes }, areas);
+}
+function crDicaTalhao(t, areaHa, apls, marcado) {
+  const doTalhao = crOrdenadas(apls).filter(a => a.talhoes.includes(t));
+  return {
+    titulo: `Talhão ${t}, ${crBr(areaHa)} ha`,
+    linhas: doTalhao.length ? doTalhao.map(a => `${crRotulo(a)} ${crTextoDose(a)}, O.S. ${a.os}`) : ['Sem aplicação'],
+    acao: marcado ? 'Clique para desmarcar' : 'Clique para marcar',
+  };
+}
+// "Abertos por último": o texto guardado no navegador pode estar vazio ou estragado.
+function crLerRecentes(texto) {
+  try {
+    const v = JSON.parse(texto || '[]');
+    return Array.isArray(v) ? v.filter(r => r && r.id != null && r.cod_faz != null) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function crRecentesCom(lista, item, max = 3) {
+  return [item, ...lista.filter(r => String(r.id) !== String(item.id))].slice(0, max);
+}
+function crRecentesSem(lista, id) { return lista.filter(r => String(r.id) !== String(id)); }
+
 // ===== Corretivos: meio a meio por geometria (faixas diagonais) =====
 // crFaixas corta um talhão em n faixas por retas x+y = constante, igualmente espaçadas entre min e max de x+y.
 // Sutherland–Hodgman contra os dois semiplanos de cada faixa; externo e furos são recortados separadamente.
