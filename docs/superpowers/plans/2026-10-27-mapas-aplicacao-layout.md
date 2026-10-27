@@ -1101,7 +1101,7 @@ git commit -m "Mapas de aplicacao: lista de mapas em linhas, menu de acoes e abe
 - Seletores que o E2E da Tarefa 7 usa: `[data-grupo="corretivo"|"aerea"]`, `.cr-seg-o:has([data-op="<op>"])`,
   `[data-criar]`.
 
-- [ ] **Passo 1: Acrescentar as conferências (falham)**
+- [x] **Passo 1: Acrescentar as conferências (falham)**
 
 Antes de `# fim das conferências`:
 
@@ -1126,7 +1126,7 @@ Antes de `# fim das conferências`:
 
 Rodar e ver FALHAR em "novo mapa: Corretivo e Aplicação aérea".
 
-- [ ] **Passo 2: Implementar**
+- [x] **Passo 2: Implementar**
 
 Acrescentar logo antes de `crNovoMapa`:
 
@@ -1202,12 +1202,12 @@ CSS, na seção "Diálogo":
 @media (max-width:639px){.cr-nm-grupos{grid-template-columns:1fr}}
 ```
 
-- [ ] **Passo 3: Rodar e ver passar**
+- [x] **Passo 3: Rodar e ver passar**
 
 Rodar: `python tests/app/teste_aplicacao_demo.py`. Esperado: PASSA. Comparar `.prints/aplicacao_novo.png` com o
 artboard "Novo mapa".
 
-- [ ] **Passo 4: Commit**
+- [x] **Passo 4: Commit**
 
 ```bash
 git add app/corretivos.js app/corretivos.css tests/app/teste_aplicacao_demo.py
@@ -1225,7 +1225,7 @@ git commit -m "Mapas de aplicacao: novo mapa em dois passos (corretivo ou aerea,
 **Interfaces:**
 - Consome os seletores das Tarefas 5 e 6.
 
-- [ ] **Passo 1: Trocar os seletores do E2E**
+- [x] **Passo 1: Trocar os seletores do E2E**
 
 Em `tests/app/teste_corretivos_tela.py`:
 
@@ -1244,7 +1244,7 @@ Em `tests/app/teste_corretivos_tela.py`:
 Nada mais muda: o `aplicar()` do teste marca talhões por `CR_ST.sel` e chama `crRenderPainel()`, e `[data-aplicar]`
 e `[data-pdf]` continuam existindo.
 
-- [ ] **Passo 2: Manual**
+- [x] **Passo 2: Manual**
 
 Em `docs/mapas-aplicacao-manual.md`, reescrever os trechos que descrevem a lista, a criação e a tela do mapa para
 dizer:
@@ -1258,7 +1258,7 @@ dizer:
   só muda em "Ajustar a área de algum talhão". A lista "Aplicações do mapa" é a legenda das cores: clique num cartão
   para destacar os talhões, e use o "⋯" para editar ou excluir. O total do mapa fica sempre no pé da coluna.
 
-- [ ] **Passo 3: Verificação completa**
+- [x] **Passo 3: Verificação completa**
 
 Rodar, nesta ordem, e anotar a saída:
 1. `node --test tests/app/*.test.js`, esperado: tudo PASSA.
@@ -1269,7 +1269,7 @@ Rodar, nesta ordem, e anotar a saída:
    as linhas `ok` e nenhuma `FALHA`. Se a variável não estiver disponível para quem executa, **parar e avisar**:
    esse passo fica com o Claude principal.
 
-- [ ] **Passo 4: Commit**
+- [x] **Passo 4: Commit**
 
 ```bash
 git add tests/app/teste_corretivos_tela.py docs/mapas-aplicacao-manual.md
