@@ -80,6 +80,12 @@ canvas inteiro: ela lê só o **cabeçalho deste plano** (até "Mapa dos arquivo
 (`.cr-modo-trab .cr-main{display:none}`), senão sobrava uma faixa de 32 px acima do cabeçalho. A coluna da direita
 ficou sem padding e sem rolagem (a regra antiga de `.cr-painel` saiu): a Tarefa 3 precisa cuidar disso.
 
+**Notas da Sessão 2 (27/10):** os executores grátis estavam sem cota, então a Tarefa 3 foi feita pelo Haiku (camada 2),
+de primeira. Os arquivos estão com CRLF: o Edit não casa blocos de várias linhas, e o executor usou um script Python que
+preserva o CRLF. No console cp1252, o caractere "⋯" num rótulo de `confere` derruba o print; use texto sem ele. No
+"Total do mapa", nome de produto longo empurra o valor para a linha de baixo (CSS do plano). Vale olhar no polimento
+da Sessão 4.
+
 **Só a Sessão 4:** o passo 4 da Tarefa 7 (E2E real) usa a conta de teste e o banco real, então quem roda é o Claude
 principal. Depois vem `requesting-code-review` no branch inteiro e `finishing-a-development-branch`. O merge e a
 publicação só acontecem com o OK do Leo.
@@ -502,7 +508,7 @@ git commit -m "Mapas de aplicacao: tela do mapa em tela cheia, cabecalho proprio
 - Produz: `crMenu(botao: HTMLElement, itens: Array<{rotulo, ico, perigo?, acao: () => void}>)` e `crFecharMenu()`,
   usadas também na Tarefa 5; o estado novo `CR_ST.areasAbertas: boolean`
 
-- [ ] **Passo 1: Acrescentar as conferências (falham)**
+- [x] **Passo 1: Acrescentar as conferências (falham)**
 
 Em `tests/app/teste_aplicacao_demo.py`, antes de `# fim das conferências`:
 
@@ -547,13 +553,13 @@ Em `tests/app/teste_aplicacao_demo.py`, antes de `# fim das conferências`:
 
 Rodar: `python tests/app/teste_aplicacao_demo.py`. Esperado: FALHA a partir de "barra diz como marcar".
 
-- [ ] **Passo 2: Estado e limpeza**
+- [x] **Passo 2: Estado e limpeza**
 
 Em `crAbrirMapa`, no `Object.assign(CR_ST, {…})`, acrescentar `areasAbertas: false`.
 Em `crAplicarMarcadosAgora`, logo depois de `CR_ST.sel = new Set();`, acrescentar `CR_ST.areasAbertas = false;`.
 Em `crVoltarLista`, acrescentar `crFecharMenu();` como primeira linha.
 
-- [ ] **Passo 3: Menu "⋯"**
+- [x] **Passo 3: Menu "⋯"**
 
 Acrescentar logo antes de `// ── Painel ──`:
 
@@ -589,7 +595,7 @@ function crFecharMenu() {
 }
 ```
 
-- [ ] **Passo 4: Cartão de aplicação, seções e coluna**
+- [x] **Passo 4: Cartão de aplicação, seções e coluna**
 
 Trocar `crCardAplicacao` inteira por:
 
@@ -705,7 +711,7 @@ function crRenderPainel() {
 }
 ```
 
-- [ ] **Passo 5: Eventos**
+- [x] **Passo 5: Eventos**
 
 Em `crLigarTrabalho`, trocar o `painel.onclick` e o `painel.oninput` por estes, e acrescentar o `onclick` da barra:
 
@@ -742,7 +748,7 @@ Em `crLigarTrabalho`, trocar o `painel.onclick` e o `painel.oninput` por estes, 
 
 (O `painel.onchange` continua igual.)
 
-- [ ] **Passo 6: CSS**
+- [x] **Passo 6: CSS**
 
 Acrescentar na seção "Conteúdo" de `app/corretivos.css`:
 
@@ -773,12 +779,12 @@ Acrescentar na seção "Conteúdo" de `app/corretivos.css`:
 
 E apagar as regras que ficaram sem uso: `.cr-sec-top`, `.cr-acoes-sel`, `.cr-ap-acoes`, `.cr-tot-grid` e `.cr-tot`.
 
-- [ ] **Passo 7: Rodar e ver passar**
+- [x] **Passo 7: Rodar e ver passar**
 
 Rodar: `node --test tests/app/*.test.js` e depois `python tests/app/teste_aplicacao_demo.py`
 Esperado: tudo PASSA. Comparar `.prints/aplicacao_selecao.png` com o artboard "A" do canvas.
 
-- [ ] **Passo 8: Commit**
+- [x] **Passo 8: Commit**
 
 ```bash
 git add app/corretivos.js app/corretivos.css tests/app/teste_aplicacao_demo.py
