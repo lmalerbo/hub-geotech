@@ -67,3 +67,14 @@ test('último envio de um tipo: erro antigo não vale depois de um envio novo ok
   assert.strictEqual(ctx.drUltimoEnvio(envios, 'infestacao'), null);
   assert.strictEqual(ctx.drUltimoEnvio(null, 'obstaculos'), null);
 });
+
+test('assinatura dos obstáculos muda quando chega versão nova (descarta o desenho guardado)', () => {
+  const a = ctx.drAssinaturaObst([{ classe_m: 25, versao: 1 }, { classe_m: 15, versao: 1 }]);
+  const b = ctx.drAssinaturaObst([{ classe_m: 15, versao: 1 }, { classe_m: 25, versao: 1 }]);
+  const c = ctx.drAssinaturaObst([{ classe_m: 15, versao: 2 }, { classe_m: 25, versao: 1 }]);
+  assert.strictEqual(a, '15:1|25:1');
+  assert.strictEqual(a, b);            // a ordem não importa
+  assert.notStrictEqual(a, c);         // versão nova muda a assinatura
+  assert.strictEqual(ctx.drAssinaturaObst([]), '');
+  assert.strictEqual(ctx.drAssinaturaObst(null), '');
+});

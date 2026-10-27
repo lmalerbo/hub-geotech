@@ -133,7 +133,7 @@ async function drBuscar(txt){
 }
 
 async function drAbrirFazenda(cod,doc){
-  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
+  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   clearTimeout(DR.poll);
   document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
   const pnl=document.getElementById('dr-faz');
@@ -157,6 +157,8 @@ async function drRecarregarFazenda(){
     const revs=proj.data&&proj.data.length?await sb.from('projeto_revisoes').select('numero,documento,motivo,criado_em')
       .eq('projeto_id',proj.data[0].id).order('numero',{ascending:false}):{data:[]};
     DR.geo=geo;DR.info={faz:faz.data,sols:sols.data||[],obst:obst.data||[],ger:ger.data||[],envios:env.data||[],revs:revs.data||[]};
+    const ass=drAssinaturaObst(DR.info.obst);
+    if(ass!==DR.obstAss){DR.obstAss=ass;DR.obstGeo=null;}
   }catch(e){document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;return;}
   drRender();
 }
@@ -839,3 +841,6 @@ function drRotuloShape(envio){
 
 // Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
 function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||null;}
+
+// Muda quando alguma classe ganha versão nova: aí o desenho guardado (DR.obstGeo) não vale mais.
+function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao).sort().join('|');}
