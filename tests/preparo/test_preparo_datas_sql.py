@@ -53,3 +53,15 @@ def test_lancamento_25_26_usa_data_de_conservacao(banco, fazenda):
     banco.execute("update hub.talhao_preparo set conservacao_em = '2025-09-15' where layer = %s", (cod * 1000 + 1,))
     log_ok(banco, cod * 1000 + 1, '2026-10-28 12:00-03', origem='planagri_ciclo_25_26')
     assert entregas(banco, cod) == {1: ('2025-09-15', 'ciclo_25_26')}
+
+
+def test_conservacao_dia_1_nao_cai_no_mes_anterior_com_sessao_em_utc(banco, fazenda):
+    cod = fazenda(1)
+    por(banco, 'preparo', cod, 'Ok')
+    banco.execute("update hub.talhao_preparo set conservacao_em = '2025-09-01' where layer = %s", (cod * 1000 + 1,))
+    log_ok(banco, cod * 1000 + 1, '2026-10-28 12:00-03', origem='planagri_ciclo_25_26')
+    banco.execute("set time zone 'UTC'")
+    try:
+        assert entregas(banco, cod) == {1: ('2025-09-01', 'ciclo_25_26')}
+    finally:
+        banco.execute("reset time zone")

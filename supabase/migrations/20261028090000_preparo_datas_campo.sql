@@ -35,7 +35,7 @@ with ultimo_ok as (
    where e.modulo_id = 'preparo' and e.nome = 'Preparo' and s.ok
 )
 select p.layer, t.cod_faz,
-       case when u.origem = 'planagri_ciclo_25_26' then p.conservacao_em::timestamptz
+       case when u.origem = 'planagri_ciclo_25_26' then (p.conservacao_em::timestamp at time zone 'America/Sao_Paulo')
             else coalesce(u.criado_em, ep.concluido_em) end as entregue_em,
        case when u.origem = 'planagri_ciclo_25_26' then 'ciclo_25_26'
             when u.criado_em is null
