@@ -163,8 +163,22 @@
 .mo-voo.mo-desce .mo-voo-sombra{transform:translate(-6px,-8px) scale(.7);opacity:.5}
 .mo-voo.mo-desce .mo-helice{animation-duration:.6s}
 
+/* ── Trilho e varredura: esperas da geração do Drone ─────── */
+.mo-trilho{display:block;position:relative;height:3px;margin-top:8px;border-radius:2px;overflow:hidden;background:rgba(91,110,232,.15)}
+.mo-trilho::after{content:'';position:absolute;inset:0;width:35%;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,var(--mo-c4),transparent);animation:mo-trilho 1.6s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes mo-trilho{to{transform:translateX(300%)}}
+.mo-varr{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;background:rgba(91,110,232,.06);
+  animation:mo-varr-entra .2s var(--mo-sai);transition:opacity .2s}
+.mo-varr.mo-sai{opacity:0}
+.mo-varr i{position:absolute;top:0;bottom:0;left:0;width:30%;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(91,110,232,.18),transparent);animation:mo-varr 2.4s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes mo-varr{to{transform:translateX(340%)}}
+@keyframes mo-varr-entra{from{opacity:0}}
+
 /* ── Menos movimento ──────────────────────────────────────── */
 @media (prefers-reduced-motion:reduce){
+  .mo-trilho::after,.mo-varr i{animation:none;display:none}.mo-varr{animation:none;transition:none}
   .mo-campo i{animation:none;transform:none;opacity:.8}
   .mo-campo i:nth-child(2){transform:scaleY(.7)}.mo-campo i:nth-child(3){transform:scaleY(.45)}
   .mo-btn.mo-ocupado::after,.mo-esboco>i::after,.mo-prog-barra::after{animation:none;display:none}

@@ -135,6 +135,25 @@ def rodar(pg, calmo):
     pg.wait_for_timeout(2300)
     confere('voo: some depois da falha' + sufixo, mapa.locator('.mo-voo').count() == 0)
 
+    pg.click('#b-trilho')
+    confere('trilho e varredura aparecem' + sufixo,
+            pg.locator('#gerando .mo-trilho').count() == 1 and pg.locator('#mapa-varr .mo-varr').count() == 1)
+    confere('varredura não pega clique' + sufixo,
+            pg.locator('#mapa-varr .mo-varr').evaluate("v=>getComputedStyle(v).pointerEvents") == 'none')
+    anim = pg.locator('#mapa-varr .mo-varr i').evaluate("i=>getComputedStyle(i).animationName")
+    confere(f'varredura anda só com movimento ({anim})' + sufixo, (anim != 'none') != calmo)
+    pg.click('#b-trilho'); pg.wait_for_timeout(400)
+    confere('trilho e varredura somem' + sufixo,
+            pg.locator('#gerando .mo-trilho').count() == 0 and pg.locator('#mapa-varr .mo-varr').count() == 0)
+    pg.click('#b-mover')
+    if not calmo:
+        confere('mover: anima transform no meio' + sufixo,
+                pg.locator('[data-id=c1]').evaluate("e=>e.getAnimations().length") > 0)
+    pg.evaluate("window.__mov")
+    confere('mover: termina no lugar novo e sem animação' + sufixo,
+            pg.locator('#col-b [data-id=c1]').count() == 1
+            and pg.locator('[data-id=c1]').evaluate("e=>e.getAnimations().length") == 0)
+
     confere('sem erro de JS' + sufixo, not erros)
 
 

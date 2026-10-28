@@ -11,6 +11,9 @@
 //   Mo.etapa(barraEl,de,para)    → Promise  marca deslizando de uma etapa a outra
 //   Mo.concluido(el,{texto})     → Promise  comemoração quando fazenda/projeto chega em Ok
 //   Mo.voo(el,{texto,desde}?)    → {pousar(ok,texto?)→Promise, parar()}  drone sobrevoando el (esperas longas do Drone)
+//   Mo.trilho(el)                → {parar()}  faixa de luz num trilho fino (espera de geração)
+//   Mo.varredura(el)             → {parar()}  véu e faixa varrendo el (mapa), sem tocar no canvas
+//   Mo.mover(container,aplicar)  → Promise    FLIP por data-id: mede, aplica, anima o deslocamento
 // Extras: Mo.campo(grande?) devolve o HTML do indicador de espera do Hub.
 // ─────────────────────────────────────────────────────────────
 (function(){
@@ -216,5 +219,35 @@
     return espera(1900).then(()=>{w.remove();if(pos)el.style.position='';});
   }
 
-  window.Mo={ocupado,progresso,carregando,pronto,etapa,concluido,voo,campo:g=>campo(g?'g':'')};
+  // ── Trilho, varredura e mover ──────────────────────────────
+  function trilho(el){
+    if(!el)return{parar(){}};
+    const t=document.createElement('span');t.className='mo-trilho';t.setAttribute('aria-hidden','true');
+    el.appendChild(t);return{parar(){t.remove();}};
+  }
+  function varredura(el){
+    if(!el)return{parar(){}};
+    if(getComputedStyle(el).position==='static')el.style.position='relative';
+    const v=document.createElement('div');v.className='mo-varr';v.setAttribute('aria-hidden','true');v.innerHTML='<i></i>';
+    el.appendChild(v);
+    return{parar(){if(calmo())return v.remove();v.classList.add('mo-sai');setTimeout(()=>v.remove(),200);}};
+  }
+  async function mover(container,aplicar){
+    if(!container){aplicar();return;}
+    const antes=new Map();
+    container.querySelectorAll('[data-id]').forEach(e=>antes.set(e.dataset.id,e.getBoundingClientRect()));
+    aplicar();
+    if(calmo())return;
+    const anims=[];
+    container.querySelectorAll('[data-id]').forEach(e=>{
+      const a=antes.get(e.dataset.id);if(!a)return;            // cartão novo: entra sem FLIP
+      const b=e.getBoundingClientRect(),dx=a.left-b.left,dy=a.top-b.top;
+      if(!dx&&!dy)return;
+      anims.push(e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],
+        {duration:240,easing:'cubic-bezier(.16,1,.3,1)'}).finished.catch(()=>{}));
+    });
+    await Promise.all(anims);
+  }
+
+  window.Mo={ocupado,progresso,carregando,pronto,etapa,concluido,voo,trilho,varredura,mover,campo:g=>campo(g?'g':'')};
 })();
