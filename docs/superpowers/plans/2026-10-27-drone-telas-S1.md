@@ -46,7 +46,7 @@
 | `drone.css` | o texto de `drEstilo` e depois o de `drPrevEstilo` (as funções somem) |
 | `drone-fazenda.js` | o resto: `drAbrirFazenda`, `drRecarregarFazenda`, `drCabecalhoHtml`, `drAtualizarFontesMapa`, `drRender`, `drVooPublicacao`, `drPintarMapa`, `drAtualizarSelecaoMapa`, `drClicarTalhao`, `drSelecionarSemProjeto`, `drFonte`, `drObstaculosHtml`, `drPainelLateral`, `drErro`, `drEnviar`, `drSubirComProgresso`, `drGerarNormal`, `drAbrirCatacao`, `drGerarCatacao`, `drPublicar`, `drDescartar`, `drObstaculos` |
 
-- [ ] **Passo 1: criar o branch e o worktree**
+- [x] **Passo 1: criar o branch e o worktree**
 
 ```bash
 git worktree add ../hub-geotech-drone-s1 -b drone-s1 main
@@ -54,7 +54,7 @@ cd ../hub-geotech-drone-s1
 node --test tests/app/*.test.js   # esperado: 46 passam (linha de base)
 ```
 
-- [ ] **Passo 2: escrever o script de corte** em `<scratchpad>/dividir_drone.py`
+- [x] **Passo 2: escrever o script de corte** em `<scratchpad>/dividir_drone.py`
 
 ```python
 """Corta app/drone.js em 4 arquivos + drone.css, copiando literal. Uso: python dividir_drone.py <raiz do repo>"""
@@ -159,19 +159,19 @@ if esperado != obtido or n_chamadas != 4:
 print('conferência ok; chamadas de estilo removidas:', n_chamadas)
 ```
 
-- [ ] **Passo 3: rodar o script**
+- [x] **Passo 3: rodar o script**
 
 Rodar: `python -I <scratchpad>/dividir_drone.py .`
 Esperado: as 4 listas batendo com a tabela acima, `drone-fazenda.js` com exatamente os 22 nomes listados, e "conferência ok". Se a lista do fazenda tiver nome fora da tabela, parar e conferir.
 
-- [ ] **Passo 4: conferir que as 4 chamadas sumiram e nada mais**
+- [x] **Passo 4: conferir que as 4 chamadas sumiram e nada mais**
 
 ```bash
 grep -n "drEstilo\|drPrevEstilo" app/drone-*.js     # esperado: nada
 grep -c "drone-css\|drone-previa-css" app/drone-*.js  # esperado: 0 em todos
 ```
 
-- [ ] **Passo 5: apagar `drone.js` e religar `index.html`**
+- [x] **Passo 5: apagar `drone.js` e religar `index.html`**
 
 ```bash
 git rm app/drone.js
@@ -192,7 +192,7 @@ E logo depois da linha 659 (`<script src=".../maplibre-gl.js"></script>`) acresc
 <link rel="stylesheet" href="drone.css">
 ```
 
-- [ ] **Passo 6: religar o teste puro** em `tests/app/drone_puro.test.js:9`, trocando a linha única por:
+- [x] **Passo 6: religar o teste puro** em `tests/app/drone_puro.test.js:9`, trocando a linha única por:
 
 ```js
 for (const f of ['drone-dados', 'drone-previa', 'drone-inicio', 'drone-fazenda'])
@@ -201,17 +201,17 @@ for (const f of ['drone-dados', 'drone-previa', 'drone-inicio', 'drone-fazenda']
 
 Atualizar também o comentário da linha 1 se citar `drone.js` (hoje não cita).
 
-- [ ] **Passo 7: rodar todos os testes**
+- [x] **Passo 7: rodar todos os testes**
 
 Rodar: `node --test tests/app/*.test.js`
 Esperado: 46 passam, 0 falham. `git diff main -- tests/` mostra só a troca da linha 9.
 
-- [ ] **Passo 8: sintaxe dos 4 arquivos isolados**
+- [x] **Passo 8: sintaxe dos 4 arquivos isolados**
 
 Rodar: `for f in app/drone-*.js; do node --check "$f" || echo FALHOU $f; done`
 Esperado: nenhuma falha.
 
-- [ ] **Passo 9: commit**
+- [x] **Passo 9: commit**
 
 ```bash
 git add app/drone-dados.js app/drone-previa.js app/drone-inicio.js app/drone-fazenda.js app/drone.css app/index.html tests/app/drone_puro.test.js
@@ -222,12 +222,12 @@ git commit -m "Drone S1: divide drone.js em dados/previa/inicio/fazenda e drone.
 
 **Arquivos:** nenhum alterado (só se aparecer erro, e aí volta para a S1.1).
 
-- [ ] **Passo 1: teste de tela automático**
+- [ ] **Passo 1: teste de tela automático** — PENDENTE (usuário): precisa da conta de teste `HUB_CONTA_TESTE`, que o Claude não pôde ler
 
 Conferir as regras no topo de `tests/app/teste_drone_tela.py` (fazenda 10974 sem solicitação aberta e fila do agente vazia) e rodar: `python tests/app/teste_drone_tela.py`
 Esperado: termina sem falha. Ele gera uma prévia e descarta; nada é publicado.
 
-- [ ] **Passo 2: conferência no navegador** (servidor local na pasta `app/` do worktree, console aberto)
+- [ ] **Passo 2: conferência no navegador** — feito sem login: os 4 scripts e o drone.css carregam, as funções e os `const` (DR, DRP, DR_OBS_COR) existem, nenhum erro no console (só o favicon do servidor local). PENDENTE (usuário): o roteiro logado abaixo (servidor local na pasta `app/` do worktree, console aberto)
 
 Conferir, sem nenhum erro no console:
 - a aba Drone abre a fila (Início) com as cores e o layout de antes;
@@ -247,7 +247,7 @@ git commit -m "Plano S1: caixas marcadas"
 
 ### Fechamento
 
-- [ ] `verification-before-completion` (testes rodados agora, saída lida).
-- [ ] Revisão do diff (`requesting-code-review`): conferir em especial que `git diff --stat` mostra o `drone.js` saindo com 867 linhas e os novos somando 867 − linhas de estilo + 5 cabeçalhos.
+- [x] `verification-before-completion` (testes rodados agora, saída lida).
+- [x] Revisão do diff (`requesting-code-review`): conferir em especial que `git diff --stat` mostra o `drone.js` saindo com 867 linhas e os novos somando 867 − linhas de estilo + 5 cabeçalhos.
 - [ ] **Ok do usuário**, merge na main, push (troca de conta do `gh`), remover o worktree e o branch.
 - [ ] Atualizar a memória `project_drone_telas_redesenho.md` (estado: S1 feita; próxima S2).
