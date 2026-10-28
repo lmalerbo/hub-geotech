@@ -657,6 +657,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link rel="stylesheet" href="drone.css">
 </head>
 <body>
 
@@ -3029,7 +3030,10 @@ MOD_AC['consultas']='var(--t2)';
 sb.auth.getSession().then(({data})=>{if(data.session)abrirHub();});
 </script>
 <script src="usuarios.js"></script>
-<script src="drone.js"></script>
+<script src="drone-dados.js"></script>
+<script src="drone-previa.js"></script>
+<script src="drone-inicio.js"></script>
+<script src="drone-fazenda.js"></script>
 <script src="projetos.js"></script>
 </body>
 </html>

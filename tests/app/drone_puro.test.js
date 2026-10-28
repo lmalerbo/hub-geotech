@@ -6,7 +6,8 @@ const vm = require('vm');
 
 const ctx = { document: {}, sb: {}, console };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(__dirname + '/../../app/drone.js', 'utf8'), ctx);
+for (const f of ['drone-dados', 'drone-previa', 'drone-inicio', 'drone-fazenda'])
+  vm.runInContext(fs.readFileSync(__dirname + '/../../app/' + f + '.js', 'utf8'), ctx);
 
 test('Catação pode gerar de novo depois de descartar ou dar erro', () => {
   assert.strictEqual(ctx.drPodeGerarCatacao({ status: 'solicitado' }), true);
