@@ -228,6 +228,26 @@ async function drCarregarPainel(){
   else drPollParar();
 }
 
+// Abre a área da fazenda no lugar do Início (o Início não é remontado; ao voltar, só recarrega).
+// op.obstaculos só marca DR.abrirObst (a S5 usa para abrir a chave de obstáculos).
+function driAbrirFazenda(cod,tipo,op){
+  DR.abrirObst=!!(op&&op.obstaculos);
+  document.getElementById('dri').hidden=true;
+  document.getElementById('dr-trab').hidden=false;
+  document.getElementById('dr-busca').value='';
+  document.getElementById('dr-busca-res').innerHTML='';
+  drPollParar();
+  drAbrirFazenda(Number(cod),tipo);
+  window.scrollTo(0,0);
+}
+function driVoltar(){
+  drPollParar();drMapaDescartar();
+  DR.cod=null;
+  document.getElementById('dri').hidden=false;
+  document.getElementById('dr-trab').hidden=true;
+  drCarregarPainel();
+}
+
 // Faixa Atenção: gaveta à direita com as fazendas da categoria. X, Esc ou fundo fecham; o foco volta ao botão da faixa.
 const DRI_ATENCAO_TIT={incompletas:'Normais incompletas',obstaculos_antigos:'Obstáculos com mais de 24 meses',fora_da_base:'Talhões fora da Base'};
 let driFocoAtencao=null;
@@ -271,7 +291,7 @@ async function drBuscar(txt){
   const q=/^\d+$/.test(txt)?sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',Number(txt))
     :sb.from('fazendas').select('cod_faz,nome').ilike('nome',`%${txt}%`).limit(12);
   const {data}=await q;
-  alvo.innerHTML=`<div class="dr-grp">${(data||[]).map(f=>`<div class="dr-it" onclick="drAbrirFazenda(${f.cod_faz})"><span class="dr-cod">${f.cod_faz}</span><div>${esc(f.nome)}</div></div>`).join('')||'<div class="dr-msg">nenhuma fazenda</div>'}</div>`;
+  alvo.innerHTML=`<div class="dr-grp">${(data||[]).map(f=>`<div class="dr-it" onclick="driAbrirFazenda(${f.cod_faz})"><span class="dr-cod">${f.cod_faz}</span><div>${esc(f.nome)}</div></div>`).join('')||'<div class="dr-msg">nenhuma fazenda</div>'}</div>`;
 }
 
 async function drCancelar(id){
@@ -325,7 +345,7 @@ function drNovaSolicitacao(){
     try{
       await drRpc('drone_solicitar',{p_cod_faz:Number(v.cod),p_tipo:'normal',p_data_desejada:v.data||null,p_observacao:v.obs||null});
       await fim(true);
-      fechar();await drCarregarPainel();drAbrirFazenda(Number(v.cod),'normal');
+      fechar();await drCarregarPainel();driAbrirFazenda(Number(v.cod),'normal');
     }catch(e){fim(false);fundo.querySelector('#drs-err').textContent=e.message;}
   };
   fundo.querySelector('#drs-busca').focus();
@@ -333,5 +353,5 @@ function drNovaSolicitacao(){
 
 function drIrFazenda(cod){
   trocar('drone',document.querySelector(`.ni[onclick*="'drone'"]`));
-  drAbrirFazenda(Number(cod));
+  driAbrirFazenda(Number(cod));
 }

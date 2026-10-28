@@ -68,6 +68,8 @@
 .dri-linha:hover{background:#f6f8fb}
 .dri-linha-n{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dri-linha-x{font-size:12px;color:#6b6875}
+.dri-voltar{border:1px solid var(--bd2);background:#fff;border-radius:10px;padding:7px 14px;font:inherit;font-size:13px;color:var(--t2);cursor:pointer;margin-bottom:12px}
+.dri-voltar:hover{background:#f6f8fb}
 @media (max-width:900px){.dri-cols{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){.dri-trilho i,.dri-vivo,.dri-voa,.dri-gaveta{animation:none}.dri-card{transition:none}.dri-card:hover{transform:none}}
 .dr-grp{background:var(--sf);border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 1px 3px #0000000d}

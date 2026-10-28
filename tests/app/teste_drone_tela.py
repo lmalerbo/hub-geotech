@@ -61,12 +61,13 @@ try:
         pg.fill('#f-email', conta['email']); pg.fill('#f-pass', conta['senha']); pg.click('#btn-entrar')
         pg.wait_for_function('typeof EU!=="undefined" && EU && EU.perms && EU.perms.drone', timeout=60000)
         pg.evaluate("trocar('drone',document.querySelector('.ni[onclick*=\"drone\"]'))")
-        pg.wait_for_selector('#dr-fila .dr-grp', timeout=20000)
-        confere(True, 'fila carregou')
+        pg.wait_for_selector('#dri .dri-col', timeout=20000)
+        confere(pg.locator('#dri .dri-col').count() == 3, 'Início com três colunas')
         pg.fill('#dr-busca', '10974'); pg.wait_for_selector('#dr-busca-res .dr-it'); pg.click('#dr-busca-res .dr-it')
         pg.wait_for_selector('#dr-map canvas', timeout=20000)
         pg.wait_for_timeout(1500)
         confere(pg.locator('.dr-doc').count() == 2, 'cartões Normal e Catação')
+        confere(pg.locator('#dri').is_hidden() and pg.locator('#dr-trab').is_visible(), 'Início escondido e fazenda aberta')
         # S2.2: o mapa não é recriado pelo polling nem pela troca Normal/Catação
         pg.evaluate("window.__mapa=DR.mapa")
         pg.evaluate("async()=>{await drCarregarFazenda();await drCarregarFazenda();}")
@@ -104,6 +105,10 @@ try:
         pg.click('#confirma-sim')
         pg.wait_for_selector('text=Nova revisão', timeout=15000)
         confere(True, 'prévia descartada, seleção liberada')
+        # ← Início volta às três colunas, sem a 10974 em "A analisar"
+        pg.click('.dri-voltar'); pg.wait_for_selector('#dri', state='visible', timeout=10000)
+        confere(pg.locator('#dri .dri-col').count() == 3 and pg.locator('#dri .dri-col[data-col="analisar"] .dri-card[data-cod="10974"]').count() == 0,
+                'Início volta com três colunas e sem a 10974 em A analisar')
         canc = pg.evaluate("""async s=>{const {error}=await sb.rpc('drone_cancelar',
             {p_solicitacao_id:s,p_motivo:'teste automatizado'});return error?error.message:''}""", sol_criada)
         st = b.selecionar('drone_solicitacoes', 'status,cancelado_motivo', {'id': f'eq.{sol_criada}'})[0]

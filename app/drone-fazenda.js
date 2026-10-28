@@ -3,7 +3,6 @@
 async function drAbrirFazenda(cod,doc){
   DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   drPollParar();drMapaDescartar();DR.ass=null;
-  document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
   const pnl=document.getElementById('dr-faz');
   DR.voo=null;
   Mo.carregando(pnl);await drCarregarFazenda();Mo.pronto(pnl);
