@@ -49,8 +49,27 @@
 .dri-trilho i{position:absolute;top:0;bottom:0;left:0;width:40%;background:linear-gradient(90deg,transparent,#5b6ee8,transparent);transform:translateX(-100%);animation:dri-corre 1.6s linear infinite}
 @keyframes dri-corre{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
 #dri :focus-visible,#dr-trab :focus-visible{outline:2px solid var(--drones);outline-offset:2px}
+.dri-atencao{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.dri-atl{font-size:12px;font-weight:600;color:#6b6875;margin-right:4px}
+.dri-at{display:inline-flex;align-items:center;gap:6px;border:0;background:#fdf4e6;color:var(--t1);font:inherit;font-size:12.5px;border-radius:10px;padding:6px 12px;cursor:pointer}
+.dri-at .ico{font-size:18px;color:#b36b00}
+.dri-at b{font-weight:700}
+.dri-at.dri-zero{opacity:.5}
+.dri-ajuda{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#6b6875;text-decoration:none}
+.dri-ajuda .ico{font-size:16px}
+.dri-fundo{position:fixed;inset:0;background:rgb(20 24 30/.25);z-index:60}
+.dri-gaveta{position:fixed;top:0;right:0;bottom:0;width:min(420px,94vw);background:#fff;box-shadow:-12px 0 40px rgb(0 0 0/.14);display:flex;flex-direction:column;animation:dri-gav .2s ease-out}
+@keyframes dri-gav{from{transform:translateX(100%)}}
+.dri-gaveta>header{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--bd)}
+.dri-gaveta h2{font-size:15px;font-weight:600;margin-right:auto}
+.dri-gav-n{font-size:12px;color:#6b6875;padding:10px 18px 0}
+.dri-gav-l{overflow:auto;padding:8px 10px 18px;display:flex;flex-direction:column;gap:4px}
+.dri-linha{display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;font:inherit;font-size:13px;padding:8px;border-radius:10px;cursor:pointer;width:100%}
+.dri-linha:hover{background:#f6f8fb}
+.dri-linha-n{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dri-linha-x{font-size:12px;color:#6b6875}
 @media (max-width:900px){.dri-cols{grid-template-columns:minmax(0,1fr)}}
-@media (prefers-reduced-motion:reduce){.dri-trilho i,.dri-vivo,.dri-voa{animation:none}.dri-card{transition:none}.dri-card:hover{transform:none}}
+@media (prefers-reduced-motion:reduce){.dri-trilho i,.dri-vivo,.dri-voa,.dri-gaveta{animation:none}.dri-card{transition:none}.dri-card:hover{transform:none}}
 .dr-grp{background:var(--sf);border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 1px 3px #0000000d}
 .dr-gh{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px;padding:2px 4px 8px}
 .dr-n{background:var(--s2);border-radius:20px;padding:1px 9px;font-size:12px}

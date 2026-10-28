@@ -228,6 +228,42 @@ async function drCarregarPainel(){
   else drPollParar();
 }
 
+// Faixa Atenção: gaveta à direita com as fazendas da categoria. X, Esc ou fundo fecham; o foco volta ao botão da faixa.
+const DRI_ATENCAO_TIT={incompletas:'Normais incompletas',obstaculos_antigos:'Obstáculos com mais de 24 meses',fora_da_base:'Talhões fora da Base'};
+let driFocoAtencao=null;
+function driAtencaoAbrir(chave){
+  if(document.getElementById('dri-fundo'))return;
+  const itens=driAtencaoItens(DR.painel,chave);
+  driFocoAtencao=document.querySelector(`.dri-at[data-chave="${chave}"]`);
+  const fundo=document.createElement('div');
+  fundo.id='dri-fundo';fundo.className='dri-fundo';
+  const linhas=itens.map((it,i)=>`<button class="dri-linha" data-i="${i}"><span class="dr-cod">${esc(it.cod_faz)}</span><span class="dri-linha-n">${esc(it.fazenda)}</span><span class="dri-linha-x">${esc(it.extra)}</span></button>`).join('');
+  fundo.innerHTML=`<aside class="dri-gaveta" id="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby="dri-gav-t">
+    <header><h2 id="dri-gav-t">${esc(DRI_ATENCAO_TIT[chave])}</h2><button class="dr-x" id="dri-gav-x" aria-label="Fechar"><span class="ico">close</span></button></header>
+    <p class="dri-gav-n">${itens.length} ${itens.length===1?'fazenda':'fazendas'}</p>
+    <div class="dri-gav-l">${linhas||'<p class="dri-vazio">Nenhuma fazenda nesta lista.</p>'}</div>
+  </aside>`;
+  document.body.appendChild(fundo);
+  fundo.onclick=e=>{if(e.target===fundo)driAtencaoFechar();};
+  fundo.querySelector('#dri-gav-x').onclick=driAtencaoFechar;
+  fundo.querySelectorAll('.dri-linha').forEach(b=>b.onclick=()=>{
+    const it=itens[Number(b.dataset.i)];
+    driAtencaoFechar();
+    driAbrirFazenda(it.cod_faz,null,{obstaculos:chave==='obstaculos_antigos'});
+  });
+  fundo._esc=e=>{if(e.key==='Escape'){e.preventDefault();driAtencaoFechar();}};
+  document.addEventListener('keydown',fundo._esc);
+  fundo.querySelector('#dri-gav-x').focus();
+}
+function driAtencaoFechar(){
+  const fundo=document.getElementById('dri-fundo');
+  if(!fundo)return;
+  document.removeEventListener('keydown',fundo._esc);
+  fundo.remove();
+  if(driFocoAtencao&&driFocoAtencao.focus)driFocoAtencao.focus();
+  driFocoAtencao=null;
+}
+
 async function drBuscar(txt){
   const alvo=document.getElementById('dr-busca-res');
   txt=(txt||'').trim();
