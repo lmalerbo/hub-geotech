@@ -43,7 +43,7 @@ Os três laços (varredura, pulso, trilho) só existem enquanto há geração em
 
 ### Tarefa S2.1: regras puras (assinaturas, resposta válida, ocupado, talhões em geração)
 
-- [ ] **Passo 1: testes que falham** (fim de `tests/app/drone_puro.test.js`)
+- [x] **Passo 1: testes que falham** (fim de `tests/app/drone_puro.test.js`)
 
 ```js
 test('assinaturas: painel ignora enviado_em e muda com o status da geração', () => {
@@ -93,8 +93,8 @@ test('talhões em geração saem do escopo, só com a geração em andamento', (
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar.** `node --test tests/app/*.test.js` → FAIL (`drAssinaturas is not a function` etc.).
-- [ ] **Passo 3: implementar** (fim de `app/drone-dados.js`)
+- [x] **Passo 2: rodar e ver falhar.** `node --test tests/app/*.test.js` → FAIL (`drAssinaturas is not a function` etc.).
+- [x] **Passo 3: implementar** (fim de `app/drone-dados.js`)
 
 ```js
 // ── motor de atualização (spec §4) ───────────────────────────────────────
@@ -123,14 +123,14 @@ function drTalhoesGerando(ger){
 }
 ```
 
-- [ ] **Passo 4: rodar e ver passar** (51 testes).
-- [ ] **Passo 5: commit** — `Drone S2.1: assinaturas, resposta valida, ocupado e talhoes em geracao (puros)`
+- [x] **Passo 4: rodar e ver passar** (51 testes).
+- [x] **Passo 5: commit** — `Drone S2.1: assinaturas, resposta valida, ocupado e talhoes em geracao (puros)`
 
 ### Tarefa S2.2: desenho por partes e mapa criado uma vez
 
 Arquivos: `app/drone-fazenda.js`, `app/drone-previa.js` (classe `drp-gerando`), `tests/app/teste_drone_tela.py`.
 
-- [ ] **Passo 1: teste de tela** (em `teste_drone_tela.py`, logo depois de abrir a fazenda 10974 e antes de gerar; e o do motivo logo depois que a prévia fica pronta, antes de descartar)
+- [x] **Passo 1: teste de tela** (em `teste_drone_tela.py`, logo depois de abrir a fazenda 10974 e antes de gerar; e o do motivo logo depois que a prévia fica pronta, antes de descartar)
 
 ```python
         # S2.2: o mapa não é recriado pelo polling nem pela troca Normal/Catação
@@ -148,7 +148,7 @@ Arquivos: `app/drone-fazenda.js`, `app/drone-previa.js` (classe `drp-gerando`), 
 ```
 As chamadas existentes a `drRecarregarFazenda()` no teste passam a `drCarregarFazenda()`.
 
-- [ ] **Passo 2: reescrever o ciclo em `drone-fazenda.js`**
+- [x] **Passo 2: reescrever o ciclo em `drone-fazenda.js`**
   - `drRecarregarFazenda` → **`drCarregarFazenda`** (renomear também todas as chamadas em `drone-fazenda.js`). No `select` de `drone_geracoes`, acrescentar `escopo`. Depois de cada `await` de dados, antes de gravar em `DR`: `if(!drRespostaValida(cod,DR.cod))return;`. No `catch`, só escrever o erro se `drRespostaValida(cod,DR.cod)`. No fim, no lugar de `drRender()`:
     ```js
       drRedesenhar();
@@ -196,12 +196,12 @@ As chamadas existentes a `drRecarregarFazenda()` no teste passam a `drCarregarFa
   - Apagar `drRender`, `drPintarMapa`, `drAtualizarFontesMapa`. Em `drone-dados.js`, apagar `drMapaReaproveitavel` e o teste dela; tirar `poll` do objeto `DR`.
   - `drone-previa.js`, `drPrevHtml`: a caixa de "Gerando prévia…" ganha a classe `drp-gerando` (`<div class="dr-box drp-gerando">`).
   - Até a S2.5, `drAnimGeracao` e `drPulsarGeracao` existem como `function drAnimGeracao(){}` e `function drPulsarGeracao(){}`.
-- [ ] **Passo 3:** `node --test tests/app/*.test.js` passa; `grep -n "drRender\|drRecarregarFazenda\|drPintarMapa\|DR.poll\|drMapaReaproveitavel" app/ tests/` não acha nada.
-- [ ] **Passo 4: commit** — `Drone S2.2: desenho por partes, mapa criado uma vez por fazenda, resposta velha descartada`
+- [x] **Passo 3:** `node --test tests/app/*.test.js` passa; `grep -n "drRender\|drRecarregarFazenda\|drPintarMapa\|DR.poll\|drMapaReaproveitavel" app/ tests/` não acha nada.
+- [x] **Passo 4: commit** — `Drone S2.2: desenho por partes, mapa criado uma vez por fazenda, resposta velha descartada`
 
 ### Tarefa S2.3: polling único
 
-- [ ] **Passo 1: teste que falha** (fim de `drone_puro.test.js`, num contexto `vm` próprio com timers falsos)
+- [x] **Passo 1: teste que falha** (fim de `drone_puro.test.js`, num contexto `vm` próprio com timers falsos)
 
 ```js
 test('polling: um timer só, para e pausa com a aba oculta ou fora da tela', () => {
@@ -226,8 +226,8 @@ test('polling: um timer só, para e pausa com a aba oculta ou fora da tela', () 
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar.**
-- [ ] **Passo 3: implementar** (fim de `drone-dados.js`)
+- [x] **Passo 2: rodar e ver falhar.**
+- [x] **Passo 3: implementar** (fim de `drone-dados.js`)
 
 ```js
 // Polling único (spec §4): um timer só. Pausa com a aba oculta ou fora da view
@@ -245,12 +245,12 @@ if(document.addEventListener)document.addEventListener('visibilitychange',drPoll
 ```
 Em `app/index.html`, `trocar()`, logo antes de `if(v==='drone')droneIniciar();`: `if(typeof drPollVisivel==='function')drPollVisivel(v==='drone');`
 
-- [ ] **Passo 4: rodar e ver passar.**
-- [ ] **Passo 5: commit** — `Drone S2.3: polling unico que pausa com a aba oculta ou fora da tela`
+- [x] **Passo 4: rodar e ver passar.**
+- [x] **Passo 5: commit** — `Drone S2.3: polling unico que pausa com a aba oculta ou fora da tela`
 
 ### Tarefa S2.4: animações novas em `motion.js` / `motion.css`
 
-- [ ] **Passo 1: vitrine e testes que falham.** Em `app/motion-demo.html`, nova seção (antes de `Mo.voo`):
+- [x] **Passo 1: vitrine e testes que falham.** Em `app/motion-demo.html`, nova seção (antes de `Mo.voo`):
 ```html
 <section class="card"><h2>Mo.trilho / Mo.varredura / Mo.mover</h2>
   <div id="gerando" style="padding:8px;border:1px solid #e3e6ea;border-radius:8px">Gerando prévia…</div>
@@ -285,8 +285,8 @@ Em `tests/app/teste_movimento.py`, dentro de `rodar` (antes de `sem erro de JS`)
 ```
 (`pg.evaluate("window.__mov")` espera a Promise.)
 
-- [ ] **Passo 2: rodar e ver falhar.** `python tests/app/teste_movimento.py`
-- [ ] **Passo 3: implementar.** No contrato do topo de `motion.js`, acrescentar:
+- [x] **Passo 2: rodar e ver falhar.** `python tests/app/teste_movimento.py`
+- [x] **Passo 3: implementar.** No contrato do topo de `motion.js`, acrescentar:
 ```
 //   Mo.trilho(el)                → {parar()}  faixa de luz num trilho fino (espera de geração)
 //   Mo.varredura(el)             → {parar()}  véu e faixa varrendo el (mapa), sem tocar no canvas
@@ -340,12 +340,12 @@ CSS em `motion.css` (antes do bloco `@media (prefers-reduced-motion:reduce)`):
 ```
 e, dentro do bloco `prefers-reduced-motion` já existente: `.mo-trilho::after,.mo-varr i{animation:none;display:none}.mo-varr{animation:none;transition:none}`.
 
-- [ ] **Passo 4: rodar e ver passar** (com e sem menos movimento). `node --test` continua verde.
-- [ ] **Passo 5: commit** — `Movimento: Mo.trilho, Mo.varredura e Mo.mover (FLIP), com menos movimento`
+- [x] **Passo 4: rodar e ver passar** (com e sem menos movimento). `node --test` continua verde.
+- [x] **Passo 5: commit** — `Movimento: Mo.trilho, Mo.varredura e Mo.mover (FLIP), com menos movimento`
 
 ### Tarefa S2.5: ligar na tela da fazenda
 
-- [ ] **Passo 1: implementar em `drone-fazenda.js`** (no lugar dos stubs da S2.2)
+- [x] **Passo 1: implementar em `drone-fazenda.js`** (no lugar dos stubs da S2.2)
 ```js
 // Espera da geração: varredura no mapa, pulso nos talhões do escopo e trilho no painel.
 function drAnimGeracao(){
@@ -385,12 +385,20 @@ function drFadeCamada(id,prop,final){
 }
 ```
 Em `drObstaculos`, as camadas entram com opacidade 0 (`fill-opacity:0` em `obs-buf`, `line-opacity:0` em `obs-buf-l`/`obs-lin`, `circle-opacity:0` em `obs-pt`) e, depois dos `addLayer`: `drFadeCamada('obs-buf','fill-opacity',.15); drFadeCamada('obs-buf-l','line-opacity',1); drFadeCamada('obs-lin','line-opacity',1); drFadeCamada('obs-pt','circle-opacity',1);`. Como `drObstaculos` é assíncrona, conferir `DR.mapa===m` depois do `await` antes de adicionar.
-- [ ] **Passo 2: verificação.** `node --test tests/app/*.test.js`; `python tests/app/teste_movimento.py`; carregar `app/index.html` sem login (servidor local + Playwright) e conferir zero erro de JS.
-- [ ] **Passo 3: commit** — `Drone S2.5: varredura, pulso e trilho durante a geracao; fade da camada de obstaculos`
+- [x] **Passo 2: verificação.** `node --test tests/app/*.test.js`; `python tests/app/teste_movimento.py`; carregar `app/index.html` sem login (servidor local + Playwright) e conferir zero erro de JS.
+- [x] **Passo 3: commit** — `Drone S2.5: varredura, pulso e trilho durante a geracao; fade da camada de obstaculos`
 
 ### Fechamento
 
-- [ ] `verification-before-completion` (saídas dos testes na mensagem ao usuário).
-- [ ] `requesting-code-review` sobre `main...drone-s2`, com o Foco da revisão acima.
+- [x] `verification-before-completion` (saídas dos testes na mensagem ao usuário).
+- [x] `requesting-code-review` sobre `main...drone-s2`, com o Foco da revisão acima.
 - [ ] Usuário roda `tests/app/teste_drone_tela.py` (com `HUB_CONTA_TESTE`, 10974 livre) e confere logado: abrir fazenda, trocar Normal/Catação sem piscar, gerar prévia (varredura + pulso + trilho), descartar, ligar obstáculos (fade).
 - [ ] **Ok do usuário** → merge na main, push (troca de conta do `gh`), remover worktree/branch, atualizar a memória `project_drone_telas_redesenho`.
+
+## Registro da execução (28/10)
+
+- S2.1+S2.3: camada 1 — nemotron-3-ultra (OpenRouter grátis) — aprovada com ajuste (comparação de arrays entre contextos `vm` no teste; o executor estourou o tempo antes de commitar).
+- S2.4: camada 2 — Haiku — aprovada de primeira.
+- S2.2+S2.5: camada 2 — Haiku — aprovada; corrigido na revisão: estado `ger` dos talhões só era aplicado com mudança do mapa; mapa antigo não era removido após erro.
+- Revisão (Sonnet), corrigidos: ciclo antigo da mesma fazenda sobrescrevia o novo (falso "Publicado"); erro de rede no polling apagava o mapa e matava o polling; clicar no documento ativo deixava seleção fantasma; `drObstaculos` concorrente/antes do `load`; pulso pintando com a view escondida.
+- Anotados para depois: assinatura do mapa serializa todas as geometrias a cada 5 s (trocar por algo mais barato se pesar em fazenda grande); painel antigo clicável durante a carga de outra fazenda (já existia antes da S2).

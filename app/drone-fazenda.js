@@ -10,37 +10,42 @@ async function drAbrirFazenda(cod,doc){
 }
 
 // Uma atualização por vez: resposta de outra fazenda (ou de um ciclo antigo) é descartada.
+// A chave inclui o número do ciclo: um poll que estava em voo quando uma ação recarregou também é descartado.
 async function drCarregarFazenda(){
-  const cod=DR.cod;
+  const cod=DR.cod,ciclo=DR.ciclo=(DR.ciclo||0)+1,chave=()=>DR.cod+':'+DR.ciclo,minha=cod+':'+ciclo;
   try{
     const [geo,faz,sols,obst]=await Promise.all([
       drRpc('drone_mapa_fazenda',{p_cod_faz:cod}),
       sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single(),
       sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
       sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em').eq('cod_faz',cod).eq('vigente',true)]);
-    if(!drRespostaValida(cod,DR.cod))return;
+    if(!drRespostaValida(minha,chave()))return;
     const sIds=(sols.data||[]).map(s=>s.id);
     const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo,escopo')
       .in('solicitacao_id',sIds).neq('status','descartada').neq('status','publicada').order('id',{ascending:false}):{data:[]};
-    if(!drRespostaValida(cod,DR.cod))return;
+    if(!drRespostaValida(minha,chave()))return;
     const env=await sb.from('drone_envios').select('id,tipo,status,erro,enviado_em').eq('cod_faz',cod).order('id',{ascending:false}).limit(5);
-    if(!drRespostaValida(cod,DR.cod))return;
+    if(!drRespostaValida(minha,chave()))return;
     const proj=await sb.from('projetos').select('id').eq('modulo_id','drone').eq('tipo','individual').eq('cod_faz',cod);
-    if(!drRespostaValida(cod,DR.cod))return;
+    if(!drRespostaValida(minha,chave()))return;
     const revs=proj.data&&proj.data.length?await sb.from('projeto_revisoes').select('numero,documento,motivo,criado_em')
       .eq('projeto_id',proj.data[0].id).order('numero',{ascending:false}):{data:[]};
-    if(!drRespostaValida(cod,DR.cod))return;
+    if(!drRespostaValida(minha,chave()))return;
     DR.geo=geo;DR.info={faz:faz.data,sols:sols.data||[],obst:obst.data||[],ger:ger.data||[],envios:env.data||[],revs:revs.data||[]};
     const ass=drAssinaturaObst(DR.info.obst);
     if(ass!==DR.obstAss){DR.obstAss=ass;DR.obstGeo=null;}
   }catch(e){
-    if(drRespostaValida(cod,DR.cod))document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;
+    if(!drRespostaValida(minha,chave()))return;
+    // Já desenhada: mantém o mapa, mostra o erro no painel e tenta de novo no próximo ciclo.
+    if(DR.ass){drErro(e);drPollIniciar(drCicloFazenda,5000);}
+    else document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;
     return;
   }
   drRedesenhar();
-  if(drOcupado(DR.info,drAtual().ger))drPollIniciar(async()=>{await drCarregarFazenda();drCarregarPainel();},5000);
+  if(drOcupado(DR.info,drAtual().ger))drPollIniciar(drCicloFazenda,5000);
   else drPollParar();
 }
+async function drCicloFazenda(){await drCarregarFazenda();drCarregarPainel();}
 
 // Desenha só as partes que mudaram desde o ciclo anterior (assinaturas em drAssinaturas).
 function drRedesenhar(){
@@ -48,7 +53,7 @@ function drRedesenhar(){
   DR.ass=ass;drDesenhar(partes);
 }
 // Troca Normal/Catação: o mapa fica, só as fontes e a cor mudam.
-function drTrocarDoc(doc){DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
+function drTrocarDoc(doc){if(doc===DR.doc)return;DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
 function drDesenhar(partes){
   const tem=p=>partes.includes(p);
   if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drMapaCriar();drPainelLateral();}
@@ -105,7 +110,7 @@ function drPulsarGeracao(on){
   const t0=performance.now();let ult=0;
   const passo=t=>{
     if(DR.mapa!==m||!m.getLayer('tal-l')){DR.pulso=null;return;}
-    if(t-ult>=50){ult=t;
+    if(t-ult>=50&&!DR_POLL.fora){ult=t;                      // fora da view do Drone: não pinta
       const op=.35+.65*(.5+.5*Math.cos((t-t0)/1600*2*Math.PI));
       m.setPaintProperty('tal-l','line-opacity',['case',['boolean',['feature-state','ger'],false],op,1]);}
     DR.pulso=requestAnimationFrame(passo);
@@ -389,13 +394,15 @@ async function drDescartar(id){
 }
 async function drObstaculos(ligar){
   DR.mostrarObst=ligar;
-  const m=DR.mapa;if(!m)return;
-  for(const id of ['obs-buf','obs-buf-l','obs-lin','obs-pt'])if(m.getLayer(id))m.removeLayer(id);
-  if(m.getSource('obs'))m.removeSource('obs');
+  const m=DR.mapa;if(!m||!m.getSource('tal'))return;         // mapa ainda carregando: o 'load' chama de novo
+  const tirar=()=>{for(const id of ['obs-buf','obs-buf-l','obs-lin','obs-pt'])if(m.getLayer(id))m.removeLayer(id);
+    if(m.getSource('obs'))m.removeSource('obs');};
+  tirar();
   if(!ligar)return;
   try{if(!DR.obstGeo)DR.obstGeo=await drRpc('drone_obstaculos_mapa',{p_cod_faz:DR.cod});}
   catch(e){drErro(e);return;}
-  if(DR.mapa!==m)return;                                     // a fazenda mudou durante o await
+  if(DR.mapa!==m||!DR.mostrarObst)return;                    // fazenda mudou ou desligaram durante o await
+  tirar();                                                   // outra chamada pode ter adicionado no meio
   const cor=['match',['get','classe'],15,DR_OBS_COR[15],25,DR_OBS_COR[25],DR_OBS_COR[50]];
   m.addSource('obs',{type:'geojson',data:DR.obstGeo});
   m.addLayer({id:'obs-buf',type:'fill',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'fill-color':cor,'fill-opacity':0}});

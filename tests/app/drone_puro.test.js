@@ -105,6 +105,7 @@ test('partes mudadas: tudo na primeira vez, só o que mudou depois', () => {
 test('resposta de outra fazenda é descartada', () => {
   assert.strictEqual(ctx.drRespostaValida(10372, 10156), false);
   assert.strictEqual(ctx.drRespostaValida(10372, 10372), true);
+  assert.strictEqual(ctx.drRespostaValida('10372:3', '10372:4'), false);   // ciclo antigo da mesma fazenda
 });
 
 test('ocupado: geração em andamento, publicação pedida ou envio na fila', () => {
