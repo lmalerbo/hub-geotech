@@ -200,7 +200,7 @@ async function droneIniciar(){
       <div id="dri-erro" class="dr-err" hidden></div>
       <section class="dri-cols">
         <div class="dri-col" data-col="solicitacoes"><header class="dri-ch"><span class="ico">inbox</span><h2>Solicitações</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
-        <div class="dri-col" data-col="desenvolvimento"><header class="dri-ch"><span class="dri-vivo" aria-hidden="true"></span><h2>Em desenvolvimento</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
+        <div class="dri-col" data-col="desenvolvimento"><header class="dri-ch"><span class="dri-ponto" aria-hidden="true"></span><h2>Em desenvolvimento</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
         <div class="dri-col" data-col="analisar"><header class="dri-ch"><span class="ico">fact_check</span><h2>A analisar</h2><span class="dri-n">0</span></header><div class="dri-lista"></div><p class="dri-pub7" id="dri-pub7"></p></div>
       </section>
       <div class="dri-atencao"><span class="dri-atl">Atenção na base</span>${DRI_ATENCAO.map(([k,txt,ico])=>`<button class="dri-at" data-chave="${k}" onclick="driAtencaoAbrir('${k}')"><span class="ico">${ico}</span><b>0</b> ${txt}</button>`).join('')}
