@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drone · Início (demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="drone.css">
+<style>
+/* Demo do Início do Drone. Dados fictícios, nada é gravado. O visual vem do primeiro <style> do index (injetado abaixo). */
+html,body{height:auto!important;overflow:auto!important}
+body{background:var(--bg);margin:0;padding:16px}
+#v-drone{max-width:1280px;margin:0 auto}
+</style>
+</head>
+<body>
+<div id="v-drone" class="view on"><div id="drone-root"></div></div>
+<script src="motion.js"></script>
+<script src="drone-dados.js"></script>
+<script src="drone-inicio.js"></script>
+<script>
+// Globais falsas do app (o Início só usa estas). Os dados vêm de PAINEL.
+var Q=new URLSearchParams(location.search);
+var AGORA=Date.now();
+var h=min=>new Date(AGORA-min*60000).toISOString();
+var dia=d=>{const x=new Date(AGORA+d*864e5);return [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');};
+var EU={id:'u1',niveis:{drone:'editor'}};
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function podeEditar(){return !/editar=0/.test(location.search);}
+function trocar(){}
+function drMapaDescartar(){}
+function drAbrirFazenda(c){document.getElementById('dr-faz').innerHTML='<div class="dr-vazio">Fazenda '+c+' (demo)</div>';}
+var sol=o=>({id:o.id,cod_faz:o.cod,fazenda:o.faz,tipo:o.tipo,status:o.status,observacao:o.obs||null,solicitante:o.sol||null,criado_em:o.criado,data_desejada:o.data||null,geracao:o.ger||null});
+var solicitacoes=[
+  sol({id:1,cod:10372,faz:'Boa Vista',tipo:'normal',status:'solicitado',obs:'Completar talhões do bloco norte',sol:'Ana',criado:h(2*1440),data:dia(8)}),
+  sol({id:2,cod:10156,faz:'Santa Rita',tipo:'normal',status:'aguardando_obstaculos',sol:'Bruno',criado:h(4*1440)}),
+  sol({id:3,cod:10008,faz:'Esperança',tipo:'catacao',status:'aguardando_infestacao',obs:'Drone MGMT',sol:'Marcos',criado:h(26*60)}),
+  sol({id:4,cod:10221,faz:'Primavera',tipo:'normal',status:'solicitado',sol:'Carla',criado:h(5),data:dia(15)}),
+  sol({id:5,cod:10410,faz:'Água Limpa',tipo:'normal',status:'em_elaboracao',ger:{status:'processando',pedido_em:h(1)}}),
+  sol({id:6,cod:10087,faz:'Serrinha',tipo:'catacao',status:'em_elaboracao',ger:{status:'erro',erro:'infestação sem feições dentro dos talhões',pedido_em:h(600)}}),
+  sol({id:7,cod:10533,faz:'Ouro Verde',tipo:'normal',status:'em_elaboracao',ger:{status:'pronta',alertas:0,pedido_em:h(3),publicar_pedido_em:h(3),concluido_em:h(60)}}),
+  sol({id:8,cod:10299,faz:'Bela Vista',tipo:'normal',status:'em_elaboracao',ger:{status:'pronta',alertas:2,pedido_em:h(60),concluido_em:h(20)}}),
+  sol({id:9,cod:10372,faz:'Boa Vista',tipo:'catacao',status:'em_elaboracao',ger:{status:'pronta',alertas:0,pedido_em:h(180),concluido_em:h(120)}})
+];
+var PAINEL={
+  solicitacoes:Q.has('vazio')?[]:solicitacoes,
+  publicadas_7d:5,
+  incompletas:Array.from({length:77},(_,i)=>({cod_faz:10000+i*7,fazenda:'Faz. Modelo '+(i+1),pct:20+(i*13)%70})),
+  obstaculos_antigos:[{cod_faz:10044,fazenda:'Santa Luzia'},{cod_faz:10191,fazenda:'Cachoeira'},{cod_faz:10266,fazenda:'Três Irmãos'}],
+  fora_da_base:[{cod_faz:10310,fazenda:'Barreiro'},{cod_faz:10402,fazenda:'Recanto'}]
+};
+var sb={
+  rpc:async()=>({data:PAINEL}),
+  from:()=>({select:()=>({eq:()=>({data:[]}),ilike:()=>({limit:async()=>({data:[{cod_faz:10372,nome:'Faz. Boa Vista'}]})})})})
+};
+// Estilo do index: primeiro <style> do index.html, injetado antes das folhas da demo.
+(async()=>{
+  try{
+    const txt=await (await fetch('index.html')).text();
+    const m=txt.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+    if(m){const s=document.createElement('style');s.id='index-css';s.textContent=m[1];document.head.insertBefore(s,document.head.firstChild);}
+  }catch(e){console.warn('Não foi possível carregar o estilo do index',e);}
+  droneIniciar();
+})();
+</script>
+</body>
+</html>

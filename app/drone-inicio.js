@@ -1,4 +1,4 @@
-// Drone: Início (fila, Atenção, busca, nova solicitação). Carregado por index.html depois de drone-previa.js.
+// Drone: Início (três colunas da esteira, faixa Atenção, busca, nova solicitação). Carregado por index.html depois de drone-previa.js.
 
 // Regras puras do Início: coluna, situação, tempos, cartão e reconciliação (testadas em tests/app/drone_puro.test.js).
 function driColuna(sol){
@@ -91,60 +91,141 @@ function driPlano(atuais,novos){
   };
 }
 
+const DRI_COLUNAS=['solicitacoes','desenvolvimento','analisar'];
+const DRI_VAZIO={solicitacoes:'Nenhuma solicitação aberta.',desenvolvimento:'Nada sendo gerado agora.',analisar:'Nenhuma prévia esperando conferência.'};
+const DRI_ATENCAO=[['incompletas','Normais incompletas','incomplete_circle'],
+  ['obstaculos_antigos','com obstáculos de mais de 24 meses','history'],
+  ['fora_da_base','com talhões fora da Base','wrong_location']];
+
+// Cria o cartão a partir do HTML das funções puras e guarda a assinatura (para não redesenhar cartão igual).
+function driElemento(html,ass){
+  const t=document.createElement('div');t.innerHTML=html;
+  const el=t.firstElementChild;
+  el.dataset.ass=ass;
+  el.querySelectorAll('.dri-sit .ico').forEach(i=>{if(i.textContent.trim()==='flight')i.classList.add('dri-voa');});
+  return el;
+}
+function driPodeNova(){return !!(podeEditar('drone')||(EU&&EU.niveis&&EU.niveis.drone==='solicitante'));}
+
+// Reconcilia as três colunas com o painel. Tudo num só Mo.mover: cartão que muda de coluna sai de uma e entra na outra.
+function driDesenhar(painel){
+  const sec=document.querySelector('#dri .dri-cols');
+  if(!sec)return;
+  const agora=new Date(), editor=!!podeEditar('drone');
+  const t=x=>Date.parse(x)||0;
+  const g={solicitacoes:[],desenvolvimento:[],analisar:[]};
+  (painel.solicitacoes||[]).forEach(s=>g[driColuna(s)].push(s));
+  g.solicitacoes.sort((a,b)=>t(a.criado_em)-t(b.criado_em));
+  const pedido=s=>(s.geracao&&s.geracao.pedido_em)||s.pedido_em;
+  g.desenvolvimento.sort((a,b)=>t(pedido(a))-t(pedido(b)));
+  g.analisar.sort((a,b)=>t(b.geracao.concluido_em)-t(a.geracao.concluido_em));
+  const porId=new Map(), novos={};
+  DRI_COLUNAS.forEach(c=>{
+    novos[c]=g[c].map(s=>{const n={id:String(s.id),ass:JSON.stringify(s)+'|'+editor,sol:s};porId.set(n.id,n);return n;});
+  });
+  const cartao=(lista,id)=>[...lista.children].find(el=>el.dataset.id===id);
+  Mo.mover(sec,()=>{
+    DRI_COLUNAS.forEach(c=>{
+      const lista=sec.querySelector(`.dri-col[data-col="${c}"] .dri-lista`);
+      const alvo=novos[c];
+      const atuais=[...lista.children].filter(el=>el.classList.contains('dri-card')).map(el=>({id:el.dataset.id,ass:el.dataset.ass}));
+      const p=driPlano(atuais,alvo.map(n=>({id:n.id,ass:n.ass})));
+      p.remover.forEach(id=>cartao(lista,id).remove());
+      p.trocar.forEach(id=>{const n=porId.get(id);cartao(lista,id).replaceWith(driElemento(driCartaoHtml(n.sol,{editor,agora}),n.ass));});
+      p.inserir.forEach(id=>{const n=porId.get(id);lista.appendChild(driElemento(driCartaoHtml(n.sol,{editor,agora}),n.ass));});
+      if(alvo.length)lista.querySelectorAll(':scope > .dri-vazio').forEach(e=>e.remove());
+      else if(!lista.querySelector(':scope > .dri-vazio'))lista.insertAdjacentHTML('beforeend',`<p class="dri-vazio">${DRI_VAZIO[c]}</p>`);
+      let antes=null;
+      alvo.forEach(n=>{
+        const el=cartao(lista,n.id), quer=antes?antes.nextElementSibling:lista.firstElementChild;
+        if(el!==quer)lista.insertBefore(el,quer);
+        antes=el;
+      });
+    });
+  });
+  DRI_COLUNAS.forEach(c=>{const n=sec.querySelector(`.dri-col[data-col="${c}"] .dri-n`);if(n)n.textContent=novos[c].length;});
+  const pub=document.getElementById('dri-pub7');
+  if(pub)pub.textContent='Publicadas nos últimos 7 dias: '+(painel.publicadas_7d||0);
+  driFaixa(painel);
+  const nova=document.getElementById('dri-nova');
+  if(nova)nova.hidden=!driPodeNova();
+  driTempos();
+}
+
+// Contadores da faixa Atenção (zero deixa o botão apagado, mas clicável).
+function driFaixa(painel){
+  DRI_ATENCAO.forEach(([chave])=>{
+    const b=document.querySelector(`.dri-at[data-chave="${chave}"]`);if(!b)return;
+    const n=(painel[chave]||[]).length;
+    b.querySelector('b').textContent=n;
+    b.classList.toggle('dri-zero',n===0);
+  });
+}
+
+// Tempos decorridos são reescritos no lugar a cada ciclo, sem redesenhar o cartão (o trilho não reinicia).
+function driTempos(){
+  const agora=new Date();
+  document.querySelectorAll('#dri [data-desde]').forEach(el=>{el.textContent=driDesde(el.dataset.desde,agora);});
+  document.querySelectorAll('#dri [data-quando]').forEach(el=>{el.textContent=driQuando(el.dataset.quando,agora);});
+}
+
+// Atalho "/" (foca a busca) e Esc (limpa a busca). Só com a tela do Drone visível e sem gaveta ou modal aberto.
+function driTecla(e){
+  const v=document.getElementById('v-drone'), dri=document.getElementById('dri');
+  if(!v||!v.classList.contains('on')||!dri||dri.hidden)return;
+  if(document.getElementById('dri-fundo')||document.querySelector('.dr-modal-fundo'))return;
+  const busca=document.getElementById('dr-busca'), ativo=document.activeElement;
+  if(!busca||!ativo)return;
+  if(e.key==='/'&&!/^(INPUT|TEXTAREA|SELECT)$/.test(ativo.tagName)&&!ativo.isContentEditable){
+    e.preventDefault();busca.focus();busca.select();
+  }else if(e.key==='Escape'&&ativo===busca){
+    busca.value='';document.getElementById('dr-busca-res').innerHTML='';busca.blur();
+  }
+}
+
 async function droneIniciar(){
   const root=document.getElementById('drone-root');
   if(!root.dataset.pronto){
-    root.innerHTML=`<div><div class="search-wrap"><span class="ico search-ico">search</span>
-      <input class="search-inp" id="dr-busca" placeholder="Buscar fazenda ou código…" oninput="drBuscar(this.value)"></div>
-      <div id="dr-busca-res"></div><div id="dr-fila"></div></div>
-      <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um item da fila ou busque uma fazenda</div></div>`;
+    root.innerHTML=`<div id="dri">
+      <header class="dri-cab">
+        <div><h1>Drone</h1><p>Projetos de voo por talhão</p></div>
+        <div class="dri-busca-wrap">
+          <label class="dri-busca"><span class="ico">search</span>
+            <input id="dr-busca" placeholder="Buscar fazenda ou código" autocomplete="off" oninput="drBuscar(this.value)">
+            <kbd>/</kbd></label>
+          <div id="dr-busca-res"></div>
+        </div>
+        <button class="dri-nova" id="dri-nova" hidden onclick="drNovaSolicitacao()"><span class="ico">add</span>Nova solicitação</button>
+      </header>
+      <div id="dri-erro" class="dr-err" hidden></div>
+      <section class="dri-cols">
+        <div class="dri-col" data-col="solicitacoes"><header class="dri-ch"><span class="ico">inbox</span><h2>Solicitações</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
+        <div class="dri-col" data-col="desenvolvimento"><header class="dri-ch"><span class="dri-vivo" aria-hidden="true"></span><h2>Em desenvolvimento</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
+        <div class="dri-col" data-col="analisar"><header class="dri-ch"><span class="ico">fact_check</span><h2>A analisar</h2><span class="dri-n">0</span></header><div class="dri-lista"></div><p class="dri-pub7" id="dri-pub7"></p></div>
+      </section>
+      <div class="dri-atencao"><span class="dri-atl">Atenção na base</span>${DRI_ATENCAO.map(([k,txt,ico])=>`<button class="dri-at" data-chave="${k}" onclick="driAtencaoAbrir('${k}')"><span class="ico">${ico}</span><b>0</b> ${txt}</button>`).join('')}
+        <a class="dri-ajuda" href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md" target="_blank" rel="noreferrer"><span class="ico">help</span> Ajuda</a></div>
+    </div>
+    <div id="dr-trab" hidden><button class="dri-voltar" onclick="driVoltar()">← Início</button>
+      <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um projeto ou busque uma fazenda</div></div></div>`;
     root.dataset.pronto='1';
-    const fila=document.getElementById('dr-fila');
-    Mo.carregando(fila);await drCarregarPainel();Mo.pronto(fila);
+    if(document.addEventListener)document.addEventListener('keydown',driTecla);
+    const sec=root.querySelector('.dri-cols');
+    Mo.carregando(sec);await drCarregarPainel();Mo.pronto(sec);
     return;
   }
   await drCarregarPainel();
 }
 
 async function drCarregarPainel(){
+  const erro=document.getElementById('dri-erro');
   try{DR.painel=await drRpc('drone_painel');}
-  catch(e){document.getElementById('dr-fila').innerHTML=`<div class="dr-err">${esc(e.message)}</div>`;return;}
-  const s=DR.painel.solicitacoes||[];
-  const it=x=>{
-    const g=x.geracao||{};
-    const st=g.status==='pronta'?(g.publicar_pedido_em?'publicando…':`prévia pronta · ${g.alertas} alertas`)
-      :g.status==='fila'||g.status==='processando'?'gerando…':g.status==='erro'?'erro na geração':DR_ST[x.status]||x.status;
-    return`<div class="dr-it${DR.cod===x.cod_faz?' on':''}" onclick="drAbrirFazenda(${x.cod_faz},'${x.tipo}')">
-      <span class="dr-cod">${x.cod_faz}</span><div>${esc(x.fazenda)}<small>${esc(x.observacao||st)}${x.solicitante?' · '+esc(x.solicitante):''}</small></div>
-      <div class="r">${x.data_desejada?'para '+new Date(x.data_desejada+'T12:00').toLocaleDateString('pt-BR'):''}<br>${esc(st)}</div>
-      ${drPodeCancelar(x,x.geracao,EU)?`<button class="dr-x" title="Cancelar solicitação" onclick="event.stopPropagation();drCancelar(${x.id})"><span class="ico">close</span></button>`:''}</div>`;
-  };
-  const grupo=(tit,lista,vazio)=>`<div class="dr-grp"><div class="dr-gh">${tit}<span class="dr-n">${lista.length}</span></div>
-    ${lista.length?lista.map(it).join(''):`<div class="dr-msg">${vazio}</div>`}</div>`;
-  const normal=s.filter(x=>x.tipo==='normal'&&!(x.geracao&&x.geracao.status==='pronta'));
-  const cat=s.filter(x=>x.tipo==='catacao'&&!(x.geracao&&x.geracao.status==='pronta'));
-  const prev=s.filter(x=>x.geracao&&x.geracao.status==='pronta');
-  const inc=DR.painel.incompletas||[],obs=DR.painel.obstaculos_antigos||[],fora=DR.painel.fora_da_base||[];
-  const nova=(podeEditar('drone')||(EU&&EU.niveis.drone==='solicitante'))
-    ?`<button class="dr-btn2" style="margin-bottom:12px" onclick="drNovaSolicitacao()"><span class="ico">add</span> Nova solicitação</button>`:'';
-  const ajuda=`<a class="dr-msg" style="display:block;text-align:right;margin:-4px 0 8px" target="_blank" rel="noreferrer"
-    href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md"><span class="ico" style="font-size:15px">help</span> Ajuda</a>`;
-  document.getElementById('dr-fila').innerHTML=ajuda+nova
-    +grupo('Solicitações Normal',normal,'nenhuma')
-    +grupo('Catação · aguardando',cat,'nenhuma')
-    +grupo('Prévias para conferir',prev,'nenhuma')
-    +`<div class="dr-grp"><div class="dr-gh">Atenção<span class="dr-n">${inc.length+obs.length+fora.length}</span></div>
-      <div class="dr-it" onclick="drListarAtencao('incompletas')"><span class="ico" style="color:#d4890a">incomplete_circle</span><div>Normais incompletas<small>${inc.length} fazendas com talhões sem projeto</small></div></div>
-      <div class="dr-it" onclick="drListarAtencao('obstaculos_antigos')"><span class="ico" style="color:#d4890a">history</span><div>Obstáculos com mais de 24 meses<small>${obs.length} fazendas</small></div></div>
-      <div class="dr-it" onclick="drListarAtencao('fora_da_base')"><span class="ico" style="color:#d4890a">wrong_location</span><div>Talhões fora da Base<small>${fora.length} fazendas</small></div></div></div>`;
-}
-
-function drListarAtencao(chave){
-  const l=DR.painel[chave]||[];
-  const linhas=l.map(x=>typeof x==='object'
-    ?`<div class="dr-it" onclick="drAbrirFazenda(${x.cod_faz})"><span class="dr-cod">${x.cod_faz}</span><div>${esc(x.fazenda)}</div><div class="r">${x.pct}%</div></div>`
-    :`<div class="dr-it" onclick="drAbrirFazenda(${x})"><span class="dr-cod">${x}</span></div>`).join('');
-  document.getElementById('dr-busca-res').innerHTML=`<div class="dr-grp"><div class="dr-gh">Atenção<button class="dr-btn2" style="width:auto;padding:2px 8px" onclick="document.getElementById('dr-busca-res').innerHTML=''">fechar</button></div>${linhas||'<div class="dr-msg">nenhuma</div>'}</div>`;
+  catch(e){if(erro){erro.textContent=e.message;erro.hidden=false;}return;}
+  if(erro)erro.hidden=true;
+  driDesenhar(DR.painel);
+  if(DR.cod)return;   // com fazenda aberta, o polling é o da fazenda
+  if(driAndamento(DR.painel)){if(DR_POLL.fn!==drCarregarPainel)drPollIniciar(drCarregarPainel,10000);}
+  else drPollParar();
 }
 
 async function drBuscar(txt){
