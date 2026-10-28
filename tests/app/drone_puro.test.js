@@ -87,3 +87,70 @@ test('mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa exist
   assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|normal', false), false);
   assert.strictEqual(ctx.drMapaReaproveitavel(undefined, '10372|normal', true), false);
 });
+
+test('assinaturas: painel ignora enviado_em e muda com o status da geração', () => {
+  const geo = { normal: { revisao: 2 }, catacao: null, cobertura_pct: 100,
+    features: [{ properties: { camada: 'talhao', talhao: 1, status: 'ok', area_ha: 10 }, geometry: null }] };
+  const info = { faz: { cod_faz: 1, nome: 'X' }, sols: [], obst: [{ classe_m: 15, versao: 1 }], revs: [],
+    ger: [{ id: 5, status: 'fila' }], envios: [{ id: 1, tipo: 'obstaculos', status: 'ok', enviado_em: '2026-10-01' }] };
+  const a = ctx.drAssinaturas(info, geo, 'normal');
+  const b = ctx.drAssinaturas({ ...info, envios: [{ ...info.envios[0], enviado_em: '2026-10-02' }] }, geo, 'normal');
+  assert.strictEqual(a.painel, b.painel);
+  const c = ctx.drAssinaturas({ ...info, ger: [{ id: 5, status: 'processando' }] }, geo, 'normal');
+  assert.notStrictEqual(a.painel, c.painel);
+  assert.strictEqual(a.mapa, c.mapa);
+  assert.notStrictEqual(a.mapa, ctx.drAssinaturas(info, geo, 'catacao').mapa);
+  assert.deepStrictEqual(Object.keys(a).sort(), ['cab', 'mapa', 'obst', 'painel']);
+});
+
+test('partes mudadas: tudo na primeira vez, só o que mudou depois', () => {
+  const x = { cab: '1', painel: '2', obst: '3', mapa: '4' };
+  assert.deepStrictEqual([...ctx.drPartesMudadas(null, x)], ['cab', 'painel', 'obst', 'mapa']);
+  assert.deepStrictEqual([...ctx.drPartesMudadas(x, { ...x, painel: '9' })], ['painel']);
+  assert.deepStrictEqual([...ctx.drPartesMudadas(x, { ...x })], []);
+});
+
+test('resposta de outra fazenda é descartada', () => {
+  assert.strictEqual(ctx.drRespostaValida(10372, 10156), false);
+  assert.strictEqual(ctx.drRespostaValida(10372, 10372), true);
+});
+
+test('ocupado: geração em andamento, publicação pedida ou envio na fila', () => {
+  const info = { envios: [] };
+  assert.strictEqual(ctx.drOcupado(info, null), false);
+  assert.strictEqual(ctx.drOcupado(info, { status: 'fila' }), true);
+  assert.strictEqual(ctx.drOcupado(info, { status: 'processando' }), true);
+  assert.strictEqual(ctx.drOcupado(info, { status: 'pronta' }), false);
+  assert.strictEqual(ctx.drOcupado(info, { status: 'pronta', publicar_pedido_em: 'x' }), true);
+  assert.strictEqual(ctx.drOcupado(info, { status: 'pronta', publicar_pedido_em: 'x', publicacao_erro: 'e' }), false);
+  assert.strictEqual(ctx.drOcupado({ envios: [{ status: 'processando' }] }, null), true);
+});
+
+test('talhões em geração saem do escopo, só com a geração em andamento', () => {
+  const esc = { incluir: [{ talhao: 3, fonte: 'sistema' }, { talhao: 7, fonte: 'shape' }], remover: [9] };
+  assert.deepStrictEqual([...ctx.drTalhoesGerando({ status: 'processando', escopo: esc })], [3, 7]);
+  assert.deepStrictEqual([...ctx.drTalhoesGerando({ status: 'pronta', escopo: esc })], []);
+  assert.deepStrictEqual([...ctx.drTalhoesGerando({ status: 'fila', escopo: null })], []);   // Catação
+  assert.deepStrictEqual([...ctx.drTalhoesGerando(null)], []);
+});
+
+test('polling: um timer só, para e pausa com a aba oculta ou fora da tela', () => {
+  const timers = new Map(); let seq = 0;
+  const c = { console, sb: {}, document: { visibilityState: 'visible' },
+    setTimeout: (f, ms) => { timers.set(++seq, f); return seq; }, clearTimeout: id => timers.delete(id) };
+  vm.createContext(c);
+  vm.runInContext(fs.readFileSync(__dirname + '/../../app/drone-dados.js', 'utf8'), c);
+  let n = 0; const fn = () => n++;
+  c.drPollIniciar(fn, 5000); c.drPollIniciar(fn, 5000);
+  assert.strictEqual(timers.size, 1);
+  c.drPollParar(); assert.strictEqual(timers.size, 0);
+  c.document.visibilityState = 'hidden'; c.drPollIniciar(fn, 5000);
+  assert.strictEqual(timers.size, 0);                       // aba oculta: não agenda
+  c.document.visibilityState = 'visible'; c.drPollAgendar();
+  assert.strictEqual(timers.size, 1);                       // voltou: retoma
+  c.drPollVisivel(false); assert.strictEqual(timers.size, 0); // saiu da view drone
+  c.drPollVisivel(true); assert.strictEqual(timers.size, 1);
+  const [id, f] = [...timers][0]; timers.delete(id); f();   // dispara como o navegador: o timer some
+  assert.strictEqual(n, 1);
+  assert.strictEqual(timers.size, 0);                       // roda uma vez; só reagenda se fn chamar drPollIniciar de novo
+});

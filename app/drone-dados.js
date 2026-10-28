@@ -66,3 +66,41 @@ function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||
 
 // Muda quando alguma classe ganha versão nova: aí o desenho guardado (DR.obstGeo) não vale mais.
 function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao).sort().join('|');}
+
+// ── motor de atualização (spec §4) ───────────────────────────────────────
+// JSON das partes que alimentam cada pedaço da tela. Parte com a mesma
+// assinatura do ciclo anterior não é redesenhada (fim do pisca-pisca).
+function drAssinaturas(info,geo,doc){
+  const tal=(geo.features||[]).filter(f=>f.properties.camada==='talhao');
+  const envios=(info.envios||[]).map(({enviado_em,...e})=>e);
+  return{
+    cab:JSON.stringify([info.faz,doc,geo.normal,geo.catacao,geo.cobertura_pct,
+      tal.map(f=>[f.properties.talhao,f.properties.status,f.properties.area_ha])]),
+    painel:JSON.stringify([doc,geo.normal&&geo.normal.revisao,info.sols,info.ger,envios,info.obst,info.revs]),
+    obst:drAssinaturaObst(info.obst),
+    mapa:JSON.stringify([doc,geo.features])};
+}
+function drPartesMudadas(antes,agora){return Object.keys(agora).filter(k=>!antes||antes[k]!==agora[k]);}
+function drRespostaValida(codPedido,codAtual){return codPedido===codAtual;}
+function drOcupado(info,ger){
+  return !!((ger&&(['fila','processando'].includes(ger.status)||(ger.publicar_pedido_em&&!ger.publicacao_erro)))
+    ||(info.envios||[]).some(e=>e.status==='fila'||e.status==='processando'));
+}
+// Talhões que pulsam no mapa enquanto a prévia é gerada (Catação não tem escopo: só a varredura).
+function drTalhoesGerando(ger){
+  if(!ger||!['fila','processando'].includes(ger.status))return[];
+  return((ger.escopo&&ger.escopo.incluir)||[]).map(i=>i.talhao);
+}
+
+// Polling único (spec §4): um timer só. Pausa com a aba oculta ou fora da view
+// do Drone e retoma ao voltar. O callback roda uma vez; quem quer continuar chama drPollIniciar de novo.
+const DR_POLL={t:null,fn:null,ms:0,fora:false};
+function drPollAgendar(){
+  clearTimeout(DR_POLL.t);DR_POLL.t=null;
+  if(!DR_POLL.fn||DR_POLL.fora||document.visibilityState==='hidden')return;
+  DR_POLL.t=setTimeout(()=>{DR_POLL.t=null;const f=DR_POLL.fn;DR_POLL.fn=null;f();},DR_POLL.ms);
+}
+function drPollIniciar(fn,ms){DR_POLL.fn=fn;DR_POLL.ms=ms;drPollAgendar();}
+function drPollParar(){clearTimeout(DR_POLL.t);DR_POLL.t=null;DR_POLL.fn=null;}
+function drPollVisivel(naTela){DR_POLL.fora=!naTela;drPollAgendar();}
+if(document.addEventListener)document.addEventListener('visibilitychange',drPollAgendar);
