@@ -8,6 +8,7 @@ const ctx = { document: {}, sb: {}, console };
 vm.createContext(ctx);
 for (const f of ['drone-dados', 'drone-previa', 'drone-inicio', 'drone-fazenda'])
   vm.runInContext(fs.readFileSync(__dirname + '/../../app/' + f + '.js', 'utf8'), ctx);
+ctx.esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 test('Catação pode gerar de novo depois de descartar ou dar erro', () => {
   assert.strictEqual(ctx.drPodeGerarCatacao({ status: 'solicitado' }), true);
@@ -146,4 +147,84 @@ test('polling: um timer só, para e pausa com a aba oculta ou fora da tela', () 
   const [id, f] = [...timers][0]; timers.delete(id); f();   // dispara como o navegador: o timer some
   assert.strictEqual(n, 1);
   assert.strictEqual(timers.size, 0);                       // roda uma vez; só reagenda se fn chamar drPollIniciar de novo
+});
+
+test('coluna do Início segue a esteira (spec §3.1)', () => {
+  const c = g => ctx.driColuna({ status: 'em_elaboracao', geracao: g });
+  assert.strictEqual(ctx.driColuna({ status: 'solicitado', geracao: null }), 'solicitacoes');
+  assert.strictEqual(ctx.driColuna({ status: 'em_elaboracao', geracao: null }), 'solicitacoes');
+  assert.strictEqual(ctx.driColuna({ status: 'aguardando_obstaculos' }), 'solicitacoes');
+  assert.strictEqual(c({ status: 'fila' }), 'desenvolvimento');
+  assert.strictEqual(c({ status: 'processando' }), 'desenvolvimento');
+  assert.strictEqual(c({ status: 'erro', erro: 'x' }), 'desenvolvimento');
+  assert.strictEqual(c({ status: 'pronta', publicar_pedido_em: '2026-10-28T10:00Z' }), 'desenvolvimento');
+  assert.strictEqual(c({ status: 'pronta', publicar_pedido_em: '2026-10-28T10:00Z', publicacao_erro: 'x' }), 'desenvolvimento');
+  assert.strictEqual(c({ status: 'pronta' }), 'analisar');
+});
+
+test('situação do cartão', () => {
+  const s = (status, g) => ctx.driSituacao({ status, geracao: g || null, observacao: 'obs' });
+  assert.strictEqual(s('aguardando_obstaculos').txt, 'Aguardando obstáculos');
+  assert.strictEqual(s('aguardando_infestacao').ico, 'pest_control');
+  assert.strictEqual(s('solicitado').txt, 'obs');                       // sem pendência: a observação
+  assert.strictEqual(ctx.driSituacao({ status: 'solicitado' }), null);   // nem observação: nada
+  assert.strictEqual(s('em_elaboracao', { status: 'processando' }).cls, 'vivo');
+  assert.match(s('em_elaboracao', { status: 'erro', erro: 'sem feições' }).txt, /^Erro na geração: sem feições/);
+  assert.strictEqual(s('em_elaboracao', { status: 'pronta', publicar_pedido_em: 'x' }).txt, 'Publicando no portal…');
+  assert.match(s('em_elaboracao', { status: 'pronta', publicar_pedido_em: 'x', publicacao_erro: 'falhou' }).txt, /^Erro ao publicar: falhou/);
+  assert.strictEqual(s('em_elaboracao', { status: 'pronta', alertas: 2 }).txt, 'Prévia · 2 alertas');
+  assert.strictEqual(s('em_elaboracao', { status: 'pronta', alertas: 1 }).txt, 'Prévia · 1 alerta');
+  assert.strictEqual(s('em_elaboracao', { status: 'pronta', alertas: 0 }).cls, 'ok');
+});
+
+test('tempos curtos do cartão', () => {
+  const agora = new Date('2026-10-28T15:00:00-03:00');
+  assert.strictEqual(ctx.driDesde('2026-10-28T14:59:40-03:00', agora), 'agora');
+  assert.strictEqual(ctx.driDesde('2026-10-28T14:55:00-03:00', agora), '5 min');
+  assert.strictEqual(ctx.driDesde('2026-10-28T12:00:00-03:00', agora), '3 h');
+  assert.strictEqual(ctx.driDesde('2026-10-26T15:00:00-03:00', agora), '2 dias');
+  assert.strictEqual(ctx.driDesde(null, agora), '');
+  assert.strictEqual(ctx.driQuando('2026-10-28T08:00:00-03:00', agora), 'hoje');
+  assert.strictEqual(ctx.driQuando('2026-10-27T23:00:00-03:00', agora), 'ontem');
+  assert.strictEqual(ctx.driQuando('2026-10-24T10:00:00-03:00', agora), 'há 4 dias');
+});
+
+test('polling do Início só com item andando', () => {
+  const p = (...g) => ({ solicitacoes: g.map((x, i) => ({ id: i, status: 'em_elaboracao', geracao: x })) });
+  assert.strictEqual(ctx.driAndamento(p(null, { status: 'pronta' })), false);
+  assert.strictEqual(ctx.driAndamento(p({ status: 'erro' })), false);
+  assert.strictEqual(ctx.driAndamento(p({ status: 'fila' })), true);
+  assert.strictEqual(ctx.driAndamento(p({ status: 'pronta', publicar_pedido_em: 'x' })), true);
+  assert.strictEqual(ctx.driAndamento(p({ status: 'pronta', publicar_pedido_em: 'x', publicacao_erro: 'e' })), false);
+  assert.strictEqual(ctx.driAndamento(null), false);
+});
+
+test('itens da Atenção aceitam código solto (painel antigo) e objeto (painel novo)', () => {
+  assert.deepStrictEqual([...ctx.driAtencaoItens({ fora_da_base: [10974] }, 'fora_da_base')].map(x => ({ ...x })),
+    [{ cod_faz: 10974, fazenda: '', extra: '' }]);
+  assert.deepStrictEqual({ ...ctx.driAtencaoItens({ obstaculos_antigos: [{ cod_faz: 1, fazenda: 'A' }] }, 'obstaculos_antigos')[0] },
+    { cod_faz: 1, fazenda: 'A', extra: '' });
+  assert.strictEqual(ctx.driAtencaoItens({ incompletas: [{ cod_faz: 2, fazenda: 'B', pct: 40 }] }, 'incompletas')[0].extra, '40%');
+  assert.strictEqual(ctx.driAtencaoItens({}, 'incompletas').length, 0);
+});
+
+test('cartão: data-id, nome escapado e Conferir só para quem edita', () => {
+  const sol = { id: 7, cod_faz: 10, fazenda: 'Faz <b>', tipo: 'catacao', status: 'em_elaboracao',
+    criado_em: '2026-10-28T10:00Z', geracao: { status: 'pronta', alertas: 0, concluido_em: '2026-10-28T11:00Z' } };
+  const agora = new Date('2026-10-28T12:00Z');
+  const ed = ctx.driCartaoHtml(sol, { editor: true, agora });
+  const le = ctx.driCartaoHtml(sol, { editor: false, agora });
+  assert.match(ed, /data-id="7"/);
+  assert.match(ed, /Faz &lt;b&gt;/);
+  assert.match(ed, /Catação/);
+  assert.match(ed, />Conferir</);
+  assert.doesNotMatch(le, />Conferir</);
+});
+
+test('plano de reconciliação dos cartões por data-id', () => {
+  const pl = ctx.driPlano([{ id: '1', ass: 'a' }, { id: '2', ass: 'b' }, { id: '3', ass: 'c' }],
+                          [{ id: '2', ass: 'b' }, { id: '3', ass: 'X' }, { id: '4', ass: 'd' }]);
+  assert.deepStrictEqual([...pl.remover], ['1']);
+  assert.deepStrictEqual([...pl.trocar], ['3']);
+  assert.deepStrictEqual([...pl.inserir], ['4']);
 });

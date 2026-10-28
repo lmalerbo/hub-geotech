@@ -1,5 +1,96 @@
 // Drone: Início (fila, Atenção, busca, nova solicitação). Carregado por index.html depois de drone-previa.js.
 
+// Regras puras do Início: coluna, situação, tempos, cartão e reconciliação (testadas em tests/app/drone_puro.test.js).
+function driColuna(sol){
+  const g=sol&&sol.geracao;
+  if(!g)return'solicitacoes';
+  if(['fila','processando','erro'].includes(g.status))return'desenvolvimento';
+  if(g.status==='pronta')return g.publicar_pedido_em||g.publicacao_erro?'desenvolvimento':'analisar';
+  return'solicitacoes';
+}
+function driSituacao(sol){
+  const g=sol.geracao;
+  if(!g){
+    if(sol.status==='aguardando_obstaculos')return{ico:'warning',txt:'Aguardando obstáculos',cls:'aviso'};
+    if(sol.status==='aguardando_infestacao')return{ico:'pest_control',txt:'Aguardando infestação',cls:'aviso'};
+    if(sol.status==='devolvido')return{ico:'undo',txt:'Devolvido',cls:'aviso'};
+    return sol.observacao?{ico:'',txt:sol.observacao,cls:''}:null;
+  }
+  if(g.status==='fila')return{ico:'schedule',txt:'Na fila',cls:'vivo'};
+  if(g.status==='processando')return{ico:'',txt:'Gerando prévia',cls:'vivo'};
+  if(g.status==='erro')return{ico:'error',txt:'Erro na geração: '+g.erro,cls:'erro'};
+  if(g.status==='pronta'){
+    if(g.publicacao_erro&&g.publicar_pedido_em)return{ico:'error',txt:'Erro ao publicar: '+g.publicacao_erro,cls:'erro'};
+    if(g.publicar_pedido_em)return{ico:'flight',txt:'Publicando no portal…',cls:'vivo'};
+    if(g.alertas>0)return{ico:'report',txt:'Prévia · '+g.alertas+(g.alertas===1?' alerta':' alertas'),cls:'aviso'};
+    return{ico:'check_circle',txt:'Prévia · sem alertas',cls:'ok'};
+  }
+  return sol.observacao?{ico:'',txt:sol.observacao,cls:''}:null;
+}
+function driDesde(iso,agora){
+  if(!iso)return'';
+  const s=Math.floor((((agora||new Date())-new Date(iso))/1000));
+  if(s<60)return'agora';
+  if(s<3600)return Math.floor(s/60)+' min';
+  if(s<86400)return Math.floor(s/3600)+' h';
+  return Math.floor(s/86400)+' dias';
+}
+function driQuando(iso,agora){
+  if(!iso)return'';
+  const a=agora||new Date(), d=new Date(iso);
+  const dia=x=>Date.UTC(x.getFullYear(),x.getMonth(),x.getDate());
+  const n=Math.round((dia(a)-dia(d))/86400000);
+  if(n<=0)return'hoje';
+  if(n===1)return'ontem';
+  return'há '+n+' dias';
+}
+function driAndamento(painel){
+  return!!(painel&&(painel.solicitacoes||[]).some(x=>{
+    const g=x.geracao;
+    if(!g)return false;
+    if(g.status==='fila'||g.status==='processando')return true;
+    return g.status==='pronta'&&!!g.publicar_pedido_em&&!g.publicacao_erro;
+  }));
+}
+function driAtencaoItens(painel,chave){
+  return(painel&&painel[chave]||[]).map(x=>typeof x==='object'
+    ?{cod_faz:x.cod_faz,fazenda:x.fazenda||'',extra:x.pct!=null?x.pct+'%':''}
+    :{cod_faz:x,fazenda:'',extra:''});
+}
+function driCartaoHtml(sol,opts){
+  const o=opts||{}, agora=o.agora||new Date();
+  const g=sol.geracao||null;
+  const col=driColuna(sol), sit=driSituacao(sol);
+  const tipo=sol.tipo==='catacao'?'catacao':'normal';
+  const cod=esc(sol.cod_faz);
+  const emCurso=!!g&&(g.status==='fila'||g.status==='processando');
+  let pe='';
+  if(col==='solicitacoes'){
+    const dt=sol.data_desejada?'para '+new Date(sol.data_desejada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'sem data';
+    pe=`<div class="dri-pe"><span>${esc(sol.solicitante||'')} · <span data-quando="${esc(sol.criado_em)}">${esc(driQuando(sol.criado_em,agora))}</span></span><span>${esc(dt)}</span></div>`;
+  }else if(col==='desenvolvimento'&&emCurso){
+    pe=`<div class="dri-pe"><span></span><span data-desde="${esc(sol.geracao.pedido_em||sol.pedido_em||'')}">${esc(driDesde(sol.geracao.pedido_em||sol.pedido_em,agora))}</span></div>`;
+  }else if(col==='analisar'){
+    const conf=o.editor?`<button class="dri-conferir" onclick="event.stopPropagation();driAbrirFazenda(${cod},'${tipo}')">Conferir</button>`:'';
+    pe=`<div class="dri-pe"><span>gerada há <span data-desde="${esc(g.concluido_em)}">${esc(driDesde(g.concluido_em,agora))}</span></span>${conf}</div>`;
+  }
+  const situ=sit?`<div class="dri-sit${sit.cls?' dri-'+sit.cls:''}">${sit.ico?`<span class="ico">${sit.ico}</span>`:''}<span>${esc(sit.txt)}</span></div>`:'';
+  const trilho=emCurso?'<div class="dri-trilho"><i></i></div>':'';
+  return`<div class="dri-card${sit&&sit.cls==='erro'?' erro':''}" role="button" tabindex="0" data-id="${esc(sol.id)}" data-cod="${cod}" data-tipo="${tipo}" onclick="driAbrirFazenda(${cod},'${tipo}')" onkeydown="if(event.key==='Enter')this.click()">
+    <div class="dri-l1"><span class="dr-cod">${cod}</span><b>${esc(sol.fazenda)}</b><span class="dri-tipo dri-${tipo==='catacao'?'C':'N'}">${tipo==='catacao'?'Catação':'Normal'}</span></div>
+    ${situ}${trilho}${pe}
+  </div>`;
+}
+function driPlano(atuais,novos){
+  const ids=l=>new Map(l.map(x=>[x.id,x.ass]));
+  const A=ids(atuais), N=ids(novos);
+  return{
+    remover:atuais.filter(x=>!N.has(x.id)).map(x=>x.id),
+    trocar:novos.filter(x=>A.has(x.id)&&A.get(x.id)!==x.ass).map(x=>x.id),
+    inserir:novos.filter(x=>!A.has(x.id)).map(x=>x.id)
+  };
+}
+
 async function droneIniciar(){
   const root=document.getElementById('drone-root');
   if(!root.dataset.pronto){
