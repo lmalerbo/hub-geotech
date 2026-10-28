@@ -84,9 +84,42 @@ function drMapaDescartar(){
   DR.mapa&&DR.mapa.remove();DR.mapa=null;
   DR.ass=null;
 }
-// Espera da geração (S2.5): stubs até a animação ser ligada.
-function drAnimGeracao(){}
-function drPulsarGeracao(){}
+// Espera da geração: varredura no mapa, pulso nos talhões do escopo e trilho no painel.
+function drAnimGeracao(){
+  const {ger}=drAtual(),on=!!ger&&['fila','processando'].includes(ger.status);
+  const box=document.getElementById('dr-map');
+  if(on&&!DR.varr&&box)DR.varr=Mo.varredura(box);
+  if(!on&&DR.varr){DR.varr.parar();DR.varr=null;}
+  drPulsarGeracao(on);
+  const g=document.querySelector('#dr-side .drp-gerando');   // painel só é redesenhado quando muda
+  if(g&&!g.querySelector(':scope>.mo-trilho'))Mo.trilho(g);
+}
+// Pulso do contorno dos talhões em geração: line-opacity da camada tal-l só no estado 'ger', ~20 quadros/s.
+function drPulsarGeracao(on){
+  const m=DR.mapa,calmo=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!on||calmo||!m||!m.getLayer('tal-l')){
+    cancelAnimationFrame(DR.pulso);DR.pulso=null;
+    if(m&&m.getLayer('tal-l'))m.setPaintProperty('tal-l','line-opacity',1);
+    return;
+  }
+  if(DR.pulso)return;
+  const t0=performance.now();let ult=0;
+  const passo=t=>{
+    if(DR.mapa!==m||!m.getLayer('tal-l')){DR.pulso=null;return;}
+    if(t-ult>=50){ult=t;
+      const op=.35+.65*(.5+.5*Math.cos((t-t0)/1600*2*Math.PI));
+      m.setPaintProperty('tal-l','line-opacity',['case',['boolean',['feature-state','ger'],false],op,1]);}
+    DR.pulso=requestAnimationFrame(passo);
+  };
+  DR.pulso=requestAnimationFrame(passo);
+}
+// Camada nova chega em 300 ms (0 com menos movimento).
+function drFadeCamada(id,prop,final){
+  const m=DR.mapa;if(!m||!m.getLayer(id))return;
+  const ms=matchMedia('(prefers-reduced-motion: reduce)').matches?0:300;
+  m.setPaintProperty(id,prop+'-transition',{duration:ms,delay:0});
+  requestAnimationFrame(()=>{if(m.getLayer(id))m.setPaintProperty(id,prop,final);});
+}
 
 function drCabecalhoHtml(){
   const g=DR.geo,i=DR.info,tal=g.features.filter(f=>f.properties.camada==='talhao');
@@ -363,10 +396,13 @@ async function drObstaculos(ligar){
   if(!ligar)return;
   try{if(!DR.obstGeo)DR.obstGeo=await drRpc('drone_obstaculos_mapa',{p_cod_faz:DR.cod});}
   catch(e){drErro(e);return;}
+  if(DR.mapa!==m)return;                                     // a fazenda mudou durante o await
   const cor=['match',['get','classe'],15,DR_OBS_COR[15],25,DR_OBS_COR[25],DR_OBS_COR[50]];
   m.addSource('obs',{type:'geojson',data:DR.obstGeo});
-  m.addLayer({id:'obs-buf',type:'fill',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'fill-color':cor,'fill-opacity':.15}});
-  m.addLayer({id:'obs-buf-l',type:'line',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'line-color':cor,'line-width':1,'line-dasharray':[2,2]}});
-  m.addLayer({id:'obs-lin',type:'line',source:'obs',filter:['all',['==',['get','camada'],'obst'],['!=',['geometry-type'],'Point']],paint:{'line-color':cor,'line-width':2}});
-  m.addLayer({id:'obs-pt',type:'circle',source:'obs',filter:['all',['==',['get','camada'],'obst'],['==',['geometry-type'],'Point']],paint:{'circle-color':cor,'circle-radius':3}});
+  m.addLayer({id:'obs-buf',type:'fill',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'fill-color':cor,'fill-opacity':0}});
+  m.addLayer({id:'obs-buf-l',type:'line',source:'obs',filter:['==',['get','camada'],'buffer'],paint:{'line-color':cor,'line-width':1,'line-dasharray':[2,2],'line-opacity':0}});
+  m.addLayer({id:'obs-lin',type:'line',source:'obs',filter:['all',['==',['get','camada'],'obst'],['!=',['geometry-type'],'Point']],paint:{'line-color':cor,'line-width':2,'line-opacity':0}});
+  m.addLayer({id:'obs-pt',type:'circle',source:'obs',filter:['all',['==',['get','camada'],'obst'],['==',['geometry-type'],'Point']],paint:{'circle-color':cor,'circle-radius':3,'circle-opacity':0}});
+  drFadeCamada('obs-buf','fill-opacity',.15);drFadeCamada('obs-buf-l','line-opacity',1);
+  drFadeCamada('obs-lin','line-opacity',1);drFadeCamada('obs-pt','circle-opacity',1);
 }
