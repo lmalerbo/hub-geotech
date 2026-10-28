@@ -48,6 +48,13 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
   <button class="btn" id="b-conc" onclick="Mo.concluido(document.getElementById('faz'),{texto:'Fazenda em Ok'})">Concluir</button>
 </section>
 <section class="card"><h2>Mo.campo</h2><div id="campo"></div></section>
+<section class="card"><h2>Mo.trilho / Mo.varredura / Mo.mover</h2>
+  <div id="gerando" style="padding:8px;border:1px solid #e3e6ea;border-radius:8px">Gerando prévia…</div>
+  <div id="mapa-varr" style="position:relative;height:120px;background:#f7f8fa;border-radius:8px;margin:8px 0"></div>
+  <div id="colunas" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div id="col-a"><div data-id="c1">Cartão 1</div><div data-id="c2">Cartão 2</div></div><div id="col-b"></div></div>
+  <button class="btn esc" id="b-trilho" onclick="demoTrilho()">Liga/desliga espera</button>
+  <button class="btn esc" id="b-mover" onclick="demoMover()">Mover cartão 1</button></section>
 <section class="card" style="grid-column:1/-1"><h2>Mo.voo</h2>
   <div id="mapa-voo"></div>
   <div style="display:flex;gap:8px"><button class="btn" id="b-voo-ok" onclick="demoVoo(true)">Publicar (dá certo)</button>
@@ -79,6 +86,14 @@ async function demoVoo(ok){
 async function demoEtapa(){
   const b=document.getElementById('barra');await Mo.etapa(b,'ok','andamento');
   b.querySelectorAll('div').forEach(d=>d.classList.toggle('on',d.dataset.etapa==='andamento'));
+}
+let espera_ativa=null;
+function demoTrilho(){
+  if(espera_ativa){espera_ativa.t.parar();espera_ativa.v.parar();espera_ativa=null;return;}
+  espera_ativa={t:Mo.trilho(document.getElementById('gerando')),v:Mo.varredura(document.getElementById('mapa-varr'))};
+}
+function demoMover(){
+  window.__mov=Mo.mover(document.getElementById('colunas'),()=>document.getElementById('col-b').appendChild(document.querySelector('[data-id=c1]')));
 }
 </script>
 </body>
