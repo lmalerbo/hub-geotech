@@ -77,7 +77,7 @@ async function drCancelar(id){
   try{
     await drRpc('drone_cancelar',{p_solicitacao_id:id,p_motivo:motivo});
     fim(true);
-    await drCarregarPainel();if(DR.cod)await drRecarregarFazenda();
+    await drCarregarPainel();if(DR.cod)await drCarregarFazenda();
   }catch(e){fim(false);drErro(e);alert(e.message);}
 }
 

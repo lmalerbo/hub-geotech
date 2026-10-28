@@ -67,6 +67,11 @@ try:
         pg.wait_for_selector('#dr-map canvas', timeout=20000)
         pg.wait_for_timeout(1500)
         confere(pg.locator('.dr-doc').count() == 2, 'cartões Normal e Catação')
+        # S2.2: o mapa não é recriado pelo polling nem pela troca Normal/Catação
+        pg.evaluate("window.__mapa=DR.mapa")
+        pg.evaluate("async()=>{await drCarregarFazenda();await drCarregarFazenda();}")
+        pg.click('.dr-doc >> nth=1'); pg.click('.dr-doc >> nth=0')
+        confere(pg.evaluate("DR.mapa===window.__mapa"), 'mapa reaproveitado no polling e na troca de documento')
         pg.evaluate("drSelecionarSemProjeto()")
         sem = pg.evaluate("DR.sel.size")
         if sem == 0:
@@ -83,13 +88,18 @@ try:
         # processa só a geração deste teste (a fila estava vazia antes), sem envios nem publicações
         os.system(f'"{sys.executable}" -c "from drone.agente import gerar_uma; from drone.banco import DroneBanco; '
                   f'from drone.config import cfg; gerar_uma(DroneBanco(), cfg())"')
-        pg.evaluate("drRecarregarFazenda()")
+        pg.evaluate("drCarregarFazenda()")
         pg.wait_for_selector('text=Prévia pronta', timeout=60000)
         # a janela abre sozinha quando a geração termina com a tela aberta
         pg.wait_for_selector('#drp-fundo', timeout=10000)
         pg.wait_for_selector('.drp-pg.ok canvas, #drp-carga .dr-err', timeout=30000)
         confere(pg.locator('.drp-pg.ok canvas').count() >= 1, f"PDF da prévia desenhado na janela {pg.inner_text('#drp-pags')[:120]}")
         confere(pg.locator('#dr-pdf canvas').count() == 1, 'capa da prévia no painel')
+        # Foco 1: o motivo digitado na prévia sobrevive a um ciclo de atualização
+        # (a janela já abre sozinha, então fecha antes para o botão 'Abrir prévia' do painel ficar clicável)
+        pg.evaluate("drPrevFechar()"); pg.click('text=Abrir prévia'); pg.fill('#dr-mot', 'teste S2')
+        pg.evaluate("drCarregarFazenda()"); pg.wait_for_timeout(1500)
+        confere(pg.input_value('#dr-mot') == 'teste S2', 'motivo continua depois do polling')
         pg.click('#drp-fundo button:has-text("Descartar")')
         pg.click('#confirma-sim')
         pg.wait_for_selector('text=Nova revisão', timeout=15000)

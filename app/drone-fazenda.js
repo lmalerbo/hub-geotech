@@ -2,14 +2,15 @@
 
 async function drAbrirFazenda(cod,doc){
   DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
-  clearTimeout(DR.poll);
+  drPollParar();drMapaDescartar();
   document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
   const pnl=document.getElementById('dr-faz');
   DR.voo=null;
-  Mo.carregando(pnl);await drRecarregarFazenda();Mo.pronto(pnl);
+  Mo.carregando(pnl);await drCarregarFazenda();Mo.pronto(pnl);
 }
 
-async function drRecarregarFazenda(){
+// Uma atualização por vez: resposta de outra fazenda (ou de um ciclo antigo) é descartada.
+async function drCarregarFazenda(){
   const cod=DR.cod;
   try{
     const [geo,faz,sols,obst]=await Promise.all([
@@ -17,58 +18,86 @@ async function drRecarregarFazenda(){
       sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single(),
       sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
       sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em').eq('cod_faz',cod).eq('vigente',true)]);
+    if(!drRespostaValida(cod,DR.cod))return;
     const sIds=(sols.data||[]).map(s=>s.id);
-    const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo')
+    const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo,escopo')
       .in('solicitacao_id',sIds).neq('status','descartada').neq('status','publicada').order('id',{ascending:false}):{data:[]};
+    if(!drRespostaValida(cod,DR.cod))return;
     const env=await sb.from('drone_envios').select('id,tipo,status,erro,enviado_em').eq('cod_faz',cod).order('id',{ascending:false}).limit(5);
+    if(!drRespostaValida(cod,DR.cod))return;
     const proj=await sb.from('projetos').select('id').eq('modulo_id','drone').eq('tipo','individual').eq('cod_faz',cod);
+    if(!drRespostaValida(cod,DR.cod))return;
     const revs=proj.data&&proj.data.length?await sb.from('projeto_revisoes').select('numero,documento,motivo,criado_em')
       .eq('projeto_id',proj.data[0].id).order('numero',{ascending:false}):{data:[]};
+    if(!drRespostaValida(cod,DR.cod))return;
     DR.geo=geo;DR.info={faz:faz.data,sols:sols.data||[],obst:obst.data||[],ger:ger.data||[],envios:env.data||[],revs:revs.data||[]};
     const ass=drAssinaturaObst(DR.info.obst);
     if(ass!==DR.obstAss){DR.obstAss=ass;DR.obstGeo=null;}
-  }catch(e){document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;return;}
-  drRender();
+  }catch(e){
+    if(drRespostaValida(cod,DR.cod))document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;
+    return;
+  }
+  drRedesenhar();
+  if(drOcupado(DR.info,drAtual().ger))drPollIniciar(async()=>{await drCarregarFazenda();drCarregarPainel();},5000);
+  else drPollParar();
 }
+
+// Desenha só as partes que mudaram desde o ciclo anterior (assinaturas em drAssinaturas).
+function drRedesenhar(){
+  const ass=drAssinaturas(DR.info,DR.geo,DR.doc),partes=drPartesMudadas(DR.ass,ass);
+  DR.ass=ass;drDesenhar(partes);
+}
+// Troca Normal/Catação: o mapa fica, só as fontes e a cor mudam.
+function drTrocarDoc(doc){DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
+function drDesenhar(partes){
+  const tem=p=>partes.includes(p);
+  if(!DR.mapa||!document.getElementById('dr-map')){drEsqueleto();drMapaCriar();drPainelLateral();}
+  else{
+    if(tem('cab'))document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+    if(tem('mapa'))drMapaAtualizar();
+    if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
+    if(tem('painel'))drPainelLateral();
+  }
+  drVooPublicacao();drAnimGeracao();
+}
+function drEsqueleto(){
+  document.getElementById('dr-faz').innerHTML=drCabecalhoHtml()+`
+    <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
+      <div class="dr-leg"><span><i id="dr-leg-apl" style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>
+        <span><i style="background:${DR_COR.sem}"></i>sem projeto</span><span><i style="background:#fff;border-color:${DR_COR.fora}"></i>fora da Base</span>
+        <span><i style="background:#d9defc;border-color:${DR_COR.sel}"></i>selecionado</span><span><i style="background:#fbe0e0;border-color:${DR_COR.rem}"></i>remover</span>
+        <label style="margin-left:auto;cursor:pointer"><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked)"> mostrar obstáculos</label></div></div>
+      <div class="dr-side" id="dr-side"></div></div>`;
+}
+// Atualiza as fontes do mapa que já existe (o 'load' lê DR.geo se ainda estiver carregando).
+function drMapaAtualizar(){
+  const m=DR.mapa;if(!m||!m.getSource('tal'))return;
+  m.getSource('tal').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')});
+  m.getSource('apl').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)});
+  m.setPaintProperty('apl-f','fill-color',DR_COR[DR.doc]);
+  const leg=document.getElementById('dr-leg-apl');if(leg)leg.style.background=DR_COR[DR.doc];
+  drAtualizarSelecaoMapa();
+}
+function drMapaDescartar(){
+  drPulsarGeracao(false);
+  DR.varr&&DR.varr.parar();DR.varr=null;
+  DR.mapa&&DR.mapa.remove();DR.mapa=null;
+  DR.ass=null;
+}
+// Espera da geração (S2.5): stubs até a animação ser ligada.
+function drAnimGeracao(){}
+function drPulsarGeracao(){}
 
 function drCabecalhoHtml(){
   const g=DR.geo,i=DR.info,tal=g.features.filter(f=>f.properties.camada==='talhao');
   const area=tal.filter(f=>f.properties.status!=='fora_da_base').reduce((s,f)=>s+(f.properties.area_ha||0),0);
   const pct=g.cobertura_pct;
-  const card=(doc,tit,x,extra)=>`<div class="dr-doc${DR.doc===doc?' on':''}" onclick="DR.doc='${doc}';DR.sel=new Map();DR.rem=new Set();drRender()">
+  const card=(doc,tit,x,extra)=>`<div class="dr-doc${DR.doc===doc?' on':''}" onclick="drTrocarDoc('${doc}')">
     <b>${tit} · ${x?'Rev'+x.revisao:'sem projeto'}</b>${extra}<small>${x?fmtNum(x.area_ha)+' ha · '+new Date(x.em).toLocaleDateString('pt-BR'):'—'}</small></div>`;
   return`<div class="dr-ph" id="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
       <div><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
       <div class="dr-docs">${card('normal','Normal',g.normal,pct!=null&&pct<100?`<span class="dr-tag">${Math.floor(pct)}% DA FAZENDA</span>`:'')}
         ${card('catacao','Catação',g.catacao,'')}</div></div>`;
-}
-
-// Atualiza os dados do mapa que já existe, sem recriá-lo (o polling passa por aqui).
-function drAtualizarFontesMapa(){
-  const m=DR.mapa;
-  m.getSource('tal').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')});
-  m.getSource('apl').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)});
-  drAtualizarSelecaoMapa();
-  if(DR.mostrarObst&&!DR.obstGeo)drObstaculos(true);
-}
-
-function drRender(){
-  const temMapa=!!(DR.mapa&&document.getElementById('dr-map')&&DR.mapa.getSource('tal'));
-  if(drMapaReaproveitavel(DR.mapaChave,DR.cod+'|'+DR.doc,temMapa)){
-    document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
-    drAtualizarFontesMapa();drPainelLateral();drVooPublicacao();
-    return;
-  }
-  document.getElementById('dr-faz').innerHTML=drCabecalhoHtml()+`
-    <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
-      <div class="dr-leg"><span><i style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>
-        <span><i style="background:${DR_COR.sem}"></i>sem projeto</span><span><i style="background:#fff;border-color:${DR_COR.fora}"></i>fora da Base</span>
-        <span><i style="background:#d9defc;border-color:${DR_COR.sel}"></i>selecionado</span><span><i style="background:#fbe0e0;border-color:${DR_COR.rem}"></i>remover</span>
-        <label style="margin-left:auto;cursor:pointer"><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked)"> mostrar obstáculos</label></div></div>
-      <div class="dr-side" id="dr-side"></div></div>`;
-  drPintarMapa();
-  drPainelLateral();
-  drVooPublicacao();
 }
 
 // Publicação pedida: o drone sobrevoa o mapa até o agente responder. A tela é
@@ -88,20 +117,18 @@ function drVooPublicacao(){
   }
 }
 
-function drPintarMapa(){
-  const fc={type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')};
-  const apl={type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)};
-  if(DR.mapa){DR.mapa.remove();DR.mapa=null;}
-  // esboço só quando muda a fazenda/documento (o polling redesenha o mapa a cada 5 s)
-  const box=document.getElementById('dr-map'),chave=DR.cod+'|'+DR.doc,novo=DR.mapaChave!==chave;
-  DR.mapaChave=chave;
-  if(novo)Mo.carregando(box);
+// Cria o mapa uma vez por fazenda. As fontes saem de DR.geo/DR.doc na hora do 'load'.
+function drMapaCriar(){
+  const box=document.getElementById('dr-map');
+  Mo.carregando(box);
   const m=new maplibregl.Map({container:'dr-map',attributionControl:false,
     style:{version:8,glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',sources:{},
       layers:[{id:'fundo',type:'background',paint:{'background-color':'#f7f8fa'}}]}});
   DR.mapa=m;
   m.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
   m.on('load',()=>{
+    const fc={type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')};
+    const apl={type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)};
     m.addSource('tal',{type:'geojson',data:fc,promoteId:'talhao'});
     m.addSource('apl',{type:'geojson',data:apl});
     m.addLayer({id:'tal-f',type:'fill',source:'tal',paint:{'fill-color':['case',
@@ -110,9 +137,11 @@ function drPintarMapa(){
     m.addLayer({id:'apl-f',type:'fill',source:'apl',paint:{'fill-color':DR_COR[DR.doc],'fill-opacity':.75}});
     m.addLayer({id:'tal-l',type:'line',source:'tal',paint:{'line-color':['case',
       ['boolean',['feature-state','rem'],false],DR_COR.rem,['boolean',['feature-state','sel'],false],DR_COR.sel,
+      ['boolean',['feature-state','ger'],false],DR_COR.sel,
       ['==',['get','status'],'fora_da_base'],DR_COR.fora,'#1f2a30'],
       'line-width':['case',['any',['boolean',['feature-state','sel'],false],['boolean',['feature-state','rem'],false],
-        ['==',['get','status'],'fora_da_base']],2,0.6]}});
+        ['boolean',['feature-state','ger'],false],['==',['get','status'],'fora_da_base']],2,0.6],
+      'line-opacity':1}});
     m.addLayer({id:'tal-t',type:'symbol',source:'tal',layout:{'text-field':['to-string',['get','talhao']],
       'text-font':['Open Sans Semibold'],'text-size':11},paint:{'text-color':'#1f2a30','text-halo-color':'#fff','text-halo-width':1.5}});
     const b=new maplibregl.LngLatBounds();
@@ -120,19 +149,19 @@ function drPintarMapa(){
       .forEach(p=>p[0].forEach(c=>b.extend(c))));
     if(!b.isEmpty())m.fitBounds(b,{padding:30,duration:0});
     Mo.pronto(box,{cascata:false});
-    drAtualizarSelecaoMapa();
-    if(DR.mostrarObst)drObstaculos(true);
     m.on('click','tal-f',e=>drClicarTalhao(e.features[0].properties));
     m.on('mouseenter','tal-f',()=>m.getCanvas().style.cursor='pointer');
     m.on('mouseleave','tal-f',()=>m.getCanvas().style.cursor='');
+    drAtualizarSelecaoMapa();if(DR.mostrarObst)drObstaculos(true);drAnimGeracao();
   });
 }
 
 function drAtualizarSelecaoMapa(){
   const m=DR.mapa;if(!m||!m.getSource('tal'))return;
+  const gerando=new Set(drTalhoesGerando(drAtual().ger));
   DR.geo.features.filter(f=>f.properties.camada==='talhao').forEach(f=>{
     const n=f.properties.talhao;
-    m.setFeatureState({source:'tal',id:n},{sel:DR.sel.has(n),rem:DR.rem.has(n)});
+    m.setFeatureState({source:'tal',id:n},{sel:DR.sel.has(n),rem:DR.rem.has(n),ger:gerando.has(n)});
   });
 }
 
@@ -214,10 +243,6 @@ function drPainelLateral(){
   h+=`<div id="dr-err" class="dr-err"></div>`;
   side.innerHTML=h;
   if(ger&&ger.status==='pronta'&&!(ger.publicar_pedido_em&&!ger.publicacao_erro))drMostrarPdf(ger);
-  clearTimeout(DR.poll);
-  const ocupado=(ger&&(['fila','processando'].includes(ger.status)||(ger.publicar_pedido_em&&!ger.publicacao_erro)))
-    ||DR.info.envios.some(e=>e.status==='fila'||e.status==='processando');
-  if(ocupado)DR.poll=setTimeout(async()=>{await drRecarregarFazenda();drCarregarPainel();},5000);
 }
 
 function drErro(e){const el=document.getElementById('dr-err');if(el)el.textContent=e.message||e;}
@@ -253,7 +278,7 @@ function drEnviar(tipo){
         p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
       if(tipo==='ajuste')DR.ajusteId=id;
       prog.fim(true);await fim(true);
-      await drRecarregarFazenda();
+      await drCarregarFazenda();
     }catch(e){prog.fim(false);fim(false);drErro(e);}
   };
   inp.click();
@@ -289,20 +314,20 @@ async function drGerarNormal(){
     await drRpc('drone_pedir_geracao',{p_solicitacao_id:sol,p_escopo:escopo});
     DR.sel=new Map();DR.rem=new Set();
     fim(true);
-    await drRecarregarFazenda();drCarregarPainel();
+    await drCarregarFazenda();drCarregarPainel();
   }catch(e){fim(false);drErro(e);}
 }
 
 async function drAbrirCatacao(){
   const fim=Mo.ocupado(drBotao());
   try{await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'catacao',p_data_desejada:null,p_observacao:null});
-    fim(true);await drRecarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
+    fim(true);await drCarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
 }
 
 async function drGerarCatacao(){
   const fim=Mo.ocupado(drBotao());
   try{await drRpc('drone_pedir_geracao',{p_solicitacao_id:drAtual().sol.id,p_escopo:null});
-    fim(true);await drRecarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
+    fim(true);await drCarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
 }
 
 // Depois do pedido, drVooPublicacao (no redesenho) põe o drone para voar até o agente publicar.
@@ -315,7 +340,7 @@ async function drPublicar(id){
     fim=Mo.ocupado(btn);
     await drRpc('drone_publicar_pedido',{p_geracao_id:id,p_motivo:mot});
     fim(true);
-    await drRecarregarFazenda();drCarregarPainel();
+    await drCarregarFazenda();drCarregarPainel();
   }catch(e){fim(false);drErro(e);}
 }
 
@@ -327,7 +352,7 @@ async function drDescartar(id){
     fim=Mo.ocupado(btn);
     await drRpc('drone_descartar',{p_geracao_id:id});
     fim(true);
-    await drRecarregarFazenda();drCarregarPainel();
+    await drCarregarFazenda();drCarregarPainel();
   }catch(e){fim(false);drErro(e);}
 }
 async function drObstaculos(ligar){

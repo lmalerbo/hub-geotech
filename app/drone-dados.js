@@ -1,7 +1,7 @@
 // Drone: estado (DR), chamadas ao banco e regras puras. Carregado por index.html antes de drone-previa/inicio/fazenda.
 // Tela do Drone (spec Parte 2, §5): fila de trabalho + fazenda com mapa por talhão.
 const DR={painel:null,cod:null,geo:null,mapa:null,sel:new Map(),rem:new Set(),modoRemover:false,
-  doc:'normal',ajusteId:null,poll:null,info:null};
+  doc:'normal',ajusteId:null,info:null};
 const DR_ST={aguardando_obstaculos:'aguardando obstáculos',aguardando_infestacao:'aguardando infestação',
   solicitado:'solicitado',em_elaboracao:'em elaboração',devolvido:'devolvido'};
 const DR_COR={normal:'#a0694b',catacao:'#5b8c5a',sel:'#5b6ee8',rem:'#c23b3b',sem:'#e9ebef',fora:'#d4890a'};
@@ -16,9 +16,6 @@ async function drRpc(nome,args){
   if(error)throw new Error(error.message);
   return data;
 }
-
-// Mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa existe.
-function drMapaReaproveitavel(antes,agora,temMapa){return !!temMapa&&antes===agora;}
 
 function drPodeGerarCatacao(sol){return !!sol&&['solicitado','em_elaboracao'].includes(sol.status);}
 function drNomeSeguro(nome){
