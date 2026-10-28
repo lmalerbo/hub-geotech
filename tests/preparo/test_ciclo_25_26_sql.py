@@ -63,3 +63,49 @@ def test_volta_restaura_etapa_status_e_log(banco, fazenda):
     assert etapas(banco, 'preparo', cod) == {1: 'Observações'}
     assert status(banco, cod) == antes
     assert banco.execute('select count(*) from hub.log_auditoria where lote_id = %s', (lote,)).fetchone()[0] == 0
+
+
+def test_etapa_status_ja_ok_fica_intacta(banco, fazenda, pessoa):
+    cod = fazenda(1)
+    uid = pessoa()
+    conservacao(banco, cod, {1: '2025-07-01'})
+    banco.execute("insert into hub.etapa_status (etapa_id, entidade_id, ok, usuario_id, concluido_em, observacao) "
+                  "select id, %s, true, %s, timestamptz '2026-06-18 10:00-03', 'real' "
+                  "from hub.etapas where modulo_id='preparo' and nome='Preparo'", (cod, uid))
+    banco.execute('select hub.preparo_lancar_ciclo_25_26()')
+    linha = banco.execute("select s.usuario_id, (s.concluido_em at time zone 'America/Sao_Paulo')::text, s.observacao "
+                          "from hub.etapa_status s join hub.etapas e on e.id = s.etapa_id "
+                          "where e.nome = 'Preparo' and e.modulo_id = 'preparo' and s.entidade_id = %s", (cod,)).fetchone()
+    assert linha == (uid, '2026-06-18 10:00:00', 'real')
+    assert len(status(banco, cod)) == 4          # as outras 3 foram criadas
+
+
+def test_volta_nao_desfaz_o_que_mudou_depois(banco, fazenda):
+    cod = fazenda(3)
+    conservacao(banco, cod, {1: '2025-07-01', 2: '2025-07-02', 3: '2025-07-03'})
+    lote = banco.execute('select hub.preparo_lancar_ciclo_25_26()').fetchone()[0]
+    banco.execute("select hub.projeto_mudar_etapa('preparo', array[%s::bigint], 'Escoamento', 999001, 'retroceder', 'teste')",
+                  (cod * 1000 + 2,))
+    assert banco.execute('select hub.preparo_voltar_ciclo_25_26(%s)', (lote,)).fetchone()[0] == 2
+    assert etapas(banco, 'preparo', cod) == {1: 'Identificação', 2: 'Escoamento', 3: 'Identificação'}
+    # o rastro do talhão mantido continua no log; o resto saiu
+    assert banco.execute('select entidade_id from hub.log_auditoria where lote_id = %s', (lote,)).fetchall() == [(cod * 1000 + 2,)]
+    # a fazenda deixou de estar inteira Ok mas as etapas gravadas pelo lote só voltam se não mudaram: aqui voltam
+    assert status(banco, cod) == []
+
+
+def test_log_do_lote_sem_usuario(banco, fazenda):
+    cod = fazenda(1)
+    conservacao(banco, cod, {1: '2025-07-01'})
+    lote = banco.execute('select hub.preparo_lancar_ciclo_25_26()').fetchone()[0]
+    assert banco.execute('select count(*) from hub.log_auditoria where lote_id = %s and usuario_id is not null',
+                         (lote,)).fetchone()[0] == 0
+
+
+def test_chamar_duas_vezes_na_mesma_transacao(banco, fazenda):
+    a, b = fazenda(1), fazenda(1)
+    conservacao(banco, a, {1: '2025-07-01'})
+    with banco.transaction():
+        banco.execute('select hub.preparo_lancar_ciclo_25_26()')
+        conservacao(banco, b, {1: '2025-07-01'})
+        assert banco.execute('select hub.preparo_lancar_ciclo_25_26()').fetchone()[0] is not None

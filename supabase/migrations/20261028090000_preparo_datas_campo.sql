@@ -57,15 +57,16 @@ grant execute on function hub.ciclo_inicio() to authenticated, service_role;
 -- (registro com origem planagri_ciclo_25_26). Fazenda que fica inteira Ok ganha as 4 etapas em
 -- etapa_status com a maior data de conservação, sem usuário e com o selo (observação existente fica).
 create table hub.etapa_status_backup (
-  lote_id  bigint  not null,
-  linha    jsonb   not null,     -- a linha de etapa_status antes do lançamento
-  existia  boolean not null      -- false = a linha foi criada pelo lançamento (a volta apaga)
+  lote_id      bigint      not null,
+  linha        jsonb       not null,   -- a linha de etapa_status antes do lançamento
+  existia      boolean     not null,   -- false = a linha foi criada pelo lançamento (a volta apaga)
+  escrito_em   timestamptz not null    -- concluido_em que o lançamento gravou (a volta só mexe se ainda for esse)
 );
 alter table hub.etapa_status_backup enable row level security;
 
 create or replace function hub.preparo_ciclo_25_26_candidatos()
 returns table (cod_faz int, fazenda text, talhao_num int, layer bigint, area_ha numeric, conservacao_em date, etapa text)
-language sql stable security definer set search_path = hub as $$
+language sql stable security definer set search_path = hub, pg_temp as $$
   select t.cod_faz, f.nome, t.talhao_num, p.layer, t.area_ha::numeric, p.conservacao_em, p.etapa
     from hub.talhao_preparo p
     join hub.talhoes t on t.layer = p.layer
@@ -75,7 +76,7 @@ language sql stable security definer set search_path = hub as $$
 $$;
 
 create or replace function hub.preparo_lancar_ciclo_25_26()
-returns bigint language plpgsql security definer set search_path = hub as $$
+returns bigint language plpgsql security definer set search_path = hub, pg_temp as $$
 declare
   v_selo   constant text := 'ciclo 25-26 · pelo PLANAGRI';
   v_lote   bigint;
@@ -86,51 +87,96 @@ begin
   v_lote := nextval('hub.log_lote_seq');
   perform hub.projeto_mudar_etapa('preparo', v_layers, 'Ok', v_lote, 'planagri_ciclo_25_26', v_selo);
 
-  -- fazendas que ficaram inteiras Ok com este lote
-  create temp table _faz on commit drop as
-  select t.cod_faz, max(p.conservacao_em) as data
-    from hub.talhoes t join hub.talhao_preparo p on p.layer = t.layer
-   where t.cod_faz in (select t2.cod_faz from hub.talhoes t2 where t2.layer = any(v_layers))
-   group by t.cod_faz
-  having bool_and(p.etapa = 'Ok');
-
-  insert into hub.etapa_status_backup (lote_id, linha, existia)
-  select v_lote, coalesce(to_jsonb(s), jsonb_build_object('etapa_id', e.id, 'entidade_id', f.cod_faz)), s.etapa_id is not null
-    from _faz f cross join hub.etapas e
-    left join hub.etapa_status s on s.etapa_id = e.id and s.entidade_id = f.cod_faz
-   where e.modulo_id = 'preparo';
-
+  -- Fazendas que ficaram inteiras Ok com este lote ganham as 4 etapas em etapa_status, mas só as que
+  -- ainda não estão ok: linha já ok (com usuário e data reais) fica intacta. O backup guarda só o que muda.
+  with faz as (
+    select t.cod_faz, (max(p.conservacao_em) + time '12:00') at time zone 'America/Sao_Paulo' as data
+      from hub.talhoes t join hub.talhao_preparo p on p.layer = t.layer
+     where t.cod_faz in (select t2.cod_faz from hub.talhoes t2 where t2.layer = any(v_layers))
+     group by t.cod_faz
+    having bool_and(p.etapa = 'Ok')
+  ), alvo as (
+    select e.id as etapa_id, f.cod_faz, f.data, s
+      from faz f cross join hub.etapas e
+      left join hub.etapa_status s on s.etapa_id = e.id and s.entidade_id = f.cod_faz
+     where e.modulo_id = 'preparo' and (s.etapa_id is null or not s.ok)
+  ), bkp as (
+    insert into hub.etapa_status_backup (lote_id, linha, existia, escrito_em)
+    select v_lote, coalesce(to_jsonb(a.s), jsonb_build_object('etapa_id', a.etapa_id, 'entidade_id', a.cod_faz)),
+           (a.s).etapa_id is not null, a.data
+      from alvo a
+    returning 1
+  )
   insert into hub.etapa_status (etapa_id, entidade_id, ok, usuario_id, concluido_em, observacao)
-  select e.id, f.cod_faz, true, null, f.data::timestamptz + interval '12 hours', v_selo
-    from _faz f cross join hub.etapas e
-   where e.modulo_id = 'preparo'
+  select a.etapa_id, a.cod_faz, true, null, a.data, v_selo from alvo a
   on conflict (etapa_id, entidade_id) do update
      set ok = true, usuario_id = null, concluido_em = excluded.concluido_em,
-         observacao = coalesce(nullif(hub.etapa_status.observacao, ''), excluded.observacao);
+         observacao = coalesce(nullif(hub.etapa_status.observacao, ''), excluded.observacao)
+   where not hub.etapa_status.ok;
   return v_lote;
 end $$;
 
+-- Desfaz o lote só onde nada mudou depois dele. O que foi mexido por outra pessoa fica como está e a
+-- linha do log correspondente fica, como rastro. Devolve os talhões restaurados (avisa os pulados).
 create or replace function hub.preparo_voltar_ciclo_25_26(p_lote bigint)
-returns int language plpgsql security definer set search_path = hub as $$
-declare v_qtd int;
+returns int language plpgsql security definer set search_path = hub, pg_temp as $$
+declare
+  v_selo  constant text := 'ciclo 25-26 · pelo PLANAGRI';
+  v_qtd   int;
+  v_total int;
+  v_pul_t int;
+  v_pul_e int;
 begin
-  update hub.talhao_preparo p set etapa = l.valor_anterior
-    from hub.log_auditoria l
-   where l.lote_id = p_lote and l.origem = 'planagri_ciclo_25_26' and l.entidade_id = p.layer;
-  get diagnostics v_qtd = row_count;
+  select count(*) into v_total from hub.log_auditoria
+   where lote_id = p_lote and origem = 'planagri_ciclo_25_26' and modulo_id = 'preparo' and campo = 'etapa';
 
-  delete from hub.etapa_status s using hub.etapa_status_backup b
-   where b.lote_id = p_lote and not b.existia
-     and s.etapa_id = (b.linha->>'etapa_id')::bigint and s.entidade_id = (b.linha->>'entidade_id')::bigint;
-  update hub.etapa_status s
-     set ok = (b.linha->>'ok')::boolean, usuario_id = (b.linha->>'usuario_id')::uuid,
-         concluido_em = (b.linha->>'concluido_em')::timestamptz, observacao = b.linha->>'observacao'
-    from hub.etapa_status_backup b
-   where b.lote_id = p_lote and b.existia
-     and s.etapa_id = (b.linha->>'etapa_id')::bigint and s.entidade_id = (b.linha->>'entidade_id')::bigint;
+  with r as (
+    update hub.talhao_preparo p set etapa = l.valor_anterior
+      from hub.log_auditoria l
+     where l.lote_id = p_lote and l.origem = 'planagri_ciclo_25_26' and l.modulo_id = 'preparo' and l.campo = 'etapa'
+       and l.entidade_id = p.layer and p.etapa = l.valor_novo
+    returning p.layer
+  ), d as (
+    delete from hub.log_auditoria l
+     where l.lote_id = p_lote and l.origem = 'planagri_ciclo_25_26' and l.modulo_id = 'preparo' and l.campo = 'etapa'
+       and l.entidade_id in (select layer from r)
+    returning 1
+  )
+  select count(*) into v_qtd from r;
+  v_pul_t := v_total - v_qtd;
 
-  delete from hub.log_auditoria where lote_id = p_lote and origem = 'planagri_ciclo_25_26';
-  delete from hub.etapa_status_backup where lote_id = p_lote;
+  -- etapa_status: só onde a linha ainda é a que o lote gravou (ok, sem usuário, mesma data, mesma observação)
+  with igual as (
+    select b.*, s.etapa_id, s.entidade_id
+      from hub.etapa_status_backup b
+      join hub.etapa_status s on s.etapa_id = (b.linha->>'etapa_id')::bigint and s.entidade_id = (b.linha->>'entidade_id')::bigint
+     where b.lote_id = p_lote and s.ok and s.usuario_id is null and s.concluido_em = b.escrito_em
+       and s.observacao is not distinct from coalesce(nullif(b.linha->>'observacao', ''), v_selo)
+  ), apaga as (
+    delete from hub.etapa_status s using igual i
+     where not i.existia and s.etapa_id = i.etapa_id and s.entidade_id = i.entidade_id
+    returning s.etapa_id, s.entidade_id
+  ), volta as (
+    update hub.etapa_status s
+       set ok = (i.linha->>'ok')::boolean, usuario_id = (i.linha->>'usuario_id')::uuid,
+           concluido_em = (i.linha->>'concluido_em')::timestamptz, observacao = i.linha->>'observacao'
+      from igual i
+     where i.existia and s.etapa_id = i.etapa_id and s.entidade_id = i.entidade_id
+    returning s.etapa_id, s.entidade_id
+  ), limpa as (
+    delete from hub.etapa_status_backup b
+     where b.lote_id = p_lote
+       and ((b.linha->>'etapa_id')::bigint, (b.linha->>'entidade_id')::bigint) in
+           (select etapa_id, entidade_id from apaga union select etapa_id, entidade_id from volta)
+    returning 1
+  )
+  select (select count(*) from hub.etapa_status_backup where lote_id = p_lote) - (select count(*) from limpa)
+    into v_pul_e;
+
+  if v_pul_t > 0 or v_pul_e > 0 then
+    raise notice 'volta do lote %: % talhão(ões) e % etapa(s) de fazenda mudaram depois do lançamento e foram mantidos (o log deles ficou)',
+      p_lote, v_pul_t, v_pul_e;
+  end if;
   return v_qtd;
 end $$;
 
