@@ -55,3 +55,34 @@ test('quem pode cancelar uma solicitação', () => {
   assert.strictEqual(ctx.drPodeCancelar(sol, { status: 'pronta' }, solic), false);              // já tem prévia
   assert.strictEqual(ctx.drPodeCancelar({ ...sol, solicitante_id: 'outro' }, null, solic), false); // de outra pessoa
 });
+
+test('último envio de um tipo: erro antigo não vale depois de um envio novo ok', () => {
+  const envios = [   // do mais novo para o mais antigo, como vem do banco
+    { id: 9, tipo: 'ajuste', status: 'erro' },
+    { id: 8, tipo: 'obstaculos', status: 'ok' },
+    { id: 7, tipo: 'obstaculos', status: 'erro' },
+  ];
+  assert.strictEqual(ctx.drUltimoEnvio(envios, 'obstaculos').id, 8);
+  assert.strictEqual(ctx.drUltimoEnvio(envios, 'ajuste').id, 9);
+  assert.strictEqual(ctx.drUltimoEnvio(envios, 'infestacao'), null);
+  assert.strictEqual(ctx.drUltimoEnvio(null, 'obstaculos'), null);
+});
+
+test('assinatura dos obstáculos muda quando chega versão nova (descarta o desenho guardado)', () => {
+  const a = ctx.drAssinaturaObst([{ classe_m: 25, versao: 1 }, { classe_m: 15, versao: 1 }]);
+  const b = ctx.drAssinaturaObst([{ classe_m: 15, versao: 1 }, { classe_m: 25, versao: 1 }]);
+  const c = ctx.drAssinaturaObst([{ classe_m: 15, versao: 2 }, { classe_m: 25, versao: 1 }]);
+  assert.strictEqual(a, '15:1|25:1');
+  assert.strictEqual(a, b);            // a ordem não importa
+  assert.notStrictEqual(a, c);         // versão nova muda a assinatura
+  assert.strictEqual(ctx.drAssinaturaObst([]), '');
+  assert.strictEqual(ctx.drAssinaturaObst(null), '');
+});
+
+test('mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa existe', () => {
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|normal', true), true);
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|catacao', true), false);
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10156|normal', true), false);
+  assert.strictEqual(ctx.drMapaReaproveitavel('10372|normal', '10372|normal', false), false);
+  assert.strictEqual(ctx.drMapaReaproveitavel(undefined, '10372|normal', true), false);
+});

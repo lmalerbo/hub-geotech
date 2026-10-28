@@ -133,7 +133,7 @@ async function drBuscar(txt){
 }
 
 async function drAbrirFazenda(cod,doc){
-  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
+  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   clearTimeout(DR.poll);
   document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
   const pnl=document.getElementById('dr-faz');
@@ -157,21 +157,44 @@ async function drRecarregarFazenda(){
     const revs=proj.data&&proj.data.length?await sb.from('projeto_revisoes').select('numero,documento,motivo,criado_em')
       .eq('projeto_id',proj.data[0].id).order('numero',{ascending:false}):{data:[]};
     DR.geo=geo;DR.info={faz:faz.data,sols:sols.data||[],obst:obst.data||[],ger:ger.data||[],envios:env.data||[],revs:revs.data||[]};
+    const ass=drAssinaturaObst(DR.info.obst);
+    if(ass!==DR.obstAss){DR.obstAss=ass;DR.obstGeo=null;}
   }catch(e){document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;return;}
   drRender();
 }
 
-function drRender(){
+function drCabecalhoHtml(){
   const g=DR.geo,i=DR.info,tal=g.features.filter(f=>f.properties.camada==='talhao');
   const area=tal.filter(f=>f.properties.status!=='fora_da_base').reduce((s,f)=>s+(f.properties.area_ha||0),0);
   const pct=g.cobertura_pct;
   const card=(doc,tit,x,extra)=>`<div class="dr-doc${DR.doc===doc?' on':''}" onclick="DR.doc='${doc}';DR.sel=new Map();DR.rem=new Set();drRender()">
     <b>${tit} · ${x?'Rev'+x.revisao:'sem projeto'}</b>${extra}<small>${x?fmtNum(x.area_ha)+' ha · '+new Date(x.em).toLocaleDateString('pt-BR'):'—'}</small></div>`;
-  document.getElementById('dr-faz').innerHTML=`
-    <div class="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
+  return`<div class="dr-ph" id="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
       <div><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
       <div class="dr-docs">${card('normal','Normal',g.normal,pct!=null&&pct<100?`<span class="dr-tag">${Math.floor(pct)}% DA FAZENDA</span>`:'')}
-        ${card('catacao','Catação',g.catacao,'')}</div></div>
+        ${card('catacao','Catação',g.catacao,'')}</div></div>`;
+}
+
+// Atualiza os dados do mapa que já existe, sem recriá-lo (o polling passa por aqui).
+function drAtualizarFontesMapa(){
+  const m=DR.mapa;
+  m.getSource('tal').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada==='talhao')});
+  m.getSource('apl').setData({type:'FeatureCollection',features:DR.geo.features.filter(f=>f.properties.camada===DR.doc)});
+  drAtualizarSelecaoMapa();
+  if(DR.mostrarObst&&!DR.obstGeo)drObstaculos(true);
+}
+
+// Mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa existe.
+function drMapaReaproveitavel(antes,agora,temMapa){return !!temMapa&&antes===agora;}
+
+function drRender(){
+  const temMapa=!!(DR.mapa&&document.getElementById('dr-map')&&DR.mapa.getSource('tal'));
+  if(drMapaReaproveitavel(DR.mapaChave,DR.cod+'|'+DR.doc,temMapa)){
+    document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+    drAtualizarFontesMapa();drPainelLateral();drVooPublicacao();
+    return;
+  }
+  document.getElementById('dr-faz').innerHTML=drCabecalhoHtml()+`
     <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
       <div class="dr-leg"><span><i style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>
         <span><i style="background:${DR_COR.sem}"></i>sem projeto</span><span><i style="background:#fff;border-color:${DR_COR.fora}"></i>fora da Base</span>
@@ -192,7 +215,7 @@ function drVooPublicacao(){
   const {ger}=drAtual();
   if(ger&&ger.publicar_pedido_em&&!ger.publicacao_erro){
     if(!DR.voo||DR.voo.id!==ger.id)DR.voo={id:ger.id,desde:Date.now()};
-    Mo.voo(mapa,{texto:'Publicando no portal…',desde:DR.voo.desde});
+    if(!mapa.querySelector(':scope>.mo-voo'))Mo.voo(mapa,{texto:'Publicando no portal…',desde:DR.voo.desde});
   }else if(DR.voo){
     const erro=ger&&ger.id===DR.voo.id&&ger.publicacao_erro;
     Mo.voo(mapa,{desde:DR.voo.desde}).pousar(!erro,erro?'Falha ao publicar':'Publicado no portal');
@@ -313,8 +336,9 @@ function drFonte(f){DR.fonte=f;for(const k of DR.sel.keys())DR.sel.set(k,f);drPa
 function drObstaculosHtml(){
   const linhas=[15,25,50].map(c=>{const v=DR.info.obst.find(o=>o.classe_m===c);
     return`<div class="dr-row"><span>${c} m</span><span>${v?'v'+v.versao+' · '+new Date(v.enviado_em).toLocaleDateString('pt-BR'):'sem cadastro'}</span></div>`;}).join('');
-  const env=DR.info.envios.find(e=>e.status==='fila'||e.status==='processando');
-  const err=DR.info.envios.find(e=>e.status==='erro');
+  const ult=drUltimoEnvio(DR.info.envios,'obstaculos');
+  const env=ult&&['fila','processando'].includes(ult.status)?ult:null;
+  const err=ult&&ult.status==='erro'?ult:null;
   return`<div class="dr-box"><h3><span class="ico">warning</span> Obstáculos</h3>${linhas}
     ${env?`<div class="dr-msg">processando envio…</div>`:''}${err?`<div class="dr-err">Último envio: ${esc(err.erro)}</div>`:''}
     ${podeEditar('drone')?`<button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('obstaculos')"><span class="ico">upload</span> Enviar obstáculos</button>`:''}</div>`;
@@ -835,3 +859,9 @@ function drRotuloShape(envio){
   if(envio.status==='ok')return'Shape enviado ✓ (trocar)';
   return'Shape em processamento…';
 }
+
+// Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
+function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||null;}
+
+// Muda quando alguma classe ganha versão nova: aí o desenho guardado (DR.obstGeo) não vale mais.
+function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao).sort().join('|');}

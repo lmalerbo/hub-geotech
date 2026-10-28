@@ -43,7 +43,7 @@
 
 ### Tarefa S0.1: o erro de obstáculos considera só o último envio de obstáculos
 
-- [ ] **Passo 1: escrever o teste que falha** (acrescentar ao fim de `tests/app/drone_puro.test.js`)
+- [x] **Passo 1: escrever o teste que falha** (acrescentar ao fim de `tests/app/drone_puro.test.js`)
 
 ```js
 test('último envio de um tipo: erro antigo não vale depois de um envio novo ok', () => {
@@ -59,12 +59,12 @@ test('último envio de um tipo: erro antigo não vale depois de um envio novo ok
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar**
+- [x] **Passo 2: rodar e ver falhar**
 
 Rodar: `node --test tests/app/drone_puro.test.js`
 Esperado: FAIL com `ctx.drUltimoEnvio is not a function`.
 
-- [ ] **Passo 3: implementar** (em `app/drone.js`, logo depois de `drRotuloShape`)
+- [x] **Passo 3: implementar** (em `app/drone.js`, logo depois de `drRotuloShape`)
 
 ```js
 // Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
@@ -79,12 +79,12 @@ Em `drObstaculosHtml`, trocar as duas linhas `const env=...` e `const err=...` p
   const err=ult&&ult.status==='erro'?ult:null;
 ```
 
-- [ ] **Passo 4: rodar e ver passar.** Rodar: `node --test tests/app/drone_puro.test.js`. Esperado: todos PASS.
-- [ ] **Passo 5: commit** — `git add app/drone.js tests/app/drone_puro.test.js && git commit -m "Drone: erro de obstaculos considera so o ultimo envio de obstaculos"`
+- [x] **Passo 4: rodar e ver passar.** Rodar: `node --test tests/app/drone_puro.test.js`. Esperado: todos PASS.
+- [x] **Passo 5: commit** — `git add app/drone.js tests/app/drone_puro.test.js && git commit -m "Drone: erro de obstaculos considera so o ultimo envio de obstaculos"`
 
 ### Tarefa S0.2: obstáculo novo aparece no mapa sem atualizar a página
 
-- [ ] **Passo 1: teste que falha**
+- [x] **Passo 1: teste que falha**
 
 ```js
 test('assinatura dos obstáculos muda quando chega versão nova (descarta o desenho guardado)', () => {
@@ -99,8 +99,8 @@ test('assinatura dos obstáculos muda quando chega versão nova (descarta o dese
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar** (`drAssinaturaObst is not a function`).
-- [ ] **Passo 3: implementar**
+- [x] **Passo 2: rodar e ver falhar** (`drAssinaturaObst is not a function`).
+- [x] **Passo 3: implementar**
 
 ```js
 // Muda quando alguma classe ganha versão nova: aí o desenho guardado (DR.obstGeo) não vale mais.
@@ -116,12 +116,12 @@ Em `drRecarregarFazenda`, logo depois da linha `DR.geo=geo;DR.info={...};`:
 
 Em `drAbrirFazenda`, no começo, junto de `DR.obstGeo=null;`, acrescentar `DR.obstAss=null;`.
 
-- [ ] **Passo 4: rodar e ver passar.**
-- [ ] **Passo 5: commit** — `"Drone: obstaculo novo aparece no mapa sem recarregar a pagina"`
+- [x] **Passo 4: rodar e ver passar.**
+- [x] **Passo 5: commit** — `"Drone: obstaculo novo aparece no mapa sem recarregar a pagina"`
 
 ### Tarefa S0.3: o polling não recria o mapa (fim do pisca-pisca)
 
-- [ ] **Passo 1: teste que falha**
+- [x] **Passo 1: teste que falha**
 
 ```js
 test('mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa existe', () => {
@@ -133,8 +133,8 @@ test('mapa é reaproveitado só se a fazenda/documento é o mesmo e o mapa exist
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar.**
-- [ ] **Passo 3: implementar**
+- [x] **Passo 2: rodar e ver falhar.**
+- [x] **Passo 3: implementar**
 
 Função pura:
 
@@ -184,9 +184,9 @@ Em `drVooPublicacao`, não reiniciar o voo que já está na tela. Logo depois de
     if(!mapa.querySelector(':scope>.mo-voo'))Mo.voo(mapa,{texto:'Publicando no portal…',desde:DR.voo.desde});
 ```
 
-- [ ] **Passo 4: rodar e ver passar.** Rodar `node --test tests/app/drone_puro.test.js` e depois `node --test tests/app/` (nada mais quebra).
+- [x] **Passo 4: rodar e ver passar.** Rodar `node --test tests/app/drone_puro.test.js` e depois `node --test tests/app/` (nada mais quebra).
 - [ ] **Passo 5: conferir no navegador.** Abrir o Hub local (`python -m http.server` em `app/`), entrar numa fazenda com geração em fila (ou simular: no console, `DR.poll=setTimeout(()=>drRecarregarFazenda(),100)`) e ver que o mapa não pisca nem perde o zoom. O teste real com envio de obstáculos fica com o usuário: subir um arquivo com erro, depois um certo, e ver o erro sumir e o desenho novo aparecer sem F5.
-- [ ] **Passo 6: commit** — `"Drone: polling atualiza o mapa sem recria-lo (fim do pisca-pisca)"`
+- [x] **Passo 6: commit** — `"Drone: polling atualiza o mapa sem recria-lo (fim do pisca-pisca)"`
 
 ---
 
