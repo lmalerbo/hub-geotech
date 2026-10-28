@@ -2,7 +2,7 @@
 
 async function drAbrirFazenda(cod,doc){
   DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
-  drPollParar();drMapaDescartar();
+  drPollParar();drMapaDescartar();DR.ass=null;
   document.querySelectorAll('#dr-fila .dr-it').forEach(e=>e.classList.toggle('on',e.getAttribute('onclick')?.includes(`(${cod},`)));
   const pnl=document.getElementById('dr-faz');
   DR.voo=null;
@@ -51,12 +51,12 @@ function drRedesenhar(){
 function drTrocarDoc(doc){DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
 function drDesenhar(partes){
   const tem=p=>partes.includes(p);
-  if(!DR.mapa||!document.getElementById('dr-map')){drEsqueleto();drMapaCriar();drPainelLateral();}
+  if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drMapaCriar();drPainelLateral();}
   else{
     if(tem('cab'))document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
     if(tem('mapa'))drMapaAtualizar();
     if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
-    if(tem('painel'))drPainelLateral();
+    if(tem('painel')){drPainelLateral();drAtualizarSelecaoMapa();}   // o estado 'ger' dos talhões segue a geração
   }
   drVooPublicacao();drAnimGeracao();
 }
@@ -81,8 +81,7 @@ function drMapaAtualizar(){
 function drMapaDescartar(){
   drPulsarGeracao(false);
   DR.varr&&DR.varr.parar();DR.varr=null;
-  DR.mapa&&DR.mapa.remove();DR.mapa=null;
-  DR.ass=null;
+  DR.mapa&&DR.mapa.remove();DR.mapa=null;   // também depois de um erro que apagou #dr-faz
 }
 // Espera da geração: varredura no mapa, pulso nos talhões do escopo e trilho no painel.
 function drAnimGeracao(){
