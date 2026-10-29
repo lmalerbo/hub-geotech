@@ -38,11 +38,11 @@ const talPrep = (cod, num, etapa, nome = 'Faz') => ({
 
 test('Preparo: cada talhão leva a etapa do banco como índice; a fazenda fica na do menos avançado', () => {
   const todas = [talPrep(10455, 2, 'Ok', 'Beta'), talPrep(10455, 1, 'Escoamento', 'Beta'), talPrep(10001, 1, 'Preparo', 'Alfa')];
-  const juntas = ctx.montarPreparo(todas, [], [], {}, {});
+  const juntas = ctx.montarPreparo(todas, [], [], {}, []);
   assert.deepStrictEqual(limpo(juntas.map((f) => f.n)), ['Alfa', 'Beta']);
   assert.deepStrictEqual(limpo(juntas[1].tals), [
-    { layer: 10455001, num: 1, ha: 10.04, e: 1 },
-    { layer: 10455002, num: 2, ha: 10.04, e: 4 },
+    { layer: 10455001, num: 1, ha: 10.04, e: 1, cons: null },
+    { layer: 10455002, num: 2, ha: 10.04, e: 4, cons: null },
   ]);
   assert.strictEqual(juntas[1].e, 1);                 // o talhão 1 está em Escoamento
   assert.strictEqual(juntas[0].e, 3);                 // Preparo
@@ -51,13 +51,13 @@ test('Preparo: cada talhão leva a etapa do banco como índice; a fazenda fica n
 
 test('Preparo: fazenda montada sozinha é igual à mesma fazenda montada junto com as outras', () => {
   const todas = [talPrep(10455, 2, 'Ok', 'Beta'), talPrep(10001, 1, 'Preparo', 'Alfa'), talPrep(10455, 1, 'Escoamento', 'Beta')];
-  const juntas = ctx.montarPreparo(todas, [], [], {}, {});
-  const sozinha = ctx.montarPreparo(todas.filter((r) => r.layer >= 10455000 && r.layer <= 10455999), [], [], {}, {});
+  const juntas = ctx.montarPreparo(todas, [], [], {}, []);
+  const sozinha = ctx.montarPreparo(todas.filter((r) => r.layer >= 10455000 && r.layer <= 10455999), [], [], {}, []);
   assert.deepStrictEqual(limpo(sozinha[0]), limpo(juntas.find((f) => f.cod === '10455')));
 });
 
 test('Preparo: etapa desconhecida ou vazia cai em Identificação (índice 0)', () => {
-  const [f] = ctx.montarPreparo([talPrep(10819, 1, undefined)], [], [], {}, {});
+  const [f] = ctx.montarPreparo([talPrep(10819, 1, undefined)], [], [], {}, []);
   assert.strictEqual(f.tals[0].e, 0);
   assert.strictEqual(f.e, 0);
 });
@@ -67,12 +67,11 @@ test('Preparo: etapas concluídas por fazenda', () => {
   const etapas = [{ id: 1, ordem: 1 }, { id: 2, ordem: 2 }];
   const status = [{ etapa_id: 1, entidade_id: '10819', ok: true, usuario_id: 'u', concluido_em: 'd1', observacao: 'obs' },
                   { etapa_id: 9, entidade_id: '10819', ok: true }];
-  const [f] = ctx.montarPreparo(linhas, etapas, status, { u: 'Ana' }, { 10819: 'nov' });
+  const [f] = ctx.montarPreparo(linhas, etapas, status, { u: 'Ana' }, []);
   assert.deepStrictEqual(limpo(f.ok), [true, false]);
   assert.deepStrictEqual(limpo(f.usr), ['Ana', '']);
   assert.strictEqual(f.dt[0], 'dt:d1');
   assert.strictEqual(f.obs, 'obs');
-  assert.strictEqual(f.mes, 'nov');
 });
 
 test('Colheita: frentes mais frequentes primeiro e porte', () => {
@@ -118,4 +117,24 @@ test('montarArquivos: individual vira docs da fazenda; personalizado entra em ca
   assert.deepStrictEqual(limpo(arq['plantio|10095'].docs.projeto.map((r) => r.numero)), [1, 0]);
   assert.strictEqual(arq['plantio|10095'].blocos[0].id, 99);
   assert.strictEqual(arq['plantio|10001'].blocos[0].id, 99);
+});
+
+const talPr = (cod, num, etapa, cons = null) => ({
+  layer: cod * 1000 + num, etapa, conservacao_em: cons,
+  talhoes: { cod_faz: cod, talhao_num: num, area_ha: 5, fazendas: { nome: 'F' + cod } },
+});
+
+test('Preparo: "Entregue em" é o mês do último talhão, só com a fazenda toda Ok', () => {
+  const linhas = [talPr(1, 1, 'Ok'), talPr(1, 2, 'Ok', '2025-09-01'), talPr(2, 1, 'Ok'), talPr(2, 2, 'Preparo')];
+  const ent = [
+    { layer: 1001, entregue_em: '2026-08-10T15:00:00+00:00', origem: 'hub' },
+    { layer: 1002, entregue_em: '2025-09-01T00:00:00+00:00', origem: 'ciclo_25_26' },
+    { layer: 2001, entregue_em: '2026-09-01T15:00:00+00:00', origem: 'hub' },
+  ];
+  const [f1, f2] = ctx.montarPreparo(linhas, [], [], {}, ent);
+  assert.strictEqual(f1.mes, '2026-08');
+  assert.strictEqual(f1.ciclo25, true);
+  assert.strictEqual(f1.tals[1].cons, '2025-09-01');
+  assert.strictEqual(f2.mes, '');
+  assert.strictEqual(f2.ciclo25, false);
 });
