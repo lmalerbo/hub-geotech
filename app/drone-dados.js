@@ -29,18 +29,18 @@ function drClasseEscolhida(txt){
 
 function drPodeCancelar(sol,ger,eu){
   if(!sol||!eu)return false;
-  const ocupado=ger&&(ger.status==='processando'||(ger.status==='pronta'&&ger.publicar_pedido_em&&!ger.publicacao_erro));
+  const ocupado=ger&&(ger.status==='processando'||drPublicando(ger));
   if(ocupado)return false;
   if(podeEditar('drone'))return true;
   return sol.solicitante_id===eu.id&&!ger;            // solicitante: só a própria e antes da prévia
 }
 
-function drAtual(){
-  const tipo=DR.doc;
-  const sol=DR.info.sols.find(s=>s.tipo===tipo)||null;
-  const ger=sol?DR.info.ger.find(g=>g.solicitacao_id===sol.id)||null:null;
+function drSolGer(info,doc){
+  const sol=(info.sols||[]).find(s=>s.tipo===doc)||null;
+  const ger=sol?(info.ger||[]).find(g=>g.solicitacao_id===sol.id)||null:null;
   return{sol,ger};
 }
+function drAtual(){return drSolGer(DR.info,DR.doc);}
 
 function drValidarSolicitacao(v){
   if(!v.cod)return'Escolha a fazenda.';
@@ -70,17 +70,19 @@ function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao
 function drAssinaturas(info,geo,doc){
   const tal=(geo.features||[]).filter(f=>f.properties.camada==='talhao');
   const envios=(info.envios||[]).map(({enviado_em,...e})=>e);
+  const {sol,ger}=drSolGer(info,doc),card=(DR.painel?.solicitacoes||[]).find(c=>sol&&c.id===sol.id);
   return{
     cab:JSON.stringify([info.faz,doc,geo.normal,geo.catacao,geo.cobertura_pct,
-      tal.map(f=>[f.properties.talhao,f.properties.status,f.properties.area_ha])]),
-    painel:JSON.stringify([doc,geo.normal&&geo.normal.revisao,info.sols,info.ger,envios,info.obst,info.revs]),
+      tal.map(f=>[f.properties.talhao,f.properties.status,f.properties.area_ha]),drChipObstaculos(info.obst,info.envios,new Date())]),
+    painel:JSON.stringify([doc,geo.normal&&geo.normal.revisao,info.sols,info.ger,envios,info.obst,info.revs,DR.ajusteId,DR.modoRemover]),
+    etapas:JSON.stringify([doc,sol&&sol.id,ger&&[ger.status,ger.publicar_pedido_em,ger.publicacao_erro],drContextoSol(card)]),
     obst:drAssinaturaObst(info.obst),
     mapa:JSON.stringify([doc,geo.features])};
 }
 function drPartesMudadas(antes,agora){return Object.keys(agora).filter(k=>!antes||antes[k]!==agora[k]);}
 function drRespostaValida(codPedido,codAtual){return codPedido===codAtual;}
 function drOcupado(info,ger){
-  return !!((ger&&(['fila','processando'].includes(ger.status)||(ger.publicar_pedido_em&&!ger.publicacao_erro)))
+  return !!((ger&&(['fila','processando'].includes(ger.status)||drPublicando(ger)))
     ||(info.envios||[]).some(e=>e.status==='fila'||e.status==='processando'));
 }
 // Talhões que pulsam no mapa enquanto a prévia é gerada (Catação não tem escopo: só a varredura).
@@ -89,6 +91,66 @@ function drTalhoesGerando(ger){
   return((ger.escopo&&ger.escopo.incluir)||[]).map(i=>i.talhao);
 }
 
+// ── área da fazenda (S4) ──
+const drPublicando=ger=>!!(ger&&ger.publicar_pedido_em&&!ger.publicacao_erro);
+function drEtapaAtiva(sol,ger){
+  if(!ger)return 0;
+  if(ger.status==='pronta')return drPublicando(ger)?3:2;
+  return 1;                                            // fila, processando ou erro
+}
+function drEstadoPainel({doc,sol,ger,edita}){
+  if(!edita)return'consulta';
+  if(ger){
+    if(drPublicando(ger))return'publicando';
+    if(ger.status==='fila'||ger.status==='processando')return'gerando';
+    if(ger.status==='erro')return'erro';
+    if(ger.status==='pronta')return'previa';
+  }
+  return doc==='catacao'?'catacao':'montando';
+}
+function drDataCurta(iso){return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});}
+function drChipObstaculos(obst,envios,hoje,meses=24){
+  const ult=drUltimoEnvio(envios,'obstaculos');
+  if(ult&&['fila','processando'].includes(ult.status))return{texto:'processando envio…',tom:'proc'};
+  if(ult&&ult.status==='erro')return{texto:'erro no último envio',tom:'erro'};
+  const o=obst||[];if(!o.length)return{texto:'sem cadastro',tom:'velho'};
+  const limite=new Date(hoje);limite.setMonth(limite.getMonth()-meses);
+  const datas=o.map(v=>new Date(v.enviado_em)),recente=new Date(Math.max(...datas));
+  return{texto:`${o.length} classe${o.length>1?'s':''} · ${drDataCurta(recente)}`,tom:datas.some(d=>d<limite)?'velho':'ok'};
+}
+function drEscopo(sel,rem,ajusteId){
+  const inc=[...sel].sort((a,b)=>a[0]-b[0]);
+  if(inc.some(([,f])=>f==='shape')&&!ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
+  return{incluir:inc.map(([t,f])=>f==='shape'?{talhao:t,fonte:'shape',envio_id:ajusteId}:{talhao:t,fonte:'sistema'}),
+    remover:[...rem].sort((a,b)=>a-b)};
+}
+function drIndicadoresPrevia(resumo,vigente,doc){
+  const n=x=>typeof x==='number'?x:null,r=resumo||{},v=vigente||{},normal=doc==='normal';
+  const area=n(r.aplicacao_ha),antes=n(v.area_ha);
+  return{area,deltaArea:area!=null&&antes!=null?area-antes:null,cob:normal?n(r.cobertura_pct):null,cobAntes:normal?n(v.cobertura_pct):null};
+}
+function drSituacaoTalhao(p){return p.status==='sem_projeto'?'sem projeto':'refazer Rev'+p.desde_rev;}
+function drDecorrido(desde,agora){
+  if(!desde)return'';
+  const s=Math.max(0,Math.floor((agora-Date.parse(desde))/1000));
+  if(s<60)return s+' s';
+  if(s<3600)return`${Math.floor(s/60)} min ${s%60} s`;
+  return`${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;
+}
+function drContextoSol(c){
+  if(!c)return'';
+  const p=['Solicitação'+(c.solicitante?' de '+c.solicitante:'')];
+  if(c.observacao)p.push(`“${c.observacao}”`);
+  if(c.data_desejada)p.push('para '+new Date(c.data_desejada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+  return p.join(' · ');
+}
+function drCamadasEnvio(env){
+  return[...new Set(((env&&env.arquivos)||[]).map(a=>a.split('/').pop().replace(/\.[^.]+$/,'')))];
+}
+
+// Extensões aceitas ao arrastar arquivos para o painel do Drone (sem diferenciar maiúscula).
+const DR_EXT_ACEITAS=['.shp','.shx','.dbf','.prj','.cpg','.zip'];
+function drArquivosAceitos(nomes){return nomes.filter(n=>DR_EXT_ACEITAS.some(x=>n.toLowerCase().endsWith(x)));}
 // Polling único (spec §4): um timer só. Pausa com a aba oculta ou fora da view
 // do Drone e retoma ao voltar. O callback roda uma vez; quem quer continuar chama drPollIniciar de novo.
 const DR_POLL={t:null,fn:null,ms:0,fora:false};

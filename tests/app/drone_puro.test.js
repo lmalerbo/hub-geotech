@@ -93,7 +93,7 @@ test('assinaturas: painel ignora enviado_em e muda com o status da geração', (
   assert.notStrictEqual(a.painel, c.painel);
   assert.strictEqual(a.mapa, c.mapa);
   assert.notStrictEqual(a.mapa, ctx.drAssinaturas(info, geo, 'catacao').mapa);
-  assert.deepStrictEqual(Object.keys(a).sort(), ['cab', 'mapa', 'obst', 'painel']);
+  assert.deepStrictEqual(Object.keys(a).sort(), ['cab', 'etapas', 'mapa', 'obst', 'painel']);
 });
 
 test('partes mudadas: tudo na primeira vez, só o que mudou depois', () => {
@@ -233,4 +233,106 @@ test('cartão de erro convida a abrir para corrigir', () => {
   const sol = { id: 8, cod_faz: 11, fazenda: 'F', tipo: 'normal', status: 'em_elaboracao', geracao: { status: 'erro', erro: 'x' } };
   assert.match(ctx.driCartaoHtml(sol, { editor: false }), /dri-card erro[\s\S]*Abrir para corrigir →/);
   assert.doesNotMatch(ctx.driCartaoHtml({ ...sol, geracao: { status: 'fila' } }, { editor: false }), /Abrir para corrigir/);
+});
+
+test('etapa ativa segue a geração', () => {
+  assert.strictEqual(ctx.drEtapaAtiva(null, null), 0);
+  assert.strictEqual(ctx.drEtapaAtiva({ status: 'solicitado' }, null), 0);
+  assert.strictEqual(ctx.drEtapaAtiva({}, { status: 'fila' }), 1);
+  assert.strictEqual(ctx.drEtapaAtiva({}, { status: 'processando' }), 1);
+  assert.strictEqual(ctx.drEtapaAtiva({}, { status: 'erro' }), 1);
+  assert.strictEqual(ctx.drEtapaAtiva({}, { status: 'pronta' }), 2);
+  assert.strictEqual(ctx.drEtapaAtiva({}, { status: 'pronta', publicar_pedido_em: 'x' }), 3);
+  assert.strictEqual(ctx.drEtapaAtiva({}, { status: 'pronta', publicar_pedido_em: 'x', publicacao_erro: 'falhou' }), 2);
+});
+
+test('estado do painel: um por vez; quem não edita só consulta (Foco 4)', () => {
+  const E = (doc, ger, edita = true, sol = { status: 'solicitado' }) => ctx.drEstadoPainel({ doc, sol, ger, edita });
+  assert.strictEqual(E('normal', null), 'montando');
+  assert.strictEqual(E('catacao', null), 'catacao');
+  assert.strictEqual(E('catacao', null, true, null), 'catacao');
+  assert.strictEqual(E('normal', { status: 'fila' }), 'gerando');
+  assert.strictEqual(E('catacao', { status: 'processando' }), 'gerando');
+  assert.strictEqual(E('normal', { status: 'pronta' }), 'previa');
+  assert.strictEqual(E('normal', { status: 'pronta', publicar_pedido_em: 'x' }), 'publicando');
+  assert.strictEqual(E('normal', { status: 'pronta', publicar_pedido_em: 'x', publicacao_erro: 'e' }), 'previa');
+  assert.strictEqual(E('normal', { status: 'erro' }), 'erro');
+  for (const ger of [null, { status: 'fila' }, { status: 'pronta' }, { status: 'pronta', publicar_pedido_em: 'x' }, { status: 'erro' }])
+    for (const doc of ['normal', 'catacao']) assert.strictEqual(E(doc, ger, false), 'consulta');
+});
+
+test('chip de Obstáculos: processando e erro vêm do último envio; âmbar com classe de mais de 24 meses', () => {
+  const hoje = new Date('2026-10-29T12:00:00');
+  const obst = [{ classe_m: 15, enviado_em: '2026-09-30T12:00:00' }, { classe_m: 25, enviado_em: '2026-01-10T12:00:00' },
+    { classe_m: 50, enviado_em: '2025-03-01T12:00:00' }];
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos(obst, [], hoje) }, { texto: '3 classes · 30/09/26', tom: 'ok' });
+  const velho = [...obst.slice(0, 2), { classe_m: 50, enviado_em: '2024-09-01T12:00:00' }];
+  assert.strictEqual(ctx.drChipObstaculos(velho, [], hoje).tom, 'velho');
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos(obst, [{ tipo: 'obstaculos', status: 'processando' }], hoje) },
+    { texto: 'processando envio…', tom: 'proc' });
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos(obst, [{ tipo: 'obstaculos', status: 'fila' }], hoje) },
+    { texto: 'processando envio…', tom: 'proc' });
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos(obst, [{ tipo: 'obstaculos', status: 'erro' }], hoje) },
+    { texto: 'erro no último envio', tom: 'erro' });
+  // envio de outro tipo não conta; erro antigo seguido de ok não conta (o primeiro é o mais novo)
+  assert.strictEqual(ctx.drChipObstaculos(obst, [{ tipo: 'ajuste', status: 'erro' }], hoje).tom, 'ok');
+  assert.strictEqual(ctx.drChipObstaculos(obst, [{ tipo: 'obstaculos', status: 'ok' }, { tipo: 'obstaculos', status: 'erro' }], hoje).tom, 'ok');
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos([obst[0]], [], hoje) }, { texto: '1 classe · 30/09/26', tom: 'ok' });
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos([], [], hoje) }, { texto: 'sem cadastro', tom: 'velho' });
+});
+
+test('escopo por talhão: cada um com a sua fonte; Shape sem envio é erro', () => {
+  const sel = new Map([[10, 'shape'], [3, 'sistema'], [6, 'sistema']]);
+  const e = ctx.drEscopo(sel, new Set([12, 4]), 77);
+  assert.strictEqual(JSON.stringify(e), JSON.stringify({
+    incluir: [{ talhao: 3, fonte: 'sistema' }, { talhao: 6, fonte: 'sistema' }, { talhao: 10, fonte: 'shape', envio_id: 77 }],
+    remover: [4, 12] }));
+  assert.throws(() => ctx.drEscopo(sel, new Set(), null), /shape de ajuste/);
+  assert.strictEqual(JSON.stringify(ctx.drEscopo(new Map([[3, 'sistema']]), new Set(), null)),
+    JSON.stringify({ incluir: [{ talhao: 3, fonte: 'sistema' }], remover: [] }));
+});
+
+test('indicadores da prévia: diferença para a vigente; Catação sem cobertura', () => {
+  const r = { aplicacao_ha: 412.8, cobertura_pct: 94 };
+  assert.deepStrictEqual({ ...ctx.drIndicadoresPrevia(r, { area_ha: 341.4, cobertura_pct: 82 }, 'normal') },
+    { area: 412.8, deltaArea: 412.8 - 341.4, cob: 94, cobAntes: 82 });
+  assert.deepStrictEqual({ ...ctx.drIndicadoresPrevia(r, { area_ha: 20 }, 'catacao') },
+    { area: 412.8, deltaArea: 412.8 - 20, cob: null, cobAntes: null });
+  assert.deepStrictEqual({ ...ctx.drIndicadoresPrevia(r, null, 'normal') },        // primeira revisão
+    { area: 412.8, deltaArea: null, cob: 94, cobAntes: null });
+  assert.deepStrictEqual({ ...ctx.drIndicadoresPrevia(null, null, 'normal') },
+    { area: null, deltaArea: null, cob: null, cobAntes: null });
+});
+
+test('situação do talhão na lista da revisão', () => {
+  assert.strictEqual(ctx.drSituacaoTalhao({ status: 'sem_projeto' }), 'sem projeto');
+  assert.strictEqual(ctx.drSituacaoTalhao({ status: 'com_projeto', desde_rev: 1 }), 'refazer Rev1');
+  assert.strictEqual(ctx.drSituacaoTalhao({ status: 'com_projeto', desde_rev: 0 }), 'refazer Rev0');
+});
+
+test('tempo decorrido da geração', () => {
+  const t0 = Date.parse('2026-10-29T14:00:00Z');
+  assert.strictEqual(ctx.drDecorrido('2026-10-29T14:00:00Z', t0 + 45e3), '45 s');
+  assert.strictEqual(ctx.drDecorrido('2026-10-29T14:00:00Z', t0 + 72e3), '1 min 12 s');
+  assert.strictEqual(ctx.drDecorrido('2026-10-29T14:00:00Z', t0 + 3900e3), '1 h 05 min');
+  assert.strictEqual(ctx.drDecorrido('2026-10-29T14:00:00Z', t0 - 5e3), '0 s');    // relógio adiantado
+  assert.strictEqual(ctx.drDecorrido(null, t0), '');
+});
+
+test('linha de contexto da solicitação', () => {
+  assert.strictEqual(ctx.drContextoSol({ solicitante: 'Ana', observacao: 'Completar talhões do bloco norte', data_desejada: '2026-11-05' }),
+    'Solicitação de Ana · “Completar talhões do bloco norte” · para 05/11');
+  assert.strictEqual(ctx.drContextoSol({ solicitante: 'Ana' }), 'Solicitação de Ana');
+  assert.strictEqual(ctx.drContextoSol({ observacao: 'x' }), 'Solicitação · “x”');
+  assert.strictEqual(ctx.drContextoSol(null), '');
+});
+
+test('arrastar para o painel aceita só as extensões do shape (sem maiúscula)', () => {
+  assert.deepStrictEqual([...ctx.drArquivosAceitos(['A.SHP', 'b.zip', 'c.pdf', 'pasta'])], ['A.SHP', 'b.zip']);
+});
+
+test('camadas de um envio: nomes-base únicos, sem pasta nem extensão', () => {
+  assert.deepStrictEqual([...ctx.drCamadasEnvio({ arquivos: ['10372/1/manchas_buva.shp', '10372/1/manchas_buva.dbf',
+    '10372/1/manchas_buva.SHX', '10372/1/manchas_capim.shp', '10372/1/pacote.zip'] })], ['manchas_buva', 'manchas_capim', 'pacote']);
+  assert.deepStrictEqual([...ctx.drCamadasEnvio(null)], []);
 });
