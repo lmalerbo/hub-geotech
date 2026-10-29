@@ -61,7 +61,7 @@ function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
     if(!t)continue;
     let f=porFaz.get(t.cod_faz);
     if(!f){
-      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:'',ciclo25:false,_ult:'',_todosOk:true,
+      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:'',mesIso:'',ciclo25:false,ciclo25Todos:true,_ult:'',_todosOk:true,
          voo:'?',ok:[],usr:[],dt:[],obs:'',tals:[],e:ETAPAS_PREPARO.length-1};
       porFaz.set(t.cod_faz,f);
     }
@@ -71,12 +71,14 @@ function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
     f.ha+=t.area_ha||0;
     const x=ent.get(r.layer);
     if(r.etapa!=='Ok'||!x)f._todosOk=false;
+    if(!x||x.origem!=='ciclo_25_26')f.ciclo25Todos=false;
     if(x){if(x.origem==='ciclo_25_26')f.ciclo25=true;if(!f._ult||Date.parse(x.entregue_em)>Date.parse(f._ult))f._ult=x.entregue_em;}
   }
   return [...porFaz.entries()].sort((a,b)=>a[1].n.localeCompare(b[1].n,'pt-BR')).map(([cod,f])=>{
     f.ha=Math.round(f.ha*10)/10;
     f.tals.sort((a,b)=>a.num-b.num);
-    f.mes=f._todosOk&&f._ult?mesLabel(new Date(f._ult).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'})):'';
+    f.mesIso=f._todosOk&&f._ult?new Date(f._ult).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}).slice(0,7):'';
+    f.mes=f.mesIso?mesLabel(f.mesIso):'';
     delete f._ult;delete f._todosOk;
     for(const e of etapas){
       const s=st.get(e.id+'|'+cod);

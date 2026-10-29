@@ -144,3 +144,19 @@ test('Preparo: "Entregue em" usa a data de São Paulo, não a de UTC', () => {
   const [f] = ctx.montarPreparo([talPr(3, 1, 'Ok')], [], [], {}, ent);
   assert.strictEqual(f.mes, '2026-08');
 });
+
+test('Preparo: Ciclo 25-26 só com todos os talhões do lançamento; mesIso serve para ordenar', () => {
+  const linhas = [talPr(1, 1, 'Ok'), talPr(1, 2, 'Ok'), talPr(2, 1, 'Ok'), talPr(2, 2, 'Identificação')];
+  const ent = [
+    { layer: 1001, entregue_em: '2025-09-01T15:00:00+00:00', origem: 'ciclo_25_26' },
+    { layer: 1002, entregue_em: '2025-10-01T15:00:00+00:00', origem: 'ciclo_25_26' },
+    { layer: 2001, entregue_em: '2025-09-01T15:00:00+00:00', origem: 'ciclo_25_26' },
+  ];
+  const [f1, f2] = ctx.montarPreparo(linhas, [], [], {}, ent);
+  assert.strictEqual(f1.ciclo25, true);
+  assert.strictEqual(f1.ciclo25Todos, true);
+  assert.strictEqual(f1.mesIso, '2025-10');
+  assert.strictEqual(f2.ciclo25, true);
+  assert.strictEqual(f2.ciclo25Todos, false);
+  assert.strictEqual(f2.mesIso, '');
+});

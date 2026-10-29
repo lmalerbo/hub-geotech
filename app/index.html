@@ -2243,7 +2243,7 @@ function consRowsAll(){
       if(cFilters.etapa!==''&&((cFilters.etapa==='-1'&&!done)||(cFilters.etapa!=='-1'&&(done||si!==parseInt(cFilters.etapa)))))return null;
       const etapa=done?'Entregue':ET_P[si]?ET_P[si].l:'—';
       const etapaC=done?'var(--plantio)':prStepColors[si]||'var(--t3)';
-      return{_key:'pr'+i,_fi:i,cod:f.cod,n:f.n,ha:f.ha,mes:f.mes||'—',ciclo:f.ciclo25?'25-26':getCiclo(),_ciclo25:!!f.ciclo25,
+      return{_key:'pr'+i,_fi:i,cod:f.cod,n:f.n,ha:f.ha,mes:f.mes||'—',ciclo:f.ciclo25Todos?'25-26':getCiclo(),_ciclo25:!!f.ciclo25,
              voo:VOO[f.voo]?.l||f.voo,_vooC:VOO[f.voo]?.c||'var(--t3)',
              etapa,_etapaC:etapaC,_done:done,_si:si,
              steps:ET_P.map((e,ei)=>({l:e.l,ok:f.ok[ei],usr:f.usr[ei],dt:f.dt[ei]}))};
@@ -2411,7 +2411,7 @@ function rConsFilters(){
     html+=`<select class="cons-sel" onchange="cFilters.obst=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Obstáculos: todos</option><option value="ok">Em dia</option><option value="antigos">+24 meses</option><option value="sem">Sem obstáculos</option></select>`;
   } else {
-    const meses=[...new Set(FZ_P.map(f=>f.mes))].filter(m=>m&&m!=='—');
+    const meses=[...new Map(FZ_P.filter(f=>f.mesIso).map(f=>[f.mesIso,f.mes])).entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(x=>x[1]);
     const voos=[...new Set(FZ_P.map(f=>f.voo))];
     html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option>${ET_P.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}<option value="-1">Entregue</option></select>`;
