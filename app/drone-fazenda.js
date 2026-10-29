@@ -69,8 +69,10 @@ function drDesenhar(partes){
     if(tem('mapa'))drMapaAtualizar();
     if(tem('obst')&&DR.obstLigarAoFim){DR.obstLigarAoFim=false;drObstaculos(true);}   // envio feito nesta tela: a camada liga sozinha
     else if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
+    if(DR.obstLigarAoFim&&typeof droProcessando==='function'&&!droProcessando())DR.obstLigarAoFim=false;   // envio terminou sem versão nova (erro): desarma
     if(tem('painel')){drPainelLateral();drAtualizarSelecaoMapa();}   // o estado 'ger' dos talhões segue a geração
   }
+  if(typeof droAtualizar==='function')droAtualizar();   // janela de obstáculos aberta acompanha o polling
   drVooPublicacao();drAnimGeracao();
 }
 function drEsqueleto(){

@@ -1,7 +1,7 @@
 // Drone: janela de obstáculos (maquete tela 3). Carregado por index.html depois de drone-fazenda.js.
 // Só define funções e o estado DRO: nada roda ao carregar (tests/app/drone_puro.test.js também carrega este arquivo).
 // Quem só lê abre a janela em modo consulta (cartões e erro do último envio). Quem edita sobe os arquivos.
-const DRO={arquivos:[],escolhas:{},grupos:[],ign:new Set(),enviando:false,erro:null,foco:null,tecla:null};
+const DRO={arquivos:[],escolhas:{},grupos:[],ign:new Set(),enviando:false,erro:null,foco:null,tecla:null,sessao:null,lendo:0,corpo:''};
 let DRO_JSZIP=null;
 
 // JSZip só é carregado quando um .zip é escolhido; a promessa fica guardada (carrega uma vez).
@@ -18,35 +18,51 @@ function droJSZip(){
 }
 
 // Abre o .zip e devolve só os shapes, no mesmo formato dos arquivos soltos. O resto vai para "ignorados".
+// Não mexe no DRO: devolve {achados, ign, aninhados}. Zip dentro de zip não é aberto (conta em aninhados).
 async function droLerZip(f){
   const zip=await (await droJSZip()).loadAsync(f);
   const entradas=[];
   zip.forEach((caminho,entrada)=>entradas.push({caminho,entrada}));
-  const achados=[];
+  const achados=[],ign=[];let aninhados=0;
   for(const {caminho,entrada} of entradas){
     if(entrada.dir)continue;
-    const base=caminho.split('/').pop(),ext=drPartesNome(base).ext;
-    if(caminho.startsWith('__MACOSX/')||base.startsWith('._')||!DR_EXT_SHAPE.includes(ext)){DRO.ign.add(`${f.name}|${caminho}`);continue;}
+    const base=caminho.split('/').pop(),ext=drPartesNome(base).ext,lixo=caminho.startsWith('__MACOSX/')||base.startsWith('._');
+    if(!lixo&&ext==='zip')aninhados++;
+    if(lixo||!DR_EXT_SHAPE.includes(ext)){ign.push(`${f.name}|${caminho}`);continue;}
     const blob=await entrada.async('blob');
     achados.push({nome:caminho,tamanho:blob.size,origem:f.name,arq:new File([blob],base)});
   }
-  return achados;
+  return {achados,ign,aninhados};
 }
 
 // Acrescenta arquivos (soltos ou dentro de .zip). Só a sugestão da classe entra nas escolhas, e só para camada nova.
+// Se a janela fechar enquanto um .zip é lido, o resultado é descartado (a sessão mudou).
 async function droAdicionar(lista){
   if(DRO.enviando||droProcessando())return;
-  const arqs=[...(lista||[])];
-  DRO.erro=null;
-  for(const f of arqs){
-    const ext=drPartesNome(f.name).ext;
-    if(ext==='zip'){
-      try{DRO.arquivos.push(...await droLerZip(f));}
-      catch(e){DRO.erro=`${f.name}: não consegui abrir este .zip (${e.message||e}).`;}
+  const s=DRO.sessao,arqs=[...(lista||[])];
+  const novos=[],ign=new Set(),avisos=[];
+  DRO.lendo++;droRodape();
+  try{
+    for(const f of arqs){
+      const ext=drPartesNome(f.name).ext;
+      if(ext==='zip'){
+        try{
+          const r=await droLerZip(f);
+          novos.push(...r.achados);r.ign.forEach(k=>ign.add(k));
+          if(!r.achados.length)avisos.push(`${f.name}: nenhum shape (.shp/.shx/.dbf/.prj) dentro do .zip.`);
+          if(r.aninhados)avisos.push(`${f.name}: .zip dentro de .zip não é aberto; extraia antes.`);
+        }
+        catch(e){avisos.push(`${f.name}: não consegui abrir este .zip (${e.message||e}).`);}
+      }
+      else if(DR_EXT_SHAPE.includes(ext))novos.push({nome:f.name,tamanho:f.size,origem:'',arq:f});
+      else ign.add('|'+f.name);
     }
-    else if(DR_EXT_SHAPE.includes(ext))DRO.arquivos.push({nome:f.name,tamanho:f.size,origem:'',arq:f});
-    else DRO.ign.add('|'+f.name);
+  }finally{
+    if(DRO.sessao===s)DRO.lendo--;
   }
+  if(DRO.sessao!==s)return;
+  DRO.arquivos.push(...novos);for(const k of ign)DRO.ign.add(k);
+  DRO.erro=avisos.join(' ')||null;
   droReagrupar();droLista();droRodape();
 }
 
@@ -119,14 +135,15 @@ function droCorpoHtml(){
 function droAbrir(){
   if(document.getElementById('dro-fundo'))return;
   const editar=podeEditar('drone');
-  DRO.foco=document.activeElement;
+  DRO.foco=document.activeElement;DRO.sessao={};
+  DRO.corpo=droCorpoHtml();
   const f=document.createElement('div');f.className='dro-fundo';f.id='dro-fundo';
   f.innerHTML=`<section class="dro-jan" id="dro-jan" role="dialog" aria-modal="true" aria-labelledby="dro-t" tabindex="-1">
     <header class="dro-cab"><span class="ico dro-ico">warning</span>
       <div class="dro-tit"><h2 id="dro-t">Obstáculos da fazenda</h2>
         <p>${esc(DR.cod)} · ${esc(DR.info?.faz?.nome||'')} — valem para todas as revisões (Normal e Catação)</p></div>
       <button class="dr-x dro-x" data-acao="fechar" aria-label="Fechar" title="Fechar (Esc)"><span class="ico">close</span></button></header>
-    <div class="dro-corpo" id="dro-corpo">${droCorpoHtml()}</div>
+    <div class="dro-corpo" id="dro-corpo">${DRO.corpo}</div>
     ${editar?'<footer class="dro-rodape"><div id="dro-prog"></div><div id="dro-botoes" class="dro-botoes"></div></footer>':''}
   </section>`;
   document.body.appendChild(f);
@@ -139,12 +156,14 @@ function droAbrir(){
     if(!c||c.classList.contains('off')){e.preventDefault();droFechar();}
   };
   document.addEventListener('keydown',DRO.tecla);
-  const solta=document.getElementById('dro-solta');
-  if(solta){
-    solta.addEventListener('dragover',e=>{e.preventDefault();solta.classList.add('on');});
-    solta.addEventListener('dragleave',()=>solta.classList.remove('on'));
-    solta.addEventListener('drop',e=>{e.preventDefault();solta.classList.remove('on');droAdicionar(e.dataTransfer?.files);});
-  }
+  // Soltar em qualquer lugar da janela: a solta (se existir) acende; nada escapa para o navegador.
+  const solta=()=>document.getElementById('dro-solta');
+  f.addEventListener('dragover',e=>{e.preventDefault();solta()?.classList.add('on');});
+  f.addEventListener('dragleave',e=>{if(e.target===f||!f.contains(e.relatedTarget))solta()?.classList.remove('on');});
+  f.addEventListener('drop',e=>{
+    e.preventDefault();solta()?.classList.remove('on');
+    if(solta())droAdicionar(e.dataTransfer?.files);
+  });
   droLista();droRodape();
   if(typeof Mo!=='undefined')Mo.pronto(document.getElementById('dro-corpo'));
   jan.focus();
@@ -159,7 +178,7 @@ function droFechar(forca){
   document.removeEventListener('keydown',DRO.tecla);
   f.remove();
   const foco=DRO.foco;
-  Object.assign(DRO,{arquivos:[],escolhas:{},grupos:[],ign:new Set(),erro:null,tecla:null,foco:null});
+  Object.assign(DRO,{arquivos:[],escolhas:{},grupos:[],ign:new Set(),erro:null,tecla:null,foco:null,enviando:false,sessao:null,lendo:0,corpo:''});
   if(!forca)(foco&&foco.isConnected?foco:document.querySelector('#dr-ph .dr-obst'))?.focus();
 }
 
@@ -197,20 +216,31 @@ function droRodape(){
     el.innerHTML=`<span class="dro-resumo">Espere o envio anterior terminar para enviar de novo.</span><button class="dro-cancelar" data-acao="fechar">Fechar</button>`;
     return;
   }
-  const p=drPlanoEnvio(DRO.grupos,DRO.escolhas),n=DRO.grupos.length;
-  const texto=p.pronto?p.resumo:(n?p.motivo:'Nenhuma camada ainda: arraste ou escolha os arquivos.');
-  const rot=DRO.enviando?'Enviando…':p.pronto?`<span class="ico">upload</span>Enviar ${n} camada${n>1?'s':''}`
+  const p=drPlanoEnvio(DRO.grupos,DRO.escolhas),n=DRO.grupos.length,lendo=DRO.lendo>0;
+  const texto=lendo?'Abrindo os arquivos…':p.pronto?p.resumo:(n?p.motivo:'Nenhuma camada ainda: arraste ou escolha os arquivos.');
+  const rot=DRO.enviando?'Enviando…':lendo?'Lendo arquivos…':p.pronto?`<span class="ico">upload</span>Enviar ${n} camada${n>1?'s':''}`
     :!n?'Escolha arquivos':p.motivo.startsWith('Escolha a classe')?'Escolha a classe de todas':'Corrija para enviar';
   el.innerHTML=`<span class="dro-resumo">${esc(texto)}</span>
     <button class="dro-cancelar" data-acao="fechar"${DRO.enviando?' disabled':''}>Cancelar</button>
-    <button class="dro-enviar" id="dro-enviar" data-acao="enviar"${p.pronto&&!DRO.enviando?'':' disabled'}>${rot}</button>`;
+    <button class="dro-enviar" id="dro-enviar" data-acao="enviar"${p.pronto&&!DRO.enviando&&!lendo?'':' disabled'}>${rot}</button>`;
+}
+
+// A janela aberta acompanha o polling: refaz o corpo só se mudou; a lista volta a partir do DRO (as escolhas ficam).
+function droAtualizar(){
+  const c=document.getElementById('dro-corpo');if(!c)return;
+  const h=droCorpoHtml();
+  if(h!==DRO.corpo){DRO.corpo=h;c.innerHTML=h;droLista();}
+  droRodape();
 }
 
 // Sobe cada arquivo como <classe>m_<nome> numa pasta só, registra o envio uma vez e fecha a janela.
+// Se a janela mudar de sessão no meio (fechou, abriu outra), o envio segue na fazenda de origem,
+// mas nada que mexe em tela ou no DRO roda (ui() falso).
 async function droEnviar(btn){
   if(DRO.enviando)return;
   const plano=drPlanoEnvio(DRO.grupos,DRO.escolhas);
   if(!plano.pronto)return;
+  const sess=DRO.sessao,ui=()=>DRO.sessao===sess;
   const cod=DR.cod,envio=plano.arquivos.map(a=>({nome:a.nome,arq:DRO.arquivos[a.indice].arq}));
   const total=envio.reduce((s,x)=>s+x.arq.size,0);
   DRO.enviando=true;DRO.erro=null;
@@ -220,22 +250,18 @@ async function droEnviar(btn){
     const pasta=`${cod}/${Date.now()}`,caminhos=[];let feitos=0;
     for(const [k,x] of envio.entries()){
       const c=`${pasta}/${x.nome}`,rot=`${x.nome}${envio.length>1?` (${k+1} de ${envio.length})`:''}`;
-      prog.atualizar(feitos,'Enviando '+rot);
-      await drSubirComProgresso('drone-envios',c,x.arq,b=>prog.atualizar(feitos+Math.min(b,x.arq.size),'Enviando '+rot));
+      if(ui())prog.atualizar(feitos,'Enviando '+rot);
+      await drSubirComProgresso('drone-envios',c,x.arq,b=>{if(ui())prog.atualizar(feitos+Math.min(b,x.arq.size),'Enviando '+rot);});
       feitos+=x.arq.size;caminhos.push(c);
     }
-    prog.processando('Registrando o envio…');
+    if(ui())prog.processando('Registrando o envio…');
     await drRpc('drone_registrar_envio',{p_cod_faz:cod,p_tipo:'obstaculos',p_classe_m:null,p_solicitacao_id:null,p_arquivos:caminhos});
-    prog.fim(true);await fim(true);
-    DRO.enviando=false;
-    droFechar(true);
+    if(ui()){prog.fim(true);await fim(true);DRO.enviando=false;droFechar(true);}
     if(DR.cod!==cod)return;   // o envio ficou na fazenda de origem; não mexe na tela da outra
     DR.obstLigarAoFim=true;   // quando o agente gravar, a camada liga sozinha (drDesenhar)
     await drCarregarFazenda();
   }catch(e){
-    prog.fim(false);fim(false);
-    DRO.enviando=false;
-    if(document.getElementById('dro-jan')){DRO.erro=e.message||String(e);droLista();droRodape();}
+    if(ui()){prog.fim(false);fim(false);DRO.enviando=false;DRO.erro=e.message||String(e);droLista();droRodape();}
     else if(DR.cod===cod)drErro(e);
   }
 }

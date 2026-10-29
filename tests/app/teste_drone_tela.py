@@ -213,6 +213,14 @@ try:
         esperados = [f'{c}m_{base}.{ext}' for c, base in [(50, 'app_mata_50m'), (15, 'restricoes15m'), (25, 'linhas_cemig')]
                      for ext in ['shp', 'shx', 'dbf', 'prj', 'cpg']]
         confere(prev['pronto'] is True and prev['nomes'] == esperados, f'droPreparar pronto com os 15 nomes esperados ({prev["nomes"]})')
+        # S5.7: a janela acompanha o envio em andamento e volta sem perder as escolhas (não chama o banco)
+        pg.evaluate("()=>{DR.info.envios.unshift({id:-1,tipo:'obstaculos',status:'processando',erro:null});droAtualizar();}")
+        confere(pg.locator('#dro-solta').count() == 0 and pg.locator('#dro-jan .dro-proc').is_visible(),
+                'com envio em andamento: sem área de soltar e com progresso')
+        pg.evaluate("()=>{DR.info.envios.shift();droAtualizar();}")
+        confere(pg.locator('#dro-solta').count() == 1 and pg.locator('#dro-lista .dro-linha').count() == 3
+                and pg.get_attribute(f'{linha("linhas_cemig")} [data-classe="25"]', 'aria-pressed') == 'true',
+                'janela acompanha o envio em andamento e volta sem perder as escolhas')
         pg.click('#dro-jan .dro-cancelar')   # nunca #dro-enviar
         confere(pg.locator('#dro-fundo').count() == 0, 'Cancelar fecha a janela de obstáculos')
 
