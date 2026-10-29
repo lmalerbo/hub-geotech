@@ -795,7 +795,7 @@ git commit -m "Hub Preparo: Entregue em no lugar do mês de plantio + selo ciclo
 - [x] **Step 2:** `python ingestao/planagri.py --simular`, depois `python ingestao/planagri.py`. Confira quantos talhões ficaram com `conservacao_em` e `plantio_realizado_em`, e os avisos abertos (`select tipo, count(*) from hub.avisos where resolvido_em is null group by 1`). Pela spec, devem aparecer cerca de 90 ha em set/2026 como aviso do Preparo.
 - [x] **Step 3:** `python migracao/lancar_ciclo_25_26.py` (só a lista). Mande o CSV e o resumo ao usuário (a expectativa é algo perto de 428 ha). **Pare e espere o ok.**
 - [x] **Step 4:** Com o ok: `python migracao/lancar_ciclo_25_26.py --gravar` e anote o lote na memória do projeto. Confira `select origem, count(*) from hub.preparo_entregas group by 1`.
-- [ ] **Step 5:** Merge na main e push (Pages). Use `reference_github_contas_push` para a conta certa. O usuário testa a tela.
+- [x] **Step 5:** Merge na main e push (Pages). Use `reference_github_contas_push` para a conta certa. O usuário testa a tela.
 
 ---
 
