@@ -6,7 +6,7 @@ const vm = require('vm');
 
 const ctx = { document: {}, sb: {}, console };
 vm.createContext(ctx);
-for (const f of ['drone-dados', 'drone-previa', 'drone-inicio', 'drone-fazenda'])
+for (const f of ['drone-dados', 'drone-previa', 'drone-inicio', 'drone-fazenda', 'drone-obstaculos'])
   vm.runInContext(fs.readFileSync(__dirname + '/../../app/' + f + '.js', 'utf8'), ctx);
 ctx.esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
