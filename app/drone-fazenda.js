@@ -16,14 +16,14 @@ async function drCarregarFazenda(){
     const [geo,faz,sols,obst]=await Promise.all([
       drRpc('drone_mapa_fazenda',{p_cod_faz:cod}),
       sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single(),
-      sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
+      sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id,data_desejada,criado_em').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
       sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em').eq('cod_faz',cod).eq('vigente',true)]);
     if(!drRespostaValida(minha,chave()))return;
     const sIds=(sols.data||[]).map(s=>s.id);
-    const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo,escopo')
+    const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo,escopo,pedido_em,iniciado_em')
       .in('solicitacao_id',sIds).neq('status','descartada').neq('status','publicada').order('id',{ascending:false}):{data:[]};
     if(!drRespostaValida(minha,chave()))return;
-    const env=await sb.from('drone_envios').select('id,tipo,status,erro,enviado_em').eq('cod_faz',cod).order('id',{ascending:false}).limit(5);
+    const env=await sb.from('drone_envios').select('id,tipo,status,erro,enviado_em,arquivos,classe_m').eq('cod_faz',cod).order('id',{ascending:false}).limit(5);
     if(!drRespostaValida(minha,chave()))return;
     const proj=await sb.from('projetos').select('id').eq('modulo_id','drone').eq('tipo','individual').eq('cod_faz',cod);
     if(!drRespostaValida(minha,chave()))return;

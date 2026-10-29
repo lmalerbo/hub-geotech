@@ -217,12 +217,12 @@ function drCamadasEnvio(env){
 
 **Arquivo:** `app/drone-fazenda.js` (`drCarregarFazenda`)
 
-- [ ] **Passo 1:** acrescentar aos selects (sem mudar a ordem das chamadas nem as checagens de `drRespostaValida`):
+- [x] **Passo 1:** acrescentar aos selects (sem mudar a ordem das chamadas nem as checagens de `drRespostaValida`):
   - `drone_solicitacoes`: `data_desejada,criado_em`
   - `drone_geracoes`: `pedido_em,iniciado_em` (`alertas` e `resumo` já vêm)
   - `drone_envios`: `arquivos,classe_m`
-- [ ] **Passo 2:** `drAssinaturas.painel` passa a incluir `DR.ajusteId` e o estado das ferramentas (`DR.modoRemover`), para o painel redesenhar quando eles mudam pelo polling. `enviado_em` continua fora. Ajustar o teste `assinaturas: painel ignora enviado_em…` se ele comparar a lista exata.
-- [ ] **Passo 3:** `node --test tests/app/*.test.js` passando. Commit — `Drone S4.2: fazenda busca datas da solicitacao, tempos da geracao e arquivos dos envios`
+- [x] **Passo 2:** `drAssinaturas.painel` passa a incluir `DR.ajusteId` e o estado das ferramentas (`DR.modoRemover`), para o painel redesenhar quando eles mudam pelo polling. `enviado_em` continua fora. Ajustar o teste `assinaturas: painel ignora enviado_em…` se ele comparar a lista exata.
+- [x] **Passo 3:** `node --test tests/app/*.test.js` passando. Commit — `Drone S4.2: fazenda busca datas da solicitacao, tempos da geracao e arquivos dos envios`
 
 ## S4.3 Cabeçalho, barra de etapas e menu ⋯
 

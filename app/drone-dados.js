@@ -73,7 +73,7 @@ function drAssinaturas(info,geo,doc){
   return{
     cab:JSON.stringify([info.faz,doc,geo.normal,geo.catacao,geo.cobertura_pct,
       tal.map(f=>[f.properties.talhao,f.properties.status,f.properties.area_ha])]),
-    painel:JSON.stringify([doc,geo.normal&&geo.normal.revisao,info.sols,info.ger,envios,info.obst,info.revs]),
+    painel:JSON.stringify([doc,geo.normal&&geo.normal.revisao,info.sols,info.ger,envios,info.obst,info.revs,DR.ajusteId,DR.modoRemover]),
     obst:drAssinaturaObst(info.obst),
     mapa:JSON.stringify([doc,geo.features])};
 }
