@@ -58,7 +58,8 @@ test('Preparo: talhão em Identificação leva a situação do voo; sem dado = s
 
 test('Preparo: todas as situações têm rótulo e cor', () => {
   for (const s of ['sem_leitura', 'nao_solicitado', 'solicitado', 'processando', 'liberado']) {
-    assert.ok(ctx.VOO_PREPARO[s].l && ctx.VOO_PREPARO[s].c, s);
+    const v = vm.runInContext('VOO_PREPARO', ctx)[s];   // const de script não vira propriedade do contexto
+    assert.ok(v.l && v.c, s);
   }
 });
 

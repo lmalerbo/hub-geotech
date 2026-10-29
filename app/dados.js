@@ -13,7 +13,7 @@ const SEL_PREPARO='layer,etapa,conservacao_em,talhoes(cod_faz,talhao_num,area_ha
 const ETAPAS_PREPARO=['Identificação','Escoamento','Observações','Preparo','Ok'];
 // Situação do voo (Sistematização/Expansão) de cada talhão em Identificação, da view preparo_voo_talhao.
 // Só "liberado" tem material para identificar; o resto aguarda voo.
-var VOO_PREPARO={
+const VOO_PREPARO={
   sem_leitura:{l:'Voo sem leitura',c:'#9895a2'},
   nao_solicitado:{l:'Voo não solicitado',c:'#9895a2'},
   solicitado:{l:'Voo solicitado',c:'#2566e8'},
