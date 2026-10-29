@@ -28,6 +28,13 @@ linhas_drone = b.selecionar('usuario_modulos', 'modulo_id,nivel', {'usuario_id':
 tinha_drone = bool(linhas_drone)
 nivel_orig = linhas_drone[0]['nivel'] if linhas_drone else None
 falhas = []
+PRINTS = os.environ.get('HUB_PRINTS')  # pasta opcional: um print por estado do painel, para comparar com a maquete
+
+
+def foto(pg, nome):
+    if PRINTS:
+        pg.screenshot(path=str(Path(PRINTS) / f'drone-{nome}.png'))
+
 
 # Nunca mexe em trabalho real: só roda com a 10974 sem solicitação aberta e a fila do agente vazia.
 FAZ = 10974
@@ -59,8 +66,11 @@ def devolver_acesso():
 
 def entrar_e_abrir(pg):
     # Depois de um reload: a sessão pode já estar de pé ou a tela de login aparece. Entra e abre a 10974 pela busca.
-    pg.wait_for_function('(typeof EU!=="undefined"&&!!EU&&!!EU.perms)'
-                         '||document.getElementById("f-email").getClientRects().length>0', timeout=60000)
+    # A sessão salva costuma voltar sozinha; o login aparece um instante por baixo do #carregando enquanto isso.
+    try:
+        pg.wait_for_function('typeof EU!=="undefined"&&!!EU&&!!EU.perms', timeout=15000)
+    except Exception:
+        pg.wait_for_selector('#carregando', state='hidden', timeout=30000)
     if not pg.evaluate('typeof EU!=="undefined"&&!!EU&&!!EU.perms'):
         pg.fill('#f-email', conta['email']); pg.fill('#f-pass', conta['senha']); pg.click('#btn-entrar')
     pg.wait_for_function('typeof EU!=="undefined" && EU && EU.perms && EU.perms.drone', timeout=60000)
@@ -108,6 +118,7 @@ try:
                 'barra de etapas visível com a primeira etapa atual')
         confere(pg.locator('#dr-ferr').is_visible(), 'barra de ferramentas do mapa visível')
         confere((pg.text_content('.dr-obst-chip') or '').strip() != '', 'chip de obstáculos com texto')
+        foto(pg, 'montando')
 
         # S4.7 caso 2: fonte por talhão (Sistema | Shape) sobrevive a um ciclo de atualização
         pg.evaluate("drFerramenta('limpar')")
@@ -129,6 +140,7 @@ try:
         pg.wait_for_selector('#dr-side-cab h2:has-text("Gerando a prévia")', timeout=15000)
         confere(pg.locator('#dr-ferr').is_hidden(), 'ferramentas escondidas enquanto gera')
         confere('travado' in (pg.text_content('#dr-dica') or ''), 'dica diz que o mapa está travado')
+        foto(pg, 'gerando')
         t1 = pg.text_content('#dr-decorrido'); pg.wait_for_timeout(2100); t2 = pg.text_content('#dr-decorrido')
         confere(t1 != t2, f'tempo decorrido anda ({t1} → {t2})')
         sol_criada = pg.evaluate("drAtual().sol.id")
@@ -145,6 +157,7 @@ try:
         pg.wait_for_selector('#dr-side-cab h2:has-text("Confira antes de publicar")', timeout=60000)
         confere(' ha' in (pg.text_content('.drp-indic') or ''), 'painel mostra o indicador de área em ha')
         confere(pg.locator('.dr-mot-painel').count() == 1, 'campo de motivo no painel')
+        foto(pg, 'previa')
         # a janela abre sozinha quando a geração termina com a tela aberta
         pg.wait_for_selector('#drp-fundo', timeout=10000)
         pg.wait_for_selector('.drp-pg.ok canvas, #drp-carga .dr-err', timeout=30000)
@@ -170,6 +183,7 @@ try:
         pg.reload(); entrar_e_abrir(pg)
         confere(pg.evaluate('podeEditar("drone")') is False, 'conta só leitura: podeEditar("drone") é falso')
         confere('Somente consulta' in (pg.text_content('#dr-side') or ''), 'painel diz "Somente consulta"')
+        foto(pg, 'consulta')
         confere(pg.locator('#dr-side button').count() == 0, 'nenhum botão dentro do painel')
         confere(pg.evaluate("(()=>{const f=document.getElementById('dr-ferr');return !f||f.hidden||!f.innerHTML})()"),
                 'barra de ferramentas escondida ou vazia')
