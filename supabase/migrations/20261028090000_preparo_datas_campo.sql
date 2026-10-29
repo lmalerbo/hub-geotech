@@ -187,4 +187,56 @@ grant execute on function hub.preparo_ciclo_25_26_candidatos() to service_role;
 grant execute on function hub.preparo_lancar_ciclo_25_26()     to service_role;
 grant execute on function hub.preparo_voltar_ciclo_25_26(bigint) to service_role;
 
+-- 5 ─────────────────────────────────────────────────────────────────────────
+-- Roda depois de cada importação do PLANAGRI. Um aviso aberto por tipo e fazenda; texto que muda volta a
+-- ficar não lido; some sozinho quando não sobra talhão na condição. Só datas do ciclo atual.
+-- Sem tabela temporária: a pendência vem de uma função auxiliar, segura para chamar duas vezes na transação.
+create or replace function hub.campo_planagri_pendencias()
+returns table (modulo text, tipo text, cod_faz int, n bigint, frase text)
+language sql stable security definer set search_path = hub as $$
+  select 'preparo'::text, 'preparo_campo_sem_lancamento'::text, t.cod_faz, count(*),
+         ' talhão(ões) usados em campo (conservação no PLANAGRI), falta lançar no Hub.'::text
+    from hub.talhao_preparo p join hub.talhoes t on t.layer = p.layer
+   where p.conservacao_em >= hub.ciclo_inicio() and p.conservacao_em < hub.ciclo_inicio() + interval '1 year'
+     and p.etapa <> 'Ok'
+   group by t.cod_faz
+  union all
+  select 'plantio', 'plantio_campo_sem_lancamento', t.cod_faz, count(*),
+         ' talhão(ões) com plantio realizado no PLANAGRI, falta lançar no Hub.'
+    from hub.talhao_plantio p join hub.talhoes t on t.layer = p.layer
+   where p.plantio_realizado_em >= hub.ciclo_inicio() and p.plantio_realizado_em < hub.ciclo_inicio() + interval '1 year'
+     and p.projeto <> 'Ok'
+   group by t.cod_faz;
+$$;
+revoke all on function hub.campo_planagri_pendencias() from public, anon, authenticated;
+
+create or replace function hub.avisos_campo_planagri()
+returns void language plpgsql security definer set search_path = hub as $$
+declare
+  r    record;
+  v_id bigint;
+begin
+  update hub.avisos a set resolvido_em = now()
+   where a.tipo in ('preparo_campo_sem_lancamento', 'plantio_campo_sem_lancamento') and a.resolvido_em is null
+     and not exists (select 1 from hub.campo_planagri_pendencias() p where p.tipo = a.tipo and p.cod_faz = a.cod_faz);
+
+  for r in select p.*, f.nome from hub.campo_planagri_pendencias() p left join hub.fazendas f on f.cod_faz = p.cod_faz loop
+    v_id := null;
+    insert into hub.avisos (modulo_id, tipo, cod_faz, titulo, texto)
+    values (r.modulo, r.tipo, r.cod_faz,
+            r.cod_faz || ' ' || coalesce(r.nome, '') || ': usado em campo, falta lançar',
+            r.n || r.frase)
+    on conflict (tipo, cod_faz) where resolvido_em is null
+      do update set texto = excluded.texto, atualizado_em = now()
+       where hub.avisos.texto is distinct from excluded.texto
+    returning id into v_id;
+    if v_id is not null then
+      delete from hub.avisos_lidos where aviso_id = v_id;
+    end if;
+  end loop;
+end $$;
+
+revoke all on function hub.avisos_campo_planagri() from public, anon, authenticated;
+grant execute on function hub.avisos_campo_planagri() to service_role;
+
 commit;
