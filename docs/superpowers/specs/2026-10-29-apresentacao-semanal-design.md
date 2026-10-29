@@ -26,7 +26,7 @@ A apresentação é uma ferramenta do Hub, no padrão de Mapas de aplicação: m
 ### D4. Drone de aplicação vira dado do Hub (parte 1 do trabalho)
 View nova `hub.drone_projetos_v`: uma linha por revisão vigente do módulo Drone (`projetos.modulo_id = 'drone'`, `projeto_revisoes.vigente`), com `cod_faz`, `documento` (normal | catacao), `area_aplicacao_ha` e `safra` ('26/27').
 - **Projeto feito no Hub:** `area_aplicacao_ha` = `drone_geracoes.resumo->>'aplicacao_ha'` da geração `publicada` cuja solicitação aponta para a revisão; `safra` pela data de publicação (`drone_solicitacoes.concluido_em`), virando em 1º de abril.
-- **Projeto do legado:** duas colunas novas em `hub.projeto_revisoes`: `area_aplicacao_ha numeric` e `safra text`, nulas para os outros módulos. Preenchidas uma única vez por `drone/carga_area_safra.py`: área = soma do campo de área do shape publicado (mesma leitura de `importar_legado.py`/`extrair.py`); safra = a do catálogo do legado (`safra_curta`), com o regex do `motivo` como reserva. Revisões que o script não resolver ficam listadas no relatório dele e nulas na view.
+- **Projeto do legado:** duas colunas novas em `hub.projeto_revisoes`: `area_aplicacao_ha numeric` e `safra text`, nulas para os outros módulos. Preenchidas uma única vez por `drone/carga_area_safra.py`: área = soma do campo de área do shape publicado (mesma leitura de `importar_legado.py`/`extrair.py`); safra = a gravada no `motivo` da revisão na importação (pasta "2025-2026" ou "25/26 Rev"), a mesma regra que o `gerar.py` usa hoje. Revisões que o script não resolver ficam listadas no relatório dele e nulas na view.
 - A regra continua sendo "ha que a Geo **projetou**", todos os produtos.
 - Projetos novos publicados aparecem sozinhos, sem carga.
 
