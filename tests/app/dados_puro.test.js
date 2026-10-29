@@ -138,3 +138,9 @@ test('Preparo: "Entregue em" é o mês do último talhão, só com a fazenda tod
   assert.strictEqual(f2.mes, '');
   assert.strictEqual(f2.ciclo25, false);
 });
+
+test('Preparo: "Entregue em" usa a data de São Paulo, não a de UTC', () => {
+  const ent = [{ layer: 3001, entregue_em: '2026-09-01T01:30:00+00:00', origem: 'hub' }];
+  const [f] = ctx.montarPreparo([talPr(3, 1, 'Ok')], [], [], {}, ent);
+  assert.strictEqual(f.mes, '2026-08');
+});
