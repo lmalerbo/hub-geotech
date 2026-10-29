@@ -1,4 +1,9 @@
 // Drone: área de trabalho da fazenda (mapa, painel, envios, gerar/publicar). Carregado por index.html por último.
+// Relógio do 'gerando' para com a aba oculta e religa ao voltar, se o painel ainda estiver nesse estado.
+if(document.addEventListener)document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){drTempoParar();return;}
+  if(document.querySelector('#dr-side .drp-gerando')){drTempoAtualizar();if(!DR.tempo)DR.tempo=setInterval(drTempoAtualizar,1000);}
+});
 
 async function drAbrirFazenda(cod,doc){
   DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
@@ -57,7 +62,7 @@ function drDesenhar(partes){
   const tem=p=>partes.includes(p);
   if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drMapaCriar();drPainelLateral();drEtapasAtualizar();}
   else{
-    if(tem('cab'))document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+    if(tem('cab')){drMenuFechar();document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();}
     if(tem('etapas'))drEtapasAtualizar();
     if(tem('mapa'))drMapaAtualizar();
     if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
@@ -77,6 +82,9 @@ function drEsqueleto(){
     </div>
     <aside class="dr-side" id="dr-side" aria-label="Painel"><div class="dr-side-cab" id="dr-side-cab"></div><div class="dr-side-corpo" id="dr-side-corpo"></div><div class="dr-side-rodape" id="dr-side-rodape"></div></aside></div>`;
   DR.etapaAtiva=null;DR.camadasAb=false;
+  // Arrastar fora da área de soltar não faz o navegador abrir o arquivo. Registrado uma vez só no #dr-faz.
+  const faz=document.getElementById('dr-faz');
+  if(faz&&!faz._dragOk){faz._dragOk=true;['dragover','drop'].forEach(ev=>faz.addEventListener(ev,e=>e.preventDefault()));}
 }
 // Atualiza as fontes do mapa que já existe (o 'load' lê DR.geo se ainda estiver carregando).
 function drMapaAtualizar(){
@@ -90,6 +98,7 @@ function drMapaAtualizar(){
 function drMapaDescartar(){
   drPulsarGeracao(false);
   DR.varr&&DR.varr.parar();DR.varr=null;drTempoParar();
+  drMenuFechar();drRevisoesFechar();   // sair da fazenda fecha o menu ⋯ e a gaveta de revisões
   DR.mapa&&DR.mapa.remove();DR.mapa=null;   // também depois de um erro que apagou #dr-faz
 }
 // Espera da geração: varredura no mapa, pulso nos talhões do escopo e trilho no painel.
@@ -238,7 +247,13 @@ function drSelecionarSemProjeto(){
 // Fonte de um talhão (Sistema | Shape), pelo seletor da linha do painel.
 function drFonteTalhao(n,f){if(!DR.sel.has(n))return;DR.sel.set(n,f);drAtualizarSelecaoMapa();drPainelLateral();}
 // Arrastar arquivos para a área do painel: o mesmo fluxo do botão.
-function drSoltar(e,tipo){e.preventDefault();const arqs=[...(e.dataTransfer?.files||[])];if(arqs.length)drEnviarArquivos(tipo,arqs,null,e.currentTarget);}
+function drSoltar(e,tipo){
+  e.preventDefault();
+  const todos=[...(e.dataTransfer?.files||[])],aceitos=new Set(drArquivosAceitos(todos.map(f=>f.name)));
+  const arqs=todos.filter(f=>aceitos.has(f.name));
+  if(!arqs.length){drErro('Use arquivos .shp, .shx, .dbf, .prj ou .zip.');return;}
+  drEnviarArquivos(tipo,arqs,null,e.currentTarget);
+}
 function drLimparErro(){const el=document.getElementById('dr-err');if(el)el.textContent='';}
 // Tempo decorrido da geração: atualiza o texto no lugar, sem redesenhar o cartão (o trilho não reinicia).
 function drTempoAtualizar(){
@@ -291,7 +306,7 @@ function drMenuAbrir(){
   m.querySelector('button').focus();
   m._ouve=e=>{
     if(e.type==='keydown'&&e.key==='Escape'){e.preventDefault();drMenuFechar(true);}
-    else if(e.type==='mousedown'&&!m.contains(e.target)&&e.target!==btn)drMenuFechar();
+    else if(e.type==='mousedown'&&!m.contains(e.target)&&!e.target.closest?.('#dr-mais'))drMenuFechar();
   };
   document.addEventListener('keydown',m._ouve);document.addEventListener('mousedown',m._ouve);
 }
@@ -368,8 +383,10 @@ function drMapaUi(){
   if(cam){
     if(est==='previa'&&ger&&DR.obstPrevia!==ger.id){DR.obstPrevia=ger.id;if(!DR.mostrarObst)drObstaculos(true);}   // uma vez por prévia
     const rot=DR.mostrarObst&&est==='previa'?'Camadas · obstáculos ligados':'Camadas';
+    const foco=cam.contains(document.activeElement)&&document.activeElement.type==='checkbox';
     cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span class="ico">layers</span>${rot}</button>`
       +(DR.camadasAb?`<div class="dr-cam-caixa" id="dr-cam-caixa"><label><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked);drMapaUi()"> Obstáculos</label></div>`:'');
+    if(foco)cam.querySelector('#dr-cam-caixa input[type=checkbox]')?.focus();   // o redesenho troca o checkbox: devolve o foco
   }
   const leg=document.getElementById('dr-leg');if(leg)leg.innerHTML=drLegendaHtml(drEstadoPainel({doc:DR.doc,sol,ger,edita:true}));
 }
@@ -513,10 +530,12 @@ function drPainelLateral(){
   const p=({montando:drPainel_montando,catacao:drPainel_catacao,gerando:drPainel_gerando,previa:drPainel_previa,
     publicando:drPainel_publicando,erro:drPainel_erro,consulta:drPainel_consulta})[est]();
   document.getElementById('dr-side-cab').innerHTML=`<div class="dr-side-sobre">${esc(p.sobre)}</div><h2>${esc(p.titulo)}</h2>`;
+  const rolagem=side.scrollTop;
   side.innerHTML=p.corpo;
   const rod=document.getElementById('dr-side-rodape'),erro='<div id="dr-err" class="dr-err"></div>';
   if(p.rodape)rod.innerHTML=erro+p.rodape;
   else{rod.innerHTML='';side.insertAdjacentHTML('beforeend',erro);}
+  side.scrollTop=rolagem;
   if(marca){
     const el=aside.querySelector(`[data-foco="${marca}"]`);
     if(el){el.focus();if(pos!=null){try{el.setSelectionRange(pos,pos);}catch(_){}}}
@@ -545,13 +564,16 @@ function drEnviar(tipo){
 // Sobe os arquivos e registra o envio. Vem do botão (drEnviar) ou de arrastar para a área do painel (drSoltar).
 async function drEnviarArquivos(tipo,arqs,classe,btn){
   drLimparErro();
+  // Fazenda e solicitação do início: se o usuário trocar de fazenda durante o envio, a resposta não mexe na tela nova.
+  const cod=DR.cod,sol=drAtual().sol;
+  if(tipo==='infestacao'&&!sol){drErro('Abra a Catação antes de enviar a infestação.');return;}
   const fim=Mo.ocupado(btn);
   // barra de progresso logo abaixo do botão (ou no topo do painel)
   const lugar=document.createElement('div');
   (btn&&btn.isConnected?btn:document.getElementById('dr-side-corpo')?.firstChild)?.after?.(lugar);
   const total=arqs.reduce((s,f)=>s+f.size,0),prog=Mo.progresso(lugar,{total});
   try{
-    const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];let feitos=0;
+    const pasta=`${cod}/${Date.now()}`,caminhos=[];let feitos=0;
     for(const [k,f] of arqs.entries()){
       const c=`${pasta}/${drNomeSeguro(f.name)}`,rot=`${f.name}${arqs.length>1?` (${k+1} de ${arqs.length})`:''}`;
       prog.atualizar(feitos,'Enviando '+rot);
@@ -559,11 +581,11 @@ async function drEnviarArquivos(tipo,arqs,classe,btn){
       feitos+=f.size;caminhos.push(c);
     }
     prog.processando('Registrando o envio…');
-    const {sol}=drAtual();
-    const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:classe,
+    const id=await drRpc('drone_registrar_envio',{p_cod_faz:cod,p_tipo:tipo,p_classe_m:classe,
       p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
-    if(tipo==='ajuste')DR.ajusteId=id;
     prog.fim(true);await fim(true);
+    if(DR.cod!==cod)return;   // o envio ficou na fazenda de origem; não mexe na tela da outra
+    if(tipo==='ajuste')DR.ajusteId=id;
     await drCarregarFazenda();
   }catch(e){prog.fim(false);fim(false);drErro(e);}
 }

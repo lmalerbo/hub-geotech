@@ -327,6 +327,10 @@ test('linha de contexto da solicitação', () => {
   assert.strictEqual(ctx.drContextoSol(null), '');
 });
 
+test('arrastar para o painel aceita só as extensões do shape (sem maiúscula)', () => {
+  assert.deepStrictEqual([...ctx.drArquivosAceitos(['A.SHP', 'b.zip', 'c.pdf', 'pasta'])], ['A.SHP', 'b.zip']);
+});
+
 test('camadas de um envio: nomes-base únicos, sem pasta nem extensão', () => {
   assert.deepStrictEqual([...ctx.drCamadasEnvio({ arquivos: ['10372/1/manchas_buva.shp', '10372/1/manchas_buva.dbf',
     '10372/1/manchas_buva.SHX', '10372/1/manchas_capim.shp', '10372/1/pacote.zip'] })], ['manchas_buva', 'manchas_capim', 'pacote']);

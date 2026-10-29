@@ -148,6 +148,9 @@ function drCamadasEnvio(env){
   return[...new Set(((env&&env.arquivos)||[]).map(a=>a.split('/').pop().replace(/\.[^.]+$/,'')))];
 }
 
+// Extensões aceitas ao arrastar arquivos para o painel do Drone (sem diferenciar maiúscula).
+const DR_EXT_ACEITAS=['.shp','.shx','.dbf','.prj','.cpg','.zip'];
+function drArquivosAceitos(nomes){return nomes.filter(n=>DR_EXT_ACEITAS.some(x=>n.toLowerCase().endsWith(x)));}
 // Polling único (spec §4): um timer só. Pausa com a aba oculta ou fora da view
 // do Drone e retoma ao voltar. O callback roda uma vez; quem quer continuar chama drPollIniciar de novo.
 const DR_POLL={t:null,fn:null,ms:0,fora:false};
