@@ -17,3 +17,6 @@ drone/trabalho/
 
 # Gerado no deploy por mapas/publicar.py (arquivos do Pyodide)
 app/py/
+
+# Lista de candidatos do ciclo 25-26 (gerada por migracao/lancar_ciclo_25_26.py)
+migracao/ciclo_25_26_candidatos.csv

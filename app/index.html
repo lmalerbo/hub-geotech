@@ -2243,7 +2243,7 @@ function consRowsAll(){
       if(cFilters.etapa!==''&&((cFilters.etapa==='-1'&&!done)||(cFilters.etapa!=='-1'&&(done||si!==parseInt(cFilters.etapa)))))return null;
       const etapa=done?'Entregue':ET_P[si]?ET_P[si].l:'—';
       const etapaC=done?'var(--plantio)':prStepColors[si]||'var(--t3)';
-      return{_key:'pr'+i,_fi:i,cod:f.cod,n:f.n,ha:f.ha,mes:f.mes,ciclo:getCiclo(),
+      return{_key:'pr'+i,_fi:i,cod:f.cod,n:f.n,ha:f.ha,mes:f.mes||'—',ciclo:f.ciclo25Todos?'25-26':getCiclo(),_ciclo25:!!f.ciclo25,
              voo:VOO[f.voo]?.l||f.voo,_vooC:VOO[f.voo]?.c||'var(--t3)',
              etapa,_etapaC:etapaC,_done:done,_si:si,
              steps:ET_P.map((e,ei)=>({l:e.l,ok:f.ok[ei],usr:f.usr[ei],dt:f.dt[ei]}))};
@@ -2284,7 +2284,7 @@ function rCons(pg){
   let thHtml='<th style="width:32px"><input type="checkbox" class="cons-cb" onchange="consSelAll(this,event)"></th>';
   if(cMod==='plantio')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
   if(cMod==='colheita') thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
-  if(cMod==='preparo')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
+  if(cMod==='preparo')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Entregue em</th><th>Ha</th><th>Etapa</th>';
   if(cMod==='drone')    thHtml+='<th>Fazenda</th><th>Código</th><th>Normal</th><th>Cobertura</th><th>Catação</th><th>Obstáculos</th><th>Solicitação</th>';
   document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`;
 
@@ -2314,7 +2314,7 @@ function rCons(pg){
           <td><span class="cons-badge" style="background:${corO}18;color:${corO}">${r.obst==='ok'?'em dia':r.obst==='antigos'?'+24 meses':'sem'}</span></td>
           <td>${esc(r.r.solicitacao||'—')}</td>`;
       } else {
-        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
+        cells=`<td>${expIco}<strong>${r.n}</strong>${r._ciclo25?' <span class="cons-badge" style="background:var(--s2);color:var(--t2)">ciclo 25-26 · PLANAGRI</span>':''}</td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
       }
       tbHtml+=`<tr class="cons-faz-row${sel?' sel':''}${exp?' exp':''}" onclick="consExpand('${r._key}',event)">
         <td onclick="event.stopPropagation()"><input type="checkbox" class="cons-cb" ${sel?'checked':''} onchange="consSel('${r._key}',this)"></td>
@@ -2411,12 +2411,12 @@ function rConsFilters(){
     html+=`<select class="cons-sel" onchange="cFilters.obst=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Obstáculos: todos</option><option value="ok">Em dia</option><option value="antigos">+24 meses</option><option value="sem">Sem obstáculos</option></select>`;
   } else {
-    const meses=[...new Set(FZ_P.map(f=>f.mes))];
+    const meses=[...new Map(FZ_P.filter(f=>f.mesIso).map(f=>[f.mesIso,f.mes])).entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(x=>x[1]);
     const voos=[...new Set(FZ_P.map(f=>f.voo))];
     html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option>${ET_P.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}<option value="-1">Entregue</option></select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+      <option value="">Entregue em: todos</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
   }
   html+=`<button class="cons-sel" style="cursor:pointer;color:var(--t3)" onclick="limparCons()">Limpar</button>`;
   html+=`<input class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
@@ -2510,7 +2510,7 @@ function exportCons(){
     header='Fazenda\tCódigo\tNormal\tCobertura %\tCatação\tCatação ha\tObst. 15m\tObst. 25m\tObst. 50m\tSolicitação';
     body=rows.map(r=>`${r.n}\t${r.cod}\t${r.normal_rev==null?'':'Rev'+r.normal_rev}\t${r.pct??''}\t${r.catacao_rev==null?'':'Rev'+r.catacao_rev}\t${r.catacao_ha??''}\t${drConsData(r.r.obst_15)}\t${drConsData(r.r.obst_25)}\t${drConsData(r.r.obst_50)}\t${r.r.solicitacao||''}`).join('\n');
   } else {
-    header='Fazenda\tCódigo\tCiclo\tMês\tHa\tEtapa';
+    header='Fazenda\tCódigo\tCiclo\tEntregue em\tHa\tEtapa';
     body=rows.map(r=>`${r.n}\t${r.cod}\t${r.ciclo}\t${r.mes}\t${r.ha}\t${r.etapa}`).join('\n');
   }
   navigator.clipboard.writeText(header+'\n'+body).then(()=>{
@@ -2562,10 +2562,11 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,voosC,notasC,params,modulos,geomap,droneResumo]=await Promise.all([
+  const [usuarios,plantio,preparo,entregasP,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,voosC,notasC,params,modulos,geomap,droneResumo]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,admin,precisa_trocar_senha,usuario_modulos(modulo_id,nivel)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select(SEL_PLANTIO).order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select(SEL_PREPARO).order('layer')),
+    lerTudo(()=>sb.from('preparo_entregas').select('layer,entregue_em,origem').order('layer')),
     lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
     lerTudo(()=>sb.from('etapa_status').select(SEL_ETAPA_STATUS).order('etapa_id').order('entidade_id')),
     sb.from('execucoes_ingestao').select('fonte,finalizado_em').eq('status','ok')
@@ -2622,8 +2623,7 @@ async function carregarDados(){
   for(const n of notasC)(NOTAS_C[n.entidade_id]??=[]).push(n);
   AVISOS=avisos;
 
-  const mesFaz=Object.fromEntries(FZ.map(f=>[f.cod,f.mes]));
-  FZ_P.length=0;FZ_P.push(...montarPreparo(preparo,etapas,status,nomeUsr,mesFaz));
+  FZ_P.length=0;FZ_P.push(...montarPreparo(preparo,etapas,status,nomeUsr,entregasP));
 }
 
 // ─────────────────────────────────────────────────────────────

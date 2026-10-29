@@ -65,7 +65,7 @@ function pjCodDoc(x){return x&&typeof x==='object'?x.codigo:x}
 function pjNorm(mod,f){
   if(!f||!Array.isArray(f.tals))return null;
   return {modulo:mod,cod:Number(f.cod),nome:f.n,ha:f.ha,obs:f.obs||'',
-    talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:Number(t.e)||0,sist_conser:t.sist_conser,mes:t.mes,mapeamento:t.mapeamento})),etapas:pjEtapas(mod)};
+    talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:Number(t.e)||0,sist_conser:t.sist_conser,mes:t.mes,cons:t.cons,mapeamento:t.mapeamento})),etapas:pjEtapas(mod)};
 }
 function pjContagens(fz){
   const c=Array(fz.etapas.length).fill(0);
@@ -758,7 +758,7 @@ window.Proj={
       const s=sel.has(String(t.num)),e=et[t.e]||et[0];
       return `<tr class="${s?'pj-tal-sel':''}"><td>${edit?`<input type="checkbox" class="pj-tal-chk" data-pj-num="${pjH(t.num)}"${s?' checked':''} aria-label="Selecionar talhão ${pjH(t.num)}">`:''}</td>`+
         `<td><strong>${pjH(t.num)}</strong></td><td>${fmtNum(t.ha)} ha</td>`+
-        (mod==='plantio'?`<td>${pjH(t.sist_conser||'—')}</td><td>${pjH(t.mes||'—')}</td><td>${pjH(t.mapeamento??'—')}</td>`:'')+
+        (mod==='plantio'?`<td>${pjH(t.sist_conser||'—')}</td><td>${pjH(t.mes||'—')}</td><td>${pjH(t.mapeamento??'—')}</td>`:`<td>${t.cons?pjH(t.cons.split('-').reverse().join('/')):'—'}</td>`)+
         `<td><span class="ebadge" style="background:${e.c}1a;color:${e.c}">${pjH(e.l)}</span></td></tr>`;
     }).join('');
 
@@ -800,7 +800,7 @@ window.Proj={
       (edit?'<div class="pj-dica">Arraste a alça para trás, ou clique numa etapa anterior, para retroceder. Avançar é pelas ações.</div>':'')+
       `</div>`+
       `<div class="tal-wrap"><table class="tal-tab"><thead><tr><th>${edit?`<input type="checkbox" class="pj-todos" aria-label="Selecionar todos"${todosSel?' checked':''}>`:''}</th>`+
-      `<th>Talhão</th><th>Área</th>${mod==='plantio'?'<th>Conservação</th><th>Mês plantio</th><th>Mapeamento</th>':''}<th>Etapa</th></tr></thead><tbody>${linhas}</tbody></table></div>`+
+      `<th>Talhão</th><th>Área</th>${mod==='plantio'?'<th>Conservação</th><th>Mês plantio</th><th>Mapeamento</th>':'<th>Conservação</th>'}<th>Etapa</th></tr></thead><tbody>${linhas}</tbody></table></div>`+
       (htmlArq||'')+
       `<div class="acao-w"><div class="acao-head"><span class="acao-lbl">Próximas ações</span></div>${blocos}</div>`+
       (edit?'<div class="pj-rev-w"><button type="button" class="btn-retro" data-pj-nova>↻ Nova revisão</button></div>':'')+

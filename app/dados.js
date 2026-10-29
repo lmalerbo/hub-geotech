@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────
 
 const SEL_PLANTIO='layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_num,area_ha,sist_conser,fazendas(nome))';
-const SEL_PREPARO='layer,etapa,talhoes(cod_faz,talhao_num,area_ha,fazendas(nome))';
+const SEL_PREPARO='layer,etapa,conservacao_em,talhoes(cod_faz,talhao_num,area_ha,fazendas(nome))';
 // Etapas do Preparo, na ordem, como o banco guarda em talhao_preparo.etapa (A1). Índice = e do talhão.
 const ETAPAS_PREPARO=['Identificação','Escoamento','Observações','Preparo','Ok'];
 const SEL_COLHEITA='layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status,voo_id,voo_tipo,voo_status,voo_liberar_em';
@@ -49,9 +49,11 @@ function montarPlantio(linhas){
 
 // Preparo: fazendas da demanda, talhões com a etapa do banco (tals, como o Plantio) e etapas
 // concluídas (etapa_status: ok, quem, quando e a observação). A etapa da fazenda é a do talhão menos avançado.
-function montarPreparo(linhas,etapas,status,nomeUsr,mesFaz){
+// mes = "Entregue em": mês do último talhão entregue (view preparo_entregas), só com a fazenda toda Ok.
+function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
   const idsEtapa=new Set(etapas.map(e=>e.id));
   const st=new Map(status.filter(s=>idsEtapa.has(s.etapa_id)).map(s=>[s.etapa_id+'|'+s.entidade_id,s]));
+  const ent=new Map((entregas||[]).map(x=>[x.layer,x]));
   const idxEtapa=Object.fromEntries(ETAPAS_PREPARO.map((n,i)=>[n,i]));
   const porFaz=new Map();
   for(const r of linhas){
@@ -59,18 +61,25 @@ function montarPreparo(linhas,etapas,status,nomeUsr,mesFaz){
     if(!t)continue;
     let f=porFaz.get(t.cod_faz);
     if(!f){
-      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:mesFaz[String(t.cod_faz)]||'',
+      f={n:t.fazendas?.nome||String(t.cod_faz),cod:String(t.cod_faz),ha:0,mes:'',mesIso:'',ciclo25:false,ciclo25Todos:true,_ult:'',_todosOk:true,
          voo:'?',ok:[],usr:[],dt:[],obs:'',tals:[],e:ETAPAS_PREPARO.length-1};
       porFaz.set(t.cod_faz,f);
     }
     const e=idxEtapa[r.etapa]??0;
-    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,e});
+    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,e,cons:r.conservacao_em||null});
     f.e=Math.min(f.e,e);
     f.ha+=t.area_ha||0;
+    const x=ent.get(r.layer);
+    if(r.etapa!=='Ok'||!x)f._todosOk=false;
+    if(!x||x.origem!=='ciclo_25_26')f.ciclo25Todos=false;
+    if(x){if(x.origem==='ciclo_25_26')f.ciclo25=true;if(!f._ult||Date.parse(x.entregue_em)>Date.parse(f._ult))f._ult=x.entregue_em;}
   }
   return [...porFaz.entries()].sort((a,b)=>a[1].n.localeCompare(b[1].n,'pt-BR')).map(([cod,f])=>{
     f.ha=Math.round(f.ha*10)/10;
     f.tals.sort((a,b)=>a.num-b.num);
+    f.mesIso=f._todosOk&&f._ult?new Date(f._ult).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}).slice(0,7):'';
+    f.mes=f.mesIso?mesLabel(f.mesIso):'';
+    delete f._ult;delete f._todosOk;
     for(const e of etapas){
       const s=st.get(e.id+'|'+cod);
       f.ok.push(!!s?.ok);
@@ -182,14 +191,14 @@ async function carregarFazenda({modulo,cod}){
     return ()=>{trocarFazenda(FZ,cod,montarPlantio(linhas)[0]);trocarArquivos(modulo,cod,revs);};
   }
   if(modulo==='preparo'){
-    const [linhas,etapas,status,revs]=await Promise.all([
+    const [linhas,etapas,status,entregas,revs]=await Promise.all([
       lerTudo(()=>sb.from('talhao_preparo').select(SEL_PREPARO).gte('layer',ini).lte('layer',fim).order('layer')),
       lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
       lerTudo(()=>sb.from('etapa_status').select(SEL_ETAPA_STATUS).eq('entidade_id',cod).order('etapa_id')),
+      lerTudo(()=>sb.from('preparo_entregas').select('layer,entregue_em,origem').eq('cod_faz',cod).order('layer')),
       revisoes]);
     const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
-    const mesFaz={[cod]:FZ.find(f=>f.cod===cod)?.mes||''};
-    return ()=>{trocarFazenda(FZ_P,cod,montarPreparo(linhas,etapas,status,nomeUsr,mesFaz)[0]);trocarArquivos(modulo,cod,revs);};
+    return ()=>{trocarFazenda(FZ_P,cod,montarPreparo(linhas,etapas,status,nomeUsr,entregas)[0]);trocarArquivos(modulo,cod,revs);};
   }
   if(modulo==='colheita'){
     const [linhas,faz,voos,notas,revs]=await Promise.all([
