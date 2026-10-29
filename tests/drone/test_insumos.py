@@ -32,6 +32,7 @@ def test_descarta_vazias(grava_shp):
 @pytest.mark.parametrize('nome,classe', [
     ('restricoes15m', 15), ('Restrições 15m', 15), ('15M', 15), ('retricoes25m', 25),
     ('resrtricoes50m', 50), ('restricoes50m_rede', 50), ('REDE50', 50), ('restricoes10m', None), ('Arvores', None),
+    ('25m_linhas_cemig.shp', 25), ('15m_rede_50m.shp', 15),
 ])
 def test_classe_pelo_nome(nome, classe):
     assert classe_pelo_nome(nome) == classe
