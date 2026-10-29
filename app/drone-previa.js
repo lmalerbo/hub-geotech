@@ -15,7 +15,7 @@ function drPrevPassosHtml(st){
 function drPrevHtml(ger){
   if(ger.status==='fila'||ger.status==='processando'){
     DRP.gerando.add(ger.id);
-    return`<div class="dr-box"><h3>Gerando prévia…</h3>${drPrevPassosHtml(ger.status)}
+    return`<div class="dr-box drp-gerando"><h3>Gerando prévia…</h3>${drPrevPassosHtml(ger.status)}
       <div class="drp-espera">${Mo.campo(true)}<div class="dr-msg">${ger.status==='fila'?'Esperando o agente pegar o pedido.':'O agente está montando o PDF e o .zip.'}
       Esta tela atualiza sozinha e a prévia abre assim que ficar pronta.</div></div></div>`;
   }

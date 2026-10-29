@@ -1703,6 +1703,7 @@ function trocar(v,el){
     inp.onblur=()=>inp.style.borderColor='';
   }
   if(v==='consultas')rConsFilters();
+  if(typeof drPollVisivel==='function')drPollVisivel(v==='drone');
   if(v==='drone')droneIniciar();
   if(v==='usuarios')carregarAcessos();
   if(v==='config')rConfig();
