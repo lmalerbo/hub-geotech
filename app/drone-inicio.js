@@ -176,7 +176,7 @@ function driTecla(e){
   if(document.getElementById('dri-fundo')||document.querySelector('.dr-modal-fundo'))return;
   const busca=document.getElementById('dr-busca'), ativo=document.activeElement;
   if(!busca||!ativo)return;
-  if(e.key==='/'&&!/^(INPUT|TEXTAREA|SELECT)$/.test(ativo.tagName)&&!ativo.isContentEditable){
+  if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/^(INPUT|TEXTAREA|SELECT)$/.test(ativo.tagName)&&!ativo.isContentEditable){
     e.preventDefault();busca.focus();busca.select();
   }else if(e.key==='Escape'&&ativo===busca){
     busca.value='';document.getElementById('dr-busca-res').innerHTML='';busca.blur();
@@ -217,10 +217,20 @@ async function droneIniciar(){
   await drCarregarPainel();
 }
 
+// Cada chamada ganha um número: resposta de uma chamada mais antiga que chega depois é descartada.
+let driCiclo=0;
 async function drCarregarPainel(){
-  const erro=document.getElementById('dri-erro');
-  try{DR.painel=await drRpc('drone_painel');}
-  catch(e){if(erro){erro.textContent=e.message;erro.hidden=false;}return;}
+  const erro=document.getElementById('dri-erro'), meu=++driCiclo;
+  let painel;
+  try{painel=await drRpc('drone_painel');}
+  catch(e){
+    if(meu!==driCiclo)return;
+    if(erro){erro.textContent=e.message;erro.hidden=false;}
+    if(!DR.cod&&driAndamento(DR.painel))drPollIniciar(drCarregarPainel,10000);   // erro de rede não mata o polling
+    return;
+  }
+  if(meu!==driCiclo)return;
+  DR.painel=painel;
   if(erro)erro.hidden=true;
   driDesenhar(DR.painel);
   if(DR.cod)return;   // com fazenda aberta, o polling é o da fazenda

@@ -34,7 +34,7 @@
 
 ## S3.1 Migration do painel (precisa do ok do usuário antes de aplicar)
 
-- [ ] **Passo 1: escrever** `supabase/migrations/20261028090000_drone_painel_inicio.sql`: `create or replace function hub.drone_painel()` copiando a de `20261009090000_drone_melhorias.sql` e mudando só:
+- [x] **Passo 1: escrever** `supabase/migrations/20261028090000_drone_painel_inicio.sql`: `create or replace function hub.drone_painel()` copiando a de `20261009090000_drone_melhorias.sql` e mudando só:
 
 ```sql
 -- em 'geracao' (jsonb_build_object do cartão), acrescentar:
@@ -56,8 +56,8 @@
 ```
 
   Cabeçalho do arquivo com uma linha dizendo o que muda e que a função antiga está em `20261009090000_drone_melhorias.sql` (para voltar atrás, basta rodar aquela definição de novo).
-- [ ] **Passo 2: conferir a sintaxe** com `pglast` (se não houver, `pip install pglast` no scratchpad): `python -c "import pglast,sys;pglast.parse_sql(open(sys.argv[1]).read());print('SQL ok')" supabase/migrations/20261028090000_drone_painel_inicio.sql`. Esperado: `SQL ok`.
-- [ ] **Passo 3: commit** — `Drone S3.1: drone_painel traz tempos da geracao, publicadas_7d e nome da fazenda nas listas de atencao`
+- [x] **Passo 2: conferir a sintaxe** com `pglast` (se não houver, `pip install pglast` no scratchpad): `python -c "import pglast,sys;pglast.parse_sql(open(sys.argv[1]).read());print('SQL ok')" supabase/migrations/20261028090000_drone_painel_inicio.sql`. Esperado: `SQL ok`.
+- [x] **Passo 3: commit** — `Drone S3.1: drone_painel traz tempos da geracao, publicadas_7d e nome da fazenda nas listas de atencao`
 - [ ] **Passo 4: PARAR e pedir o ok do usuário.** Com o ok, o usuário cola o arquivo no SQL Editor.
 - [ ] **Passo 5: conferir no banco** (SQL Editor ou RPC logado): `select jsonb_typeof(hub.drone_painel()->'publicadas_7d'), hub.drone_painel()->'obstaculos_antigos'->0, hub.drone_painel()->'solicitacoes'->0->'geracao';`. Esperado: `number`, um objeto com `cod_faz` e `fazenda`, e a geração (se houver) com `pedido_em`.
 
@@ -65,7 +65,7 @@
 
 Em `tests/app/drone_puro.test.js` o contexto do `vm` ganha `esc` (o mesmo de `index.html`), porque `driCartaoHtml` usa.
 
-- [ ] **Passo 1: testes que falham**
+- [x] **Passo 1: testes que falham**
 
 ```js
 ctx.esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -151,8 +151,8 @@ test('plano de reconciliação dos cartões por data-id', () => {
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar** — `node --test tests/app/*.test.js`. Esperado: FAIL com `ctx.driColuna is not a function` (e os demais).
-- [ ] **Passo 3: implementar** as funções puras no topo de `app/drone-inicio.js`, logo depois do comentário de cabeçalho:
+- [x] **Passo 2: rodar e ver falhar** — `node --test tests/app/*.test.js`. Esperado: FAIL com `ctx.driColuna is not a function` (e os demais).
+- [x] **Passo 3: implementar** as funções puras no topo de `app/drone-inicio.js`, logo depois do comentário de cabeçalho:
 
 ```js
 function driColuna(sol){
@@ -165,39 +165,48 @@ function driColuna(sol){
 ```
 
   As demais seguem os testes. `driSituacao` usa os ícones da maquete (`warning`, `pest_control`, `error`, `flight`, `report`, `check_circle`); `fila` → "Na fila", `processando` → "Gerando prévia" (`cls:'vivo'`). `driDesde` arredonda para baixo (min < 60, h < 24, depois dias). `driQuando` compara datas de calendário no fuso local. `driCartaoHtml` segue a marcação da maquete (código, nome, chip Normal/Catação, situação, rodapé "solicitante · quando" / "para dd/mm" ou "gerada há …" + Conferir); o tempo vai num `<span data-desde="ISO">` (ou `data-quando`) para ser atualizado no lugar. O cartão é `<div class="dri-card" role="button" tabindex="0" data-id=… data-cod=… data-tipo=…>`; o Conferir é `<button>` com `event.stopPropagation()`.
-- [ ] **Passo 4: rodar e ver passar** — `node --test tests/app/*.test.js`. Esperado: todos PASS (os 51 de antes + 7 novos).
-- [ ] **Passo 5: commit** — `Drone S3.2: regras puras do Inicio (coluna, situacao, tempos, cartao, reconciliacao)`
+- [x] **Passo 4: rodar e ver passar** — `node --test tests/app/*.test.js`. Esperado: todos PASS (os 51 de antes + 7 novos).
+- [x] **Passo 5: commit** — `Drone S3.2: regras puras do Inicio (coluna, situacao, tempos, cartao, reconciliacao)`
 
 ## S3.3 Tela do Início
 
-- [ ] **Passo 1: estrutura.** `droneIniciar` monta uma vez dentro de `#drone-root`:
+- [x] **Passo 1: estrutura.** `droneIniciar` monta uma vez dentro de `#drone-root`:
   - `<div id="dri">`: cabeçalho (título "Drone", subtítulo "Projetos de voo por talhão", busca com `<kbd>/</kbd>` e `id="dr-busca"`, resultados em `#dr-busca-res` como menu suspenso sob a busca, botão Nova solicitação só para editor/solicitante como hoje); `<section class="dri-cols">` com três `<div class="dri-col" data-col="…">` (cabeçalho com ícone `inbox` / ponto `.dri-vivo` / `fact_check`, título e contador; lista `.dri-lista`; na coluna A analisar, rodapé `#dri-pub7`); faixa `#dri-atencao`.
   - `<div id="dr-trab" hidden>`: botão `← Início` (`onclick="driVoltar()"`) + o `#dr-faz` de hoje.
-- [ ] **Passo 2: `drCarregarPainel()`** busca o RPC e chama `driDesenhar(DR.painel)`. Erro: mensagem `.dr-err` no lugar das colunas, sem apagar o que já estava desenhado se for um ciclo de polling. Depois: se `!DR.cod && driAndamento(DR.painel)` → `drPollIniciar(drCarregarPainel,10000)`; se `!DR.cod` e nada andando → `drPollParar()`. Com fazenda aberta não mexe no polling (quem manda é o da fazenda, 5 s).
-- [ ] **Passo 3: `driDesenhar(painel)`** separa as solicitações por `driColuna`, ordena (Solicitações por `criado_em`; Em desenvolvimento por `pedido_em`; A analisar por `concluido_em`), monta `{id, ass:JSON.stringify(sol)+editor, html}` e aplica `driPlano` em cada coluna dentro de **um** `Mo.mover(section, aplicar)` (cartão que muda de coluna sai de uma e entra na outra; o FLIP anima). Cartão igual não é tocado. Coluna vazia: `<p class="dri-vazio">` ("Nenhuma solicitação aberta." / "Nada sendo gerado agora." / "Nenhuma prévia esperando conferência."). Contadores, `Publicadas nos últimos 7 dias: N` e a faixa Atenção são texto trocado no lugar. Por fim `driTempos()` reescreve todo `[data-desde]`/`[data-quando]`.
-- [ ] **Passo 4: busca e atalho.** `drBuscar` continua igual (resultado em `#dr-busca-res`, clique → `driAbrirFazenda`). Atalho `/`: um `keydown` no `document` registrado uma vez (guardado com `if(document.addEventListener)` para o teste puro), que só age com a view do Drone visível, o Início à mostra e o foco fora de `input/textarea/select`. Esc com a busca focada limpa e fecha os resultados.
-- [ ] **Passo 5: CSS** em `app/drone.css`: tirar o grid do `#drone-root`; classes `dri-*` seguindo a maquete (fundo das colunas `#f6f8fb`, cartão branco com borda `var(--bd)` e raio 12, chips Normal `#f4ece7/#7d4f35` e Catação `#e8f1e8/#3d6b3c`, borda vermelha `#f1c7c7` no erro, trilho `.dri-trilho`, `.dri-voa`, `.dri-vivo`), hover com sombra e `translateY(-1px)`, foco visível. Colunas viram uma só abaixo de 900 px. `@media (prefers-reduced-motion:reduce)` desliga trilho, pairar e pulso.
-- [ ] **Passo 6: commit** — `Drone S3.3: Inicio com tres colunas, reconciliacao por cartao e polling de 10 s`
+- [x] **Passo 2: `drCarregarPainel()`** busca o RPC e chama `driDesenhar(DR.painel)`. Erro: mensagem `.dr-err` no lugar das colunas, sem apagar o que já estava desenhado se for um ciclo de polling. Depois: se `!DR.cod && driAndamento(DR.painel)` → `drPollIniciar(drCarregarPainel,10000)`; se `!DR.cod` e nada andando → `drPollParar()`. Com fazenda aberta não mexe no polling (quem manda é o da fazenda, 5 s).
+- [x] **Passo 3: `driDesenhar(painel)`** separa as solicitações por `driColuna`, ordena (Solicitações por `criado_em`; Em desenvolvimento por `pedido_em`; A analisar por `concluido_em`), monta `{id, ass:JSON.stringify(sol)+editor, html}` e aplica `driPlano` em cada coluna dentro de **um** `Mo.mover(section, aplicar)` (cartão que muda de coluna sai de uma e entra na outra; o FLIP anima). Cartão igual não é tocado. Coluna vazia: `<p class="dri-vazio">` ("Nenhuma solicitação aberta." / "Nada sendo gerado agora." / "Nenhuma prévia esperando conferência."). Contadores, `Publicadas nos últimos 7 dias: N` e a faixa Atenção são texto trocado no lugar. Por fim `driTempos()` reescreve todo `[data-desde]`/`[data-quando]`.
+- [x] **Passo 4: busca e atalho.** `drBuscar` continua igual (resultado em `#dr-busca-res`, clique → `driAbrirFazenda`). Atalho `/`: um `keydown` no `document` registrado uma vez (guardado com `if(document.addEventListener)` para o teste puro), que só age com a view do Drone visível, o Início à mostra e o foco fora de `input/textarea/select`. Esc com a busca focada limpa e fecha os resultados.
+- [x] **Passo 5: CSS** em `app/drone.css`: tirar o grid do `#drone-root`; classes `dri-*` seguindo a maquete (fundo das colunas `#f6f8fb`, cartão branco com borda `var(--bd)` e raio 12, chips Normal `#f4ece7/#7d4f35` e Catação `#e8f1e8/#3d6b3c`, borda vermelha `#f1c7c7` no erro, trilho `.dri-trilho`, `.dri-voa`, `.dri-vivo`), hover com sombra e `translateY(-1px)`, foco visível. Colunas viram uma só abaixo de 900 px. `@media (prefers-reduced-motion:reduce)` desliga trilho, pairar e pulso.
+- [x] **Passo 6: commit** — `Drone S3.3: Inicio com tres colunas, reconciliacao por cartao e polling de 10 s`
 
 ## S3.4 Faixa "Atenção na base" e lista lateral
 
-- [ ] **Passo 1:** a faixa tem três `<button>` (ícones `incomplete_circle`, `history`, `wrong_location`; textos "Normais incompletas", "com obstáculos de mais de 24 meses", "com talhões fora da Base") e o link Ajuda (`docs/drone-manual.md`, como hoje). Contador zero deixa o botão apagado mas clicável.
-- [ ] **Passo 2:** `driAtencaoAbrir(chave)` abre uma lista lateral à direita (`<aside class="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby>` + fundo), com título, total e as linhas de `driAtencaoItens` (código, nome, `extra`). Fecha com o X, Esc ou clique no fundo; o foco vai para o X ao abrir e volta ao botão da faixa ao fechar. Entra deslizando 200 ms (sem animação com movimento reduzido).
-- [ ] **Passo 3:** clique numa linha → `driAtencaoFechar()` e `driAbrirFazenda(cod, null, {obstaculos: chave==='obstaculos_antigos'})`. A opção só grava `DR.abrirObst=true`; a S5 usa (anotar no plano da S5).
-- [ ] **Passo 4: commit** — `Drone S3.4: faixa Atencao na base com lista lateral`
+- [x] **Passo 1:** a faixa tem três `<button>` (ícones `incomplete_circle`, `history`, `wrong_location`; textos "Normais incompletas", "com obstáculos de mais de 24 meses", "com talhões fora da Base") e o link Ajuda (`docs/drone-manual.md`, como hoje). Contador zero deixa o botão apagado mas clicável.
+- [x] **Passo 2:** `driAtencaoAbrir(chave)` abre uma lista lateral à direita (`<aside class="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby>` + fundo), com título, total e as linhas de `driAtencaoItens` (código, nome, `extra`). Fecha com o X, Esc ou clique no fundo; o foco vai para o X ao abrir e volta ao botão da faixa ao fechar. Entra deslizando 200 ms (sem animação com movimento reduzido).
+- [x] **Passo 3:** clique numa linha → `driAtencaoFechar()` e `driAbrirFazenda(cod, null, {obstaculos: chave==='obstaculos_antigos'})`. A opção só grava `DR.abrirObst=true`; a S5 usa (anotar no plano da S5).
+- [x] **Passo 4: commit** — `Drone S3.4: faixa Atencao na base com lista lateral`
 
 ## S3.5 Navegação e conferência
 
-- [ ] **Passo 1:** `driAbrirFazenda(cod,tipo,op)`: esconde `#dri`, mostra `#dr-trab`, `drPollParar()` e chama `drAbrirFazenda(cod,tipo)`. `driVoltar()`: `drPollParar()`, `drMapaDescartar()`, `DR.cod=null`, mostra `#dri`, esconde `#dr-trab` e chama `drCarregarPainel()` (o Início não é remontado). Cartão e Conferir chamam `driAbrirFazenda(cod, tipo)`. `drIrFazenda(cod)` (sininho, Consultas) passa a chamar `driAbrirFazenda`. Em `drone-fazenda.js` sai a linha que marca `#dr-fila .dr-it.on`; `drCicloFazenda` e os botões continuam chamando `drCarregarPainel()` (que não liga o polling do Início com fazenda aberta). `drNovaSolicitacao` termina em `driAbrirFazenda`.
-- [ ] **Passo 2: teste de tela** `tests/app/teste_drone_tela.py`: trocar `#dr-fila .dr-grp` por `#dri .dri-col` (esperar 3); depois de abrir a 10974 pela busca, conferir `#dri` oculto e `#dr-trab` visível; no fim (depois de descartar a prévia), `← Início` volta com as 3 colunas e sem cartão da 10974 em "A analisar". A regra da 10974 livre continua.
-- [ ] **Passo 3: rodar** `node --test tests/app/*.test.js` e `python tests/app/teste_movimento.py`. Esperado: tudo PASS. O `teste_drone_tela.py` (logado, `HUB_CONTA_TESTE`) roda com o usuário.
-- [ ] **Passo 4: conferência visual** no navegador: servir `app/` local, desenhar o Início com um painel de exemplo (os 9 cartões e contadores da maquete, injetados por `driDesenhar`) e comparar com a tela 1 da maquete em 1440 px e em 390 px. Repetir com `editor=false` (Foco 4: sem Conferir, sem Nova solicitação para só leitura).
-- [ ] **Passo 5: manual** — atualizar em `docs/drone-manual.md` o trecho do Início (três colunas, faixa Atenção, atalho `/`).
-- [ ] **Passo 6: commit** — `Drone S3.5: navegacao Inicio <-> fazenda, teste de tela e manual`
+- [x] **Passo 1:** `driAbrirFazenda(cod,tipo,op)`: esconde `#dri`, mostra `#dr-trab`, `drPollParar()` e chama `drAbrirFazenda(cod,tipo)`. `driVoltar()`: `drPollParar()`, `drMapaDescartar()`, `DR.cod=null`, mostra `#dri`, esconde `#dr-trab` e chama `drCarregarPainel()` (o Início não é remontado). Cartão e Conferir chamam `driAbrirFazenda(cod, tipo)`. `drIrFazenda(cod)` (sininho, Consultas) passa a chamar `driAbrirFazenda`. Em `drone-fazenda.js` sai a linha que marca `#dr-fila .dr-it.on`; `drCicloFazenda` e os botões continuam chamando `drCarregarPainel()` (que não liga o polling do Início com fazenda aberta). `drNovaSolicitacao` termina em `driAbrirFazenda`.
+- [x] **Passo 2: teste de tela** `tests/app/teste_drone_tela.py`: trocar `#dr-fila .dr-grp` por `#dri .dri-col` (esperar 3); depois de abrir a 10974 pela busca, conferir `#dri` oculto e `#dr-trab` visível; no fim (depois de descartar a prévia), `← Início` volta com as 3 colunas e sem cartão da 10974 em "A analisar". A regra da 10974 livre continua.
+- [x] **Passo 3: rodar** `node --test tests/app/*.test.js` e `python tests/app/teste_movimento.py`. Esperado: tudo PASS. O `teste_drone_tela.py` (logado, `HUB_CONTA_TESTE`) roda com o usuário.
+- [x] **Passo 4: conferência visual** no navegador: servir `app/` local, desenhar o Início com um painel de exemplo (os 9 cartões e contadores da maquete, injetados por `driDesenhar`) e comparar com a tela 1 da maquete em 1440 px e em 390 px. Repetir com `editor=false` (Foco 4: sem Conferir, sem Nova solicitação para só leitura).
+- [x] **Passo 5: manual** — atualizar em `docs/drone-manual.md` o trecho do Início (três colunas, faixa Atenção, atalho `/`).
+- [x] **Passo 6: commit** — `Drone S3.5: navegacao Inicio <-> fazenda, teste de tela e manual`
 
 ## Fechamento
 
-- [ ] `verification-before-completion`: testes puros, teste de movimento, carga sem login sem erro no console.
-- [ ] `requesting-code-review` do diff `drone-s2..drone-s3`; tratar achados com `receiving-code-review`.
+- [x] `verification-before-completion`: testes puros, teste de movimento, carga sem login sem erro no console.
+- [x] `requesting-code-review` do diff `drone-s2..drone-s3`; tratar achados com `receiving-code-review`.
 - [ ] Ok do usuário (migration aplicada e conferida; tela conferida logado) antes de mesclar. Ordem do merge: `drone-s2` primeiro (já aguardando ok), depois `drone-s3`. Push com a troca de conta do `gh` (memória `reference-github-contas-push`).
 - [ ] Atualizar a memória `project_drone_telas_redesenho` (estado da execução).
+
+## Registro da execução (28–29/10)
+
+- S3.1: camada 3 (Claude) — migration escrita e conferida com pglast; **não aplicada** (aguarda o usuário).
+- S3.2: camada 1 (gemini-3.5-flash) só escreveu os testes, sem implementar → descartada; camada 2 (Haiku) fez de primeira (58 testes).
+- S3.3–S3.5: camada 2 (Haiku), 4 commits, 2 rodadas de print. Desvios aceitos: ponto da coluna com classe `dri-ponto`; `driElemento` marca o ícone flight com `dri-voa`; A analisar ordenada pela prévia mais recente; erro do painel numa linha acima das colunas; gaveta sem armadilha de foco.
+- Conferência visual (Claude): erro cortado → quebra a linha com "Abrir para corrigir →"; colunas da mesma altura.
+- Revisão (Sonnet): nada grave; 3 corrigidos — polling do Início parava após erro de rede; respostas fora de ordem (contador `driCiclo`); teste de tela contava antes do redesenho. Atalho `/` ignora Ctrl/Cmd/Alt.
+- Teste de tela logado (`teste_drone_tela.py`) fica com o usuário.
