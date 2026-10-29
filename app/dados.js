@@ -11,6 +11,16 @@ const SEL_PLANTIO='layer,mes_plantio,mapeamento,projeto,talhoes(cod_faz,talhao_n
 const SEL_PREPARO='layer,etapa,conservacao_em,talhoes(cod_faz,talhao_num,area_ha,fazendas(nome))';
 // Etapas do Preparo, na ordem, como o banco guarda em talhao_preparo.etapa (A1). Índice = e do talhão.
 const ETAPAS_PREPARO=['Identificação','Escoamento','Observações','Preparo','Ok'];
+// Situação do voo (Sistematização/Expansão) de cada talhão em Identificação, da view preparo_voo_talhao.
+// Só "liberado" tem material para identificar; o resto aguarda voo.
+const VOO_PREPARO={
+  sem_leitura:{l:'Voo sem leitura',c:'#9895a2'},
+  nao_solicitado:{l:'Voo não solicitado',c:'#9895a2'},
+  solicitado:{l:'Voo solicitado',c:'#2566e8'},
+  processando:{l:'Voado, processando',c:'#d4890a'},
+  liberado:{l:'Material disponível',c:'#16a76b'},
+};
+function vooAguardando(t){return t.e===0&&t.voo!=='liberado'}
 const SEL_COLHEITA='layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status,voo_id,voo_tipo,voo_status,voo_liberar_em';
 const SEL_VOOS='id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro';
 const SEL_NOTAS='id,entidade_id,valor_novo,usuario_id,criado_em';
@@ -50,10 +60,11 @@ function montarPlantio(linhas){
 // Preparo: fazendas da demanda, talhões com a etapa do banco (tals, como o Plantio) e etapas
 // concluídas pela etapa do talhão menos avançado (etapa_status só dá quem, quando e a observação).
 // mes = "Entregue em": mês do último talhão entregue (view preparo_entregas), só com a fazenda toda Ok.
-function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
+function montarPreparo(linhas,etapas,status,nomeUsr,entregas,voos){
   const idsEtapa=new Set(etapas.map(e=>e.id));
   const st=new Map(status.filter(s=>idsEtapa.has(s.etapa_id)).map(s=>[s.etapa_id+'|'+s.entidade_id,s]));
   const ent=new Map((entregas||[]).map(x=>[x.layer,x]));
+  const vooSit=new Map((voos||[]).map(v=>[v.layer,v.situacao]));
   const idxEtapa=Object.fromEntries(ETAPAS_PREPARO.map((n,i)=>[n,i]));
   const porFaz=new Map();
   for(const r of linhas){
@@ -66,7 +77,8 @@ function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
       porFaz.set(t.cod_faz,f);
     }
     const e=idxEtapa[r.etapa]??0;
-    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,e,cons:r.conservacao_em||null});
+    f.tals.push({layer:r.layer,num:t.talhao_num,ha:t.area_ha||0,e,cons:r.conservacao_em||null,
+                 voo:e===0?vooSit.get(r.layer)||'sem_leitura':null});
     f.e=Math.min(f.e,e);
     f.ha+=t.area_ha||0;
     const x=ent.get(r.layer);
@@ -192,14 +204,15 @@ async function carregarFazenda({modulo,cod}){
     return ()=>{trocarFazenda(FZ,cod,montarPlantio(linhas)[0]);trocarArquivos(modulo,cod,revs);};
   }
   if(modulo==='preparo'){
-    const [linhas,etapas,status,entregas,revs]=await Promise.all([
+    const [linhas,etapas,status,entregas,voos,revs]=await Promise.all([
       lerTudo(()=>sb.from('talhao_preparo').select(SEL_PREPARO).gte('layer',ini).lte('layer',fim).order('layer')),
       lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
       lerTudo(()=>sb.from('etapa_status').select(SEL_ETAPA_STATUS).eq('entidade_id',cod).order('etapa_id')),
       lerTudo(()=>sb.from('preparo_entregas').select('layer,entregue_em,origem').eq('cod_faz',cod).order('layer')),
+      lerTudo(()=>sb.from('preparo_voo_talhao').select('layer,situacao').gte('layer',ini).lte('layer',fim).order('layer')),
       revisoes]);
     const nomeUsr=Object.fromEntries(USUARIOS.map(u=>[u.id,u.nome]));
-    return ()=>{trocarFazenda(FZ_P,cod,montarPreparo(linhas,etapas,status,nomeUsr,entregas)[0]);trocarArquivos(modulo,cod,revs);};
+    return ()=>{trocarFazenda(FZ_P,cod,montarPreparo(linhas,etapas,status,nomeUsr,entregas,voos)[0]);trocarArquivos(modulo,cod,revs);};
   }
   if(modulo==='colheita'){
     const [linhas,faz,voos,notas,revs]=await Promise.all([
