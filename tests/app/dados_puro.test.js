@@ -41,12 +41,25 @@ test('Preparo: cada talhão leva a etapa do banco como índice; a fazenda fica n
   const juntas = ctx.montarPreparo(todas, [], [], {}, []);
   assert.deepStrictEqual(limpo(juntas.map((f) => f.n)), ['Alfa', 'Beta']);
   assert.deepStrictEqual(limpo(juntas[1].tals), [
-    { layer: 10455001, num: 1, ha: 10.04, e: 1, cons: null },
-    { layer: 10455002, num: 2, ha: 10.04, e: 4, cons: null },
+    { layer: 10455001, num: 1, ha: 10.04, e: 1, cons: null, voo: null },
+    { layer: 10455002, num: 2, ha: 10.04, e: 4, cons: null, voo: null },
   ]);
   assert.strictEqual(juntas[1].e, 1);                 // o talhão 1 está em Escoamento
   assert.strictEqual(juntas[0].e, 3);                 // Preparo
   assert.strictEqual(juntas[1].ha, 20.1);
+});
+
+test('Preparo: talhão em Identificação leva a situação do voo; sem dado = sem leitura', () => {
+  const linhas = [talPrep(10724, 1, 'Identificação'), talPrep(10724, 2, 'Identificação'), talPrep(10724, 3, 'Escoamento')];
+  const [f] = ctx.montarPreparo(linhas, [], [], {}, [], [{ layer: 10724001, situacao: 'liberado' }]);
+  assert.deepStrictEqual(limpo(f.tals.map((t) => t.voo)), ['liberado', 'sem_leitura', null]);
+  assert.deepStrictEqual(limpo(f.tals.map((t) => ctx.vooAguardando(t))), [false, true, false]);
+});
+
+test('Preparo: todas as situações têm rótulo e cor', () => {
+  for (const s of ['sem_leitura', 'nao_solicitado', 'solicitado', 'processando', 'liberado']) {
+    assert.ok(ctx.VOO_PREPARO[s].l && ctx.VOO_PREPARO[s].c, s);
+  }
 });
 
 test('Preparo: fazenda montada sozinha é igual à mesma fazenda montada junto com as outras', () => {

@@ -2563,11 +2563,12 @@ async function lerTudo(consulta){
 
 async function carregarDados(){
   const {data:{user}}=await sb.auth.getUser();
-  const [usuarios,plantio,preparo,entregasP,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,voosC,notasC,params,modulos,geomap,droneResumo]=await Promise.all([
+  const [usuarios,plantio,preparo,entregasP,vooP,etapas,status,execucoes,tipos,revisoes,colheita,fazendas,safra,avisos,voosC,notasC,params,modulos,geomap,droneResumo]=await Promise.all([
     lerTudo(()=>sb.from('usuarios').select('id,nome,admin,precisa_trocar_senha,usuario_modulos(modulo_id,nivel)').order('nome')),
     lerTudo(()=>sb.from('talhao_plantio').select(SEL_PLANTIO).order('layer')),
     lerTudo(()=>sb.from('talhao_preparo').select(SEL_PREPARO).order('layer')),
     lerTudo(()=>sb.from('preparo_entregas').select('layer,entregue_em,origem').order('layer')),
+    lerTudo(()=>sb.from('preparo_voo_talhao').select('layer,situacao').order('layer')),
     lerTudo(()=>sb.from('etapas').select('id,ordem').eq('modulo_id','preparo').order('ordem')),
     lerTudo(()=>sb.from('etapa_status').select(SEL_ETAPA_STATUS).order('etapa_id').order('entidade_id')),
     sb.from('execucoes_ingestao').select('fonte,finalizado_em').eq('status','ok')
@@ -2624,7 +2625,7 @@ async function carregarDados(){
   for(const n of notasC)(NOTAS_C[n.entidade_id]??=[]).push(n);
   AVISOS=avisos;
 
-  FZ_P.length=0;FZ_P.push(...montarPreparo(preparo,etapas,status,nomeUsr,entregasP));
+  FZ_P.length=0;FZ_P.push(...montarPreparo(preparo,etapas,status,nomeUsr,entregasP,vooP));
 }
 
 // ─────────────────────────────────────────────────────────────
