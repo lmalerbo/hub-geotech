@@ -55,9 +55,10 @@ function drRedesenhar(){
 function drTrocarDoc(doc){if(doc===DR.doc)return;DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
 function drDesenhar(partes){
   const tem=p=>partes.includes(p);
-  if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drMapaCriar();drPainelLateral();}
+  if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drMapaCriar();drPainelLateral();drEtapasAtualizar();}
   else{
     if(tem('cab'))document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+    if(tem('etapas'))drEtapasAtualizar();
     if(tem('mapa'))drMapaAtualizar();
     if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
     if(tem('painel')){drPainelLateral();drAtualizarSelecaoMapa();}   // o estado 'ger' dos talhões segue a geração
@@ -66,12 +67,16 @@ function drDesenhar(partes){
 }
 function drEsqueleto(){
   document.getElementById('dr-faz').innerHTML=drCabecalhoHtml()+`
-    <div class="dr-body"><div><div class="dr-map" id="dr-map"></div>
-      <div class="dr-leg"><span><i id="dr-leg-apl" style="background:${DR_COR[DR.doc]}"></i>área de aplicação vigente</span>
-        <span><i style="background:${DR_COR.sem}"></i>sem projeto</span><span><i style="background:#fff;border-color:${DR_COR.fora}"></i>fora da Base</span>
-        <span><i style="background:#d9defc;border-color:${DR_COR.sel}"></i>selecionado</span><span><i style="background:#fbe0e0;border-color:${DR_COR.rem}"></i>remover</span>
-        <label style="margin-left:auto;cursor:pointer"><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked)"> mostrar obstáculos</label></div></div>
-      <div class="dr-side" id="dr-side"></div></div>`;
+    <div id="dr-etapas" class="dr-etapas"></div>
+    <div class="dr-trab"><div class="dr-mapa-box">
+      <div class="dr-map" id="dr-map"></div>
+      <div class="dr-ferr" id="dr-ferr" role="toolbar" aria-label="Ferramentas do mapa" hidden></div>
+      <div class="dr-dica" id="dr-dica" hidden></div>
+      <div id="dr-camadas"></div>
+      <div class="dr-leg" id="dr-leg"></div>
+    </div>
+    <aside class="dr-side" id="dr-side" aria-label="Painel"><div class="dr-side-corpo" id="dr-side-corpo"></div><div class="dr-side-rodape" id="dr-side-rodape"></div></aside></div>`;
+  DR.etapaAtiva=null;DR.camadasAb=false;
 }
 // Atualiza as fontes do mapa que já existe (o 'load' lê DR.geo se ainda estiver carregando).
 function drMapaAtualizar(){
@@ -127,13 +132,20 @@ function drFadeCamada(id,prop,final){
 function drCabecalhoHtml(){
   const g=DR.geo,i=DR.info,tal=g.features.filter(f=>f.properties.camada==='talhao');
   const area=tal.filter(f=>f.properties.status!=='fora_da_base').reduce((s,f)=>s+(f.properties.area_ha||0),0);
-  const pct=g.cobertura_pct;
-  const card=(doc,tit,x,extra)=>`<div class="dr-doc${DR.doc===doc?' on':''}" onclick="drTrocarDoc('${doc}')">
-    <b>${tit} · ${x?'Rev'+x.revisao:'sem projeto'}</b>${extra}<small>${x?fmtNum(x.area_ha)+' ha · '+new Date(x.em).toLocaleDateString('pt-BR'):'—'}</small></div>`;
-  return`<div class="dr-ph" id="dr-ph"><span class="dr-cod" style="font-size:13px">${DR.cod}</span>
-      <div><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
-      <div class="dr-docs">${card('normal','Normal',g.normal,pct!=null&&pct<100?`<span class="dr-tag">${Math.floor(pct)}% DA FAZENDA</span>`:'')}
-        ${card('catacao','Catação',g.catacao,'')}</div></div>`;
+  const pct=g.cobertura_pct,ch=drChipObstaculos(i.obst,i.envios,new Date()),proc=ch.tom==='proc',edita=podeEditar('drone');
+  const aba=(doc,tit,x,extra)=>`<button class="dr-aba${DR.doc===doc?' on':''}" aria-pressed="${DR.doc===doc}" onclick="drTrocarDoc('${doc}')">${tit} <span>${x?'Rev'+x.revisao+(extra?' · '+extra:''):'sem projeto'}</span></button>`;
+  const ico=`<span class="ico${proc?' dr-gira':''}">${proc?'progress_activity':'warning'}</span>`;
+  const chip=`<span class="dr-obst-chip tom-${ch.tom}">${esc(ch.texto)}</span>`;
+  const obst=edita?`<button class="dr-obst" onclick="drEnviar('obstaculos')">${ico}<b>Obstáculos</b>${chip}</button>`
+    :`<span class="dr-obst dr-obst-so">${ico}<b>Obstáculos</b>${chip}</span>`;
+  return`<div class="dr-ph" id="dr-ph">
+      <button class="dr-ini" onclick="driVoltar()"><span class="ico">arrow_back</span>Início</button>
+      <span class="dr-sep" aria-hidden="true"></span>
+      <span class="dr-cod">${DR.cod}</span>
+      <div class="dr-ident"><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
+      <nav aria-label="Documento" class="dr-abas">${aba('normal','Normal',g.normal,pct!=null?Math.floor(pct)+'%':'')}${aba('catacao','Catação',g.catacao,'')}</nav>
+      <div class="dr-ph-dir">${obst}<button id="dr-mais" class="dr-mais" aria-label="Mais ações" aria-haspopup="menu" aria-expanded="false" onclick="drMenuAbrir()"><span class="ico">more_horiz</span></button></div>
+    </div>`;
 }
 
 // Publicação pedida: o drone sobrevoa o mapa até o agente responder. A tela é
@@ -174,9 +186,10 @@ function drMapaCriar(){
     m.addLayer({id:'tal-l',type:'line',source:'tal',paint:{'line-color':['case',
       ['boolean',['feature-state','rem'],false],DR_COR.rem,['boolean',['feature-state','sel'],false],DR_COR.sel,
       ['boolean',['feature-state','ger'],false],DR_COR.sel,
+      ['boolean',['feature-state','novo'],false],'#2f7a3e',
       ['==',['get','status'],'fora_da_base'],DR_COR.fora,'#1f2a30'],
-      'line-width':['case',['any',['boolean',['feature-state','sel'],false],['boolean',['feature-state','rem'],false],
-        ['boolean',['feature-state','ger'],false],['==',['get','status'],'fora_da_base']],2,0.6],
+      'line-width':['case',['boolean',['feature-state','novo'],false],2.5,['case',['any',['boolean',['feature-state','sel'],false],['boolean',['feature-state','rem'],false],
+        ['boolean',['feature-state','ger'],false],['==',['get','status'],'fora_da_base']],2,0.6]],
       'line-opacity':1}});
     m.addLayer({id:'tal-t',type:'symbol',source:'tal',layout:{'text-field':['to-string',['get','talhao']],
       'text-font':['Open Sans Semibold'],'text-size':11},paint:{'text-color':'#1f2a30','text-halo-color':'#fff','text-halo-width':1.5}});
@@ -194,10 +207,11 @@ function drMapaCriar(){
 
 function drAtualizarSelecaoMapa(){
   const m=DR.mapa;if(!m||!m.getSource('tal'))return;
-  const gerando=new Set(drTalhoesGerando(drAtual().ger));
+  const {ger}=drAtual(),gerando=new Set(drTalhoesGerando(ger)),
+    novos=new Set(ger&&ger.status==='pronta'?((ger.escopo&&ger.escopo.incluir)||[]).map(i=>i.talhao):[]);
   DR.geo.features.filter(f=>f.properties.camada==='talhao').forEach(f=>{
     const n=f.properties.talhao;
-    m.setFeatureState({source:'tal',id:n},{sel:DR.sel.has(n),rem:DR.rem.has(n),ger:gerando.has(n)});
+    m.setFeatureState({source:'tal',id:n},{sel:DR.sel.has(n),rem:DR.rem.has(n),ger:gerando.has(n),novo:novos.has(n)});
   });
 }
 
@@ -234,9 +248,139 @@ function drObstaculosHtml(){
     ${podeEditar('drone')?`<button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('obstaculos')"><span class="ico">upload</span> Enviar obstáculos</button>`:''}</div>`;
 }
 
+// ── cabeçalho, etapas, menu ⋯ e gaveta de revisões (S4.3) ──
+const DR_ETAPAS=['Montar revisão','Gerar prévia','Conferir','Publicado'];
+function drEtapasEstado(){
+  const {sol,ger}=drAtual(),est=drEstadoPainel({doc:DR.doc,sol,ger,edita:podeEditar('drone')});
+  return{sol,est,ativa:drEtapaAtiva(sol,ger),mostra:DR.doc==='normal'||['gerando','previa','publicando'].includes(est)};
+}
+function drEtapasHtml(){
+  const {sol,est,ativa}=drEtapasEstado();
+  const passos=DR_ETAPAS.map((t,k)=>{
+    const nome=k===1&&est==='gerando'?'Gerando prévia':k===3&&est==='publicando'?'Publicando':t;
+    const ocupado=k===ativa&&(est==='gerando'||est==='publicando');
+    const marca=k<ativa?'<span class="ico">check</span>':ocupado?'<span class="ico dr-gira">progress_activity</span>':k+1;
+    const cls=k<ativa?'feito':k===ativa?'agora':'';
+    return(k?`<i class="dr-trilho-e${k<=ativa?' on':''}" aria-hidden="true"></i>`:'')
+      +`<span class="dr-etapa ${cls}" data-etapa="${k}"${k===ativa?' aria-current="step"':''}><b>${marca}</b>${nome}</span>`;
+  }).join('');
+  const card=(DR.painel?.solicitacoes||[]).find(c=>sol&&c.id===sol.id);
+  return`<div class="dr-etapas-l">${passos}</div><span class="dr-etapas-ctx">${esc(drContextoSol(card))}</span>`;
+}
+// Na troca de etapa entre ciclos, a moldura desliza (Mo.etapa); na primeira montagem, sem animação.
+function drEtapasAtualizar(){
+  const el=document.getElementById('dr-etapas');if(!el)return;
+  const e=drEtapasEstado(),de=DR.etapaAtiva;
+  DR.etapaAtiva=e.ativa;
+  el.hidden=!e.mostra;
+  el.innerHTML=e.mostra?drEtapasHtml():'';
+  if(e.mostra&&de!=null&&de!==e.ativa)Mo.etapa(el,de,e.ativa);
+}
+// Menu ⋯: lista ancorada no botão. Esc ou clique fora fecha; escolher uma ação também fecha.
+function drMenuAbrir(){
+  if(document.getElementById('dr-menu')){drMenuFechar();return;}
+  const btn=document.getElementById('dr-mais');if(!btn)return;
+  const {sol,ger}=drAtual(),r=btn.getBoundingClientRect(),m=document.createElement('div');
+  m.id='dr-menu';m.className='dr-menu';m.setAttribute('role','menu');
+  m.style.top=r.bottom+6+'px';m.style.right=innerWidth-r.right+'px';
+  m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span class="ico">history</span>Revisões</button>`
+    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${sol.id});drMenuFechar()"><span class="ico">cancel</span>Cancelar solicitação</button>`:'');
+  document.body.appendChild(m);
+  btn.setAttribute('aria-expanded','true');
+  m.querySelector('button').focus();
+  m._ouve=e=>{
+    if(e.type==='keydown'&&e.key==='Escape'){e.preventDefault();drMenuFechar(true);}
+    else if(e.type==='mousedown'&&!m.contains(e.target)&&e.target!==btn)drMenuFechar();
+  };
+  document.addEventListener('keydown',m._ouve);document.addEventListener('mousedown',m._ouve);
+}
+function drMenuFechar(voltarFoco){
+  const m=document.getElementById('dr-menu');if(!m)return;
+  document.removeEventListener('keydown',m._ouve);document.removeEventListener('mousedown',m._ouve);
+  m.remove();
+  const btn=document.getElementById('dr-mais');
+  if(btn){btn.setAttribute('aria-expanded','false');if(voltarFoco)btn.focus();}
+}
+// Gaveta de revisões (mesmo modelo da gaveta da Atenção). Esc, × e clique no fundo fecham; o foco volta ao ⋯.
+function drRevisoesAbrir(){
+  if(document.getElementById('dr-rev-fundo'))return;
+  const rev=(DR.info.revs||[]).filter(r=>r.documento===DR.doc),nome=DR.doc==='normal'?'Normal':'Catação';
+  const fundo=document.createElement('div');fundo.id='dr-rev-fundo';fundo.className='dri-fundo';
+  const linhas=rev.map(r=>`<div class="dr-rev-l"><span>Rev${r.numero} · ${esc(new Date(r.criado_em).toLocaleDateString('pt-BR'))} · ${esc(r.motivo||'sem motivo')}</span></div>`).join('');
+  fundo.innerHTML=`<aside class="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby="dr-rev-t">
+    <header><h2 id="dr-rev-t">Revisões · ${nome}</h2><button class="dr-x" id="dr-rev-x" aria-label="Fechar"><span class="ico">close</span></button></header>
+    <div class="dri-gav-l">${linhas||'<p class="dri-vazio">Nenhuma revisão publicada ainda.</p>'}</div>
+  </aside>`;
+  document.body.appendChild(fundo);
+  fundo.onclick=e=>{if(e.target===fundo)drRevisoesFechar();};
+  fundo.querySelector('#dr-rev-x').onclick=drRevisoesFechar;
+  fundo._esc=e=>{if(e.key==='Escape'){e.preventDefault();drRevisoesFechar();}};
+  document.addEventListener('keydown',fundo._esc);
+  fundo.querySelector('#dr-rev-x').focus();
+}
+function drRevisoesFechar(){
+  const f=document.getElementById('dr-rev-fundo');if(!f)return;
+  document.removeEventListener('keydown',f._esc);f.remove();
+  const btn=document.getElementById('dr-mais');if(btn)btn.focus();
+}
+
+// ── ferramentas, dica, Camadas e legenda do mapa (S4.4) ──
+function drFerramenta(qual){
+  if(qual==='semprojeto')return drSelecionarSemProjeto();
+  if(qual==='limpar'){DR.sel=new Map();DR.rem=new Set();}
+  else DR.modoRemover=qual==='remover';
+  drAtualizarSelecaoMapa();drPainelLateral();
+}
+function drFerramentasHtml(){
+  return`<button aria-pressed="${!DR.modoRemover}" onclick="drFerramenta('incluir')"><span class="ico">add_circle</span>Incluir</button>
+    <button aria-pressed="${!!DR.modoRemover}" onclick="drFerramenta('remover')"><span class="ico">remove_circle</span>Remover</button>
+    <span class="dr-ferr-sep" aria-hidden="true"></span>
+    <button onclick="drFerramenta('semprojeto')"><span class="ico">select_all</span>Sem projeto</button>
+    <button onclick="drFerramenta('limpar')"><span class="ico">deselect</span>Limpar</button>`;
+}
+function drDicaHtml(est){
+  if(est==='montando')return DR.modoRemover?'Clique nos talhões para remover':'Clique nos talhões para incluir ou refazer';
+  if(est==='gerando')return'<span class="ico">lock</span>Mapa travado enquanto a prévia é gerada. Pode navegar e dar zoom.';
+  return'';
+}
+function drLegendaHtml(est){
+  const sw=(cor,borda,t)=>`<span><i style="background:${cor};border-color:${borda}"></i>${t}</span>`;
+  const dot=c=>`<span><i class="dr-bola" style="background:${DR_OBS_COR[c]}"></i>${c} m</span>`;
+  if(DR.doc==='catacao')return sw(DR_COR.catacao,'#1f2a30','Catação vigente'+(DR.geo.catacao?` (Rev${DR.geo.catacao.revisao})`:''));
+  const vig=sw(DR_COR.normal,'#1f2a30',est==='previa'?'já publicado':'aplicação vigente');
+  if(est==='previa')return sw('#fff','#2f7a3e','novo nesta prévia')+vig+dot(15)+dot(25)+dot(50);
+  return vig+sw(DR_COR.sem,'#1f2a30','sem projeto')+sw('#d9defc',DR_COR.sel,'na revisão')+sw('#fff',DR_COR.fora,'fora da Base');
+}
+// Barra de ferramentas, dica, Camadas e legenda dependem do estado do painel (drEstadoPainel).
+function drMapaUi(){
+  const {sol,ger}=drAtual(),est=drEstadoPainel({doc:DR.doc,sol,ger,edita:podeEditar('drone')});
+  const ferr=document.getElementById('dr-ferr');
+  if(ferr){
+    const bts=[...ferr.querySelectorAll('button')],foco=bts.indexOf(document.activeElement);
+    ferr.hidden=est!=='montando';
+    ferr.innerHTML=est==='montando'?drFerramentasHtml():'';
+    if(foco>=0)ferr.querySelectorAll('button')[foco]?.focus();
+  }
+  const dica=document.getElementById('dr-dica');
+  if(dica){const t=drDicaHtml(est);dica.hidden=!t;dica.innerHTML=t;}
+  const cam=document.getElementById('dr-camadas');
+  if(cam){
+    if(est==='previa'&&ger&&DR.obstPrevia!==ger.id){DR.obstPrevia=ger.id;if(!DR.mostrarObst)drObstaculos(true);}   // uma vez por prévia
+    const rot=DR.mostrarObst&&est==='previa'?'Camadas · obstáculos ligados':'Camadas';
+    cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span class="ico">layers</span>${rot}</button>`
+      +(DR.camadasAb?`<div class="dr-cam-caixa" id="dr-cam-caixa"><label><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked);drMapaUi()"> Obstáculos</label></div>`:'');
+  }
+  const leg=document.getElementById('dr-leg');if(leg)leg.innerHTML=drLegendaHtml(est);
+}
+function drCamadasAlternar(){
+  DR.camadasAb=!DR.camadasAb;drMapaUi();
+  document.querySelector('.dr-cam-btn')?.focus();
+}
+
 function drPainelLateral(){
-  const side=document.getElementById('dr-side');if(!side)return;
+  const side=document.getElementById('dr-side-corpo');if(!side)return;
   const {sol,ger}=drAtual(),edita=podeEditar('drone');
+  drMapaUi();
   let h='';
   if(ger){h+=drPrevHtml(ger);}
   else if(DR.doc==='normal'&&edita){
@@ -298,7 +442,7 @@ function drEnviar(tipo){
     const fim=Mo.ocupado(btn);
     // barra de progresso logo abaixo do botão (ou no topo do painel)
     const lugar=document.createElement('div');
-    (btn&&btn.isConnected?btn:document.getElementById('dr-side')?.firstChild)?.after?.(lugar);
+    (btn&&btn.isConnected?btn:document.getElementById('dr-side-corpo')?.firstChild)?.after?.(lugar);
     const total=arqs.reduce((s,f)=>s+f.size,0),prog=Mo.progresso(lugar,{total});
     try{
       const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];let feitos=0;

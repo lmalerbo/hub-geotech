@@ -93,7 +93,7 @@ test('assinaturas: painel ignora enviado_em e muda com o status da geração', (
   assert.notStrictEqual(a.painel, c.painel);
   assert.strictEqual(a.mapa, c.mapa);
   assert.notStrictEqual(a.mapa, ctx.drAssinaturas(info, geo, 'catacao').mapa);
-  assert.deepStrictEqual(Object.keys(a).sort(), ['cab', 'mapa', 'obst', 'painel']);
+  assert.deepStrictEqual(Object.keys(a).sort(), ['cab', 'etapas', 'mapa', 'obst', 'painel']);
 });
 
 test('partes mudadas: tudo na primeira vez, só o que mudou depois', () => {

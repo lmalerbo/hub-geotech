@@ -35,12 +35,12 @@ function drPodeCancelar(sol,ger,eu){
   return sol.solicitante_id===eu.id&&!ger;            // solicitante: só a própria e antes da prévia
 }
 
-function drAtual(){
-  const tipo=DR.doc;
-  const sol=DR.info.sols.find(s=>s.tipo===tipo)||null;
-  const ger=sol?DR.info.ger.find(g=>g.solicitacao_id===sol.id)||null:null;
+function drSolGer(info,doc){
+  const sol=(info.sols||[]).find(s=>s.tipo===doc)||null;
+  const ger=sol?(info.ger||[]).find(g=>g.solicitacao_id===sol.id)||null:null;
   return{sol,ger};
 }
+function drAtual(){return drSolGer(DR.info,DR.doc);}
 
 function drValidarSolicitacao(v){
   if(!v.cod)return'Escolha a fazenda.';
@@ -70,10 +70,12 @@ function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao
 function drAssinaturas(info,geo,doc){
   const tal=(geo.features||[]).filter(f=>f.properties.camada==='talhao');
   const envios=(info.envios||[]).map(({enviado_em,...e})=>e);
+  const {sol,ger}=drSolGer(info,doc),card=(DR.painel?.solicitacoes||[]).find(c=>sol&&c.id===sol.id);
   return{
     cab:JSON.stringify([info.faz,doc,geo.normal,geo.catacao,geo.cobertura_pct,
-      tal.map(f=>[f.properties.talhao,f.properties.status,f.properties.area_ha])]),
+      tal.map(f=>[f.properties.talhao,f.properties.status,f.properties.area_ha]),drChipObstaculos(info.obst,info.envios,new Date())]),
     painel:JSON.stringify([doc,geo.normal&&geo.normal.revisao,info.sols,info.ger,envios,info.obst,info.revs,DR.ajusteId,DR.modoRemover]),
+    etapas:JSON.stringify([doc,sol&&sol.id,ger&&[ger.status,ger.publicar_pedido_em,ger.publicacao_erro],drContextoSol(card)]),
     obst:drAssinaturaObst(info.obst),
     mapa:JSON.stringify([doc,geo.features])};
 }
