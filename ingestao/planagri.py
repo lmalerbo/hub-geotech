@@ -3,8 +3,9 @@ hub.talhao_plantio e hub.talhao_preparo.
 
 Entram só os talhões liberados (status PLAN. = LIB), como nos sistemas
 atuais — Plantio e Preparo sempre leram a mesma demanda do PLANAGRI.
-Grava só o que o PLANAGRI é dono: o talhão estar na demanda e o mês de
-plantio. Mapeamento e projeto não são tocados em talhão que já existe
+Grava só o que o PLANAGRI é dono: o talhão estar na demanda, o mês de
+plantio e as datas de campo (conservação e plantio realizado), que só geram
+aviso e não avançam etapa. Mapeamento e projeto não são tocados em talhão que já existe
 (talhão novo nasce com os valores padrão da tabela). O tipo de conservação
 NÃO vem daqui — a coluna do PLANAGRI não é atualizada; o dono é o Controle de
 Conservação.
@@ -41,9 +42,11 @@ def para_data(valor):
 
 def ler(caminho, aba):
     wb = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
-    colunas, linhas = ler_tabela(achar_aba(wb, aba), ['CÓDIGO', 'TALHÃO', 'PLAN.', 'MÊS PLANTIO (PLAN)'])
+    colunas, linhas = ler_tabela(achar_aba(wb, aba), ['CÓDIGO', 'TALHÃO', 'PLAN.', 'MÊS PLANTIO (PLAN)',
+                                                      'CONSERVAÇÃO (DATA)', 'REALIZADO PLANTIO (DATA)'])
     j_cod, j_tal = colunas['CODIGO'][0], colunas['TALHAO'][0]
     j_mes, j_status = colunas['MES PLANTIO (PLAN)'][0], coluna_status(colunas, linhas)
+    j_cons, j_real = colunas['CONSERVACAO (DATA)'][0], colunas['REALIZADO PLANTIO (DATA)'][0]
 
     status = collections.Counter()
     talhoes = {}
@@ -55,7 +58,9 @@ def ler(caminho, aba):
         status[s] += 1
         if s != 'LIB':
             continue
-        talhoes[calc_layer(cod, tal)] = {'layer': calc_layer(cod, tal), 'mes_plantio': para_data(l[j_mes])}
+        talhoes[calc_layer(cod, tal)] = {'layer': calc_layer(cod, tal), 'mes_plantio': para_data(l[j_mes]),
+                                         'conservacao_em': para_data(l[j_cons]),
+                                         'plantio_realizado_em': para_data(l[j_real])}
     return talhoes, status
 
 
@@ -83,10 +88,11 @@ def main():
 
     with Execucao(hub, 'planagri') as execucao:
         execucao.linhas_lidas = sum(status.values())
-        hub.upsert('talhao_plantio', validos, 'layer')
-        # No Preparo o andamento é por fazenda (etapas); aqui basta o talhão
-        # estar na demanda.
-        hub.upsert('talhao_preparo', [{'layer': t['layer']} for t in validos], 'layer')
+        hub.upsert('talhao_plantio', [{'layer': t['layer'], 'mes_plantio': t['mes_plantio'],
+                                       'plantio_realizado_em': t['plantio_realizado_em']} for t in validos], 'layer')
+        # No Preparo o andamento é por talhão (etapas); daqui vem só a demanda e a data de conservação.
+        hub.upsert('talhao_preparo', [{'layer': t['layer'], 'conservacao_em': t['conservacao_em']} for t in validos], 'layer')
+        hub.rpc('avisos_campo_planagri')
         execucao.linhas_gravadas = len(validos)
         execucao.detalhes = {'fora_da_base_fazendas': fora}
     print('Gravado no Hub.')
