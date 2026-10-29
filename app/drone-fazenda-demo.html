@@ -26,6 +26,7 @@ body{background:var(--bg);margin:0;padding:16px}
 <script src="drone-previa.js"></script>
 <script src="drone-inicio.js"></script>
 <script src="drone-fazenda.js"></script>
+<script src="drone-obstaculos.js"></script>
 <script>
 // Globais falsas do app (o que a área da fazenda usa). Nada vai ao banco.
 var Q=new URLSearchParams(location.search);
@@ -93,8 +94,8 @@ function DM_info(){
   if(e==='previa')ger.push({...base,status:'pronta',alertas:DM_ALERTAS,resumo:{aplicacao_ha:412.8,cobertura_pct:94},pedido_em:ago(1500),iniciado_em:ago(1400)});
   if(e==='publicando')ger.push({...base,status:'pronta',alertas:DM_ALERTAS,resumo:{aplicacao_ha:412.8,cobertura_pct:94},pedido_em:ago(1500),iniciado_em:ago(1400),publicar_pedido_em:ago(30)});
   if(e==='erro')ger.push({...base,status:'erro',erro:'Shape de ajuste sem feições dentro do talhão 10.',pedido_em:ago(900),iniciado_em:ago(890)});
-  const obst=[{classe_m:15,versao:4,enviado_em:'2026-09-18T12:00:00Z'},{classe_m:25,versao:3,enviado_em:'2026-09-18T12:00:00Z'},
-    {classe_m:50,versao:2,enviado_em:ob==='velho'?'2023-03-12T10:00:00Z':'2026-08-02T12:00:00Z'}];
+  const obst=[{classe_m:15,versao:4,enviado_em:'2026-09-18T12:00:00Z',n_feicoes:14},{classe_m:25,versao:3,enviado_em:'2026-09-18T12:00:00Z',n_feicoes:6},
+    {classe_m:50,versao:2,enviado_em:ob==='velho'?'2023-03-12T10:00:00Z':'2026-08-02T12:00:00Z',n_feicoes:22}];
   const revs=[{numero:2,documento:'normal',motivo:'Ajuste de talhões do bloco sul',criado_em:'2026-09-30T12:00:00Z'},
     {numero:1,documento:'normal',motivo:'Primeira aplicação',criado_em:'2026-07-10T12:00:00Z'},
     {numero:1,documento:'catacao',motivo:'Levantamento de buva e capim',criado_em:'2026-10-27T12:00:00Z'}];
@@ -114,6 +115,13 @@ async function drRpc(nome){
   if(nome==='drone_obstaculos_mapa')return DM_obstMapa();
   console.info('demo: '+nome);return null;
 }
+async function drSubirComProgresso(bucket,caminho){console.info('demo: envio desligado, nada subiu para '+caminho);throw new Error('Demo: nada é enviado.');}
+// ?jan=1 abre a janela de obstáculos com quatro camadas fictícias (três válidas e uma sem .shx).
+function DM_arquivos(){
+  const f=n=>new File(['x'],n);
+  return ['restricoes15m','rede_energia_25m','linhas_cemig'].flatMap(b=>['shp','shx','dbf','prj'].map(e=>f(b+'.'+e)))
+    .concat(['sem_shx_50m.shp','sem_shx_50m.dbf','sem_shx_50m.prj'].map(f));
+}
 function drMostrarPdf(){const a=document.getElementById('dr-pdf');if(a)a.textContent='[capa do PDF]';}
 
 // ── início da demo: estilo do index, cartão do Início e a fazenda ──
@@ -127,7 +135,9 @@ function drMostrarPdf(){const a=document.getElementById('dr-pdf');if(a)a.textCon
   document.getElementById('drone-root').innerHTML=`<div id="dri" hidden></div>
     <div id="dr-trab">
       <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um projeto ou busque uma fazenda</div></div></div>`;
-  drAbrirFazenda(10372,DOC_DEMO);
+  DR.abrirObst=Q.get('jan')==='1';
+  await drAbrirFazenda(10372,DOC_DEMO);
+  if(Q.get('jan')==='1')await droAdicionar(DM_arquivos());
 })();
 </script>
 </body>

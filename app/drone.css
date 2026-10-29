@@ -264,14 +264,15 @@
 
 /* ── janela de obstáculos (drone-obstaculos.js; maquete tela 3) ── */
 .dro-fundo{position:fixed;inset:0;background:rgba(20,24,30,.55);display:flex;align-items:center;justify-content:center;padding:24px;z-index:240;animation:dro-entra .18s ease-out}
-.dro-jan{background:#fff;border-radius:20px;box-shadow:0 20px 80px rgb(0 0 0/.25);width:760px;max-width:100%;max-height:840px;display:flex;flex-direction:column;overflow:hidden;color:var(--t1);outline:0}
+.dro-jan{background:#fff;border-radius:20px;box-shadow:0 20px 80px rgb(0 0 0/.25);width:760px;max-width:100%;max-height:min(840px,94vh);display:flex;flex-direction:column;overflow:hidden;color:var(--t1);outline:0}
 .dro-cab{display:flex;align-items:flex-start;gap:12px;padding:22px 26px 10px}
 .dro-ico{font-size:26px;color:#b36b00;background:#fdf4e6;border-radius:12px;padding:8px}
 .dro-tit{flex:1;min-width:0}
 .dro-tit h2{margin:0;font-size:18px;font-weight:600}
 .dro-tit p{margin:2px 0 0;font-size:12.5px;color:#6b6875}
 .dro-x{flex:none}
-.dro-corpo{padding:6px 26px 0;overflow:auto;min-height:0}
+.dro-corpo{padding:6px 26px 0;overflow:auto;min-height:0;flex:1 1 auto}
+.dro-corpo:last-child{padding-bottom:20px}
 .dro-cartoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .dro-cartao{border:1px solid #e5e9ec;border-radius:12px;padding:10px 12px;min-width:0}
 .dro-cartao.velho{border-color:#f3dcb5;background:#fffaf2}

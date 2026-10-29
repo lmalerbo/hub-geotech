@@ -35,7 +35,7 @@ async function droLerZip(f){
 
 // Acrescenta arquivos (soltos ou dentro de .zip). Só a sugestão da classe entra nas escolhas, e só para camada nova.
 async function droAdicionar(lista){
-  if(DRO.enviando)return;
+  if(DRO.enviando||droProcessando())return;
   const arqs=[...(lista||[])];
   DRO.erro=null;
   for(const f of arqs){
@@ -184,6 +184,7 @@ function droLinha(g){
 
 function droLista(){
   const el=document.getElementById('dro-lista');if(!el)return;
+  if(!podeEditar('drone')||(droProcessando()&&!DRO.enviando)){el.innerHTML='';return;}   // quem só lê, ou com envio anterior na fila, não vê as camadas
   const n=DRO.grupos.length,ig=DRO.ign.size;
   el.innerHTML=(DRO.erro?`<div class="dro-erro" role="alert"><span class="ico">error</span><span>${esc(DRO.erro)}</span></div>`:'')
     +(n?`<h3 class="dro-h3">Camadas encontradas <span>· ${n}</span></h3><div class="dro-lista">${DRO.grupos.map(droLinha).join('')}</div>`:'')
