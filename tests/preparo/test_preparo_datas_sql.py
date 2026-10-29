@@ -8,6 +8,13 @@ def log_ok(banco, layer, quando, origem='usuario', de='Preparo', para='Ok'):
                   (layer, de, para, origem, quando))
 
 
+def lancado(banco, layer):
+    """Simula o lançamento do ciclo 25-26: linha de log + data congelada (a partir da conservação atual)."""
+    log_ok(banco, layer, '2026-10-28 12:00-03', origem='planagri_ciclo_25_26')
+    banco.execute("insert into hub.preparo_ciclo_25_26 (layer, conservacao_em, lote_id) "
+                  "select layer, conservacao_em, 1 from hub.talhao_preparo where layer = %s", (layer,))
+
+
 def etapa_preparo_ok(banco, cod, quando):
     banco.execute("insert into hub.etapa_status (etapa_id, entidade_id, ok, concluido_em) "
                   "select id, %s, true, %s from hub.etapas where modulo_id='preparo' and nome='Preparo'", (cod, quando))
@@ -51,7 +58,7 @@ def test_lancamento_25_26_usa_data_de_conservacao(banco, fazenda):
     cod = fazenda(1)
     por(banco, 'preparo', cod, 'Ok')
     banco.execute("update hub.talhao_preparo set conservacao_em = '2025-09-15' where layer = %s", (cod * 1000 + 1,))
-    log_ok(banco, cod * 1000 + 1, '2026-10-28 12:00-03', origem='planagri_ciclo_25_26')
+    lancado(banco, cod * 1000 + 1)
     assert entregas(banco, cod) == {1: ('2025-09-15', 'ciclo_25_26')}
 
 
@@ -59,9 +66,42 @@ def test_conservacao_dia_1_nao_cai_no_mes_anterior_com_sessao_em_utc(banco, faze
     cod = fazenda(1)
     por(banco, 'preparo', cod, 'Ok')
     banco.execute("update hub.talhao_preparo set conservacao_em = '2025-09-01' where layer = %s", (cod * 1000 + 1,))
-    log_ok(banco, cod * 1000 + 1, '2026-10-28 12:00-03', origem='planagri_ciclo_25_26')
+    lancado(banco, cod * 1000 + 1)
     banco.execute("set time zone 'UTC'")
     try:
         assert entregas(banco, cod) == {1: ('2025-09-01', 'ciclo_25_26')}
     finally:
         banco.execute("reset time zone")
+
+
+def test_desfazer_nao_e_entrega_nova_no_ciclo_25_26(banco, fazenda):
+    cod = fazenda(1)
+    lay = cod * 1000 + 1
+    por(banco, 'preparo', cod, 'Ok')
+    banco.execute("update hub.talhao_preparo set conservacao_em = '2025-09-15' where layer = %s", (lay,))
+    lancado(banco, lay)
+    log_ok(banco, lay, '2026-11-02 12:00-03', origem='usuario', de='Ok', para='Preparo')    # voltou uma etapa
+    log_ok(banco, lay, '2026-11-02 13:00-03', origem='desfazer', de='Preparo', para='Ok')   # e foi desfeito
+    assert entregas(banco, cod) == {1: ('2025-09-15', 'ciclo_25_26')}
+
+
+def test_desfazer_mantem_a_data_da_passagem_original_no_hub(banco, fazenda):
+    cod = fazenda(1)
+    lay = cod * 1000 + 1
+    por(banco, 'preparo', cod, 'Ok')
+    log_ok(banco, lay, '2026-08-10 12:00-03')
+    log_ok(banco, lay, '2026-09-05 12:00-03', origem='usuario', de='Ok', para='Preparo')
+    log_ok(banco, lay, '2026-09-05 13:00-03', origem='desfazer', de='Preparo', para='Ok')
+    assert entregas(banco, cod) == {1: ('2026-08-10', 'hub')}
+
+
+def test_data_do_ciclo_25_26_nao_muda_com_a_importacao(banco, fazenda):
+    cod = fazenda(1)
+    lay = cod * 1000 + 1
+    por(banco, 'preparo', cod, 'Ok')
+    banco.execute("update hub.talhao_preparo set conservacao_em = '2025-09-15' where layer = %s", (lay,))
+    lancado(banco, lay)
+    banco.execute("update hub.talhao_preparo set conservacao_em = '2026-09-20' where layer = %s", (lay,))
+    assert entregas(banco, cod) == {1: ('2025-09-15', 'ciclo_25_26')}
+    banco.execute("update hub.talhao_preparo set conservacao_em = null where layer = %s", (lay,))
+    assert entregas(banco, cod) == {1: ('2025-09-15', 'ciclo_25_26')}

@@ -19,6 +19,16 @@ returns date language sql stable security definer set search_path = hub as $$
   select make_date(2000 + left(hub.safra_colheita(), 2)::int, 4, 1);
 $$;
 
+-- Data do ciclo 25-26 congelada no lançamento: a importação diária reescreve talhao_preparo.conservacao_em.
+create table hub.preparo_ciclo_25_26 (
+  layer         bigint primary key,
+  conservacao_em date   not null,
+  lote_id       bigint  not null
+);
+alter table hub.preparo_ciclo_25_26 enable row level security;
+create policy leitura_autenticado on hub.preparo_ciclo_25_26 for select to authenticated using (true);
+grant select on hub.preparo_ciclo_25_26 to authenticated, service_role;
+
 -- 3 ─────────────────────────────────────────────────────────────────────────
 -- Entrega = talhão em Ok. Data: a última passagem para Ok no registro (fluxo por talhão, desde 23/10);
 -- sem ela, a etapa Preparo da fazenda em etapa_status (histórico de antes). O lançamento do ciclo 25-26
@@ -28,6 +38,7 @@ with ultimo_ok as (
   select distinct on (l.entidade_id) l.entidade_id as layer, l.criado_em, l.origem
     from hub.log_auditoria l
    where l.modulo_id = 'preparo' and l.entidade_tipo = 'talhao' and l.campo = 'etapa' and l.valor_novo = 'Ok'
+     and l.origem <> 'desfazer'   -- desfazer uma volta não é entrega nova (projeto_desfazer grava origem 'desfazer')
    order by l.entidade_id, l.criado_em desc, l.id desc
 ), etapa_preparo as (
   select s.entidade_id as cod_faz, s.concluido_em
@@ -35,7 +46,7 @@ with ultimo_ok as (
    where e.modulo_id = 'preparo' and e.nome = 'Preparo' and s.ok
 )
 select p.layer, t.cod_faz,
-       case when u.origem = 'planagri_ciclo_25_26' then (p.conservacao_em::timestamp at time zone 'America/Sao_Paulo')
+       case when u.origem = 'planagri_ciclo_25_26' then (c.conservacao_em::timestamp at time zone 'America/Sao_Paulo')
             else coalesce(u.criado_em, ep.concluido_em) end as entregue_em,
        case when u.origem = 'planagri_ciclo_25_26' then 'ciclo_25_26'
             when u.criado_em is null
@@ -45,6 +56,7 @@ select p.layer, t.cod_faz,
   from hub.talhao_preparo p
   join hub.talhoes t on t.layer = p.layer
   left join ultimo_ok u on u.layer = p.layer
+  left join hub.preparo_ciclo_25_26 c on c.layer = p.layer
   left join etapa_preparo ep on ep.cod_faz = t.cod_faz
  where p.etapa = 'Ok';
 
@@ -85,6 +97,9 @@ begin
   select array_agg(c.layer) into v_layers from hub.preparo_ciclo_25_26_candidatos() c;
   if v_layers is null then return null; end if;
   v_lote := nextval('hub.log_lote_seq');
+  insert into hub.preparo_ciclo_25_26 (layer, conservacao_em, lote_id)
+  select c.layer, c.conservacao_em, v_lote from hub.preparo_ciclo_25_26_candidatos() c
+  on conflict (layer) do update set conservacao_em = excluded.conservacao_em, lote_id = excluded.lote_id;  -- talhão lançado que voltou de Ok e entra de novo
   perform hub.projeto_mudar_etapa('preparo', v_layers, 'Ok', v_lote, 'planagri_ciclo_25_26', v_selo);
 
   -- Fazendas que ficaram inteiras Ok com este lote ganham as 4 etapas em etapa_status, mas só as que
@@ -136,6 +151,9 @@ begin
      where l.lote_id = p_lote and l.origem = 'planagri_ciclo_25_26' and l.modulo_id = 'preparo' and l.campo = 'etapa'
        and l.entidade_id = p.layer and p.etapa = l.valor_novo
     returning p.layer
+  ), snap as (
+    delete from hub.preparo_ciclo_25_26 c where c.lote_id = p_lote and c.layer in (select layer from r)
+    returning 1
   ), d as (
     delete from hub.log_auditoria l
      where l.lote_id = p_lote and l.origem = 'planagri_ciclo_25_26' and l.modulo_id = 'preparo' and l.campo = 'etapa'

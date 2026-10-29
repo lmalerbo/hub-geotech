@@ -109,3 +109,17 @@ def test_chamar_duas_vezes_na_mesma_transacao(banco, fazenda):
         banco.execute('select hub.preparo_lancar_ciclo_25_26()')
         conservacao(banco, b, {1: '2025-07-01'})
         assert banco.execute('select hub.preparo_lancar_ciclo_25_26()').fetchone()[0] is not None
+
+
+def test_lancar_congela_data_e_voltar_apaga(banco, fazenda):
+    cod = fazenda(1)
+    conservacao(banco, cod, {1: '2025-07-01'})
+    lote = banco.execute('select hub.preparo_lancar_ciclo_25_26()').fetchone()[0]
+    snap = lambda: banco.execute('select conservacao_em::text, lote_id from hub.preparo_ciclo_25_26 where layer = %s',
+                                 (cod * 1000 + 1,)).fetchall()
+    assert snap() == [('2025-07-01', lote)]
+    conservacao(banco, cod, {1: None})
+    assert banco.execute("select (entregue_em at time zone 'America/Sao_Paulo')::date::text, origem "
+                         "from hub.preparo_entregas where layer = %s", (cod * 1000 + 1,)).fetchone() == ('2025-07-01', 'ciclo_25_26')
+    banco.execute('select hub.preparo_voltar_ciclo_25_26(%s)', (lote,))
+    assert snap() == []
