@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drone · Fazenda (demo)</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="drone.css">
+<style>
+/* Demo da área da fazenda do Drone. Dados fictícios, nada é gravado. ?estado= escolhe o momento; ?editar=0 e ?obst= ajustam o resto. O visual vem do primeiro <style> do index (injetado abaixo). */
+html,body{height:auto!important;overflow:auto!important}
+body{background:var(--bg);margin:0;padding:16px}
+#v-drone{max-width:1280px;margin:0 auto}
+</style>
+</head>
+<body>
+<div id="v-drone" class="view on"><div id="drone-root"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="motion.js"></script>
+<script src="drone-dados.js"></script>
+<script src="drone-previa.js"></script>
+<script src="drone-inicio.js"></script>
+<script src="drone-fazenda.js"></script>
+<script>
+// Globais falsas do app (o que a área da fazenda usa). Nada vai ao banco.
+var Q=new URLSearchParams(location.search);
+var ESTADO=Q.get('estado')||'montando';
+var DOC_DEMO=/^catacao/.test(ESTADO)?'catacao':'normal';
+var AGORA=Date.now();
+var ago=s=>new Date(AGORA-s*1000).toISOString();
+var EU={id:'u1',niveis:{drone:'editor'}};
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtNum(v){return (Math.round((v||0)*10)/10).toLocaleString('pt-BR');}
+function podeEditar(){return Q.get('editar')!=='0';}
+function confirmar(texto){console.info('demo: confirmar '+texto);return Promise.resolve(false);}
+var sb={
+  rpc(n){console.info('demo: '+n);return Promise.resolve({data:null,error:null});},
+  from(t){console.info('demo: sb.from '+t);return null;},
+  storage:{from(b){console.info('demo: storage '+b);return null;}},
+  auth:{getSession:async()=>({data:{session:null}})}
+};
+
+// ── fixture da fazenda 10372 ──
+var DM_STATUS={3:'sem_projeto',6:'sem_projeto',11:'sem_projeto',7:'fora_da_base'};
+var DM_ALERTAS=['Obstáculos da classe 50 m têm mais de 24 meses.','Talhão 7 fora da Base — não entra no projeto.'];
+var DM_ARQS_INF=['10372/1/manchas_buva.shp','10372/1/manchas_buva.dbf','10372/1/manchas_capim.shp'];
+var DM_ESCOPO={incluir:[{talhao:3,fonte:'sistema'},{talhao:6,fonte:'sistema'},{talhao:10,fonte:'shape',envio_id:1}],remover:[]};
+function DM_quad(x,y,d){return[[x,y],[x+d,y],[x+d,y+d],[x,y+d],[x,y]];}
+function DM_circulo(lon,lat,r){const c=[];for(let k=0;k<=24;k++){const a=k/24*2*Math.PI;c.push([lon+r*Math.cos(a),lat+r*Math.sin(a)]);}return c;}
+function DM_geo(){
+  const feats=[],comProj=[],cat=[];
+  for(let n=1;n<=12;n++){
+    const i=n-1,x=-47.0+(i%4)*0.01,y=-21.0+Math.floor(i/4)*0.01,q=DM_quad(x+0.0002,y+0.0002,0.0096);
+    const status=DM_STATUS[n]||'com_projeto';
+    feats.push({type:'Feature',properties:{camada:'talhao',talhao:n,area_ha:n===1?31.4:n===7?30.0:31.0,status,
+      desde_rev:status==='com_projeto'?(n===10?1:2):null},geometry:{type:'Polygon',coordinates:[q]}});
+    if(status==='com_projeto')comProj.push([q]);
+    if([1,5,9].includes(n))cat.push([DM_quad(x+0.0035,y+0.0035,0.003)]);
+  }
+  feats.push({type:'Feature',properties:{camada:'normal'},geometry:{type:'MultiPolygon',coordinates:comProj}});
+  feats.push({type:'Feature',properties:{camada:'catacao'},geometry:{type:'MultiPolygon',coordinates:cat}});
+  return{type:'FeatureCollection',features:feats,normal:{revisao:2,area_ha:341.4,em:'2026-09-30T12:00:00Z'},
+    catacao:{revisao:1,area_ha:12.3,em:'2026-10-27T12:00:00Z'},cobertura_pct:82};
+}
+function DM_obstMapa(){
+  return{type:'FeatureCollection',features:[
+    {type:'Feature',properties:{camada:'buffer',classe:15},geometry:{type:'Polygon',coordinates:[DM_circulo(-46.99,-20.99,0.0015)]}},
+    {type:'Feature',properties:{camada:'buffer',classe:15},geometry:{type:'Polygon',coordinates:[DM_circulo(-46.975,-20.98,0.0015)]}},
+    {type:'Feature',properties:{camada:'obst',classe:25},geometry:{type:'LineString',coordinates:[[-46.985,-20.995],[-46.98,-20.99]]}},
+    {type:'Feature',properties:{camada:'obst',classe:25},geometry:{type:'LineString',coordinates:[[-46.97,-20.985],[-46.965,-20.975]]}},
+    {type:'Feature',properties:{camada:'buffer',classe:50},geometry:{type:'Polygon',coordinates:[DM_quad(-47.008,-20.976,0.003)]}}
+  ]};
+}
+function DM_info(){
+  const e=ESTADO,comGer=['gerando','previa','publicando','erro'].includes(e),ob=Q.get('obst');
+  const sols=[{id:1,tipo:'normal',status:comGer?'em_elaboracao':'solicitado',observacao:'Completar talhões do bloco norte',
+    solicitante_id:'u2',data_desejada:'2026-11-05',criado_em:ago(2*86400)}];
+  const envios=[],ger=[];
+  if(e==='catacao-enviada'){
+    sols.push({id:2,tipo:'catacao',status:'solicitado',observacao:null,solicitante_id:'u2',data_desejada:null,criado_em:ago(5*3600)});
+    envios.push({id:2,tipo:'infestacao',status:'ok',erro:null,enviado_em:ago(1800),classe_m:null,arquivos:DM_ARQS_INF});
+  }
+  if(ob==='erro'||ob==='proc')envios.unshift({id:9,tipo:'obstaculos',status:ob==='erro'?'erro':'processando',
+    erro:ob==='erro'?'Classe 15 m: nenhuma feição nos arquivos.':null,enviado_em:ago(60),classe_m:15,arquivos:['10372/1/restricoes15m.shp']});
+  const base={id:11,solicitacao_id:1,escopo:DM_ESCOPO,alertas:[],erro:null,previa_pdf:null,publicar_pedido_em:null,
+    publicacao_erro:null,resumo:null,iniciado_em:null,pedido_em:ago(72)};
+  if(e==='gerando')ger.push({...base,status:'processando',pedido_em:ago(72),iniciado_em:ago(70)});
+  if(e==='previa')ger.push({...base,status:'pronta',alertas:DM_ALERTAS,resumo:{aplicacao_ha:412.8,cobertura_pct:94},pedido_em:ago(1500),iniciado_em:ago(1400)});
+  if(e==='publicando')ger.push({...base,status:'pronta',alertas:DM_ALERTAS,resumo:{aplicacao_ha:412.8,cobertura_pct:94},pedido_em:ago(1500),iniciado_em:ago(1400),publicar_pedido_em:ago(30)});
+  if(e==='erro')ger.push({...base,status:'erro',erro:'Shape de ajuste sem feições dentro do talhão 10.',pedido_em:ago(900),iniciado_em:ago(890)});
+  const obst=[{classe_m:15,versao:4,enviado_em:'2026-09-18T12:00:00Z'},{classe_m:25,versao:3,enviado_em:'2026-09-18T12:00:00Z'},
+    {classe_m:50,versao:2,enviado_em:ob==='velho'?'2023-03-12T10:00:00Z':'2026-08-02T12:00:00Z'}];
+  const revs=[{numero:2,documento:'normal',motivo:'Ajuste de talhões do bloco sul',criado_em:'2026-09-30T12:00:00Z'},
+    {numero:1,documento:'normal',motivo:'Primeira aplicação',criado_em:'2026-07-10T12:00:00Z'},
+    {numero:1,documento:'catacao',motivo:'Levantamento de buva e capim',criado_em:'2026-10-27T12:00:00Z'}];
+  return{faz:{cod_faz:10372,nome:'Faz. Boa Vista'},sols,obst,ger,envios,revs};
+}
+
+// ── substituições (a área da fazenda chama estes nomes; aqui não há banco) ──
+async function drCarregarFazenda(){
+  DR.geo=DM_geo();DR.info=DM_info();
+  if(ESTADO==='montando')DR.sel=new Map([[3,'sistema'],[6,'sistema'],[10,'shape']]);
+  const ass=drAssinaturaObst(DR.info.obst);
+  if(ass!==DR.obstAss){DR.obstAss=ass;DR.obstGeo=null;}
+  drRedesenhar();
+}
+async function drCarregarPainel(){}
+async function drRpc(nome){
+  if(nome==='drone_obstaculos_mapa')return DM_obstMapa();
+  console.info('demo: '+nome);return null;
+}
+function drMostrarPdf(){const a=document.getElementById('dr-pdf');if(a)a.textContent='[capa do PDF]';}
+
+// ── início da demo: estilo do index, cartão do Início e a fazenda ──
+(async()=>{
+  try{
+    const txt=await (await fetch('index.html')).text();
+    const m=txt.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+    if(m){const s=document.createElement('style');s.id='index-css';s.textContent=m[1];document.head.insertBefore(s,document.head.firstChild);}
+  }catch(e){console.warn('Não foi possível carregar o estilo do index',e);}
+  DR.painel={solicitacoes:[{id:1,solicitante:'Ana',observacao:'Completar talhões do bloco norte',data_desejada:'2026-11-05'}]};
+  document.getElementById('drone-root').innerHTML=`<div id="dri" hidden></div>
+    <div id="dr-trab"><button class="dri-voltar" onclick="driVoltar()">← Início</button>
+      <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um projeto ou busque uma fazenda</div></div></div>`;
+  drAbrirFazenda(10372,DOC_DEMO);
+})();
+</script>
+</body>
+</html>
