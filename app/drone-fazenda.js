@@ -75,7 +75,7 @@ function drEsqueleto(){
       <div id="dr-camadas"></div>
       <div class="dr-leg" id="dr-leg"></div>
     </div>
-    <aside class="dr-side" id="dr-side" aria-label="Painel"><div class="dr-side-corpo" id="dr-side-corpo"></div><div class="dr-side-rodape" id="dr-side-rodape"></div></aside></div>`;
+    <aside class="dr-side" id="dr-side" aria-label="Painel"><div class="dr-side-cab" id="dr-side-cab"></div><div class="dr-side-corpo" id="dr-side-corpo"></div><div class="dr-side-rodape" id="dr-side-rodape"></div></aside></div>`;
   DR.etapaAtiva=null;DR.camadasAb=false;
 }
 // Atualiza as fontes do mapa que já existe (o 'load' lê DR.geo se ainda estiver carregando).
@@ -89,7 +89,7 @@ function drMapaAtualizar(){
 }
 function drMapaDescartar(){
   drPulsarGeracao(false);
-  DR.varr&&DR.varr.parar();DR.varr=null;
+  DR.varr&&DR.varr.parar();DR.varr=null;drTempoParar();
   DR.mapa&&DR.mapa.remove();DR.mapa=null;   // também depois de um erro que apagou #dr-faz
 }
 // Espera da geração: varredura no mapa, pulso nos talhões do escopo e trilho no painel.
@@ -224,29 +224,30 @@ function drClicarTalhao(p){
     DR.rem.has(n)?DR.rem.delete(n):(DR.rem.add(n),DR.sel.delete(n));
   }else{
     if(p.status==='fora_da_base')return;
-    DR.sel.has(n)?DR.sel.delete(n):(DR.sel.set(n,DR.fonte||'sistema'),DR.rem.delete(n));
+    DR.sel.has(n)?DR.sel.delete(n):(DR.sel.set(n,'sistema'),DR.rem.delete(n));
   }
   drAtualizarSelecaoMapa();drPainelLateral();
 }
 
 function drSelecionarSemProjeto(){
   DR.geo.features.filter(f=>f.properties.camada==='talhao'&&f.properties.status==='sem_projeto')
-    .forEach(f=>{DR.sel.set(f.properties.talhao,DR.fonte||'sistema');DR.rem.delete(f.properties.talhao);});
+    .forEach(f=>{DR.sel.set(f.properties.talhao,'sistema');DR.rem.delete(f.properties.talhao);});
   drAtualizarSelecaoMapa();drPainelLateral();
 }
 
-function drFonte(f){DR.fonte=f;for(const k of DR.sel.keys())DR.sel.set(k,f);drPainelLateral();}
-
-function drObstaculosHtml(){
-  const linhas=[15,25,50].map(c=>{const v=DR.info.obst.find(o=>o.classe_m===c);
-    return`<div class="dr-row"><span>${c} m</span><span>${v?'v'+v.versao+' · '+new Date(v.enviado_em).toLocaleDateString('pt-BR'):'sem cadastro'}</span></div>`;}).join('');
-  const ult=drUltimoEnvio(DR.info.envios,'obstaculos');
-  const env=ult&&['fila','processando'].includes(ult.status)?ult:null;
-  const err=ult&&ult.status==='erro'?ult:null;
-  return`<div class="dr-box"><h3><span class="ico">warning</span> Obstáculos</h3>${linhas}
-    ${env?`<div class="dr-msg">processando envio…</div>`:''}${err?`<div class="dr-err">Último envio: ${esc(err.erro)}</div>`:''}
-    ${podeEditar('drone')?`<button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('obstaculos')"><span class="ico">upload</span> Enviar obstáculos</button>`:''}</div>`;
+// Fonte de um talhão (Sistema | Shape), pelo seletor da linha do painel.
+function drFonteTalhao(n,f){if(!DR.sel.has(n))return;DR.sel.set(n,f);drAtualizarSelecaoMapa();drPainelLateral();}
+// Arrastar arquivos para a área do painel: o mesmo fluxo do botão.
+function drSoltar(e,tipo){e.preventDefault();const arqs=[...(e.dataTransfer?.files||[])];if(arqs.length)drEnviarArquivos(tipo,arqs,null,e.currentTarget);}
+function drLimparErro(){const el=document.getElementById('dr-err');if(el)el.textContent='';}
+// Tempo decorrido da geração: atualiza o texto no lugar, sem redesenhar o cartão (o trilho não reinicia).
+function drTempoAtualizar(){
+  const el=document.getElementById('dr-decorrido'),{ger}=drAtual();
+  if(!el||!ger){drTempoParar();return;}
+  el.textContent=drDecorrido(ger.pedido_em,Date.now());
 }
+function drTempoParar(){clearInterval(DR.tempo);DR.tempo=null;}
+
 
 // ── cabeçalho, etapas, menu ⋯ e gaveta de revisões (S4.3) ──
 const DR_ETAPAS=['Montar revisão','Gerar prévia','Conferir','Publicado'];
@@ -377,57 +378,158 @@ function drCamadasAlternar(){
   document.querySelector('.dr-cam-btn')?.focus();
 }
 
+// ── painel lateral: um estado por vez (S4.5) ──
+// Cada drPainel_<estado> devolve {sobre, titulo, corpo, rodape}. drPainelLateral grava cabeçalho, corpo e rodapé;
+// a linha de erro (#dr-err) vai no rodapé, ou no fim do corpo quando o estado não tem rodapé.
+function drNomeDoc(doc){return doc==='normal'?'Normal':'Catação';}
+function drRevProx(doc){const x=DR.geo[doc];return x?x.revisao+1:0;}
+function drCartao(sol){return(DR.painel?.solicitacoes||[]).find(c=>sol&&c.id===sol.id)||null;}
+function drQuando(iso){return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function drHora(iso){return iso?new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';}
+function drPlural(n,um,varios){return`${n} ${n===1?um:varios}`;}
+function drTalhaoProps(){return new Map(DR.geo.features.filter(f=>f.properties.camada==='talhao').map(f=>[f.properties.talhao,f.properties]));}
+function drPasso(k,atual,titulo,corpo){
+  const cls=k<atual?'feito':k===atual?'agora':'';
+  return`<li><span class="dr-num ${cls}">${k<atual?'<span class="ico">check</span>':k}</span><div class="dr-passo-c"><b>${titulo}</b>${corpo||''}</div></li>`;
+}
+function drLinhaResumo(a,b){return`<div class="dr-row"><span>${a}</span><span>${b}</span></div>`;}
+
+function drPainel_montando(){
+  const inc=[...DR.sel].sort((a,b)=>a[0]-b[0]),rem=[...DR.rem].sort((a,b)=>a-b),props=drTalhaoProps();
+  const ha=n=>props.get(n)?.area_ha||0,soma=inc.reduce((s,[n])=>s+ha(n),0);
+  const shape=inc.filter(([,f])=>f==='shape').map(([n])=>n);
+  const ev=DR.ajusteId?(DR.info.envios.find(e=>e.id===DR.ajusteId)||{status:'fila'}):null;
+  const linhas=inc.map(([n,f])=>`<div class="dr-linha"><span class="dr-chip">${n}</span>
+      <span class="dr-linha-t">${esc(drSituacaoTalhao(props.get(n)||{}))} · ${fmtNum(ha(n))} ha</span>
+      <span class="dr-seg" role="group" aria-label="Fonte do talhão ${n}">
+        <button type="button" aria-pressed="${f==='sistema'}" class="${f==='sistema'?'on':''}" data-foco="f${n}s" onclick="drFonteTalhao(${n},'sistema')">Sistema</button>
+        <button type="button" aria-pressed="${f==='shape'}" class="${f==='shape'?'on':''}" data-foco="f${n}h" onclick="drFonteTalhao(${n},'shape')">Shape</button></span></div>`).join('');
+  const solta=shape.length?`<button type="button" class="dr-solta" data-foco="solta" onclick="drEnviar('ajuste')" ondragover="event.preventDefault()" ondrop="drSoltar(event,'ajuste')">
+      <span class="ico">upload_file</span><span>Arraste o shape de ajuste dos talhões ${shape.join(', ')}</span>
+      <small>.shp + .shx + .dbf + .prj, ou .zip</small><small>${esc(drRotuloShape(ev))}</small>${ev&&ev.status==='erro'?`<span class="dr-err">${esc(ev.erro)}</span>`:''}</button>`:'';
+  const n=inc.length+rem.length;
+  return{sobre:'Nova revisão',titulo:`Normal · Rev${drRevProx('normal')}`,
+    corpo:`<div class="dr-cab-ln"><h3>Incluir ou refazer <span>· ${drPlural(inc.length,'talhão','talhões')}</span></h3>${inc.length?`<span>${fmtNum(soma)} ha</span>`:''}</div>
+      ${linhas||'<p class="dr-msg-l">Nenhum talhão. Clique no mapa.</p>'}
+      ${solta}
+      <div class="dr-cab-ln"><h3>Remover <span>· ${rem.length?drPlural(rem.length,'talhão','talhões'):'nenhum'}</span></h3></div>
+      ${rem.length?`<div class="dr-chips">${rem.map(t=>`<span class="dr-chip r">${t}</span>`).join('')}</div>`:'<p class="dr-msg-l">Use a ferramenta Remover no mapa.</p>'}
+      <div class="dr-nota"><span class="ico">info</span><span>A prévia mostra a fazenda inteira: os talhões de antes e os novos. Você confere antes de publicar.</span></div>`,
+    rodape:`<button class="dr-btn" ${n?'':'disabled'} onclick="drGerarNormal()"><span class="ico">play_arrow</span> Gerar prévia</button>`};
+}
+
+function drPainel_catacao(){
+  const {sol}=drAtual(),env=drUltimoEnvio(DR.info.envios,'infestacao'),card=drCartao(sol);
+  const enviado=!!env&&env.status==='ok',processa=!!env&&['fila','processando'].includes(env.status);
+  const atual=!sol?1:enviado?3:2,cam=drCamadasEnvio(env);
+  const passo1=drPasso(1,atual,'Solicitação aberta',sol
+    ?`<small>${esc(card?.solicitante?card.solicitante+' · ':'')}${drQuando(sol.criado_em)}</small>`
+    :'<button type="button" class="dr-btn2 dr-passo-bt" onclick="drAbrirCatacao()"><span class="ico">add</span> Abrir Catação desta fazenda</button>');
+  const solta=`<button type="button" class="dr-solta" data-foco="solta-inf" onclick="drEnviar('infestacao')" ondragover="event.preventDefault()" ondrop="drSoltar(event,'infestacao')">
+      <span class="ico">upload_file</span><span>Arraste as camadas de infestação</span><small>.shp + .shx + .dbf + .prj, ou .zip (várias camadas)</small></button>`;
+  let c2;
+  if(enviado)c2=`<small>${drPlural(cam.length,'camada','camadas')} · ${drQuando(env.enviado_em)}</small>
+      <div class="dr-camadas-l">${cam.map(c=>`<div><span class="ico">description</span>${esc(c)}</div>`).join('')}</div>
+      <button type="button" class="dr-linkbtn" onclick="drEnviar('infestacao')">Trocar arquivos</button>`;
+  else if(processa)c2='<small>processando…</small>';
+  else if(!sol)c2='<small>Abra a Catação primeiro.</small>';
+  else c2=(env&&env.status==='erro'?`<div class="dr-err">${esc(env.erro)}</div>`:'')+solta;
+  const passo2=drPasso(2,atual,enviado?'Infestação enviada':'Enviar infestação',c2);
+  const passo3=drPasso(3,atual,'Gerar prévia','<small>Agrupa as manchas, recorta pelos talhões e tira os obstáculos.</small>');
+  return{sobre:'Nova Catação',titulo:`Catação · Rev${drRevProx('catacao')}`,
+    corpo:`<p class="dr-msg-l">Um levantamento novo substitui a Catação inteira.</p><ol class="dr-passos">${passo1}${passo2}${passo3}</ol>`,
+    rodape:`<button class="dr-btn" ${drPodeGerarCatacao(sol)?'':'disabled'} onclick="drGerarCatacao()"><span class="ico">play_arrow</span> Gerar prévia</button>`};
+}
+
+function drPainel_gerando(){
+  const {ger}=drAtual(),cat=DR.doc==='catacao',fila=ger.status==='fila';
+  DRP.gerando.add(ger.id);                                   // drMostrarPdf abre a prévia sozinha quando ela ficar pronta
+  const inc=(ger.escopo?.incluir||[]).map(i=>i.talhao).sort((a,b)=>a-b),rem=[...(ger.escopo?.remover||[])].sort((a,b)=>a-b);
+  const cls=fila?['agora','','']:['feito','agora',''];
+  const titulos=['Pedido recebido','Processando','Prévia pronta para conferir'];
+  const passos=titulos.map((t,k)=>{
+    const c=cls[k],ic=c==='agora'?'<span class="ico dr-gira">progress_activity</span>'
+      :`<span class="ico">${c==='feito'?'check_circle':'radio_button_unchecked'}</span>`;
+    return`<li class="${c}">${ic}${t}</li>`;}).join('');
+  return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Gerando a prévia',
+    corpo:`<div class="drp-gerando"><div class="drp-gerando-top"><b>${fila?'Esperando o agente pegar o pedido':'O agente está processando'}</b>
+        <span id="dr-decorrido">${esc(drDecorrido(ger.pedido_em,Date.now()))}</span></div>
+        <ol class="drp-gerando-passos">${passos}</ol></div>
+      ${drLinhaResumo('Incluir ou refazer',cat?'Catação inteira':(inc.join(', ')||'nenhum'))}
+      ${drLinhaResumo('Remover',rem.join(', ')||'nenhum')}
+      ${drLinhaResumo('Pedido em',drHora(ger.pedido_em))}
+      <div class="dr-nota"><span class="ico">notifications</span><span>Pode sair desta tela. Quando a prévia ficar pronta, ela aparece em <b>A analisar</b> e no sininho.</span></div>`,
+    rodape:''};
+}
+
+function drPainel_previa(){
+  const {ger}=drAtual(),doc=DR.doc,x=DR.geo[doc],
+    ind=drIndicadoresPrevia(ger.resumo,{area_ha:x?.area_ha,cobertura_pct:DR.geo.cobertura_pct},doc),
+    dA=ind.deltaArea,al=ger.alertas||[];
+  const areaDelta=dA==null?(x?'':'<em>primeira revisão</em>')
+    :`<em class="${dA>=0?'up':'dn'}">${dA>=0?'+ ':'− '}${fmtNum(Math.abs(dA))} ha</em>`;
+  const indic=`<div class="drp-indic"><div><small>Área de aplicação</small><b>${ind.area==null?'—':fmtNum(ind.area)+' ha'}</b>${areaDelta}</div>`
+    +(doc==='normal'?`<div><small>Cobertura da fazenda</small><b>${ind.cob==null?'—':Math.floor(ind.cob)+'%'}</b>${ind.cobAntes==null?'':`<em>antes ${Math.floor(ind.cobAntes)}%</em>`}</div>`:'')+'</div>';
+  const alertas=al.length
+    ?`<h3 class="dr-sec">${drPlural(al.length,'alerta','alertas')}</h3>`+al.map(a=>`<div class="drp-alerta"><span class="ico">${/meses/i.test(a)?'history':/fora/i.test(a)?'wrong_location':'warning'}</span><span>${esc(a)}</span></div>`).join('')
+    :'<p class="dr-msg-l">Sem alertas.</p>';
+  return{sobre:`Prévia · ${drNomeDoc(doc)} Rev${drRevProx(doc)}`,titulo:'Confira antes de publicar',
+    corpo:`<button type="button" class="drp-capa" id="dr-pdf" onclick="drPrevAbrir()" title="Abrir a prévia" aria-label="Abrir a prévia"></button>`
+      +indic+alertas
+      +(ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:'')
+      +`<label class="dr-campo">Motivo da revisão<input class="dr-mot-painel" data-foco="motivo" value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${ger.id}]=this.value"></label>`,
+    rodape:`<div class="dr-rodape-l"><button class="dr-btn2 perigo" onclick="drDescartar(${ger.id})"><span class="ico">undo</span> Descartar</button>
+      <button class="dr-btn" onclick="drPublicar(${ger.id})"><span class="ico">publish</span> Publicar no portal</button></div>`};
+}
+
+function drPainel_publicando(){
+  return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Publicando no portal',
+    corpo:`<div class="dr-nota"><span class="ico dr-gira">progress_activity</span><span>O agente está subindo os arquivos para o portal. Pode sair desta tela.</span></div>`,rodape:''};
+}
+
+function drPainel_erro(){
+  const {ger}=drAtual();
+  return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Erro na geração',
+    corpo:`<div class="dr-erro-caixa">${esc(ger.erro)}</div>`,
+    rodape:`<button class="dr-btn2" onclick="drDescartar(${ger.id})"><span class="ico">restart_alt</span> Descartar e montar de novo</button>`};
+}
+
+function drPainel_consulta(){
+  const {sol,ger}=drAtual(),doc=DR.doc,x=DR.geo[doc],est=drEstadoPainel({doc,sol,ger,edita:true}),ctx=drContextoSol(drCartao(sol));
+  const sit={montando:'Sem pedido em andamento',catacao:sol?'Solicitação aberta':'Sem pedido em andamento',gerando:'Gerando prévia…',
+    previa:'Prévia pronta, aguardando conferência',publicando:'Publicando…',erro:'A última geração deu erro'}[est];
+  return{sobre:'Consulta',titulo:x?`${drNomeDoc(doc)} · Rev${x.revisao} vigente`:`${drNomeDoc(doc)} · sem projeto`,
+    corpo:`<p class="dr-sit-l">${esc(sit)}</p>${ctx?`<p class="dr-msg-l">${esc(ctx)}</p>`:''}
+      <div class="dr-nota"><span class="ico">visibility</span><span>Somente consulta. Peça acesso de editor ao administrador para alterar.</span></div>`,
+    rodape:''};
+}
+
 function drPainelLateral(){
-  const side=document.getElementById('dr-side-corpo');if(!side)return;
-  const {sol,ger}=drAtual(),edita=podeEditar('drone');
+  const side=document.getElementById('dr-side-corpo'),aside=document.getElementById('dr-side');if(!side)return;
+  const {sol,ger}=drAtual(),doc=DR.doc,est=drEstadoPainel({doc,sol,ger,edita:podeEditar('drone')});
+  // Foco (Passo 10): o redesenho põe de volta o elemento marcado com data-foco, com o cursor no mesmo lugar.
+  const foco=document.activeElement,dentro=!!aside&&!!foco&&aside.contains(foco),marca=dentro?foco.dataset.foco:null,pos=dentro?foco.selectionStart:null;
   drMapaUi();
-  let h='';
-  if(ger){h+=drPrevHtml(ger);}
-  else if(DR.doc==='normal'&&edita){
-    const prox=DR.geo.normal?DR.geo.normal.revisao+1:0;
-    const inc=[...DR.sel.keys()].sort((a,b)=>a-b),rem=[...DR.rem].sort((a,b)=>a-b);
-    const shape=[...DR.sel.values()].includes('shape');
-    h+=`<div class="dr-box"><h3><span class="ico" style="color:var(--drones)">edit_note</span> Nova revisão · Normal Rev${prox}</h3>
-      <div class="dr-msg" style="text-align:left">Clique nos talhões do mapa</div>
-      <div class="dr-seg"><button class="${DR.modoRemover?'':'on'}" onclick="DR.modoRemover=false;drPainelLateral()">Incluir / refazer</button>
-        <button class="${DR.modoRemover?'on':''}" onclick="DR.modoRemover=true;drPainelLateral()">Remover</button></div>
-      <button class="dr-btn2" onclick="drSelecionarSemProjeto()">Selecionar todos sem projeto</button>
-      <div style="font-weight:600;margin-top:8px">Incluir / refazer (${inc.length})</div>
-      <div class="dr-chips">${inc.map(n=>`<span class="dr-chip">${n}</span>`).join('')||'<span class="dr-msg">nenhum</span>'}</div>
-      <div class="dr-seg"><button class="${shape?'':'on'}" onclick="drFonte('sistema')">Sistema gera</button>
-        <button class="${shape?'on':''}" onclick="drFonte('shape')">Subir shape</button></div>
-      ${shape?(()=>{const ev=DR.ajusteId?DR.info.envios.find(e=>e.id===DR.ajusteId)||{status:'fila'}:null;
-        return`<button class="dr-btn2" onclick="drEnviar('ajuste')"><span class="ico">upload</span> ${drRotuloShape(ev)}</button>`
-          +(ev&&ev.status==='erro'?`<div class="dr-err">${esc(ev.erro)}</div>`:'');})():''}
-      <div style="font-weight:600;margin-top:8px">Remover (${rem.length})</div>
-      <div class="dr-chips">${rem.map(n=>`<span class="dr-chip r">${n}</span>`).join('')||'<span class="dr-msg">nenhum</span>'}</div></div>
-      ${drObstaculosHtml()}
-      <button class="dr-btn" ${inc.length||rem.length?'':'disabled'} onclick="drGerarNormal()"><span class="ico">play_arrow</span> Gerar prévia</button>
-      <div class="dr-msg">A prévia mostra a fazenda inteira (talhões de antes + os novos). Você confere e publica.</div>`;
-  }else if(DR.doc==='catacao'&&edita){
-    h+=`<div class="dr-box"><h3><span class="ico" style="color:#5b8c5a">grass</span> Catação</h3>
-      ${sol?`<div class="dr-row"><span>Solicitação</span><span>${esc(DR_ST[sol.status]||sol.status)}</span></div>
-        <button class="dr-btn2" style="margin-top:6px" onclick="drEnviar('infestacao')"><span class="ico">upload</span> Enviar infestação (várias camadas)</button>`
-      :`<button class="dr-btn2" onclick="drAbrirCatacao()"><span class="ico">add</span> Abrir Catação desta fazenda</button>`}
-      <div class="dr-msg" style="margin-top:6px">Um levantamento novo substitui a Catação inteira.</div></div>
-      ${drObstaculosHtml()}
-      <button class="dr-btn" ${drPodeGerarCatacao(sol)?'':'disabled'} onclick="drGerarCatacao()"><span class="ico">play_arrow</span> Gerar prévia</button>`;
-  }else{
-    h+=drObstaculosHtml()+`<div class="dr-msg">Somente consulta.</div>`;
+  const p=({montando:drPainel_montando,catacao:drPainel_catacao,gerando:drPainel_gerando,previa:drPainel_previa,
+    publicando:drPainel_publicando,erro:drPainel_erro,consulta:drPainel_consulta})[est]();
+  document.getElementById('dr-side-cab').innerHTML=`<div class="dr-side-sobre">${esc(p.sobre)}</div><h2>${esc(p.titulo)}</h2>`;
+  side.innerHTML=p.corpo;
+  const rod=document.getElementById('dr-side-rodape'),erro='<div id="dr-err" class="dr-err"></div>';
+  if(p.rodape)rod.innerHTML=erro+p.rodape;
+  else{rod.innerHTML='';side.insertAdjacentHTML('beforeend',erro);}
+  if(marca){
+    const el=aside.querySelector(`[data-foco="${marca}"]`);
+    if(el){el.focus();if(pos!=null){try{el.setSelectionRange(pos,pos);}catch(_){}}}
   }
-  const hist=(DR.info.revs||[]).filter(r=>r.documento===DR.doc).map(r=>
-    `<div class="dr-row"><span>Rev${r.numero} · ${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span><span>${esc((r.motivo||'').slice(0,40))}</span></div>`).join('');
-  h+=`<div class="dr-box"><h3><span class="ico">history</span> Histórico</h3>${hist||'<div class="dr-msg">sem revisões</div>'}</div>`;
-  if(sol&&drPodeCancelar(sol,ger,EU))
-    h+=`<button class="dr-btn2" style="color:#c23b3b" onclick="drCancelar(${sol.id})"><span class="ico">cancel</span> Cancelar solicitação</button>`;
-  h+=`<div id="dr-err" class="dr-err"></div>`;
-  side.innerHTML=h;
-  if(ger&&ger.status==='pronta'&&!(ger.publicar_pedido_em&&!ger.publicacao_erro))drMostrarPdf(ger);
+  if(est==='previa')drMostrarPdf(ger);
+  if(est==='gerando'){if(!DR.tempo)DR.tempo=setInterval(drTempoAtualizar,1000);}
+  else drTempoParar();
 }
 
 function drErro(e){const el=document.getElementById('dr-err');if(el)el.textContent=e.message||e;}
 
 function drEnviar(tipo){
+  const btn=drBotao();                                   // antes do prompt, que apaga window.event
   let classe=null;
   if(tipo==='obstaculos'){
     const r=prompt('Classe dos obstáculos: 15, 25 ou 50 m.\nDeixe vazio para usar o nome de cada arquivo (ex.: restricoes15m).','');
@@ -436,32 +538,34 @@ function drEnviar(tipo){
     if(classe===undefined){alert('Classe inválida: use 15, 25 ou 50.');return;}
   }
   const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.accept='.shp,.shx,.dbf,.prj,.cpg,.zip';
-  const btn=drBotao();
-  inp.onchange=async()=>{
-    const arqs=[...inp.files];if(!arqs.length)return;
-    const fim=Mo.ocupado(btn);
-    // barra de progresso logo abaixo do botão (ou no topo do painel)
-    const lugar=document.createElement('div');
-    (btn&&btn.isConnected?btn:document.getElementById('dr-side-corpo')?.firstChild)?.after?.(lugar);
-    const total=arqs.reduce((s,f)=>s+f.size,0),prog=Mo.progresso(lugar,{total});
-    try{
-      const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];let feitos=0;
-      for(const [k,f] of arqs.entries()){
-        const c=`${pasta}/${drNomeSeguro(f.name)}`,rot=`${f.name}${arqs.length>1?` (${k+1} de ${arqs.length})`:''}`;
-        prog.atualizar(feitos,'Enviando '+rot);
-        await drSubirComProgresso('drone-envios',c,f,b=>prog.atualizar(feitos+Math.min(b,f.size),'Enviando '+rot));
-        feitos+=f.size;caminhos.push(c);
-      }
-      prog.processando('Registrando o envio…');
-      const {sol}=drAtual();
-      const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:classe,
-        p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
-      if(tipo==='ajuste')DR.ajusteId=id;
-      prog.fim(true);await fim(true);
-      await drCarregarFazenda();
-    }catch(e){prog.fim(false);fim(false);drErro(e);}
-  };
+  inp.onchange=()=>{const arqs=[...inp.files];if(arqs.length)drEnviarArquivos(tipo,arqs,classe,btn);};
   inp.click();
+}
+
+// Sobe os arquivos e registra o envio. Vem do botão (drEnviar) ou de arrastar para a área do painel (drSoltar).
+async function drEnviarArquivos(tipo,arqs,classe,btn){
+  drLimparErro();
+  const fim=Mo.ocupado(btn);
+  // barra de progresso logo abaixo do botão (ou no topo do painel)
+  const lugar=document.createElement('div');
+  (btn&&btn.isConnected?btn:document.getElementById('dr-side-corpo')?.firstChild)?.after?.(lugar);
+  const total=arqs.reduce((s,f)=>s+f.size,0),prog=Mo.progresso(lugar,{total});
+  try{
+    const pasta=`${DR.cod}/${Date.now()}`,caminhos=[];let feitos=0;
+    for(const [k,f] of arqs.entries()){
+      const c=`${pasta}/${drNomeSeguro(f.name)}`,rot=`${f.name}${arqs.length>1?` (${k+1} de ${arqs.length})`:''}`;
+      prog.atualizar(feitos,'Enviando '+rot);
+      await drSubirComProgresso('drone-envios',c,f,b=>prog.atualizar(feitos+Math.min(b,f.size),'Enviando '+rot));
+      feitos+=f.size;caminhos.push(c);
+    }
+    prog.processando('Registrando o envio…');
+    const {sol}=drAtual();
+    const id=await drRpc('drone_registrar_envio',{p_cod_faz:DR.cod,p_tipo:tipo,p_classe_m:classe,
+      p_solicitacao_id:tipo==='infestacao'?sol.id:null,p_arquivos:caminhos});
+    if(tipo==='ajuste')DR.ajusteId=id;
+    prog.fim(true);await fim(true);
+    await drCarregarFazenda();
+  }catch(e){prog.fim(false);fim(false);drErro(e);}
 }
 
 // sb.storage.upload não informa o progresso; a mesma chamada à API do Storage
@@ -485,11 +589,10 @@ async function drSubirComProgresso(bucket,caminho,arq,aoProgredir){
 }
 
 async function drGerarNormal(){
+  drLimparErro();
   const fim=Mo.ocupado(drBotao());
   try{
-    if([...DR.sel.values()].includes('shape')&&!DR.ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
-    const escopo={incluir:[...DR.sel].map(([t,f])=>f==='shape'?{talhao:t,fonte:'shape',envio_id:DR.ajusteId}:{talhao:t,fonte:'sistema'}),
-      remover:[...DR.rem]};
+    const escopo=drEscopo(DR.sel,DR.rem,DR.ajusteId);
     const sol=drAtual().sol?.id||await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'normal',p_data_desejada:null,p_observacao:null});
     await drRpc('drone_pedir_geracao',{p_solicitacao_id:sol,p_escopo:escopo});
     DR.sel=new Map();DR.rem=new Set();
@@ -499,12 +602,14 @@ async function drGerarNormal(){
 }
 
 async function drAbrirCatacao(){
+  drLimparErro();
   const fim=Mo.ocupado(drBotao());
   try{await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'catacao',p_data_desejada:null,p_observacao:null});
     fim(true);await drCarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
 }
 
 async function drGerarCatacao(){
+  drLimparErro();
   const fim=Mo.ocupado(drBotao());
   try{await drRpc('drone_pedir_geracao',{p_solicitacao_id:drAtual().sol.id,p_escopo:null});
     fim(true);await drCarregarFazenda();drCarregarPainel();}catch(e){fim(false);drErro(e);}
@@ -512,10 +617,11 @@ async function drGerarCatacao(){
 
 // Depois do pedido, drVooPublicacao (no redesenho) põe o drone para voar até o agente publicar.
 async function drPublicar(id){
+  drLimparErro();
   const btn=drBotao();
   let fim=()=>{};
   try{
-    const mot=document.getElementById('dr-mot').value;
+    const mot=DRP.motivo[id]||'';
     if(!await confirmar('Publicar esta revisão no portal de downloads?',{titulo:'Publicar',ok:'Publicar'}))return;
     fim=Mo.ocupado(btn);
     await drRpc('drone_publicar_pedido',{p_geracao_id:id,p_motivo:mot});
@@ -525,6 +631,7 @@ async function drPublicar(id){
 }
 
 async function drDescartar(id){
+  drLimparErro();
   const btn=drBotao();
   let fim=()=>{};
   try{

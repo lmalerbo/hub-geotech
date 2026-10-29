@@ -7,29 +7,6 @@
 const DRP={cache:new Map(),gerando:new Set(),ger:null,zoom:1,ajustar:true,desenho:0,motivo:{}};
 const DRP_PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 
-function drPrevPassosHtml(st){
-  const p=[['fila','Na fila'],['processando','Montando'],['pronta','Prévia']],i=p.findIndex(x=>x[0]===st);
-  return`<div class="drp-passos">${p.map(([,t],k)=>`<span class="${k<i?'feito':k===i?'agora':''}">${t}</span>`).join('')}</div>`;
-}
-
-function drPrevHtml(ger){
-  if(ger.status==='fila'||ger.status==='processando'){
-    DRP.gerando.add(ger.id);
-    return`<div class="dr-box drp-gerando"><h3>Gerando prévia…</h3>${drPrevPassosHtml(ger.status)}
-      <div class="drp-espera">${Mo.campo(true)}<div class="dr-msg">${ger.status==='fila'?'Esperando o agente pegar o pedido.':'O agente está montando o PDF e o .zip.'}
-      Esta tela atualiza sozinha e a prévia abre assim que ficar pronta.</div></div></div>`;
-  }
-  if(ger.status==='erro')return`<div class="dr-box"><h3>Erro na geração</h3><div class="dr-err">${esc(ger.erro)}</div>
-    <button class="dr-btn2" style="margin-top:8px" onclick="drDescartar(${ger.id})">Descartar e montar de novo</button></div>`;
-  if(ger.publicar_pedido_em&&!ger.publicacao_erro)return`<div class="dr-box"><h3>Publicando…</h3><div class="dr-msg">O agente está subindo os arquivos para o portal.</div></div>`;
-  const al=(ger.alertas||[]).length;
-  return`<div class="dr-box dr-prev"><h3>Prévia pronta</h3>
-    <button class="drp-capa" id="dr-pdf" onclick="drPrevAbrir()" title="Abrir a prévia"></button>
-    ${al?`<div style="color:#d4890a;margin-top:6px"><span class="ico" style="font-size:14px;vertical-align:-3px">warning</span> ${al} alerta${al>1?'s':''} — veja na prévia</div>`:''}
-    ${ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:''}
-    <button class="dr-btn" style="margin-top:8px" onclick="drPrevAbrir()"><span class="ico" style="vertical-align:-3px">preview</span> Abrir prévia</button></div>`;
-}
-
 // Carrega o pdf.js uma vez só, sob demanda.
 function drPdfjs(){
   if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
@@ -147,6 +124,8 @@ function drPrevFechar(){
   const f=document.getElementById('drp-fundo');if(!f)return;
   document.removeEventListener('keydown',DRP.tecla);window.removeEventListener('resize',DRP.redim);
   DRP.desenho++;f.remove();
+  // O campo do painel fica igual ao da janela: o que foi digitado aqui aparece lá.
+  const p=document.querySelector('.dr-mot-painel');if(p&&DRP.ger)p.value=DRP.motivo[DRP.ger.id]||'';
 }
 
 async function drPrevMontar(ger){
