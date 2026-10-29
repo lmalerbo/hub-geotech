@@ -9,8 +9,14 @@ A tela **Drone** do Hub é onde a Geo faz os projetos de aplicação por drone. 
 
 ## A tela
 
-- **Esquerda, a fila:** solicitações de Normal, Catações aguardando infestação, prévias para conferir e o bloco **Atenção**, que lista as Normais incompletas, os obstáculos com mais de 24 meses e os talhões que saíram da Base.
-- **Direita, a fazenda:** os cartões da Normal e da Catação, o mapa por talhão e o painel de ações. A Normal mostra "XX% DA FAZENDA" quando falta talhão.
+- **Início** (a primeira tela): três colunas, da esquerda para a direita.
+  - **Solicitações:** pedidos abertos, esperando geração ou obstáculos e infestação.
+  - **Em desenvolvimento:** o que o agente está gerando agora, com o tempo decorrido.
+  - **A analisar:** prévias prontas para conferir, com o número de alertas. No fim da coluna aparece quantas foram publicadas nos últimos 7 dias.
+  - Clique num cartão para abrir a fazenda. A tela atualiza sozinha enquanto há geração em andamento.
+- **Faixa "Atenção na base":** três botões com a contagem de Normais incompletas, de obstáculos com mais de 24 meses e de talhões fora da Base. Clique num deles para abrir a lista da lateral direita; clique numa fazenda da lista para abri-la.
+- **Busca:** digite o nome ou o código da fazenda no campo do topo. Aperte **/** para ir direto à busca e **Esc** para limpar.
+- **Fazenda aberta:** os cartões da Normal e da Catação, o mapa por talhão e o painel de ações. A Normal mostra "XX% DA FAZENDA" quando falta talhão. Para voltar ao Início, use **← Início**.
 - **No mapa:**
   - marrom ou verde: área de aplicação publicada;
   - cinza: talhão sem projeto;
@@ -27,7 +33,7 @@ A tela **Drone** do Hub é onde a Geo faz os projetos de aplicação por drone. 
 
 ## Completar ou refazer uma Normal (Geo)
 
-1. Abra a fazenda pela fila, pela busca ou pelo sininho.
+1. Abra a fazenda por um cartão do Início, pela busca ou pelo sininho.
 2. No modo **Incluir / refazer**, clique nos talhões. "Selecionar todos sem projeto" marca de uma vez os que faltam.
 3. Escolha a fonte:
    - **Sistema gera:** usa o talhão da Base menos os obstáculos;
