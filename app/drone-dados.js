@@ -29,7 +29,7 @@ function drClasseEscolhida(txt){
 
 function drPodeCancelar(sol,ger,eu){
   if(!sol||!eu)return false;
-  const ocupado=ger&&(ger.status==='processando'||(ger.status==='pronta'&&ger.publicar_pedido_em&&!ger.publicacao_erro));
+  const ocupado=ger&&(ger.status==='processando'||drPublicando(ger));
   if(ocupado)return false;
   if(podeEditar('drone'))return true;
   return sol.solicitante_id===eu.id&&!ger;            // solicitante: só a própria e antes da prévia
@@ -80,13 +80,70 @@ function drAssinaturas(info,geo,doc){
 function drPartesMudadas(antes,agora){return Object.keys(agora).filter(k=>!antes||antes[k]!==agora[k]);}
 function drRespostaValida(codPedido,codAtual){return codPedido===codAtual;}
 function drOcupado(info,ger){
-  return !!((ger&&(['fila','processando'].includes(ger.status)||(ger.publicar_pedido_em&&!ger.publicacao_erro)))
+  return !!((ger&&(['fila','processando'].includes(ger.status)||drPublicando(ger)))
     ||(info.envios||[]).some(e=>e.status==='fila'||e.status==='processando'));
 }
 // Talhões que pulsam no mapa enquanto a prévia é gerada (Catação não tem escopo: só a varredura).
 function drTalhoesGerando(ger){
   if(!ger||!['fila','processando'].includes(ger.status))return[];
   return((ger.escopo&&ger.escopo.incluir)||[]).map(i=>i.talhao);
+}
+
+// ── área da fazenda (S4) ──
+const drPublicando=ger=>!!(ger&&ger.publicar_pedido_em&&!ger.publicacao_erro);
+function drEtapaAtiva(sol,ger){
+  if(!ger)return 0;
+  if(ger.status==='pronta')return drPublicando(ger)?3:2;
+  return 1;                                            // fila, processando ou erro
+}
+function drEstadoPainel({doc,sol,ger,edita}){
+  if(!edita)return'consulta';
+  if(ger){
+    if(drPublicando(ger))return'publicando';
+    if(ger.status==='fila'||ger.status==='processando')return'gerando';
+    if(ger.status==='erro')return'erro';
+    if(ger.status==='pronta')return'previa';
+  }
+  return doc==='catacao'?'catacao':'montando';
+}
+function drDataCurta(iso){return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});}
+function drChipObstaculos(obst,envios,hoje,meses=24){
+  const ult=drUltimoEnvio(envios,'obstaculos');
+  if(ult&&['fila','processando'].includes(ult.status))return{texto:'processando envio…',tom:'proc'};
+  if(ult&&ult.status==='erro')return{texto:'erro no último envio',tom:'erro'};
+  const o=obst||[];if(!o.length)return{texto:'sem cadastro',tom:'velho'};
+  const limite=new Date(hoje);limite.setMonth(limite.getMonth()-meses);
+  const datas=o.map(v=>new Date(v.enviado_em)),recente=new Date(Math.max(...datas));
+  return{texto:`${o.length} classe${o.length>1?'s':''} · ${drDataCurta(recente)}`,tom:datas.some(d=>d<limite)?'velho':'ok'};
+}
+function drEscopo(sel,rem,ajusteId){
+  const inc=[...sel].sort((a,b)=>a[0]-b[0]);
+  if(inc.some(([,f])=>f==='shape')&&!ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
+  return{incluir:inc.map(([t,f])=>f==='shape'?{talhao:t,fonte:'shape',envio_id:ajusteId}:{talhao:t,fonte:'sistema'}),
+    remover:[...rem].sort((a,b)=>a-b)};
+}
+function drIndicadoresPrevia(resumo,vigente,doc){
+  const n=x=>typeof x==='number'?x:null,r=resumo||{},v=vigente||{},normal=doc==='normal';
+  const area=n(r.aplicacao_ha),antes=n(v.area_ha);
+  return{area,deltaArea:area!=null&&antes!=null?area-antes:null,cob:normal?n(r.cobertura_pct):null,cobAntes:normal?n(v.cobertura_pct):null};
+}
+function drSituacaoTalhao(p){return p.status==='sem_projeto'?'sem projeto':'refazer Rev'+p.desde_rev;}
+function drDecorrido(desde,agora){
+  if(!desde)return'';
+  const s=Math.max(0,Math.floor((agora-Date.parse(desde))/1000));
+  if(s<60)return s+' s';
+  if(s<3600)return`${Math.floor(s/60)} min ${s%60} s`;
+  return`${Math.floor(s/3600)} h ${String(Math.floor(s%3600/60)).padStart(2,'0')} min`;
+}
+function drContextoSol(c){
+  if(!c)return'';
+  const p=['Solicitação'+(c.solicitante?' de '+c.solicitante:'')];
+  if(c.observacao)p.push(`"${c.observacao}"`);
+  if(c.data_desejada)p.push('para '+new Date(c.data_desejada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+  return p.join(' · ');
+}
+function drCamadasEnvio(env){
+  return[...new Set(((env&&env.arquivos)||[]).map(a=>a.split('/').pop().replace(/\.[^.]+$/,'')))];
 }
 
 // Polling único (spec §4): um timer só. Pausa com a aba oculta ou fora da view
