@@ -63,7 +63,7 @@ test('Preparo: etapa desconhecida ou vazia cai em Identificação (índice 0)', 
 });
 
 test('Preparo: etapas concluídas por fazenda', () => {
-  const linhas = [talPrep(10819, 1, 'Identificação', 'X')];
+  const linhas = [talPrep(10819, 1, 'Escoamento', 'X')];
   const etapas = [{ id: 1, ordem: 1 }, { id: 2, ordem: 2 }];
   const status = [{ etapa_id: 1, entidade_id: '10819', ok: true, usuario_id: 'u', concluido_em: 'd1', observacao: 'obs' },
                   { etapa_id: 9, entidade_id: '10819', ok: true }];
@@ -72,6 +72,26 @@ test('Preparo: etapas concluídas por fazenda', () => {
   assert.deepStrictEqual(limpo(f.usr), ['Ana', '']);
   assert.strictEqual(f.dt[0], 'dt:d1');
   assert.strictEqual(f.obs, 'obs');
+});
+
+// Desde o fluxo de 23/10 a etapa vale por talhão; etapa_status é só histórico (quem, quando, observação).
+test('Preparo: talhões todos Ok concluem a fazenda mesmo sem a etapa 4 em etapa_status (10738)', () => {
+  const linhas = [talPrep(10738, 1, 'Ok'), talPrep(10738, 2, 'Ok')];
+  const etapas = [1, 2, 3, 4].map((i) => ({ id: i, ordem: i }));
+  const status = [1, 2, 3].map((i) => ({ etapa_id: i, entidade_id: '10738', ok: true, usuario_id: 'u', concluido_em: 'd' + i }));
+  const [f] = ctx.montarPreparo(linhas, etapas, status, { u: 'Ana' }, []);
+  assert.deepStrictEqual(limpo(f.ok), [true, true, true, true]);
+  assert.deepStrictEqual(limpo(f.usr), ['Ana', 'Ana', 'Ana', '—']);
+  assert.strictEqual(f.dt[3], '');
+});
+
+test('Preparo: talhão em Identificação reabre a fazenda mesmo com etapa_status todo ok (10080)', () => {
+  const linhas = [talPrep(10080, 1, 'Ok'), talPrep(10080, 4, 'Identificação')];
+  const etapas = [1, 2, 3, 4].map((i) => ({ id: i, ordem: i }));
+  const status = [1, 2, 3, 4].map((i) => ({ etapa_id: i, entidade_id: '10080', ok: true, usuario_id: 'u', concluido_em: 'd' }));
+  const [f] = ctx.montarPreparo(linhas, etapas, status, { u: 'Ana' }, []);
+  assert.deepStrictEqual(limpo(f.ok), [false, false, false, false]);
+  assert.deepStrictEqual(limpo(f.usr), ['', '', '', '']);
 });
 
 test('Colheita: frentes mais frequentes primeiro e porte', () => {

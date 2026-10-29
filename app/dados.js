@@ -48,7 +48,7 @@ function montarPlantio(linhas){
 }
 
 // Preparo: fazendas da demanda, talhões com a etapa do banco (tals, como o Plantio) e etapas
-// concluídas (etapa_status: ok, quem, quando e a observação). A etapa da fazenda é a do talhão menos avançado.
+// concluídas pela etapa do talhão menos avançado (etapa_status só dá quem, quando e a observação).
 // mes = "Entregue em": mês do último talhão entregue (view preparo_entregas), só com a fazenda toda Ok.
 function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
   const idsEtapa=new Set(etapas.map(e=>e.id));
@@ -80,13 +80,14 @@ function montarPreparo(linhas,etapas,status,nomeUsr,entregas){
     f.mesIso=f._todosOk&&f._ult?new Date(f._ult).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}).slice(0,7):'';
     f.mes=f.mesIso?mesLabel(f.mesIso):'';
     delete f._ult;delete f._todosOk;
-    for(const e of etapas){
-      const s=st.get(e.id+'|'+cod);
-      f.ok.push(!!s?.ok);
-      f.usr.push(s?.ok?(nomeUsr[s.usuario_id]||'—'):'');
-      f.dt.push(s?.ok?fmtDataHora(s.concluido_em):'');
+    // Concluída = o talhão menos avançado já passou dela (etapa_status só dá quem/quando/observação).
+    etapas.forEach((e,i)=>{
+      const s=st.get(e.id+'|'+cod),ok=i<f.e;
+      f.ok.push(ok);
+      f.usr.push(ok?(s?.ok&&nomeUsr[s.usuario_id])||'—':'');
+      f.dt.push(ok&&s?.ok?fmtDataHora(s.concluido_em):'');
       if(s?.observacao)f.obs=s.observacao;
-    }
+    });
     return f;
   });
 }
