@@ -228,3 +228,9 @@ test('plano de reconciliação dos cartões por data-id', () => {
   assert.deepStrictEqual([...pl.trocar], ['3']);
   assert.deepStrictEqual([...pl.inserir], ['4']);
 });
+
+test('cartão de erro convida a abrir para corrigir', () => {
+  const sol = { id: 8, cod_faz: 11, fazenda: 'F', tipo: 'normal', status: 'em_elaboracao', geracao: { status: 'erro', erro: 'x' } };
+  assert.match(ctx.driCartaoHtml(sol, { editor: false }), /dri-card erro[\s\S]*Abrir para corrigir →/);
+  assert.doesNotMatch(ctx.driCartaoHtml({ ...sol, geracao: { status: 'fila' } }, { editor: false }), /Abrir para corrigir/);
+});

@@ -75,7 +75,7 @@ function driCartaoHtml(sol,opts){
     pe=`<div class="dri-pe"><span>gerada há <span data-desde="${esc(g.concluido_em)}">${esc(driDesde(g.concluido_em,agora))}</span></span>${conf}</div>`;
   }
   const situ=sit?`<div class="dri-sit${sit.cls?' dri-'+sit.cls:''}">${sit.ico?`<span class="ico">${sit.ico}</span>`:''}<span>${esc(sit.txt)}</span></div>`:'';
-  const trilho=emCurso?'<div class="dri-trilho"><i></i></div>':'';
+  const trilho=emCurso?'<div class="dri-trilho"><i></i></div>':sit&&sit.cls==='erro'?'<div class="dri-acao">Abrir para corrigir →</div>':'';
   return`<div class="dri-card${sit&&sit.cls==='erro'?' erro':''}" role="button" tabindex="0" data-id="${esc(sol.id)}" data-cod="${cod}" data-tipo="${tipo}" onclick="driAbrirFazenda(${cod},'${tipo}')" onkeydown="if(event.key==='Enter')this.click()">
     <div class="dri-l1"><span class="dr-cod">${cod}</span><b>${esc(sol.fazenda)}</b><span class="dri-tipo dri-${tipo==='catacao'?'C':'N'}">${tipo==='catacao'?'Catação':'Normal'}</span></div>
     ${situ}${trilho}${pe}
