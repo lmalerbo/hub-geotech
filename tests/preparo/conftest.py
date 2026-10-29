@@ -6,7 +6,8 @@ from tests.fluxo import conftest as fluxo
 from tests.fluxo.conftest import pg, fazenda, pessoa, como  # noqa: F401  (fixtures reaproveitados)
 
 MIGRACOES = sorted(fluxo.MIGRACOES + ['20261003090000_modulo_colheita.sql',
-                                      '20261028090000_preparo_datas_campo.sql'])
+                                      '20261028090000_preparo_datas_campo.sql',
+                                      '20261029090000_preparo_voo.sql'])
 
 
 @pytest.fixture(scope='session')
