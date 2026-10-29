@@ -271,26 +271,26 @@ function drCamadasEnvio(env){
 
 **Arquivo:** `app/drone-fazenda-demo.html` (mesmo padrão de `app/drone-inicio-demo.html`)
 
-- [ ] **Passo 1:** página que carrega `motion.css`, `drone.css`, MapLibre (a mesma versão do `index.html`), `motion.js`, `drone-dados.js`, `drone-previa.js`, `drone-inicio.js` e `drone-fazenda.js`, com globais falsas (`EU`, `esc`, `fmtNum`, `podeEditar` lendo `?editar=0`, `confirmar`, `sb` e `drRpc` falsos que devolvem fixtures) e uma fazenda fictícia de 12 talhões quadrados (fora da Base: 7; sem projeto: 3, 6, 11; Rev1 no 10). `?estado=montando|catacao|catacao-enviada|gerando|previa|publicando|erro` escolhe a fixture; o chip de Obstáculos varia com `?obst=ok|velho|erro|proc`. Nada é gravado: as ações só mostram um aviso no console. A capa do PDF fica no placeholder (sem PDF real).
-- [ ] **Passo 2:** abrir servindo `app/` por http (`python -m http.server` na pasta `app/`) e conferir que todos os estados abrem sem erro no console.
-- [ ] **Passo 3: commit** — `Drone S4.6: demo da area da fazenda com um estado por parametro`
+- [x] **Passo 1:** página que carrega `motion.css`, `drone.css`, MapLibre (a mesma versão do `index.html`), `motion.js`, `drone-dados.js`, `drone-previa.js`, `drone-inicio.js` e `drone-fazenda.js`, com globais falsas (`EU`, `esc`, `fmtNum`, `podeEditar` lendo `?editar=0`, `confirmar`, `sb` e `drRpc` falsos que devolvem fixtures) e uma fazenda fictícia de 12 talhões quadrados (fora da Base: 7; sem projeto: 3, 6, 11; Rev1 no 10). `?estado=montando|catacao|catacao-enviada|gerando|previa|publicando|erro` escolhe a fixture; o chip de Obstáculos varia com `?obst=ok|velho|erro|proc`. Nada é gravado: as ações só mostram um aviso no console. A capa do PDF fica no placeholder (sem PDF real).
+- [x] **Passo 2:** abrir servindo `app/` por http (`python -m http.server` na pasta `app/`) e conferir que todos os estados abrem sem erro no console.
+- [x] **Passo 3: commit** — `Drone S4.6: demo da area da fazenda com um estado por parametro`
 
 ## S4.7 Teste de tela
 
 **Arquivo:** `tests/app/teste_drone_tela.py` (ampliar; continua só com a 10974 livre)
 
-- [ ] **Passo 1:** depois de abrir a fazenda 10974 como editor: confere `#dr-etapas` com a etapa 1 ativa, a barra `#dr-ferr` visível e o chip de Obstáculos com texto. Clica em dois talhões, troca um para Shape: aparece `.dr-solta`; Gerar prévia fica habilitado. Força um ciclo (`await drCicloFazenda()` via `page.evaluate`) e confere que os dois talhões continuam na lista e o Shape continua marcado (Foco 1).
-- [ ] **Passo 2:** volta o talhão para Sistema, gera a prévia (o teste já faz isso) e confere: estado `gerando` (título "Gerando a prévia", `#dr-ferr` escondida, `#dr-dica` com "travado", tempo decorrido mudando entre duas leituras com 2 s de diferença). Na prévia pronta: indicadores com "ha", o campo Motivo; digita "teste S4", força um ciclo e confere que o valor continua (Foco 1). Depois **Descartar** (como hoje).
-- [ ] **Passo 3: só leitura (Foco 4):** muda o `papel` da conta para `leitura` (e tira o `usuario_modulos` do drone, se o teste o criou), recarrega o app, abre a 10974 e confere: painel com "Somente consulta", nenhum `button` dentro de `#dr-side`, `#dr-ferr` ausente, Obstáculos sem `onclick`, ⋯ só com Revisões; clicar num talhão não muda nada. O `finally` que já existe devolve o papel original (conferir que cobre este caminho também).
-- [ ] **Passo 4:** rodar com a conta de teste (ver a memória `reference-conta-teste-hub`). Esperado: todos os ✓, nenhuma falha.
-- [ ] **Passo 5: commit** — `Drone S4.7: teste de tela cobre etapas, fonte por talhao, polling sem perder motivo e selecao, e usuario so leitura`
+- [x] **Passo 1:** depois de abrir a fazenda 10974 como editor: confere `#dr-etapas` com a etapa 1 ativa, a barra `#dr-ferr` visível e o chip de Obstáculos com texto. Clica em dois talhões, troca um para Shape: aparece `.dr-solta`; Gerar prévia fica habilitado. Força um ciclo (`await drCicloFazenda()` via `page.evaluate`) e confere que os dois talhões continuam na lista e o Shape continua marcado (Foco 1).
+- [x] **Passo 2:** volta o talhão para Sistema, gera a prévia (o teste já faz isso) e confere: estado `gerando` (título "Gerando a prévia", `#dr-ferr` escondida, `#dr-dica` com "travado", tempo decorrido mudando entre duas leituras com 2 s de diferença). Na prévia pronta: indicadores com "ha", o campo Motivo; digita "teste S4", força um ciclo e confere que o valor continua (Foco 1). Depois **Descartar** (como hoje).
+- [x] **Passo 3: só leitura (Foco 4):** muda o `papel` da conta para `leitura` (e tira o `usuario_modulos` do drone, se o teste o criou), recarrega o app, abre a 10974 e confere: painel com "Somente consulta", nenhum `button` dentro de `#dr-side`, `#dr-ferr` ausente, Obstáculos sem `onclick`, ⋯ só com Revisões; clicar num talhão não muda nada. O `finally` que já existe devolve o papel original (conferir que cobre este caminho também).
+- [x] **Passo 4:** rodar com a conta de teste (ver a memória `reference-conta-teste-hub`). Esperado: todos os ✓, nenhuma falha.
+- [x] **Passo 5: commit** — `Drone S4.7: teste de tela cobre etapas, fonte por talhao, polling sem perder motivo e selecao, e usuario so leitura`
 
 ## S4.8 Conferência visual, verificação e revisão
 
-- [ ] **Passo 1: demo × maquete:** abrir `drone-fazenda-demo.html` em cada `?estado=` (e `?editar=0`) no navegador, a 1440×900, e comparar lado a lado com as telas 2, 4, 5 e 6. Anotar e corrigir diferenças de layout, cor, texto e ordem. Conferir também a 390 px de largura (painel desce, nada vaza na horizontal) e com `prefers-reduced-motion`.
-- [ ] **Passo 2: app real logado:** abrir a 10974 como editor (montando; Catação; gerar → gerando → prévia → descartar) e como só leitura (papel `leitura`, restaurado no fim), comparando com a maquete. Console sem erro novo.
-- [ ] **Passo 3:** `verification-before-completion` (testes puros, teste de tela, teste de movimento, carga sem login sem erro).
-- [ ] **Passo 4:** `requesting-code-review` do diff `main...drone-s4`, com atenção aos itens 1 e 4 do "Foco da revisão" do plano geral, e `receiving-code-review` para os achados.
+- [x] **Passo 1: demo × maquete:** abrir `drone-fazenda-demo.html` em cada `?estado=` (e `?editar=0`) no navegador, a 1440×900, e comparar lado a lado com as telas 2, 4, 5 e 6. Anotar e corrigir diferenças de layout, cor, texto e ordem. Conferir também a 390 px de largura (painel desce, nada vaza na horizontal) e com `prefers-reduced-motion`.
+- [x] **Passo 2: app real logado:** abrir a 10974 como editor (montando; Catação; gerar → gerando → prévia → descartar) e como só leitura (papel `leitura`, restaurado no fim), comparando com a maquete. Console sem erro novo.
+- [x] **Passo 3:** `verification-before-completion` (testes puros, teste de tela, teste de movimento, carga sem login sem erro).
+- [x] **Passo 4:** `requesting-code-review` do diff `main...drone-s4`, com atenção aos itens 1 e 4 do "Foco da revisão" do plano geral, e `receiving-code-review` para os achados.
 - [ ] **Passo 5:** registro no fim deste arquivo (o que cada camada da delegação fez) e **ok do usuário antes de mesclar na `main` e enviar** (push com a troca de conta do `gh`, memória `reference-github-contas-push`).
 - [ ] **Passo 6:** atualizar a memória `project-drone-telas-redesenho` (estado da execução; próxima S5).
 
@@ -298,4 +298,19 @@ function drCamadasEnvio(env){
 
 ## Registro da execução
 
-(preencher ao fim)
+Por tarefa (camada — executor — resultado):
+- S4.1: camada 1 — OpenCode grátis (nemotron-3-ultra) — aprovada; o gerente trocou aspas retas por curvas.
+- S4.2–S4.4: camada 2 — Haiku — aprovada (S4.3 e S4.4 num commit só).
+- S4.5: camada 2 — Haiku — aprovada; Rev0 confirmado no banco (`coalesce(max(numero)+1,0)`).
+- S4.6 (demo): camada 2 — Haiku — aprovada, sem erro de console nos 9 estados.
+- S4.7 (teste de tela): camada 2 — Haiku escreveu; o gerente corrigiu a corrida do login depois do reload e acrescentou prints por estado (`HUB_PRINTS`).
+- S4.8 conferência visual: o gerente comparou os prints com as telas 2, 4, 5 e 6; 8 correções feitas pelo Haiku (um só ← Início, Camadas sob o zoom, legenda da consulta, voo acima da legenda, celular, selo Abrir prévia, cor do novo, plural do shape).
+- S4.8 revisão: Sonnet — 0 críticos, 2 importantes (envio preso à fazenda de origem; extensão no arrastar) e 5 menores, corrigidos pelo Haiku; 3 menores anotados abaixo.
+
+Verificação final: 74 testes puros, teste_movimento 0 falha, teste_drone_tela.py logado 31 ✓ e nenhuma falha (editor e só leitura, acesso da conta devolvido), carga sem login só com o 404 antigo do favicon.
+
+Anotado para depois:
+- O contexto da solicitação na barra de etapas pode aparecer um ciclo depois (vem de `DR.painel`).
+- O chip de Obstáculos olha só os 5 envios mais novos de qualquer tipo; muitos envios de outro tipo escondem um erro de obstáculos antigo.
+- Quem só lê, mas criou a solicitação, ainda vê "Cancelar solicitação" no ⋯ (regra antiga de `drPodeCancelar`).
+- A capa da prévia na demo é um placeholder; o selo "Abrir prévia" foi visto só no código e no app real.
