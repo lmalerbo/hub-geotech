@@ -81,3 +81,24 @@ seguintes o material já foi usado.
 - Agendar voo pelo Hub.
 - Travar a Identificação sem voo.
 - Mudar a ordem ou os nomes das etapas.
+
+## Revisão 29/10/2026 (tarde): etapa "Voo" calculada
+
+O usuário conferiu a primeira versão no ar. Na lista de fazendas, todas apareciam como "Identificação".
+Decidido com ele:
+
+1. **"Voo" vira uma etapa visível antes da Identificação:** Voo → Identificação → Escoamento → Observações → Projeto → Ok.
+   Ela é **calculada**, não gravada. No banco, o talhão continua com `etapa = 'Identificação'`. A tela o mostra em
+   Voo enquanto a situação for `nao_solicitado`, `solicitado` ou `processando`. Quando a situação passa a
+   `liberado`, ele aparece sozinho em Identificação.
+2. **"Sem leitura" não entra em Voo.** Fica em Identificação com a etiqueta "Voo sem leitura": falha do agente não trava ninguém.
+3. **Não há ação na etapa Voo** (nada de "Identificar mesmo assim"). Sem voo não se faz projeto. Talhão com voo
+   registrado errado é corrigido no Drone MGMT e sai de Voo na leitura seguinte. O modal "Avançar mesmo assim?"
+   sai da tela. `hub.preparo_aviso_sem_voo` fica sem uso e pode ser removida numa próxima migração.
+4. **Onde aparece:**
+   - passo a passo da fazenda (6 nós, "Voo" com a quantidade);
+   - barra e legenda (segmento próprio, no lugar da faixa cinza);
+   - etiqueta da situação nos talhões em Voo;
+   - lista de fazendas: coluna Etapa = etapa do talhão menos avançado, portanto "Voo" se houver algum.
+5. **Filtro da lista:** opção "Voo". Fazenda mista (talhões em Voo e em Identificação) aparece **nos dois** filtros.
+6. **Retroceder:** não se volta para Voo; o nó Voo não é destino de retrocesso.
