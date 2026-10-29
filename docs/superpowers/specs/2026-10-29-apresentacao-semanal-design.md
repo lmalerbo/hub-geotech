@@ -15,8 +15,8 @@ Uma tela no Hub onde **quem é editor** escolhe a semana, ajusta metas e textos,
 ### D1. Tudo no navegador
 A tela busca, calcula, desenha e exporta no navegador, como os PDFs de Corretivos. Não há servidor novo. Alternativas descartadas: GitHub Action disparado pelo botão (3–5 min, sem prévia, conta de serviço do Supabase em secret) e agente local com fila (continua dependendo do notebook).
 
-### D2. Quem acessa
-Quem é editor em pelo menos um módulo do Hub (`hub.pode_editar` em algum módulo) ou admin. Função nova `hub.pode_usar_apresentacao()`, no padrão de `hub.pode_usar_corretivos()`. O link no menu só aparece para quem passa nela.
+### D2. Quem acessa: ferramenta própria
+A apresentação é uma ferramenta do Hub, no padrão de Mapas de aplicação: módulo `apresentacao` em `hub.modulos`, liberado por usuário em Usuários → Ferramentas (`hub.usuario_modulos`). Função nova `hub.pode_usar_apresentacao()` = admin ou tem o módulo `apresentacao`, como `hub.pode_usar_corretivos()`. Não depende do nível nos módulos Plantio/Preparo/Colheita/Drone. O cartão em Ferramentas, no início do Hub, só aparece para quem passa nela; liberar dá acesso a tudo (metas, textos, download).
 
 ### D3. Liberdade de edição
 - **Parâmetros da semana:** semana (ex.: S1M11) e data de corte, sugeridas pela regra da quinta-feira (semana N do mês = N-ésima quinta; corte = dia anterior à quinta), e as metas.
@@ -39,6 +39,8 @@ Rota nova `GET /voos-indicadores?de=&ate=` em `worker/arquivos.js`: confere o JW
 - RLS nas duas: lê e grava só quem passa em `pode_usar_apresentacao()`.
 
 ## Arquitetura
+
+Protótipo navegável das telas (entrada, busca, edição com prévia, falha do GeoMap, acesso): https://claude.ai/artifact/DBwux9Cmjqhj7LX8KMdk5E
 
 Tela `app/apresentacao.html` com três áreas: parâmetros (semana, corte, metas), lista dos 6 slides com seus campos de texto, prévia 16:9 do slide selecionado.
 
