@@ -349,7 +349,7 @@ function drLegendaHtml(est){
   const dot=c=>`<span><i class="dr-bola" style="background:${DR_OBS_COR[c]}"></i>${c} m</span>`;
   if(DR.doc==='catacao')return sw(DR_COR.catacao,'#1f2a30','Catação vigente'+(DR.geo.catacao?` (Rev${DR.geo.catacao.revisao})`:''));
   const vig=sw(DR_COR.normal,'#1f2a30',est==='previa'?'já publicado':'aplicação vigente');
-  if(est==='previa')return sw('#fff','#2f7a3e','novo nesta prévia')+vig+dot(15)+dot(25)+dot(50);
+  if(est==='previa')return `<span><i style="background:${DR_COR.normal};border:1.5px solid #2f7a3e"></i>novo nesta prévia</span>`+vig+dot(15)+dot(25)+dot(50);
   return vig+sw(DR_COR.sem,'#1f2a30','sem projeto')+sw('#d9defc',DR_COR.sel,'na revisão')+sw('#fff',DR_COR.fora,'fora da Base');
 }
 // Barra de ferramentas, dica, Camadas e legenda dependem do estado do painel (drEstadoPainel).
@@ -371,7 +371,7 @@ function drMapaUi(){
     cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span class="ico">layers</span>${rot}</button>`
       +(DR.camadasAb?`<div class="dr-cam-caixa" id="dr-cam-caixa"><label><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked);drMapaUi()"> Obstáculos</label></div>`:'');
   }
-  const leg=document.getElementById('dr-leg');if(leg)leg.innerHTML=drLegendaHtml(est);
+  const leg=document.getElementById('dr-leg');if(leg)leg.innerHTML=drLegendaHtml(drEstadoPainel({doc:DR.doc,sol,ger,edita:true}));
 }
 function drCamadasAlternar(){
   DR.camadasAb=!DR.camadasAb;drMapaUi();
@@ -405,7 +405,7 @@ function drPainel_montando(){
         <button type="button" aria-pressed="${f==='sistema'}" class="${f==='sistema'?'on':''}" data-foco="f${n}s" onclick="drFonteTalhao(${n},'sistema')">Sistema</button>
         <button type="button" aria-pressed="${f==='shape'}" class="${f==='shape'?'on':''}" data-foco="f${n}h" onclick="drFonteTalhao(${n},'shape')">Shape</button></span></div>`).join('');
   const solta=shape.length?`<button type="button" class="dr-solta" data-foco="solta" onclick="drEnviar('ajuste')" ondragover="event.preventDefault()" ondrop="drSoltar(event,'ajuste')">
-      <span class="ico">upload_file</span><span>Arraste o shape de ajuste dos talhões ${shape.join(', ')}</span>
+      <span class="ico">upload_file</span><span>Arraste o shape de ajuste ${shape.length===1?'do talhão':'dos talhões'} ${shape.join(', ')}</span>
       <small>.shp + .shx + .dbf + .prj, ou .zip</small><small>${esc(drRotuloShape(ev))}</small>${ev&&ev.status==='erro'?`<span class="dr-err">${esc(ev.erro)}</span>`:''}</button>`:'';
   const n=inc.length+rem.length;
   return{sobre:'Nova revisão',titulo:`Normal · Rev${drRevProx('normal')}`,

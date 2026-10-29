@@ -189,7 +189,7 @@ try:
         pg.reload(); entrar_e_abrir(pg)
 
         # ← Início volta às três colunas, sem a 10974 em "A analisar"
-        pg.click('.dri-voltar'); pg.wait_for_selector('#dri', state='visible', timeout=10000); pg.evaluate('async () => { await drCarregarPainel(); }')  # conta depois do redesenho
+        pg.click('.dr-ini'); pg.wait_for_selector('#dri', state='visible', timeout=10000); pg.evaluate('async () => { await drCarregarPainel(); }')  # conta depois do redesenho
         confere(pg.locator('#dri .dri-col').count() == 3 and pg.locator('#dri .dri-col[data-col="analisar"] .dri-card[data-cod="10974"]').count() == 0,
                 'Início volta com três colunas e sem a 10974 em A analisar')
         canc = pg.evaluate("""async s=>{const {error}=await sb.rpc('drone_cancelar',

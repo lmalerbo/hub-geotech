@@ -125,7 +125,7 @@ function drMostrarPdf(){const a=document.getElementById('dr-pdf');if(a)a.textCon
   }catch(e){console.warn('Não foi possível carregar o estilo do index',e);}
   DR.painel={solicitacoes:[{id:1,solicitante:'Ana',observacao:'Completar talhões do bloco norte',data_desejada:'2026-11-05'}]};
   document.getElementById('drone-root').innerHTML=`<div id="dri" hidden></div>
-    <div id="dr-trab"><button class="dri-voltar" onclick="driVoltar()">← Início</button>
+    <div id="dr-trab">
       <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um projeto ou busque uma fazenda</div></div></div>`;
   drAbrirFazenda(10372,DOC_DEMO);
 })();

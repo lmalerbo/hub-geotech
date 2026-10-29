@@ -71,7 +71,7 @@ async function drMostrarPdf(ger){
     await drDesenharPagina(pdf,1,cv,Math.max(260,alvo.clientWidth));
     if(!alvo.isConnected)return;
     alvo.innerHTML='';alvo.appendChild(cv);
-    alvo.insertAdjacentHTML('beforeend',`<span class="drp-lupa">${pdf.numPages} pág. · abrir</span>`);
+    alvo.insertAdjacentHTML('beforeend',`<span class="drp-lupa"><span class="ico">open_in_full</span>Abrir prévia</span>`);
     alvo.classList.add('mo-surge');
   }catch(e){
     if(alvo.isConnected)caixa.innerHTML=`<div class="dr-err">${esc(e.message)}</div>`;

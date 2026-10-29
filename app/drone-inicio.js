@@ -206,7 +206,7 @@ async function droneIniciar(){
       <div class="dri-atencao"><span class="dri-atl">Atenção na base</span>${DRI_ATENCAO.map(([k,txt,ico])=>`<button class="dri-at" data-chave="${k}" onclick="driAtencaoAbrir('${k}')"><span class="ico">${ico}</span><b>0</b> ${txt}</button>`).join('')}
         <a class="dri-ajuda" href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md" target="_blank" rel="noreferrer"><span class="ico">help</span> Ajuda</a></div>
     </div>
-    <div id="dr-trab" hidden><button class="dri-voltar" onclick="driVoltar()">← Início</button>
+    <div id="dr-trab" hidden>
       <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um projeto ou busque uma fazenda</div></div></div>`;
     root.dataset.pronto='1';
     if(document.addEventListener)document.addEventListener('keydown',driTecla);
