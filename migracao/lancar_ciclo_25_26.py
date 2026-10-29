@@ -1,8 +1,9 @@
 """Lançamento único do ciclo 25-26 no Preparo (spec 2026-10-28-preparo-mes-ciclo-design.md, D3).
 
 Uso:
-  python migracao/lancar_ciclo_25_26.py                 # lista os candidatos e grava um CSV (não grava no banco)
-  python migracao/lancar_ciclo_25_26.py --gravar --esperado N   # lança; aborta se hoje não há N talhões candidatos
+  python migracao/lancar_ciclo_25_26.py                 # lista os candidatos e grava o CSV (único modo que escreve o CSV; não grava no banco)
+  python migracao/lancar_ciclo_25_26.py --gravar --esperado N   # lança; lê o CSV aprovado e aborta se o conjunto de
+                                                        # talhões candidatos hoje for diferente dele (ou se não forem N)
   python migracao/lancar_ciclo_25_26.py --voltar LOTE   # desfaz o lançamento
 """
 import argparse
@@ -48,21 +49,33 @@ def main():
 
     cand = candidatos(hub)
     saida = os.path.join(os.path.dirname(__file__), 'ciclo_25_26_candidatos.csv')
-    with open(saida, 'w', newline='', encoding='utf-8-sig') as f:
-        w = csv.DictWriter(f, fieldnames=list(cand[0]) if cand else ['cod_faz'], delimiter=';')
-        w.writeheader()
-        w.writerows(cand)
     fazendas = {c['cod_faz'] for c in cand}
-    print(f'{len(cand)} talhões em {len(fazendas)} fazendas, {sum(c["area_ha"] or 0 for c in cand):.1f} ha → {saida}')
+    print(f'{len(cand)} talhões em {len(fazendas)} fazendas, {sum(c["area_ha"] or 0 for c in cand):.1f} ha')
 
     if args.gravar:
+        # O CSV aprovado não é reescrito aqui: compara-se o conjunto de layers de hoje com o dele.
+        if not os.path.exists(saida):
+            sys.exit(f'ABORTADO: não há CSV aprovado em {saida}. Rode sem flags, confira a lista e tente de novo.')
+        with open(saida, newline='', encoding='utf-8-sig') as f:
+            aprovados = {int(r['layer']) for r in csv.DictReader(f, delimiter=';')}
+        agora = {int(c['layer']) for c in cand}
+        if agora != aprovados:
+            novos, saiu = sorted(agora - aprovados), sorted(aprovados - agora)
+            sys.exit('ABORTADO: os candidatos de hoje não são os do CSV aprovado. Nada foi gravado.\n'
+                     f'  entraram ({len(novos)}): {novos[:50]}\n  saíram ({len(saiu)}): {saiu[:50]}\n'
+                     'Rode sem flags para gerar um CSV novo e aprove de novo.')
         if len(cand) != args.esperado:
             sys.exit(f'ABORTADO: há {len(cand)} talhões candidatos agora e a lista aprovada tinha {args.esperado}. Nada foi gravado.')
         lote = hub.rpc('preparo_lancar_ciclo_25_26')
         gravados = len(hub.selecionar('log_auditoria', 'id', {'lote_id': f'eq.{lote}'})) if lote else 0
         print(f'Lançado. Lote {lote}, {gravados} linhas no log (para desfazer: --voltar {lote}).')
     else:
-        print('Só a lista: nada foi gravado. Confira o CSV antes de rodar com --gravar.')
+        with open(saida, 'w', newline='', encoding='utf-8-sig') as f:
+            w = csv.DictWriter(f, fieldnames=list(cand[0]) if cand else ['cod_faz'], delimiter=';')
+            w.writeheader()
+            w.writerows(cand)
+        print(f'CSV: {saida}')
+        print('Só a lista: nada foi gravado no banco. Confira o CSV antes de rodar com --gravar.')
 
 
 if __name__ == '__main__':

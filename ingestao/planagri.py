@@ -82,6 +82,9 @@ def main():
     print(f'  {len(talhoes)} talhões liberados (LIB) → {len(validos)} na Base Fazendas, '
           f'{len(fora)} fora dela (ignorados)' + (f': {fora[:10]}' if fora else ''))
 
+    print(f"  datas lidas (talhões válidos): {sum(1 for t in validos if t['conservacao_em'])} com conservacao_em, "
+          f"{sum(1 for t in validos if t['plantio_realizado_em'])} com plantio_realizado_em")
+
     if args.simular:
         print('Simulação: nada foi gravado.')
         return
