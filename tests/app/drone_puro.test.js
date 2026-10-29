@@ -23,13 +23,6 @@ test('nome de arquivo seguro para o Storage (sem acento, mantém a classe)', () 
   assert.strictEqual(ctx.drNomeSeguro('../x.shp'), '.._x.shp'.replace('..', '__'));
 });
 
-test('classe escolhida no envio de obstáculos', () => {
-  assert.strictEqual(ctx.drClasseEscolhida('15'), 15);
-  assert.strictEqual(ctx.drClasseEscolhida(' 50 m '), 50);
-  assert.strictEqual(ctx.drClasseEscolhida(''), null);          // vazio = pelo nome do arquivo
-  assert.strictEqual(ctx.drClasseEscolhida('30'), undefined);   // inválido
-});
-
 test('botão do shape de ajuste mostra o estado do envio', () => {
   assert.strictEqual(ctx.drRotuloShape(null), 'Enviar shape de ajuste');
   assert.strictEqual(ctx.drRotuloShape({ status: 'fila' }), 'Shape em processamento…');
@@ -335,4 +328,100 @@ test('camadas de um envio: nomes-base únicos, sem pasta nem extensão', () => {
   assert.deepStrictEqual([...ctx.drCamadasEnvio({ arquivos: ['10372/1/manchas_buva.shp', '10372/1/manchas_buva.dbf',
     '10372/1/manchas_buva.SHX', '10372/1/manchas_capim.shp', '10372/1/pacote.zip'] })], ['manchas_buva', 'manchas_capim', 'pacote']);
   assert.deepStrictEqual([...ctx.drCamadasEnvio(null)], []);
+});
+
+const A = (nome, origem = '', tamanho = 10) => ({ nome, origem, tamanho });
+
+test('classe pelo nome do arquivo (mesma regra do agente)', () => {
+  const casos = [
+    ['restricoes15m.shp', 15], ['Restrições 25 m.shp', 25], ['rede_50m_cemig.shp', 50],
+    ['linhas_cemig.shp', null], ['obst_30m.shp', null],
+    // os mesmos de tests/drone/test_insumos.py::test_classe_pelo_nome
+    ['restricoes15m', 15], ['Restrições 15m', 15], ['15M', 15], ['retricoes25m', 25], ['resrtricoes50m', 50],
+    ['restricoes50m_rede', 50], ['REDE50', 50], ['restricoes10m', null], ['Arvores', null],
+    ['pasta/sub/app_50m.SHP', 50], ['15m_rede_50m.shp', 15],
+  ];
+  for (const [n, c] of casos) assert.strictEqual(ctx.drClassePeloNome(n), c, n);
+});
+
+test('nome com a classe na frente volta à mesma classe pelo regex do agente', () => {
+  assert.strictEqual(ctx.drNomeComClasse(25, 'linhas_cemig.shp'), '25m_linhas_cemig.shp');
+  assert.strictEqual(ctx.drNomeComClasse(15, 'obst.zip/pasta/Rede 50m.SHP'), '15m_Rede_50m.shp');
+  assert.strictEqual(ctx.drNomeComClasse(50, 'Área Mata.PRJ'), '50m_Area_Mata.prj');
+  assert.strictEqual(ctx.drClassePeloNome(ctx.drNomeComClasse(25, 'linhas_cemig.shp')), 25);
+  assert.strictEqual(ctx.drClassePeloNome(ctx.drNomeComClasse(15, 'rede_50m.shp')), 15);
+});
+
+test('agrupa as partes pelo nome-base, com extensão maiúscula e pasta do zip', () => {
+  const g = ctx.drAgruparArquivos([A('REDE_25m.SHP'), A('rede_25m.shx'), A('rede_25m.dbf'), A('rede_25m.prj'),
+    A('pasta/app_mata.shp', 'obst.zip'), A('pasta/app_mata.shx', 'obst.zip'), A('pasta/app_mata.dbf', 'obst.zip'),
+    A('pasta/app_mata.prj', 'obst.zip'), A('pasta/app_mata.cpg', 'obst.zip'), A('leia-me.txt')]);
+  assert.strictEqual(g.length, 2);
+  assert.deepStrictEqual([...g[0].falta], []);
+  assert.strictEqual(g[0].classe, 25);
+  assert.strictEqual(g[0].conflito, false);
+  assert.deepStrictEqual(Object.keys(g[1].partes).sort(), ['cpg', 'dbf', 'prj', 'shp', 'shx']);
+  assert.deepStrictEqual([...g[1].origens], ['obst.zip']);
+  assert.strictEqual(g[1].classe, null);
+});
+
+test('partes que faltam: .shx e .prj bloqueiam, .cpg não', () => {
+  const g = ctx.drAgruparArquivos([A('a15m.shp'), A('a15m.dbf'), A('a15m.prj'), A('b25m.shp'), A('b25m.shx'), A('b25m.dbf')]);
+  assert.deepStrictEqual([...g[0].falta], ['shx']);
+  assert.deepStrictEqual([...g[1].falta], ['prj']);
+});
+
+test('mesmo nome-base em dois zips é conflito; o mesmo arquivo duas vezes não', () => {
+  const partes = (o) => ['shp', 'shx', 'dbf', 'prj'].map(e => A('linhas.' + e, o));
+  const g = ctx.drAgruparArquivos([...partes('a.zip'), ...partes('b.zip')]);
+  assert.strictEqual(g.length, 1);
+  assert.strictEqual(g[0].conflito, true);
+  assert.deepStrictEqual([...g[0].origens], ['a.zip', 'b.zip']);
+  const r = ctx.drAgruparArquivos([...partes(''), A('linhas.shp')]);   // repetido: mesmo nome, origem e tamanho
+  assert.strictEqual(r[0].conflito, false);
+});
+
+test('nome com espaço e acento agrupa com a versão sem acento e mantém o nome para mostrar', () => {
+  const g = ctx.drAgruparArquivos([A('Área de Mata 50m.shp'), A('Área de Mata 50m.shx'), A('Área de Mata 50m.dbf'), A('Área de Mata 50m.prj')]);
+  assert.strictEqual(g.length, 1);
+  assert.strictEqual(g[0].base, 'Área de Mata 50m');
+  assert.strictEqual(g[0].classe, 50);
+});
+
+test('dica da classe', () => {
+  assert.strictEqual(ctx.drDicaClasse(25, 25).texto, 'pelo nome do arquivo');
+  assert.strictEqual(ctx.drDicaClasse(25, 50).texto, 'trocada por você');
+  assert.strictEqual(ctx.drDicaClasse(null, 15).texto, 'trocada por você');
+  assert.strictEqual(ctx.drDicaClasse(null, null).tom, 'aviso');
+});
+
+test('plano do envio: bloqueia sem classe, com parte faltando ou conflito', () => {
+  const ok = ctx.drAgruparArquivos(['shp', 'shx', 'dbf', 'prj'].map(e => A('linhas.' + e)));
+  assert.strictEqual(ctx.drPlanoEnvio([], {}).pronto, false);
+  assert.match(ctx.drPlanoEnvio(ok, {}).motivo, /classe/);
+  const p = ctx.drPlanoEnvio(ok, { [ok[0].chave]: 25 });
+  assert.strictEqual(p.pronto, true);
+  assert.deepStrictEqual([...p.arquivos.map(a => a.nome)],
+    ['25m_linhas.shp', '25m_linhas.shx', '25m_linhas.dbf', '25m_linhas.prj']);
+  const falta = ctx.drAgruparArquivos([A('x15m.shp'), A('x15m.dbf'), A('x15m.prj')]);
+  assert.match(ctx.drPlanoEnvio(falta, { [falta[0].chave]: 15 }).motivo, /\.shx/);
+});
+
+test('resumo diz as classes novas e junta camadas da mesma classe', () => {
+  const g = ctx.drAgruparArquivos(['a15m', 'b25m', 'c25m'].flatMap(b => ['shp', 'shx', 'dbf', 'prj'].map(e => A(b + '.' + e))));
+  const esc = Object.fromEntries(g.map(x => [x.chave, x.classe]));
+  assert.strictEqual(ctx.drPlanoEnvio(g, esc).resumo,
+    'Vai criar uma versão nova de 15 m, 25 m (2 camadas juntas). Classes que não aparecem aqui continuam como estão.');
+});
+
+test('cartões das classes: sempre três, âmbar com mais de 24 meses', () => {
+  const hoje = new Date('2026-10-29T12:00:00Z');
+  const c = ctx.drCartoesObst([{ classe_m: 25, versao: 2, enviado_em: '2026-09-30T12:00:00Z', n_feicoes: 6 },
+    { classe_m: 50, versao: 1, enviado_em: '2023-11-10T12:00:00Z', n_feicoes: 22 }], hoje);
+  assert.deepStrictEqual([...c.map(x => x.classe)], [15, 25, 50]);
+  assert.strictEqual(c[0].texto, 'sem cadastro');
+  assert.strictEqual(c[1].texto, 'v2 · 30/09/2026 · 6 feições');
+  assert.strictEqual(c[1].velho, false);
+  assert.strictEqual(c[2].velho, true);
+  assert.match(c[2].texto, /mais de 24 meses/);
 });
