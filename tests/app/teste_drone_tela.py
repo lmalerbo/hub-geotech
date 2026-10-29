@@ -225,8 +225,8 @@ try:
         confere(pg.locator('#dr-side button').count() == 0, 'nenhum botão dentro do painel')
         confere(pg.evaluate("(()=>{const f=document.getElementById('dr-ferr');return !f||f.hidden||!f.innerHTML})()"),
                 'barra de ferramentas escondida ou vazia')
-        confere(pg.evaluate("(()=>{const o=document.querySelector('.dr-obst');return !!o&&o.tagName!=='BUTTON'})()"),
-                '.dr-obst não é botão')
+        # S5 (decisão 8): Obstáculos é botão para todos e abre a janela em modo consulta (conferida mais abaixo)
+        confere(pg.locator('#dr-ph button.dr-obst').count() == 1, '.dr-obst é botão (abre a consulta)')
         pg.evaluate("drMenuAbrir()")
         itens = pg.evaluate("[...document.querySelectorAll('#dr-menu [role=menuitem]')].map(x=>x.textContent.trim())")
         # o menu traz "Cancelar solicitação" quando a conta é a solicitante (regra de drPodeCancelar); fora isso, só Revisões
