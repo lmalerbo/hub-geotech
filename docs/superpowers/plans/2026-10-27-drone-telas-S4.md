@@ -313,4 +313,4 @@ Anotado para depois:
 - O contexto da solicitação na barra de etapas pode aparecer um ciclo depois (vem de `DR.painel`).
 - O chip de Obstáculos olha só os 5 envios mais novos de qualquer tipo; muitos envios de outro tipo escondem um erro de obstáculos antigo.
 - Quem só lê, mas criou a solicitação, ainda vê "Cancelar solicitação" no ⋯ (regra antiga de `drPodeCancelar`).
-- A capa da prévia na demo é um placeholder; o selo "Abrir prévia" foi visto só no código e no app real.
+- A capa da prévia na demo é um placeholder; o selo "Abrir prévia" foi conferido só no código (no print do app real a janela da prévia estava aberta por cima). O teste de tela confirma que a capa é desenhada no painel.
