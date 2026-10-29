@@ -138,7 +138,7 @@ function drDecorrido(desde,agora){
 function drContextoSol(c){
   if(!c)return'';
   const p=['Solicitação'+(c.solicitante?' de '+c.solicitante:'')];
-  if(c.observacao)p.push(`"${c.observacao}"`);
+  if(c.observacao)p.push(`“${c.observacao}”`);
   if(c.data_desejada)p.push('para '+new Date(c.data_desejada+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
   return p.join(' · ');
 }

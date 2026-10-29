@@ -40,13 +40,13 @@
 
 ## S4.0 Branch
 
-- [ ] **Passo 1:** `git worktree add ../hub-geotech-drone-s4 -b drone-s4 main` e rodar `node --test tests/app/*.test.js` lá. Esperado: tudo passando (59 testes puros da S3).
+- [x] **Passo 1:** `git worktree add ../hub-geotech-drone-s4 -b drone-s4 main` e rodar `node --test tests/app/*.test.js` lá. Esperado: tudo passando (59 testes puros da S3).
 
 ## S4.1 Funções puras (TDD)
 
 **Arquivos:** `app/drone-dados.js`, `tests/app/drone_puro.test.js`
 
-- [ ] **Passo 1: escrever os testes** (falham com "não é função"):
+- [x] **Passo 1: escrever os testes** (falham com "não é função"):
 
 ```js
 test('etapa ativa segue a geração', () => {
@@ -148,8 +148,8 @@ test('camadas de um envio: nomes-base únicos, sem pasta nem extensão', () => {
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar:** `node --test tests/app/*.test.js`. Esperado: os 9 testes novos falham com "is not a function".
-- [ ] **Passo 3: implementar** em `app/drone-dados.js`, numa seção `// ── área da fazenda (S4) ──`, depois de `drTalhoesGerando`:
+- [x] **Passo 2: rodar e ver falhar:** `node --test tests/app/*.test.js`. Esperado: os 9 testes novos falham com "is not a function".
+- [x] **Passo 3: implementar** em `app/drone-dados.js`, numa seção `// ── área da fazenda (S4) ──`, depois de `drTalhoesGerando`:
 
 ```js
 const drPublicando=ger=>!!(ger&&ger.publicar_pedido_em&&!ger.publicacao_erro);
@@ -210,8 +210,8 @@ function drCamadasEnvio(env){
 ```
 
   `drPodeCancelar` e `drOcupado` passam a usar `drPublicando` (mesma regra, sem repetir a expressão).
-- [ ] **Passo 4: rodar:** `node --test tests/app/*.test.js`. Esperado: tudo passando.
-- [ ] **Passo 5: commit** — `Drone S4.1: regras puras da area da fazenda (etapa, estado do painel, chip de obstaculos, escopo por talhao, indicadores da previa)`
+- [x] **Passo 4: rodar:** `node --test tests/app/*.test.js`. Esperado: tudo passando.
+- [x] **Passo 5: commit** — `Drone S4.1: regras puras da area da fazenda (etapa, estado do painel, chip de obstaculos, escopo por talhao, indicadores da previa)`
 
 ## S4.2 Dados que a tela nova precisa
 

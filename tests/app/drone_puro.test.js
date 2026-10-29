@@ -321,9 +321,9 @@ test('tempo decorrido da geração', () => {
 
 test('linha de contexto da solicitação', () => {
   assert.strictEqual(ctx.drContextoSol({ solicitante: 'Ana', observacao: 'Completar talhões do bloco norte', data_desejada: '2026-11-05' }),
-    'Solicitação de Ana · "Completar talhões do bloco norte" · para 05/11');
+    'Solicitação de Ana · “Completar talhões do bloco norte” · para 05/11');
   assert.strictEqual(ctx.drContextoSol({ solicitante: 'Ana' }), 'Solicitação de Ana');
-  assert.strictEqual(ctx.drContextoSol({ observacao: 'x' }), 'Solicitação · "x"');
+  assert.strictEqual(ctx.drContextoSol({ observacao: 'x' }), 'Solicitação · “x”');
   assert.strictEqual(ctx.drContextoSol(null), '');
 });
 
