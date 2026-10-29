@@ -239,7 +239,7 @@ async function drCarregarPainel(){
 }
 
 // Abre a área da fazenda no lugar do Início (o Início não é remontado; ao voltar, só recarrega).
-// op.obstaculos só marca DR.abrirObst (a S5 usa para abrir a chave de obstáculos).
+// op.obstaculos marca DR.abrirObst: ao desenhar, drAbrirFazenda abre a janela de obstáculos.
 function driAbrirFazenda(cod,tipo,op){
   DR.abrirObst=!!(op&&op.obstaculos);
   document.getElementById('dri').hidden=true;
@@ -251,7 +251,7 @@ function driAbrirFazenda(cod,tipo,op){
   window.scrollTo(0,0);
 }
 function driVoltar(){
-  drPollParar();drMapaDescartar();
+  droFechar(true);drPollParar();drMapaDescartar();
   DR.cod=null;
   document.getElementById('dri').hidden=false;
   document.getElementById('dr-trab').hidden=true;

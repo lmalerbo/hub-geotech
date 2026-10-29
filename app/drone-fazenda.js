@@ -6,11 +6,13 @@ if(document.addEventListener)document.addEventListener('visibilitychange',()=>{
 });
 
 async function drAbrirFazenda(cod,doc){
-  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
+  droFechar(true);
+  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.obstLigarAoFim=false;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   drPollParar();drMapaDescartar();DR.ass=null;
   const pnl=document.getElementById('dr-faz');
   DR.voo=null;
   Mo.carregando(pnl);await drCarregarFazenda();Mo.pronto(pnl);
+  if(DR.abrirObst){DR.abrirObst=false;droAbrir();}   // Faixa Atenção: obstáculos com mais de 24 meses
 }
 
 // Uma atualização por vez: resposta de outra fazenda (ou de um ciclo antigo) é descartada.
@@ -22,7 +24,7 @@ async function drCarregarFazenda(){
       drRpc('drone_mapa_fazenda',{p_cod_faz:cod}),
       sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single(),
       sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id,data_desejada,criado_em').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
-      sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em').eq('cod_faz',cod).eq('vigente',true)]);
+      sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em,n_feicoes').eq('cod_faz',cod).eq('vigente',true)]);
     if(!drRespostaValida(minha,chave()))return;
     const sIds=(sols.data||[]).map(s=>s.id);
     const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo,escopo,pedido_em,iniciado_em')
@@ -65,7 +67,8 @@ function drDesenhar(partes){
     if(tem('cab')){drMenuFechar();document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();}
     if(tem('etapas'))drEtapasAtualizar();
     if(tem('mapa'))drMapaAtualizar();
-    if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
+    if(tem('obst')&&DR.obstLigarAoFim){DR.obstLigarAoFim=false;drObstaculos(true);}   // envio feito nesta tela: a camada liga sozinha
+    else if(tem('obst')&&DR.mostrarObst)drObstaculos(true);
     if(tem('painel')){drPainelLateral();drAtualizarSelecaoMapa();}   // o estado 'ger' dos talhões segue a geração
   }
   drVooPublicacao();drAnimGeracao();
@@ -141,12 +144,11 @@ function drFadeCamada(id,prop,final){
 function drCabecalhoHtml(){
   const g=DR.geo,i=DR.info,tal=g.features.filter(f=>f.properties.camada==='talhao');
   const area=tal.filter(f=>f.properties.status!=='fora_da_base').reduce((s,f)=>s+(f.properties.area_ha||0),0);
-  const pct=g.cobertura_pct,ch=drChipObstaculos(i.obst,i.envios,new Date()),proc=ch.tom==='proc',edita=podeEditar('drone');
+  const pct=g.cobertura_pct,ch=drChipObstaculos(i.obst,i.envios,new Date()),proc=ch.tom==='proc';
   const aba=(doc,tit,x,extra)=>`<button class="dr-aba${DR.doc===doc?' on':''}" aria-pressed="${DR.doc===doc}" onclick="drTrocarDoc('${doc}')">${tit} <span>${x?'Rev'+x.revisao+(extra?' · '+extra:''):'sem projeto'}</span></button>`;
   const ico=`<span class="ico${proc?' dr-gira':''}">${proc?'progress_activity':'warning'}</span>`;
   const chip=`<span class="dr-obst-chip tom-${ch.tom}">${esc(ch.texto)}</span>`;
-  const obst=edita?`<button class="dr-obst" onclick="drEnviar('obstaculos')">${ico}<b>Obstáculos</b>${chip}</button>`
-    :`<span class="dr-obst dr-obst-so">${ico}<b>Obstáculos</b>${chip}</span>`;
+  const obst=`<button class="dr-obst" onclick="droAbrir()">${ico}<b>Obstáculos</b>${chip}</button>`;
   return`<div class="dr-ph" id="dr-ph">
       <button class="dr-ini" onclick="driVoltar()"><span class="ico">arrow_back</span>Início</button>
       <span class="dr-sep" aria-hidden="true"></span>
@@ -548,16 +550,9 @@ function drPainelLateral(){
 function drErro(e){const el=document.getElementById('dr-err');if(el)el.textContent=e.message||e;}
 
 function drEnviar(tipo){
-  const btn=drBotao();                                   // antes do prompt, que apaga window.event
-  let classe=null;
-  if(tipo==='obstaculos'){
-    const r=prompt('Classe dos obstáculos: 15, 25 ou 50 m.\nDeixe vazio para usar o nome de cada arquivo (ex.: restricoes15m).','');
-    if(r===null)return;
-    classe=drClasseEscolhida(r);
-    if(classe===undefined){alert('Classe inválida: use 15, 25 ou 50.');return;}
-  }
+  const btn=drBotao();
   const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.accept='.shp,.shx,.dbf,.prj,.cpg,.zip';
-  inp.onchange=()=>{const arqs=[...inp.files];if(arqs.length)drEnviarArquivos(tipo,arqs,classe,btn);};
+  inp.onchange=()=>{const arqs=[...inp.files];if(arqs.length)drEnviarArquivos(tipo,arqs,null,btn);};
   inp.click();
 }
 
