@@ -45,7 +45,7 @@
 
 **Arquivos:** `app/drone-dados.js`, `tests/app/drone_puro.test.js`
 
-- [ ] **Passo 1: escrever os testes.** Antes da implementação, eles falham com "não é função".
+- [x] **Passo 1: escrever os testes.** Antes da implementação, eles falham com "não é função".
 
 ```js
 const A = (nome, origem = '', tamanho = 10) => ({ nome, origem, tamanho });
@@ -145,7 +145,7 @@ test('cartões das classes: sempre três, âmbar com mais de 24 meses', () => {
 });
 ```
 
-- [ ] **Passo 2: implementar** em `app/drone-dados.js`, perto de `drNomeSeguro`:
+- [x] **Passo 2: implementar** em `app/drone-dados.js`, perto de `drNomeSeguro`:
   - `chave = drNomeSeguro(base).toLowerCase()`, com `base` = nome sem pasta e sem a última extensão;
   - extensões aceitas: `shp shx dbf prj cpg`, e as demais são ignoradas;
   - deduplicação por `origem|nome|tamanho` antes de agrupar;
@@ -154,59 +154,59 @@ test('cartões das classes: sempre três, âmbar com mais de 24 meses', () => {
   - `motivo` de `drPlanoEnvio`, na ordem: "Nenhuma camada para enviar." → "`<base>`: falta .shx" (primeira camada incompleta) → "`<base>`: mesmo nome em a.zip e b.zip — renomeie um deles" (origem `''` aparece como "arquivo solto") → "Escolha a classe de todas as camadas.";
   - `DR_OBS_DESC` ao lado de `DR_OBS_COR`.
   - Tirar `drClasseEscolhida` e o teste "classe escolhida no envio de obstáculos" (ninguém mais usa depois da S5.4).
-- [ ] **Passo 3:** `node --test tests/app/*.test.js`. Esperado: tudo passando.
-- [ ] **Passo 4:** commit `Drone S5.1: funções puras da janela de obstáculos`.
+- [x] **Passo 3:** `node --test tests/app/*.test.js`. Esperado: tudo passando.
+- [x] **Passo 4:** commit `Drone S5.1: funções puras da janela de obstáculos`.
 
 ## S5.2 Prova de que o agente lê o nome renomeado
 
 **Arquivo:** `tests/drone/test_insumos.py` (a única mudança em `drone/`, permitida pelas restrições globais)
 
-- [ ] **Passo 1:** acrescentar ao `parametrize` de `test_classe_pelo_nome` os casos `('25m_linhas_cemig.shp', 25)` e `('15m_rede_50m.shp', 15)`.
-- [ ] **Passo 2:** `pytest tests/drone/test_insumos.py -q`. Esperado: passa sem mudar o agente. Se falhar, **parar e avisar**: a regra do nome não serve, e a decisão de não mudar o agente precisa ser revista.
-- [ ] **Passo 3:** commit `Drone S5.2: agente lê a classe do nome renomeado`.
+- [x] **Passo 1:** acrescentar ao `parametrize` de `test_classe_pelo_nome` os casos `('25m_linhas_cemig.shp', 25)` e `('15m_rede_50m.shp', 15)`.
+- [x] **Passo 2:** `pytest tests/drone/test_insumos.py -q`. Esperado: passa sem mudar o agente. Se falhar, **parar e avisar**: a regra do nome não serve, e a decisão de não mudar o agente precisa ser revista.
+- [x] **Passo 3:** commit `Drone S5.2: agente lê a classe do nome renomeado`.
 
 ## S5.3 Janela (spec §3.4, maquete tela 3)
 
 **Arquivos:** criar `app/drone-obstaculos.js`; modificar `app/drone.css` e `app/index.html`
 
-- [ ] **Passo 1:** `drone-obstaculos.js`, com o estado `const DRO={arquivos:[],escolhas:{},grupos:[],ignorados:0,enviando:false}`:
+- [x] **Passo 1:** `drone-obstaculos.js`, com o estado `const DRO={arquivos:[],escolhas:{},grupos:[],ignorados:0,enviando:false}`:
   - `droAbrir()`: cria `.dro-fundo > section.dro-jan[role=dialog][aria-modal=true][aria-labelledby=dro-t]` em `document.body`, com `Mo.carregando`/`Mo.pronto`. O cabeçalho tem o ícone `warning`, "Obstáculos da fazenda" e a linha `<cod> · <nome> — valem para todas as revisões (Normal e Catação)`. Depois vêm os 3 cartões (`drCartoesObst(DR.info.obst,new Date())`, bolinha com `DR_OBS_COR`, cartão âmbar se `velho`) e, se o último envio de obstáculos deu erro, uma faixa vermelha com `envio.erro`. Para o editor sem envio em andamento, aparecem a área de arrastar (`#dro-solta`, com `dragover`/`drop`) e "Escolher arquivos" (`<input type=file id=dro-inp multiple accept=".shp,.shx,.dbf,.prj,.cpg,.zip" hidden>`). Com envio em andamento, aparece "Processando o envio anterior…" (decisão 7). Em modo consulta, só os cartões e o erro (decisão 8).
   - Lista `#dro-lista` ("Camadas encontradas · N"): uma linha por grupo, com o ícone (`folder_zip` se veio de zip, `description` se não), o nome (`a.zip › base` quando veio de zip), as pílulas `.shp .shx .dbf .prj` (a que falta com a classe `falta`) e `.cpg` só se houver, a observação (conflito ou falta), os botões 15/25/50 (`aria-pressed`), a dica (`drDicaClasse`) e o × (`aria-label="Tirar <base>"`). Embaixo, "N arquivos ignorados" quando houver.
   - Rodapé: o resumo (`drPlanoEnvio(...).resumo`, ou `motivo` quando não está pronto), **Cancelar** e o botão principal. O botão vem desabilitado com "Escolha a classe de todas" (ou o motivo curto) e, quando pronto, vira "Enviar N camadas".
   - `droAdicionar(lista)`: em cada `.zip`, carrega o JSZip (uma promessa guardada; `<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js">`), percorre as entradas (sem pasta, sem `__MACOSX/`, sem `._*`, sem `.zip`) e vira `{nome: entrada.name, tamanho, origem: zip.name, arq: new File([blob], basename)}`. Os soltos viram `{nome: f.name, tamanho: f.size, origem: '', arq: f}`. Depois reagrupa, preenche `DRO.escolhas[chave]` com a sugestão só quando a chave é nova e redesenha só a lista e o rodapé. Se o zip estiver corrompido, mostra o erro na janela sem quebrar a lista.
   - `droClasse`, `droRemover` (tira os arquivos da camada e a escolha) e `droPreparar()`, que devolve `{pronto, motivo, nomes}` sem subir nada.
   - Esc e × fecham (`droFechar`, que limpa o `DRO`). O foco vai para a janela ao abrir e volta ao botão Obstáculos ao fechar.
-- [ ] **Passo 2:** CSS `dro-*` em `app/drone.css`, seguindo a maquete: janela de 760 px com `max-width:100%`, raio de 20 px, cartões em grid de 3 colunas que viram 1 coluna abaixo de 640 px, área tracejada `#b9c1f3`, pílulas `.pc`/`.pc.falta` e botões de classe `.cl`/`.cl.on`. Toda animação nova respeita `prefers-reduced-motion`.
-- [ ] **Passo 3:** carregar o `<script src="drone-obstaculos.js">` em `index.html` depois de `drone-fazenda.js`, e acrescentar `drone-obstaculos` ao laço do `vm` em `drone_puro.test.js`. O arquivo não pode quebrar ao ser carregado sem DOM (nada roda fora de função).
-- [ ] **Passo 4:** `node --test tests/app/*.test.js` e commit `Drone S5.3: janela de obstáculos`.
+- [x] **Passo 2:** CSS `dro-*` em `app/drone.css`, seguindo a maquete: janela de 760 px com `max-width:100%`, raio de 20 px, cartões em grid de 3 colunas que viram 1 coluna abaixo de 640 px, área tracejada `#b9c1f3`, pílulas `.pc`/`.pc.falta` e botões de classe `.cl`/`.cl.on`. Toda animação nova respeita `prefers-reduced-motion`.
+- [x] **Passo 3:** carregar o `<script src="drone-obstaculos.js">` em `index.html` depois de `drone-fazenda.js`, e acrescentar `drone-obstaculos` ao laço do `vm` em `drone_puro.test.js`. O arquivo não pode quebrar ao ser carregado sem DOM (nada roda fora de função).
+- [x] **Passo 4:** `node --test tests/app/*.test.js` e commit `Drone S5.3: janela de obstáculos`.
 
 ## S5.4 Envio e ligação com a fazenda
 
 **Arquivos:** `app/drone-obstaculos.js`, `app/drone-fazenda.js`, `app/drone-inicio.js`
 
-- [ ] **Passo 1: `droEnviar()`**, com o mesmo padrão de `drEnviarArquivos`. Guarda `cod` no início; o botão fica com `Mo.ocupado`; a barra `Mo.progresso` aparece dentro do rodapé da janela. Cada arquivo de `plano.arquivos` sobe para `` `${cod}/${Date.now()}/${nome}` `` com `drSubirComProgresso`. Depois chama `drRpc('drone_registrar_envio',{p_cod_faz:cod,p_tipo:'obstaculos',p_classe_m:null,p_solicitacao_id:null,p_arquivos:caminhos})` **uma vez**. Quando dá certo, faz `droFechar()`; se `DR.cod===cod`, marca `DR.obstLigarAoFim=true` e chama `await drCarregarFazenda()`. Quando dá erro, a mensagem aparece na janela, que continua aberta com os arquivos.
-- [ ] **Passo 2: `drone-fazenda.js`:**
+- [x] **Passo 1: `droEnviar()`**, com o mesmo padrão de `drEnviarArquivos`. Guarda `cod` no início; o botão fica com `Mo.ocupado`; a barra `Mo.progresso` aparece dentro do rodapé da janela. Cada arquivo de `plano.arquivos` sobe para `` `${cod}/${Date.now()}/${nome}` `` com `drSubirComProgresso`. Depois chama `drRpc('drone_registrar_envio',{p_cod_faz:cod,p_tipo:'obstaculos',p_classe_m:null,p_solicitacao_id:null,p_arquivos:caminhos})` **uma vez**. Quando dá certo, faz `droFechar()`; se `DR.cod===cod`, marca `DR.obstLigarAoFim=true` e chama `await drCarregarFazenda()`. Quando dá erro, a mensagem aparece na janela, que continua aberta com os arquivos.
+- [x] **Passo 2: `drone-fazenda.js`:**
   - o botão Obstáculos do cabeçalho chama `droAbrir()` para todos (decisão 8), e o `<span>` de quem só lê vira `<button>`;
   - `drEnviar` perde o ramo `obstaculos` (e o `prompt`);
   - a busca de `drone_obstaculo_versoes` passa a trazer `n_feicoes`;
   - em `drAbrirFazenda`: `droFechar()` no início e, depois do primeiro desenho, `if(DR.abrirObst){DR.abrirObst=false;droAbrir();}`;
   - em `drDesenhar`: quando muda a parte `obst` e `DR.obstLigarAoFim` está marcado, desmarca e chama `drObstaculos(true)`, que já faz o fade.
   - Em `drone-inicio.js`, `driVoltar` chama `droFechar()`. Atualizar o comentário da linha 242.
-- [ ] **Passo 3:** `node --test tests/app/*.test.js`, carga do `index.html` sem login sem erro no console, e commit `Drone S5.4: envio pela janela e ligação com a fazenda`.
+- [x] **Passo 3:** `node --test tests/app/*.test.js`, carga do `index.html` sem login sem erro no console, e commit `Drone S5.4: envio pela janela e ligação com a fazenda`.
 
 ## S5.5 Demo para a conferência visual
 
 **Arquivo:** `app/drone-fazenda-demo.html`
 
-- [ ] **Passo 1:** `&jan=1` abre a janela depois de desenhar e chama `droAdicionar` com `File`s fictícios: `restricoes15m.{shp,shx,dbf,prj}`, `rede_energia_25m.{shp,shx,dbf,prj}`, `linhas_cemig.{shp,shx,dbf,prj}` (sem classe) e `sem_shx_50m.{shp,dbf,prj}`. Assim aparecem os quatro casos da maquete mais um bloqueio. `&obst=velho|erro|proc` continua valendo (cartão âmbar, faixa de erro, "Processando…"), e `&editar=0` mostra o modo consulta. Na demo, `drSubirComProgresso` e `drRpc` **não chamam a rede** (já é assim na demo; conferir).
-- [ ] **Passo 2:** servir `app/` por http e conferir contra a maquete, tela 3, em 1440 px e em 390 px, com prints numa pasta temporária. Commit `Drone S5.5: demo da janela de obstáculos`.
+- [x] **Passo 1:** `&jan=1` abre a janela depois de desenhar e chama `droAdicionar` com `File`s fictícios: `restricoes15m.{shp,shx,dbf,prj}`, `rede_energia_25m.{shp,shx,dbf,prj}`, `linhas_cemig.{shp,shx,dbf,prj}` (sem classe) e `sem_shx_50m.{shp,dbf,prj}`. Assim aparecem os quatro casos da maquete mais um bloqueio. `&obst=velho|erro|proc` continua valendo (cartão âmbar, faixa de erro, "Processando…"), e `&editar=0` mostra o modo consulta. Na demo, `drSubirComProgresso` e `drRpc` **não chamam a rede** (já é assim na demo; conferir).
+- [x] **Passo 2:** servir `app/` por http e conferir contra a maquete, tela 3, em 1440 px e em 390 px, com prints numa pasta temporária. Commit `Drone S5.5: demo da janela de obstáculos`.
 
 ## S5.6 Teste de tela até antes do envio
 
 **Arquivos:** criar `tests/app/fixtures/gerar_obst.py` e `tests/app/fixtures/obst/*`; modificar `tests/app/teste_drone_tela.py`
 
-- [ ] **Passo 1:** criar `gerar_obst.py`, que usa geopandas, coordenadas EPSG:4326 longe da 10974 e uma feição por camada. Ele gera `restricoes15m.*` (shp/shx/dbf/prj/cpg), `linhas_cemig.*` (sem classe no nome), `sem_shx_50m.*` (sem `.shx`), `obst.zip` (com `pasta/app_mata_50m.*`) e `outro.zip` (com `linhas_cemig.*`, para dar conflito). Rodar o script e commitar os arquivos gerados (são poucos KB).
-- [ ] **Passo 2:** no teste de tela, na fase de editor (antes de passar a conta para leitura):
+- [x] **Passo 1:** criar `gerar_obst.py`, que usa geopandas, coordenadas EPSG:4326 longe da 10974 e uma feição por camada. Ele gera `restricoes15m.*` (shp/shx/dbf/prj/cpg), `linhas_cemig.*` (sem classe no nome), `sem_shx_50m.*` (sem `.shx`), `obst.zip` (com `pasta/app_mata_50m.*`) e `outro.zip` (com `linhas_cemig.*`, para dar conflito). Rodar o script e commitar os arquivos gerados (são poucos KB).
+- [x] **Passo 2:** no teste de tela, na fase de editor (antes de passar a conta para leitura):
   1. **Proteção primeiro (decisão 12):** `window.drSubirComProgresso=()=>{throw new Error('teste: envio bloqueado')}` e um embrulho em `drRpc` que lança erro com `drone_registrar_envio`.
   2. Clicar no botão Obstáculos e conferir os 3 cartões.
   3. `set_input_files('#dro-inp', [...])` com todos os arquivos da pasta, e conferir:
@@ -219,20 +219,20 @@ test('cartões das classes: sempre três, âmbar com mais de 24 meses', () => {
   6. `await drCarregarFazenda()` com a janela aberta: a lista e as escolhas continuam iguais (Foco 1).
   7. `droPreparar().nomes` é igual à lista esperada (`15m_restricoes15m.shp`, …, `25m_linhas_cemig.prj`, `50m_app_mata_50m.shp`, …).
   8. Cancelar e conferir que a janela some. **Não clicar em Enviar.**
-- [ ] **Passo 3:** na fase de leitura, conferir que o botão Obstáculos abre a janela sem `#dro-solta`, sem `#dro-inp` e sem botões de classe, e fechar com Esc.
-- [ ] **Passo 4:** rodar `python tests/app/teste_drone_tela.py` com `HUB_CONTA_TESTE` e a 10974 livre. Da worktree, copiar `hub-geotech-supabase.env` e apagar a cópia depois. Esperado: todos ✓. Commit `Drone S5.6: teste de tela da janela de obstáculos`.
+- [x] **Passo 3:** na fase de leitura, conferir que o botão Obstáculos abre a janela sem `#dro-solta`, sem `#dro-inp` e sem botões de classe, e fechar com Esc.
+- [x] **Passo 4:** rodar `python tests/app/teste_drone_tela.py` com `HUB_CONTA_TESTE` e a 10974 livre. Da worktree, copiar `hub-geotech-supabase.env` e apagar a cópia depois. Esperado: todos ✓. Commit `Drone S5.6: teste de tela da janela de obstáculos`.
 
 ## S5.7 Verificação e revisão
 
-- [ ] **Passo 1:** `node --test tests/app/*.test.js`, `pytest tests/drone/test_insumos.py -q`, o teste de tela e a carga sem login (skill `verification-before-completion`).
-- [ ] **Passo 2:** revisão do diff com `requesting-code-review`, feita pelo Sonnet. Pontos a olhar:
+- [x] **Passo 1:** `node --test tests/app/*.test.js`, `pytest tests/drone/test_insumos.py -q`, o teste de tela e a carga sem login (skill `verification-before-completion`).
+- [x] **Passo 2:** revisão do diff com `requesting-code-review`, feita pelo Sonnet. Pontos a olhar:
   - Foco 3 inteiro: acento, espaço, `.SHP`, zip com pastas, nome repetido em dois zips, falta do `.prj`;
   - zip corrompido ou grande;
   - envio preso à fazenda de origem;
   - Foco 4 no modo consulta;
   - foco e Esc da janela;
   - o polling não fecha a janela nem apaga as escolhas.
-- [ ] **Passo 3:** corrigir os achados que valerem a pena e registrar no fim deste arquivo.
+- [x] **Passo 3:** corrigir os achados que valerem a pena e registrar no fim deste arquivo.
 
 ## S5.8 Fechamento
 
@@ -244,4 +244,9 @@ test('cartões das classes: sempre três, âmbar com mais de 24 meses', () => {
 
 ## Registro da execução
 
-(preencher por camada: quem fez, commits, testes, achados da revisão)
+- S5.1: camada 1 (grátis) falhou (cota do OpenRouter esgotada, Gemini sobrecarregado) → camada 2, Haiku, aprovada (ac3c9cf). Desvio aceito: grupos trazem `nomes` (nome original por extensão).
+- S5.2: camada 3 (uma linha), 9d1e31f. pytest 16 passando, sem mudar o agente.
+- S5.3–S5.5: camada 2, Haiku, aprovada (b455a63, 4945530, adf0e14). Prints da demo conferidos contra a maquete (1440 e 390 px).
+- S5.6: shapes de exemplo por mim (43992d8); teste de tela pelo Haiku (976d614); ajuste do teste antigo da S4 ("Obstáculos não é botão" → é botão para todos, decisão 8) por mim.
+- S5.7: revisão Sonnet, 8 achados. Corrigidos pelo Haiku (49d4bb5): (1) envio em andamento + troca de fazenda fechava/travava a janela da outra (sessão da janela); (2) soltar fora da faixa abria o arquivo no navegador; (3) a janela não acompanhava o polling; (4) leitura de zip vazava estado e aceitava Enviar no meio; (5) `DR.obstLigarAoFim` ficava armado depois de erro; (7) avisos de zip sem shape e zip dentro de zip. Anotados para a S6: (6) envio travado em fila/processando bloqueia novos envios para sempre (ver se o agente tem prazo); (8) Tab sai da janela (sem armadilha de foco); foco se perde quando o corpo da janela muda de estado.
+- Verificação final: `node --test tests/app/*.test.js` 85/0; `pytest tests/drone/test_insumos.py` 16/0; `teste_drone_tela.py` logado: todos ✓, sem erro de JavaScript (inclui abrir .zip com JSZip do cdnjs). Nenhum teste enviou obstáculos (drSubirComProgresso e drone_registrar_envio bloqueados no teste).
