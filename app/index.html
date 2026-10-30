@@ -1832,7 +1832,7 @@ function irConfig(aba){
 // As regras (níveis, resumo, filtro, mapas) estão em app/usuarios.js. Aqui fica só a tela.
 let ACESSOS=[], selEmail=null;
 let USR={filtro:'todos',busca:'',aba:'conta',rasc:null,base:null,mapas:undefined};
-const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone',corretivos:'Mapas de aplicação'};
+const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone',corretivos:'Mapas de aplicação',apresentacao:'Apresentação semanal'};
 const USR_ABAS=[['conta','Conta'],['modulos','Módulos do Hub'],['ferramentas','Ferramentas']];
 const USR_CHIP_NIVEL={nada:'rc-dash',ver:'rc-a',editar:'rc-admin'};
 let GRUPOS_GM=null, MAPAS_GM=null;
@@ -2009,15 +2009,21 @@ function usrHtmlFerramentas(r){
     </div>`:''}
   </div>
   <div class="cfg-card">
-    <div class="cfg-card-t"><span class="ico">route</span>Mapas de aplicação</div>
+    <div class="cfg-card-t"><span class="ico">apps</span>Ferramentas do Hub</div>
     <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Corretivos e Aplicação aérea</div>
       <div class="cfg-row-sub">Gera o PDF do mapa.</div></div>
       ${usrSwitch('u-corr',r.niveis.corretivos==='editor','usrCorretivos(this)')}</div>
+    <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Apresentação semanal</div>
+      <div class="cfg-row-sub">Edita metas e textos e baixa o PPTX da semana.</div></div>
+      ${usrSwitch('u-apres',r.niveis.apresentacao==='editor','usrApresentacao(this)')}</div>
   </div>
   <div class="usr-nota"><span class="ico">info</span>Kronos e Portal de downloads entram aqui quando passarem a usar o login do Hub.</div>`;
 }
 function usrCorretivos(el){
   if(el.checked)USR.rasc.niveis.corretivos='editor';else delete USR.rasc.niveis.corretivos;
+}
+function usrApresentacao(el){
+  if(el.checked)USR.rasc.niveis.apresentacao='editor';else delete USR.rasc.niveis.apresentacao;
 }
 function usrGrupo(el){
   const id=Number(el.value), atuais=USR.rasc.geomap_grupos;

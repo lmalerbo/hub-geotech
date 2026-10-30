@@ -11,7 +11,7 @@ import psycopg
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
-MIGRACOES = ['20261005090000_admin_acessos_ferramentas.sql', '20261012090000_login_unico.sql', '20261023090000_niveis_por_modulo.sql']
+MIGRACOES = ['20261005090000_admin_acessos_ferramentas.sql', '20261012090000_login_unico.sql', '20261023090000_niveis_por_modulo.sql', '20261029090000_apresentacao_acesso.sql']
 
 
 def _porta_livre():

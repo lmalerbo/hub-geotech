@@ -55,6 +55,10 @@ test('situação, sem supor gênero', () => {
   assert.deepStrictEqual([...ctx.usrSituacao({ conta_criada: true, ultimo_login: '2026-10-20T10:00:00Z' })], ['ok', 'Acesso ativo']);
 });
 
+test('resumo mostra a ferramenta Apresentação semanal', () => {
+  assert.ok(ctx.usrResumo({ niveis: { apresentacao: 'editor' } }).includes('Apresentação semanal'));
+});
+
 test('filtro e busca', () => {
   const lista = [
     { nome: 'Ana Souza', email: 'ana@x.com', niveis: { plantio: 'editor' } },

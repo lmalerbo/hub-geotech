@@ -45,6 +45,7 @@ function usrResumo(a) {
     partes.push('GeoMap' + (a.geomap_admin ? ' (admin)' : '') + (det ? ': ' + det : ''));
   }
   if (niveis.corretivos) partes.push('Mapas de aplicação');
+  if (niveis.apresentacao) partes.push('Apresentação semanal');
   return partes.join(' · ') || 'Sem acesso';
 }
 function usrSituacao(a) {
