@@ -1,0 +1,11 @@
+{
+ "resumo": {"realizadoHa": 1000, "aVoarHa": 400, "realizadoTalhoes": 12, "aVoarTalhoes": 5},
+ "ultimos15DiasUteis": {"de": "2026-10-08", "ate": "2026-10-28", "diasComVoo": 11, "talhoes": 9, "ha": 180},
+ "porTipo": [
+  {"tipo": "Ervas Daninhas", "realizadoHa": 600, "aVoarHa": 300},
+  {"tipo": "Falhas Plantio Forn.", "realizadoHa": 200, "aVoarHa": 100},
+  {"tipo": "Expansões", "realizadoHa": 200, "aVoarHa": 0}
+ ],
+ "atualizadoEm": "2026-10-28",
+ "desatualizado": false
+}

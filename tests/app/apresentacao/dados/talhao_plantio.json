@@ -1,0 +1,9 @@
+[
+ {"layer": 1, "mes_plantio": "2026-05-10", "seq_plantio": 1, "ambiente": "A", "mapeamento": "Concluido", "projeto": "Ok", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": "2026-05-12T12:00:00Z"},
+ {"layer": 2, "mes_plantio": "2026-05-20", "seq_plantio": 2, "ambiente": "A", "mapeamento": "Concluido", "projeto": "Ok", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": "2026-05-22T12:00:00Z"},
+ {"layer": 3, "mes_plantio": "2026-08-20", "seq_plantio": 3, "ambiente": "B", "mapeamento": "Em andamento", "projeto": "Andamento", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": null},
+ {"layer": 4, "mes_plantio": "2026-07-01", "seq_plantio": 4, "ambiente": "B", "mapeamento": "Pendente", "projeto": "Pendente", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": null},
+ {"layer": 5, "mes_plantio": "2026-07-15", "seq_plantio": 5, "ambiente": "B", "mapeamento": "Aguardando", "projeto": "Aguard. Map.", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": null},
+ {"layer": 6, "mes_plantio": null, "seq_plantio": null, "ambiente": null, "mapeamento": "Aguardando mapa", "projeto": "Ag. Mapa", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": null},
+ {"layer": 7, "mes_plantio": "2026-08-05", "seq_plantio": 6, "ambiente": "A", "mapeamento": "Concluido", "projeto": "Ok", "updated_at": "2026-10-28T12:00:00Z", "plantio_realizado_em": "2026-08-07T12:00:00Z"}
+]
