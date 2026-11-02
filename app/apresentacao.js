@@ -528,7 +528,8 @@ function apRenderCampos() {
   const dest = document.getElementById('apt-f-destaque');
   const notas = document.getElementById('apt-f-notas');
   subGrupo.classList.toggle('off', k === 'divisoria');
-  if (k !== 'divisoria') sub.placeholder = AP_ST.A ? apSubtituloPadrao(k, AP_ST.A, AP_ST.metas, apCtx(i)) : '';
+  // Sem dados de voos (busca falhou ou ainda carrega), o subtítulo padrão de voos ainda não existe.
+  if (k !== 'divisoria') sub.placeholder = AP_ST.A && (k !== 'voos' || AP_ST.A.voos) ? apSubtituloPadrao(k, AP_ST.A, AP_ST.metas, apCtx(i)) : '';
   // Não sobrescreve o campo que está sendo digitado.
   if (document.activeElement !== sub) sub.value = t.subtitulo || '';
   if (document.activeElement !== dest) dest.value = t.destaque || '';
