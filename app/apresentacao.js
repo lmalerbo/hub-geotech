@@ -415,7 +415,7 @@ function apRenderFontes() {
         det = `${h.colheita_talhoes.length.toLocaleString('pt-BR')} talhões de colheita · ${h.talhao_preparo.length.toLocaleString('pt-BR')} talhões de preparo · ${h.talhao_plantio.length.toLocaleString('pt-BR')} talhões de plantio`;
       } else if (f === 'drone' && AP_ST.D.drone) {
         const sem = AP_ST.A ? AP_ST.A.drone.sem_dado.length : null;
-        det = `${AP_ST.D.drone.length.toLocaleString('pt-BR')} projetos vigentes` + (sem === null ? '' : ` · ${sem} sem área (aparecem na prévia)`);
+        det = `${AP_ST.D.drone.length.toLocaleString('pt-BR')} projetos vigentes` + (!sem ? '' : ` · ${sem} sem área (aparecem na prévia)`);
       } else {
         det = 'ok';
       }
