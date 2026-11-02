@@ -86,8 +86,8 @@ function DM_info(){
     sols.push({id:2,tipo:'catacao',status:'solicitado',observacao:null,solicitante_id:'u2',data_desejada:null,criado_em:ago(5*3600)});
     envios.push({id:2,tipo:'infestacao',status:'ok',erro:null,enviado_em:ago(1800),classe_m:null,arquivos:DM_ARQS_INF});
   }
-  if(ob==='erro'||ob==='proc')envios.unshift({id:9,tipo:'obstaculos',status:ob==='erro'?'erro':'processando',
-    erro:ob==='erro'?'Classe 15 m: nenhuma feição nos arquivos.':null,enviado_em:ago(60),classe_m:15,arquivos:['10372/1/restricoes15m.shp']});
+  if(ob==='erro'||ob==='proc'||ob==='parado')envios.unshift({id:9,tipo:'obstaculos',status:ob==='erro'?'erro':ob==='parado'?'fila':'processando',
+    erro:ob==='erro'?'Classe 15 m: nenhuma feição nos arquivos.':null,enviado_em:ago(ob==='parado'?3*3600:60),classe_m:15,arquivos:['10372/1/restricoes15m.shp']});
   const base={id:11,solicitacao_id:1,escopo:DM_ESCOPO,alertas:[],erro:null,previa_pdf:null,publicar_pedido_em:null,
     publicacao_erro:null,resumo:null,iniciado_em:null,pedido_em:ago(72)};
   if(e==='gerando')ger.push({...base,status:'processando',pedido_em:ago(72),iniciado_em:ago(70)});

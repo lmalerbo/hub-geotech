@@ -71,7 +71,7 @@ async function drMostrarPdf(ger){
     await drDesenharPagina(pdf,1,cv,Math.max(260,alvo.clientWidth));
     if(!alvo.isConnected)return;
     alvo.innerHTML='';alvo.appendChild(cv);
-    alvo.insertAdjacentHTML('beforeend',`<span class="drp-lupa"><span class="ico">open_in_full</span>Abrir prévia</span>`);
+    alvo.insertAdjacentHTML('beforeend',`<span class="drp-lupa"><span aria-hidden="true" class="ico">open_in_full</span>Abrir prévia</span>`);
     alvo.classList.add('mo-surge');
   }catch(e){
     if(alvo.isConnected)caixa.innerHTML=`<div class="dr-err">${esc(e.message)}</div>`;
@@ -88,24 +88,24 @@ function drPrevAbrir(){
   const f=document.createElement('div');f.className='drp-fundo';f.id='drp-fundo';
   f.innerHTML=`<div class="drp-jan" role="dialog" aria-modal="true" aria-labelledby="drp-t">
     <div class="drp-cab"><h3 id="drp-t">Prévia · ${esc(DR.info.faz?.nome||DR.cod)}<small>${esc(nome)}</small></h3>
-      <div class="drp-zoom"><button onclick="drPrevZoom(-1)" title="Diminuir" aria-label="Diminuir"><span class="ico">remove</span></button>
+      <div class="drp-zoom"><button onclick="drPrevZoom(-1)" title="Diminuir" aria-label="Diminuir"><span aria-hidden="true" class="ico">remove</span></button>
         <output id="drp-pct">—</output>
-        <button onclick="drPrevZoom(1)" title="Aumentar" aria-label="Aumentar"><span class="ico">add</span></button>
+        <button onclick="drPrevZoom(1)" title="Aumentar" aria-label="Aumentar"><span aria-hidden="true" class="ico">add</span></button>
         <button id="drp-ajustar" class="on" onclick="drPrevZoom(0)">Ajustar à largura</button></div>
-      <button class="dr-x" onclick="drPrevFechar()" title="Fechar (Esc)" aria-label="Fechar"><span class="ico">close</span></button></div>
+      <button class="dr-x" onclick="drPrevFechar()" title="Fechar (Esc)" aria-label="Fechar"><span aria-hidden="true" class="ico">close</span></button></div>
     <div class="drp-pags" id="drp-pags"><div class="drp-carga" id="drp-carga"></div></div>
     <div class="drp-lado">
-      ${al?`<div class="dr-box"><h3><span class="ico" style="color:#d4890a;font-size:15px;vertical-align:-3px">warning</span> Alertas</h3><ul style="margin:0;padding-left:16px;color:#d4890a">${al}</ul></div>`:''}
+      ${al?`<div class="dr-box"><h3><span aria-hidden="true" class="ico" style="color:#d4890a;font-size:15px;vertical-align:-3px">warning</span> Alertas</h3><ul style="margin:0;padding-left:16px;color:#d4890a">${al}</ul></div>`:''}
       ${ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:''}
       <div style="font-size:12px;font-weight:600">Motivo</div>
       <input class="dr-mot" id="dr-mot" placeholder="ex.: completar talhões 20–33; talhão 129 reformado"
         value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${ger.id}]=this.value">
-      <button class="dr-btn" onclick="drPrevAcao('publicar',this)"><span class="ico">publish</span> Publicar</button>
-      <button class="dr-btn2" onclick="drPrevAcao('descartar',this)"><span class="ico">undo</span> Descartar e ajustar</button>
+      <button class="dr-btn" onclick="drPrevAcao('publicar',this)"><span aria-hidden="true" class="ico">publish</span> Publicar</button>
+      <button class="dr-btn2" onclick="drPrevAcao('descartar',this)"><span aria-hidden="true" class="ico">undo</span> Descartar e ajustar</button>
       <div class="dr-msg" style="text-align:left">Descartar libera a seleção para montar a prévia de novo com o ajuste.</div>
       <div id="drp-err" class="dr-err"></div>
       <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
-        <button class="dr-btn2" id="drp-baixar" onclick="drPrevBaixar(this)"><span class="ico">download</span> Baixar PDF</button>
+        <button class="dr-btn2" id="drp-baixar" onclick="drPrevBaixar(this)"><span aria-hidden="true" class="ico">download</span> Baixar PDF</button>
         <button class="dr-btn2" onclick="drPrevFechar()">Fechar</button></div></div></div>`;
   f.addEventListener('mousedown',e=>{if(e.target===f)drPrevFechar();});
   document.body.appendChild(f);

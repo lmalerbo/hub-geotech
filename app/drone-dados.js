@@ -135,6 +135,12 @@ function drRotuloShape(envio){
 
 // Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
 function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||null;}
+// Envio em fila/processando há mais de 2 h: o agente provavelmente está fora. Não segura mais a janela.
+const DR_ENVIO_TRAVA_H=2;
+function drEnvioTravado(e,agora){
+  if(!e||!['fila','processando'].includes(e.status)||!e.enviado_em)return false;
+  return new Date(agora)-new Date(e.enviado_em)>DR_ENVIO_TRAVA_H*36e5;
+}
 
 // Muda quando alguma classe ganha versão nova: aí o desenho guardado (DR.obstGeo) não vale mais.
 function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao).sort().join('|');}
@@ -186,6 +192,7 @@ function drEstadoPainel({doc,sol,ger,edita}){
 function drDataCurta(iso){return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});}
 function drChipObstaculos(obst,envios,hoje,meses=24){
   const ult=drUltimoEnvio(envios,'obstaculos');
+  if(drEnvioTravado(ult,hoje))return{texto:'envio parado',tom:'velho'};
   if(ult&&['fila','processando'].includes(ult.status))return{texto:'processando envio…',tom:'proc'};
   if(ult&&ult.status==='erro')return{texto:'erro no último envio',tom:'erro'};
   const o=obst||[];if(!o.length)return{texto:'sem cadastro',tom:'velho'};

@@ -425,3 +425,18 @@ test('cartões das classes: sempre três, âmbar com mais de 24 meses', () => {
   assert.strictEqual(c[2].velho, true);
   assert.match(c[2].texto, /mais de 24 meses/);
 });
+
+test('envio de obstáculos parado há mais de 2 h conta como travado e libera novo envio', () => {
+  const agora = new Date('2026-11-02T12:00:00Z');
+  const env = (status, enviado_em) => ({ tipo: 'obstaculos', status, enviado_em });
+  assert.strictEqual(ctx.drEnvioTravado(env('fila', '2026-11-02T09:30:00Z'), agora), true);
+  assert.strictEqual(ctx.drEnvioTravado(env('processando', '2026-11-02T09:30:00Z'), agora), true);
+  assert.strictEqual(ctx.drEnvioTravado(env('fila', '2026-11-02T10:30:00Z'), agora), false);
+  assert.strictEqual(ctx.drEnvioTravado(env('ok', '2026-11-01T09:30:00Z'), agora), false);
+  assert.strictEqual(ctx.drEnvioTravado(env('fila', undefined), agora), false);   // sem data: não dá para dizer
+  assert.strictEqual(ctx.drEnvioTravado(null, agora), false);
+  const obst = [{ classe_m: 15, enviado_em: '2026-09-30T12:00:00' }];
+  assert.deepStrictEqual({ ...ctx.drChipObstaculos(obst, [env('fila', '2026-11-02T09:30:00Z')], agora) },
+    { texto: 'envio parado', tom: 'velho' });
+  assert.strictEqual(ctx.drChipObstaculos(obst, [env('fila', '2026-11-02T11:30:00Z')], agora).tom, 'proc');
+});

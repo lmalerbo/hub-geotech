@@ -96,7 +96,7 @@ function droPreparar(){
 
 function droProcessando(){
   const ult=drUltimoEnvio(DR.info?.envios,'obstaculos');
-  return !!ult&&['fila','processando'].includes(ult.status);
+  return !!ult&&['fila','processando'].includes(ult.status)&&!drEnvioTravado(ult,new Date());
 }
 
 function droEscolher(){document.getElementById('dro-inp')?.click();}
@@ -117,12 +117,14 @@ function droCorpoHtml(){
       <div class="dro-cc"><i style="background:${DR_OBS_COR[c.classe]}"></i>${c.classe} m</div>
       <div class="dro-cd">${esc(c.desc)}</div><div class="dro-cv">${esc(c.texto)}</div></div>`).join('');
   const erroEnvio=ult&&ult.status==='erro'
-    ?`<div class="dro-erro" role="alert"><span class="ico">error</span><div><b>O último envio deu erro.</b><br>${esc(ult.erro||'Sem detalhes.')}</div></div>`:'';
+    ?`<div class="dro-erro" role="alert"><span aria-hidden="true" class="ico">error</span><div><b>O último envio deu erro.</b><br>${esc(ult.erro||'Sem detalhes.')}</div></div>`
+    :drEnvioTravado(ult,new Date())
+    ?`<div class="dro-erro dro-aviso" role="status"><span aria-hidden="true" class="ico">schedule</span><div><b>O último envio está parado há mais de ${DR_ENVIO_TRAVA_H} h.</b><br>O agente pode estar desligado. Você pode enviar de novo; se o antigo andar depois, vale o mais novo.</div></div>`:'';
   let acao='';
   if(editar){
-    if(DRO.enviando||proc)acao=`<div class="dro-proc"><span class="ico dr-gira">progress_activity</span>${DRO.enviando?'Enviando os arquivos…':'Processando o envio anterior…'}</div>`;
+    if(DRO.enviando||proc)acao=`<div class="dro-proc"><span aria-hidden="true" class="ico dr-gira">progress_activity</span>${DRO.enviando?'Enviando os arquivos…':'Processando o envio anterior…'}</div>`;
     else acao=`<div class="dro-solta" id="dro-solta">
-        <span class="ico">upload_file</span>
+        <span aria-hidden="true" class="ico">upload_file</span>
         <div class="dro-solta-t"><b>Arraste aqui os shapes de 15, 25 e 50 m, todos de uma vez</b>
           <small>.shp + .shx + .dbf + .prj, ou .zip (aberto aqui mesmo). A classe vem do nome do arquivo; troque se precisar.</small></div>
         <button class="dro-escolher" onclick="droEscolher()">Escolher arquivos</button>
@@ -139,10 +141,10 @@ function droAbrir(){
   DRO.corpo=droCorpoHtml();
   const f=document.createElement('div');f.className='dro-fundo';f.id='dro-fundo';
   f.innerHTML=`<section class="dro-jan" id="dro-jan" role="dialog" aria-modal="true" aria-labelledby="dro-t" tabindex="-1">
-    <header class="dro-cab"><span class="ico dro-ico">warning</span>
+    <header class="dro-cab"><span aria-hidden="true" class="ico dro-ico">warning</span>
       <div class="dro-tit"><h2 id="dro-t">Obstáculos da fazenda</h2>
         <p>${esc(DR.cod)} · ${esc(DR.info?.faz?.nome||'')} — valem para todas as revisões (Normal e Catação)</p></div>
-      <button class="dr-x dro-x" data-acao="fechar" aria-label="Fechar" title="Fechar (Esc)"><span class="ico">close</span></button></header>
+      <button class="dr-x dro-x" data-acao="fechar" aria-label="Fechar" title="Fechar (Esc)"><span aria-hidden="true" class="ico">close</span></button></header>
     <div class="dro-corpo" id="dro-corpo">${DRO.corpo}</div>
     ${editar?'<footer class="dro-rodape"><div id="dro-prog"></div><div id="dro-botoes" class="dro-botoes"></div></footer>':''}
   </section>`;
@@ -192,12 +194,12 @@ function droLinha(g){
   const obs=g.conflito?`mesmo nome em ${esc(g.origens.map(o=>o||'arquivo solto').join(' e '))}: renomeie um deles`
     :g.falta.length?`falta ${esc(g.falta.map(e=>'.'+e).join(', '))}`:'';
   return `<div class="dro-linha" data-chave="${esc(g.chave)}">
-      <span class="ico dro-li-ico">${zips.length?'folder_zip':'description'}</span>
+      <span aria-hidden="true" class="ico dro-li-ico">${zips.length?'folder_zip':'description'}</span>
       <div class="dro-li-nome"><div class="dro-li-t">${nome}</div>
         <div class="dro-pilulas">${pilulas}${obs?`<span class="dro-li-obs">${obs}</span>`:''}</div></div>
       <div class="dro-classes">${[15,25,50].map(c=>`<button class="dro-cl${escolha===c?' on':''}" data-classe="${c}" aria-pressed="${escolha===c}">${c} m</button>`).join('')}</div>
       <span class="dro-dica${d.tom==='aviso'?' aviso':''}">${esc(d.texto)}</span>
-      <button class="dro-tirar" data-tirar aria-label="Tirar ${esc(g.base)}" title="Tirar esta camada"><span class="ico">close</span></button>
+      <button class="dro-tirar" data-tirar aria-label="Tirar ${esc(g.base)}" title="Tirar esta camada"><span aria-hidden="true" class="ico">close</span></button>
     </div>`;
 }
 
@@ -205,7 +207,7 @@ function droLista(){
   const el=document.getElementById('dro-lista');if(!el)return;
   if(!podeEditar('drone')||(droProcessando()&&!DRO.enviando)){el.innerHTML='';return;}   // quem só lê, ou com envio anterior na fila, não vê as camadas
   const n=DRO.grupos.length,ig=DRO.ign.size;
-  el.innerHTML=(DRO.erro?`<div class="dro-erro" role="alert"><span class="ico">error</span><span>${esc(DRO.erro)}</span></div>`:'')
+  el.innerHTML=(DRO.erro?`<div class="dro-erro" role="alert"><span aria-hidden="true" class="ico">error</span><span>${esc(DRO.erro)}</span></div>`:'')
     +(n?`<h3 class="dro-h3">Camadas encontradas <span>· ${n}</span></h3><div class="dro-lista">${DRO.grupos.map(droLinha).join('')}</div>`:'')
     +(ig?`<p class="dro-ign">${droPlural(ig,'arquivo ignorado','arquivos ignorados')}</p>`:'');
 }
@@ -218,7 +220,7 @@ function droRodape(){
   }
   const p=drPlanoEnvio(DRO.grupos,DRO.escolhas),n=DRO.grupos.length,lendo=DRO.lendo>0;
   const texto=lendo?'Abrindo os arquivos…':p.pronto?p.resumo:(n?p.motivo:'Nenhuma camada ainda: arraste ou escolha os arquivos.');
-  const rot=DRO.enviando?'Enviando…':lendo?'Lendo arquivos…':p.pronto?`<span class="ico">upload</span>Enviar ${n} camada${n>1?'s':''}`
+  const rot=DRO.enviando?'Enviando…':lendo?'Lendo arquivos…':p.pronto?`<span aria-hidden="true" class="ico">upload</span>Enviar ${n} camada${n>1?'s':''}`
     :!n?'Escolha arquivos':p.motivo.startsWith('Escolha a classe')?'Escolha a classe de todas':'Corrija para enviar';
   el.innerHTML=`<span class="dro-resumo">${esc(texto)}</span>
     <button class="dro-cancelar" data-acao="fechar"${DRO.enviando?' disabled':''}>Cancelar</button>
@@ -228,9 +230,22 @@ function droRodape(){
 // A janela aberta acompanha o polling: refaz o corpo só se mudou; a lista volta a partir do DRO (as escolhas ficam).
 function droAtualizar(){
   const c=document.getElementById('dro-corpo');if(!c)return;
-  const h=droCorpoHtml();
-  if(h!==DRO.corpo){DRO.corpo=h;c.innerHTML=h;droLista();}
-  droRodape();
+  droManterFoco(()=>{
+    const h=droCorpoHtml();
+    if(h!==DRO.corpo){DRO.corpo=h;c.innerHTML=h;droLista();}
+    droRodape();
+  });
+}
+
+// Redesenhar troca os botões: o foco volta ao equivalente (mesmo id ou data-acao) ou à própria janela.
+function droManterFoco(fn){
+  const jan=document.getElementById('dro-jan'),a=document.activeElement;
+  const dentro=a&&jan&&jan.contains(a)&&a!==jan;
+  const sel=!dentro?null:a.id?'#'+a.id:a.dataset.acao?`.${a.classList[0]}[data-acao="${a.dataset.acao}"]`:null;   // × e Cancelar fecham os dois: a classe separa
+  fn();
+  if(!jan||!jan.isConnected||jan.contains(document.activeElement))return;
+  const volta=sel&&jan.querySelector(sel);
+  (volta&&!volta.disabled?volta:jan).focus();
 }
 
 // Sobe cada arquivo como <classe>m_<nome> numa pasta só, registra o envio uma vez e fecha a janela.

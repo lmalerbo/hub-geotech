@@ -62,7 +62,7 @@ function drRedesenhar(){
 function drTrocarDoc(doc){if(doc===DR.doc)return;DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
 function drDesenhar(partes){
   const tem=p=>partes.includes(p);
-  if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drMapaCriar();drPainelLateral();drEtapasAtualizar();}
+  if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drAjustarAltura();drMapaCriar();drPainelLateral();drEtapasAtualizar();}
   else{
     if(tem('cab')){drMenuFechar();document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();}
     if(tem('etapas'))drEtapasAtualizar();
@@ -148,16 +148,16 @@ function drCabecalhoHtml(){
   const area=tal.filter(f=>f.properties.status!=='fora_da_base').reduce((s,f)=>s+(f.properties.area_ha||0),0);
   const pct=g.cobertura_pct,ch=drChipObstaculos(i.obst,i.envios,new Date()),proc=ch.tom==='proc';
   const aba=(doc,tit,x,extra)=>`<button class="dr-aba${DR.doc===doc?' on':''}" aria-pressed="${DR.doc===doc}" onclick="drTrocarDoc('${doc}')">${tit} <span>${x?'Rev'+x.revisao+(extra?' · '+extra:''):'sem projeto'}</span></button>`;
-  const ico=`<span class="ico${proc?' dr-gira':''}">${proc?'progress_activity':'warning'}</span>`;
+  const ico=`<span aria-hidden="true" class="ico${proc?' dr-gira':''}">${proc?'progress_activity':'warning'}</span>`;
   const chip=`<span class="dr-obst-chip tom-${ch.tom}">${esc(ch.texto)}</span>`;
   const obst=`<button class="dr-obst" onclick="droAbrir()">${ico}<b>Obstáculos</b>${chip}</button>`;
   return`<div class="dr-ph" id="dr-ph">
-      <button class="dr-ini" onclick="driVoltar()"><span class="ico">arrow_back</span>Início</button>
+      <button class="dr-ini" onclick="driVoltar()"><span aria-hidden="true" class="ico">arrow_back</span>Início</button>
       <span class="dr-sep" aria-hidden="true"></span>
       <span class="dr-cod">${DR.cod}</span>
       <div class="dr-ident"><div class="nm">${esc(i.faz.nome)}</div><div class="sub">${tal.length} talhões · ${fmtNum(area)} ha</div></div>
       <nav aria-label="Documento" class="dr-abas">${aba('normal','Normal',g.normal,pct!=null?Math.floor(pct)+'%':'')}${aba('catacao','Catação',g.catacao,'')}</nav>
-      <div class="dr-ph-dir">${obst}<button id="dr-mais" class="dr-mais" aria-label="Mais ações" aria-haspopup="menu" aria-expanded="false" onclick="drMenuAbrir()"><span class="ico">more_horiz</span></button></div>
+      <div class="dr-ph-dir">${obst}<button id="dr-mais" class="dr-mais" aria-label="Mais ações" aria-haspopup="menu" aria-expanded="false" onclick="drMenuAbrir()"><span aria-hidden="true" class="ico">more_horiz</span></button></div>
     </div>`;
 }
 
@@ -279,7 +279,7 @@ function drEtapasHtml(){
   const passos=DR_ETAPAS.map((t,k)=>{
     const nome=k===1&&est==='gerando'?'Gerando prévia':k===3&&est==='publicando'?'Publicando':t;
     const ocupado=k===ativa&&(est==='gerando'||est==='publicando');
-    const marca=k<ativa?'<span class="ico">check</span>':ocupado?'<span class="ico dr-gira">progress_activity</span>':k+1;
+    const marca=k<ativa?'<span aria-hidden="true" class="ico">check</span>':ocupado?'<span aria-hidden="true" class="ico dr-gira">progress_activity</span>':k+1;
     const cls=k<ativa?'feito':k===ativa?'agora':'';
     return(k?`<i class="dr-trilho-e${k<=ativa?' on':''}" aria-hidden="true"></i>`:'')
       +`<span class="dr-etapa ${cls}" data-etapa="${k}"${k===ativa?' aria-current="step"':''}><b>${marca}</b>${nome}</span>`;
@@ -303,8 +303,8 @@ function drMenuAbrir(){
   const {sol,ger}=drAtual(),r=btn.getBoundingClientRect(),m=document.createElement('div');
   m.id='dr-menu';m.className='dr-menu';m.setAttribute('role','menu');
   m.style.top=r.bottom+6+'px';m.style.right=innerWidth-r.right+'px';
-  m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span class="ico">history</span>Revisões</button>`
-    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${sol.id});drMenuFechar()"><span class="ico">cancel</span>Cancelar solicitação</button>`:'');
+  m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span aria-hidden="true" class="ico">history</span>Revisões</button>`
+    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${sol.id});drMenuFechar()"><span aria-hidden="true" class="ico">cancel</span>Cancelar solicitação</button>`:'');
   document.body.appendChild(m);
   btn.setAttribute('aria-expanded','true');
   m.querySelector('button').focus();
@@ -328,7 +328,7 @@ function drRevisoesAbrir(){
   const fundo=document.createElement('div');fundo.id='dr-rev-fundo';fundo.className='dri-fundo';
   const linhas=rev.map(r=>`<div class="dr-rev-l"><span>Rev${r.numero} · ${esc(new Date(r.criado_em).toLocaleDateString('pt-BR'))} · ${esc(r.motivo||'sem motivo')}</span></div>`).join('');
   fundo.innerHTML=`<aside class="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby="dr-rev-t">
-    <header><h2 id="dr-rev-t">Revisões · ${nome}</h2><button class="dr-x" id="dr-rev-x" aria-label="Fechar"><span class="ico">close</span></button></header>
+    <header><h2 id="dr-rev-t">Revisões · ${nome}</h2><button class="dr-x" id="dr-rev-x" aria-label="Fechar"><span aria-hidden="true" class="ico">close</span></button></header>
     <div class="dri-gav-l">${linhas||'<p class="dri-vazio">Nenhuma revisão publicada ainda.</p>'}</div>
   </aside>`;
   document.body.appendChild(fundo);
@@ -352,15 +352,15 @@ function drFerramenta(qual){
   drAtualizarSelecaoMapa();drPainelLateral();
 }
 function drFerramentasHtml(){
-  return`<button aria-pressed="${!DR.modoRemover}" onclick="drFerramenta('incluir')"><span class="ico">add_circle</span>Incluir</button>
-    <button aria-pressed="${!!DR.modoRemover}" onclick="drFerramenta('remover')"><span class="ico">remove_circle</span>Remover</button>
+  return`<button aria-pressed="${!DR.modoRemover}" onclick="drFerramenta('incluir')"><span aria-hidden="true" class="ico">add_circle</span>Incluir</button>
+    <button aria-pressed="${!!DR.modoRemover}" onclick="drFerramenta('remover')"><span aria-hidden="true" class="ico">remove_circle</span>Remover</button>
     <span class="dr-ferr-sep" aria-hidden="true"></span>
-    <button onclick="drFerramenta('semprojeto')"><span class="ico">select_all</span>Sem projeto</button>
-    <button onclick="drFerramenta('limpar')"><span class="ico">deselect</span>Limpar</button>`;
+    <button onclick="drFerramenta('semprojeto')"><span aria-hidden="true" class="ico">select_all</span>Sem projeto</button>
+    <button onclick="drFerramenta('limpar')"><span aria-hidden="true" class="ico">deselect</span>Limpar</button>`;
 }
 function drDicaHtml(est){
   if(est==='montando')return DR.modoRemover?'Clique nos talhões para remover':'Clique nos talhões para incluir ou refazer';
-  if(est==='gerando')return'<span class="ico">lock</span>Mapa travado enquanto a prévia é gerada. Pode navegar e dar zoom.';
+  if(est==='gerando')return'<span aria-hidden="true" class="ico">lock</span>Mapa travado enquanto a prévia é gerada. Pode navegar e dar zoom.';
   return'';
 }
 function drLegendaHtml(est){
@@ -368,7 +368,7 @@ function drLegendaHtml(est){
   const dot=c=>`<span><i class="dr-bola" style="background:${DR_OBS_COR[c]}"></i>${c} m</span>`;
   if(DR.doc==='catacao')return sw(DR_COR.catacao,'#1f2a30','Catação vigente'+(DR.geo.catacao?` (Rev${DR.geo.catacao.revisao})`:''));
   const vig=sw(DR_COR.normal,'#1f2a30',est==='previa'?'já publicado':'aplicação vigente');
-  if(est==='previa')return `<span><i style="background:${DR_COR.normal};border:1.5px solid #2f7a3e"></i>novo nesta prévia</span>`+vig+dot(15)+dot(25)+dot(50);
+  if(est==='previa')return `<span><i style="background:none;border:2.5px solid #2f7a3e;box-sizing:border-box"></i>novo nesta prévia</span>`+vig+dot(15)+dot(25)+dot(50);
   return vig+sw(DR_COR.sem,'#1f2a30','sem projeto')+sw('#d9defc',DR_COR.sel,'na revisão')+sw('#fff',DR_COR.fora,'fora da Base');
 }
 // Barra de ferramentas, dica, Camadas e legenda dependem do estado do painel (drEstadoPainel).
@@ -388,7 +388,7 @@ function drMapaUi(){
     if(est==='previa'&&ger&&DR.obstPrevia!==ger.id){DR.obstPrevia=ger.id;if(!DR.mostrarObst)drObstaculos(true);}   // uma vez por prévia
     const rot=DR.mostrarObst&&est==='previa'?'Camadas · obstáculos ligados':'Camadas';
     const foco=cam.contains(document.activeElement)&&document.activeElement.type==='checkbox';
-    cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span class="ico">layers</span>${rot}</button>`
+    cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span aria-hidden="true" class="ico">layers</span>${rot}</button>`
       +(DR.camadasAb?`<div class="dr-cam-caixa" id="dr-cam-caixa"><label><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked);drMapaUi()"> Obstáculos</label></div>`:'');
     if(foco)cam.querySelector('#dr-cam-caixa input[type=checkbox]')?.focus();   // o redesenho troca o checkbox: devolve o foco
   }
@@ -411,7 +411,7 @@ function drPlural(n,um,varios){return`${n} ${n===1?um:varios}`;}
 function drTalhaoProps(){return new Map(DR.geo.features.filter(f=>f.properties.camada==='talhao').map(f=>[f.properties.talhao,f.properties]));}
 function drPasso(k,atual,titulo,corpo){
   const cls=k<atual?'feito':k===atual?'agora':'';
-  return`<li><span class="dr-num ${cls}">${k<atual?'<span class="ico">check</span>':k}</span><div class="dr-passo-c"><b>${titulo}</b>${corpo||''}</div></li>`;
+  return`<li><span class="dr-num ${cls}">${k<atual?'<span aria-hidden="true" class="ico">check</span>':k}</span><div class="dr-passo-c"><b>${titulo}</b>${corpo||''}</div></li>`;
 }
 function drLinhaResumo(a,b){return`<div class="dr-row"><span>${a}</span><span>${b}</span></div>`;}
 
@@ -426,7 +426,7 @@ function drPainel_montando(){
         <button type="button" aria-pressed="${f==='sistema'}" class="${f==='sistema'?'on':''}" data-foco="f${n}s" onclick="drFonteTalhao(${n},'sistema')">Sistema</button>
         <button type="button" aria-pressed="${f==='shape'}" class="${f==='shape'?'on':''}" data-foco="f${n}h" onclick="drFonteTalhao(${n},'shape')">Shape</button></span></div>`).join('');
   const solta=shape.length?`<button type="button" class="dr-solta" data-foco="solta" onclick="drEnviar('ajuste')" ondragover="event.preventDefault()" ondrop="drSoltar(event,'ajuste')">
-      <span class="ico">upload_file</span><span>Arraste o shape de ajuste ${shape.length===1?'do talhão':'dos talhões'} ${shape.join(', ')}</span>
+      <span aria-hidden="true" class="ico">upload_file</span><span>Arraste o shape de ajuste ${shape.length===1?'do talhão':'dos talhões'} ${shape.join(', ')}</span>
       <small>.shp + .shx + .dbf + .prj, ou .zip</small><small>${esc(drRotuloShape(ev))}</small>${ev&&ev.status==='erro'?`<span class="dr-err">${esc(ev.erro)}</span>`:''}</button>`:'';
   const n=inc.length+rem.length;
   return{sobre:'Nova revisão',titulo:`Normal · Rev${drRevProx('normal')}`,
@@ -435,8 +435,8 @@ function drPainel_montando(){
       ${solta}
       <div class="dr-cab-ln"><h3>Remover <span>· ${rem.length?drPlural(rem.length,'talhão','talhões'):'nenhum'}</span></h3></div>
       ${rem.length?`<div class="dr-chips">${rem.map(t=>`<span class="dr-chip r">${t}</span>`).join('')}</div>`:'<p class="dr-msg-l">Use a ferramenta Remover no mapa.</p>'}
-      <div class="dr-nota"><span class="ico">info</span><span>A prévia mostra a fazenda inteira: os talhões de antes e os novos. Você confere antes de publicar.</span></div>`,
-    rodape:`<button class="dr-btn" ${n?'':'disabled'} onclick="drGerarNormal()"><span class="ico">play_arrow</span> Gerar prévia</button>`};
+      <div class="dr-nota"><span aria-hidden="true" class="ico">info</span><span>A prévia mostra a fazenda inteira: os talhões de antes e os novos. Você confere antes de publicar.</span></div>`,
+    rodape:`<button class="dr-btn" ${n?'':'disabled'} onclick="drGerarNormal()"><span aria-hidden="true" class="ico">play_arrow</span> Gerar prévia</button>`};
 }
 
 function drPainel_catacao(){
@@ -445,12 +445,12 @@ function drPainel_catacao(){
   const atual=!sol?1:enviado?3:2,cam=drCamadasEnvio(env);
   const passo1=drPasso(1,atual,'Solicitação aberta',sol
     ?`<small>${esc(card?.solicitante?card.solicitante+' · ':'')}${drQuando(sol.criado_em)}</small>`
-    :'<button type="button" class="dr-btn2 dr-passo-bt" onclick="drAbrirCatacao()"><span class="ico">add</span> Abrir Catação desta fazenda</button>');
+    :'<button type="button" class="dr-btn2 dr-passo-bt" onclick="drAbrirCatacao()"><span aria-hidden="true" class="ico">add</span> Abrir Catação desta fazenda</button>');
   const solta=`<button type="button" class="dr-solta" data-foco="solta-inf" onclick="drEnviar('infestacao')" ondragover="event.preventDefault()" ondrop="drSoltar(event,'infestacao')">
-      <span class="ico">upload_file</span><span>Arraste as camadas de infestação</span><small>.shp + .shx + .dbf + .prj, ou .zip (várias camadas)</small></button>`;
+      <span aria-hidden="true" class="ico">upload_file</span><span>Arraste as camadas de infestação</span><small>.shp + .shx + .dbf + .prj, ou .zip (várias camadas)</small></button>`;
   let c2;
   if(enviado)c2=`<small>${drPlural(cam.length,'camada','camadas')} · ${drQuando(env.enviado_em)}</small>
-      <div class="dr-camadas-l">${cam.map(c=>`<div><span class="ico">description</span>${esc(c)}</div>`).join('')}</div>
+      <div class="dr-camadas-l">${cam.map(c=>`<div><span aria-hidden="true" class="ico">description</span>${esc(c)}</div>`).join('')}</div>
       <button type="button" class="dr-linkbtn" onclick="drEnviar('infestacao')">Trocar arquivos</button>`;
   else if(processa)c2='<small>processando…</small>';
   else if(!sol)c2='<small>Abra a Catação primeiro.</small>';
@@ -459,7 +459,7 @@ function drPainel_catacao(){
   const passo3=drPasso(3,atual,'Gerar prévia','<small>Agrupa as manchas, recorta pelos talhões e tira os obstáculos.</small>');
   return{sobre:'Nova Catação',titulo:`Catação · Rev${drRevProx('catacao')}`,
     corpo:`<p class="dr-msg-l">Um levantamento novo substitui a Catação inteira.</p><ol class="dr-passos">${passo1}${passo2}${passo3}</ol>`,
-    rodape:`<button class="dr-btn" ${drPodeGerarCatacao(sol)?'':'disabled'} onclick="drGerarCatacao()"><span class="ico">play_arrow</span> Gerar prévia</button>`};
+    rodape:`<button class="dr-btn" ${drPodeGerarCatacao(sol)?'':'disabled'} onclick="drGerarCatacao()"><span aria-hidden="true" class="ico">play_arrow</span> Gerar prévia</button>`};
 }
 
 function drPainel_gerando(){
@@ -469,8 +469,8 @@ function drPainel_gerando(){
   const cls=fila?['agora','','']:['feito','agora',''];
   const titulos=['Pedido recebido','Processando','Prévia pronta para conferir'];
   const passos=titulos.map((t,k)=>{
-    const c=cls[k],ic=c==='agora'?'<span class="ico dr-gira">progress_activity</span>'
-      :`<span class="ico">${c==='feito'?'check_circle':'radio_button_unchecked'}</span>`;
+    const c=cls[k],ic=c==='agora'?'<span aria-hidden="true" class="ico dr-gira">progress_activity</span>'
+      :`<span aria-hidden="true" class="ico">${c==='feito'?'check_circle':'radio_button_unchecked'}</span>`;
     return`<li class="${c}">${ic}${t}</li>`;}).join('');
   return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Gerando a prévia',
     corpo:`<div class="drp-gerando"><div class="drp-gerando-top"><b>${fila?'Esperando o agente pegar o pedido':'O agente está processando'}</b>
@@ -479,7 +479,7 @@ function drPainel_gerando(){
       ${drLinhaResumo('Incluir ou refazer',cat?'Catação inteira':(inc.join(', ')||'nenhum'))}
       ${drLinhaResumo('Remover',rem.join(', ')||'nenhum')}
       ${drLinhaResumo('Pedido em',drHora(ger.pedido_em))}
-      <div class="dr-nota"><span class="ico">notifications</span><span>Pode sair desta tela. Quando a prévia ficar pronta, ela aparece em <b>A analisar</b> e no sininho.</span></div>`,
+      <div class="dr-nota"><span aria-hidden="true" class="ico">notifications</span><span>Pode sair desta tela. Quando a prévia ficar pronta, ela aparece em <b>A analisar</b> e no sininho.</span></div>`,
     rodape:''};
 }
 
@@ -492,27 +492,27 @@ function drPainel_previa(){
   const indic=`<div class="drp-indic"><div><small>Área de aplicação</small><b>${ind.area==null?'—':fmtNum(ind.area)+' ha'}</b>${areaDelta}</div>`
     +(doc==='normal'?`<div><small>Cobertura da fazenda</small><b>${ind.cob==null?'—':Math.floor(ind.cob)+'%'}</b>${ind.cobAntes==null?'':`<em>antes ${Math.floor(ind.cobAntes)}%</em>`}</div>`:'')+'</div>';
   const alertas=al.length
-    ?`<h3 class="dr-sec">${drPlural(al.length,'alerta','alertas')}</h3>`+al.map(a=>`<div class="drp-alerta"><span class="ico">${/meses/i.test(a)?'history':/fora/i.test(a)?'wrong_location':'warning'}</span><span>${esc(a)}</span></div>`).join('')
+    ?`<h3 class="dr-sec">${drPlural(al.length,'alerta','alertas')}</h3>`+al.map(a=>`<div class="drp-alerta"><span aria-hidden="true" class="ico">${/meses/i.test(a)?'history':/fora/i.test(a)?'wrong_location':'warning'}</span><span>${esc(a)}</span></div>`).join('')
     :'<p class="dr-msg-l">Sem alertas.</p>';
   return{sobre:`Prévia · ${drNomeDoc(doc)} Rev${drRevProx(doc)}`,titulo:'Confira antes de publicar',
     corpo:`<button type="button" class="drp-capa" id="dr-pdf" onclick="drPrevAbrir()" title="Abrir a prévia" aria-label="Abrir a prévia"></button>`
       +indic+alertas
       +(ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:'')
       +`<label class="dr-campo">Motivo da revisão<input class="dr-mot-painel" data-foco="motivo" value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${ger.id}]=this.value"></label>`,
-    rodape:`<div class="dr-rodape-l"><button class="dr-btn2 perigo" onclick="drDescartar(${ger.id})"><span class="ico">undo</span> Descartar</button>
-      <button class="dr-btn" onclick="drPublicar(${ger.id})"><span class="ico">publish</span> Publicar no portal</button></div>`};
+    rodape:`<div class="dr-rodape-l"><button class="dr-btn2 perigo" onclick="drDescartar(${ger.id})"><span aria-hidden="true" class="ico">undo</span> Descartar</button>
+      <button class="dr-btn" onclick="drPublicar(${ger.id})"><span aria-hidden="true" class="ico">publish</span> Publicar no portal</button></div>`};
 }
 
 function drPainel_publicando(){
   return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Publicando no portal',
-    corpo:`<div class="dr-nota"><span class="ico dr-gira">progress_activity</span><span>O agente está subindo os arquivos para o portal. Pode sair desta tela.</span></div>`,rodape:''};
+    corpo:`<div class="dr-nota"><span aria-hidden="true" class="ico dr-gira">progress_activity</span><span>O agente está subindo os arquivos para o portal. Pode sair desta tela.</span></div>`,rodape:''};
 }
 
 function drPainel_erro(){
   const {ger}=drAtual();
   return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Erro na geração',
     corpo:`<div class="dr-erro-caixa">${esc(ger.erro)}</div>`,
-    rodape:`<button class="dr-btn2" onclick="drDescartar(${ger.id})"><span class="ico">restart_alt</span> Descartar e montar de novo</button>`};
+    rodape:`<button class="dr-btn2" onclick="drDescartar(${ger.id})"><span aria-hidden="true" class="ico">restart_alt</span> Descartar e montar de novo</button>`};
 }
 
 function drPainel_consulta(){
@@ -521,7 +521,7 @@ function drPainel_consulta(){
     previa:'Prévia pronta, aguardando conferência',publicando:'Publicando…',erro:'A última geração deu erro'}[est];
   return{sobre:'Consulta',titulo:x?`${drNomeDoc(doc)} · Rev${x.revisao} vigente`:`${drNomeDoc(doc)} · sem projeto`,
     corpo:`<p class="dr-sit-l">${esc(sit)}</p>${ctx?`<p class="dr-msg-l">${esc(ctx)}</p>`:''}
-      <div class="dr-nota"><span class="ico">visibility</span><span>Somente consulta. Peça acesso de editor ao administrador para alterar.</span></div>`,
+      <div class="dr-nota"><span aria-hidden="true" class="ico">visibility</span><span>Somente consulta. Peça acesso de editor ao administrador para alterar.</span></div>`,
     rodape:''};
 }
 
@@ -681,3 +681,31 @@ async function drObstaculos(ligar){
   drFadeCamada('obs-buf','fill-opacity',.15);drFadeCamada('obs-buf-l','line-opacity',1);
   drFadeCamada('obs-lin','line-opacity',1);drFadeCamada('obs-pt','circle-opacity',1);
 }
+
+// Tab preso na janela do Drone que estiver por cima (obstáculos, prévia, gavetas). O "confirmar" do Hub por cima manda.
+function drTabPreso(e){
+  if(e.key!=='Tab')return;
+  const c=document.getElementById('modal-confirma');if(c&&!c.classList.contains('off'))return;
+  const ds=document.querySelectorAll('.dro-jan[aria-modal="true"],.drp-jan[aria-modal="true"],.dri-gaveta[aria-modal="true"]');
+  const d=ds[ds.length-1];if(!d)return;
+  const foc=[...d.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+    .filter(x=>!x.disabled&&x.offsetParent!==null);
+  const at=document.activeElement;
+  if(!foc.length){e.preventDefault();d.focus();return;}
+  const a=foc[0],z=foc[foc.length-1];
+  if(!d.contains(at)){e.preventDefault();(e.shiftKey?z:a).focus();}
+  else if(e.shiftKey&&(at===a||at===d)){e.preventDefault();z.focus();}
+  else if(!e.shiftKey&&at===z){e.preventDefault();a.focus();}
+}
+if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('keydown',drTabPreso);
+
+// A área de trabalho cabe na tela: mapa e painel rolam por dentro, o botão do rodapé fica à vista.
+// --dr-topo = distância do topo da área até o topo do que rola (medida com a rolagem no início).
+function drAjustarAltura(){
+  const t=document.querySelector('.dr-trab');if(!t)return;
+  let r=t.parentElement;while(r&&r!==document.body&&!/(auto|scroll)/.test(getComputedStyle(r).overflowY))r=r.parentElement;
+  const topo=t.getBoundingClientRect().top+(r&&r!==document.body?r.scrollTop:window.scrollY);
+  t.style.setProperty('--dr-topo',Math.round(topo)+'px');
+  DR.mapa?.resize?.();
+}
+if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>{if(document.querySelector('.dr-trab'))drAjustarAltura();});

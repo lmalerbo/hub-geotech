@@ -74,9 +74,9 @@ function driCartaoHtml(sol,opts){
     const conf=o.editor?`<button class="dri-conferir" onclick="event.stopPropagation();driAbrirFazenda(${cod},'${tipo}')">Conferir</button>`:'';
     pe=`<div class="dri-pe"><span>gerada há <span data-desde="${esc(g.concluido_em)}">${esc(driDesde(g.concluido_em,agora))}</span></span>${conf}</div>`;
   }
-  const situ=sit?`<div class="dri-sit${sit.cls?' dri-'+sit.cls:''}">${sit.ico?`<span class="ico">${sit.ico}</span>`:''}<span>${esc(sit.txt)}</span></div>`:'';
+  const situ=sit?`<div class="dri-sit${sit.cls?' dri-'+sit.cls:''}">${sit.ico?`<span aria-hidden="true" class="ico">${sit.ico}</span>`:''}<span>${esc(sit.txt)}</span></div>`:'';
   const trilho=emCurso?'<div class="dri-trilho"><i></i></div>':sit&&sit.cls==='erro'?'<div class="dri-acao">Abrir para corrigir →</div>':'';
-  return`<div class="dri-card${sit&&sit.cls==='erro'?' erro':''}" role="button" tabindex="0" data-id="${esc(sol.id)}" data-cod="${cod}" data-tipo="${tipo}" onclick="driAbrirFazenda(${cod},'${tipo}')" onkeydown="if(event.key==='Enter')this.click()">
+  return`<div class="dri-card${sit&&sit.cls==='erro'?' erro':''}" role="button" tabindex="0" data-id="${esc(sol.id)}" data-cod="${cod}" data-tipo="${tipo}" onclick="driAbrirFazenda(${cod},'${tipo}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
     <div class="dri-l1"><span class="dr-cod">${cod}</span><b>${esc(sol.fazenda)}</b><span class="dri-tipo dri-${tipo==='catacao'?'C':'N'}">${tipo==='catacao'?'Catação':'Normal'}</span></div>
     ${situ}${trilho}${pe}
   </div>`;
@@ -102,7 +102,6 @@ function driElemento(html,ass){
   const t=document.createElement('div');t.innerHTML=html;
   const el=t.firstElementChild;
   el.dataset.ass=ass;
-  el.querySelectorAll('.dri-sit .ico').forEach(i=>{if(i.textContent.trim()==='flight')i.classList.add('dri-voa');});
   return el;
 }
 function driPodeNova(){return !!(podeEditar('drone')||(EU&&EU.niveis&&EU.niveis.drone==='solicitante'));}
@@ -190,21 +189,21 @@ async function droneIniciar(){
       <header class="dri-cab">
         <div><h1>Drone</h1><p>Projetos de voo por talhão</p></div>
         <div class="dri-busca-wrap">
-          <label class="dri-busca"><span class="ico">search</span>
+          <label class="dri-busca"><span aria-hidden="true" class="ico">search</span>
             <input id="dr-busca" placeholder="Buscar fazenda ou código" autocomplete="off" oninput="drBuscar(this.value)">
             <kbd>/</kbd></label>
           <div id="dr-busca-res"></div>
         </div>
-        <button class="dri-nova" id="dri-nova" hidden onclick="drNovaSolicitacao()"><span class="ico">add</span>Nova solicitação</button>
+        <button class="dri-nova" id="dri-nova" hidden onclick="drNovaSolicitacao()"><span aria-hidden="true" class="ico">add</span>Nova solicitação</button>
       </header>
       <div id="dri-erro" class="dr-err" hidden></div>
       <section class="dri-cols">
-        <div class="dri-col" data-col="solicitacoes"><header class="dri-ch"><span class="ico">inbox</span><h2>Solicitações</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
+        <div class="dri-col" data-col="solicitacoes"><header class="dri-ch"><span aria-hidden="true" class="ico">inbox</span><h2>Solicitações</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
         <div class="dri-col" data-col="desenvolvimento"><header class="dri-ch"><span class="dri-ponto" aria-hidden="true"></span><h2>Em desenvolvimento</h2><span class="dri-n">0</span></header><div class="dri-lista"></div></div>
-        <div class="dri-col" data-col="analisar"><header class="dri-ch"><span class="ico">fact_check</span><h2>A analisar</h2><span class="dri-n">0</span></header><div class="dri-lista"></div><p class="dri-pub7" id="dri-pub7"></p></div>
+        <div class="dri-col" data-col="analisar"><header class="dri-ch"><span aria-hidden="true" class="ico">fact_check</span><h2>A analisar</h2><span class="dri-n">0</span></header><div class="dri-lista"></div><p class="dri-pub7" id="dri-pub7"></p></div>
       </section>
-      <div class="dri-atencao"><span class="dri-atl">Atenção na base</span>${DRI_ATENCAO.map(([k,txt,ico])=>`<button class="dri-at" data-chave="${k}" onclick="driAtencaoAbrir('${k}')"><span class="ico">${ico}</span><b>0</b> ${txt}</button>`).join('')}
-        <a class="dri-ajuda" href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md" target="_blank" rel="noreferrer"><span class="ico">help</span> Ajuda</a></div>
+      <div class="dri-atencao"><span class="dri-atl">Atenção na base</span>${DRI_ATENCAO.map(([k,txt,ico])=>`<button class="dri-at" data-chave="${k}" onclick="driAtencaoAbrir('${k}')"><span aria-hidden="true" class="ico">${ico}</span><b>0</b> ${txt}</button>`).join('')}
+        <a class="dri-ajuda" href="https://github.com/lmalerbo/hub-geotech/blob/main/docs/drone-manual.md" target="_blank" rel="noreferrer"><span aria-hidden="true" class="ico">help</span> Ajuda</a></div>
     </div>
     <div id="dr-trab" hidden>
       <div class="dr-pnl" id="dr-faz"><div class="dr-vazio">Escolha um projeto ou busque uma fazenda</div></div></div>`;
@@ -269,7 +268,7 @@ function driAtencaoAbrir(chave){
   fundo.id='dri-fundo';fundo.className='dri-fundo';
   const linhas=itens.map((it,i)=>`<button class="dri-linha" data-i="${i}"><span class="dr-cod">${esc(it.cod_faz)}</span><span class="dri-linha-n">${esc(it.fazenda)}</span><span class="dri-linha-x">${esc(it.extra)}</span></button>`).join('');
   fundo.innerHTML=`<aside class="dri-gaveta" id="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby="dri-gav-t">
-    <header><h2 id="dri-gav-t">${esc(DRI_ATENCAO_TIT[chave])}</h2><button class="dr-x" id="dri-gav-x" aria-label="Fechar"><span class="ico">close</span></button></header>
+    <header><h2 id="dri-gav-t">${esc(DRI_ATENCAO_TIT[chave])}</h2><button class="dr-x" id="dri-gav-x" aria-label="Fechar"><span aria-hidden="true" class="ico">close</span></button></header>
     <p class="dri-gav-n">${itens.length} ${itens.length===1?'fazenda':'fazendas'}</p>
     <div class="dri-gav-l">${linhas||'<p class="dri-vazio">Nenhuma fazenda nesta lista.</p>'}</div>
   </aside>`;
