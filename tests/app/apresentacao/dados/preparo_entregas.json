@@ -1,0 +1,6 @@
+[
+ {"layer": 1, "cod_faz": 9001, "entregue_em": "2026-06-10T14:00:00Z", "origem": "hub"},
+ {"layer": 3, "cod_faz": 9001, "entregue_em": "2026-08-01T02:00:00Z", "origem": "hub"},
+ {"layer": 5, "cod_faz": 9002, "entregue_em": "2026-06-02T12:00:00Z", "origem": "lancamento_inicial"},
+ {"layer": 7, "cod_faz": 9003, "entregue_em": "2026-03-15T12:00:00Z", "origem": "ciclo_25_26"}
+]

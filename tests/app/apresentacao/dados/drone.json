@@ -1,0 +1,6 @@
+[
+ {"cod_faz": 9001, "documento": "normal", "revisao_id": 1101, "area_aplicacao_ha": 10.4, "safra": "26/27"},
+ {"cod_faz": 9003, "documento": "normal", "revisao_id": 1102, "area_aplicacao_ha": 5.3, "safra": "26/27"},
+ {"cod_faz": 9002, "documento": "catacao", "revisao_id": 1103, "area_aplicacao_ha": 6.2, "safra": "25/26"},
+ {"cod_faz": 9003, "documento": "catacao", "revisao_id": 1104, "area_aplicacao_ha": 3.6, "safra": null}
+]

@@ -13,10 +13,14 @@
 // repositórios de arquivos do Hub e dos sistemas antigos (Plantio, Preparo e
 // Expo_safra/Colheita).
 //
+// Também serve GET /voos-indicadores (Apresentação semanal): confere a
+// ferramenta do usuário e repassa à API do GeoMap com o segredo
+// INDICADORES_TOKEN, que nunca sai do Worker.
+//
 // Guarda só o token do GitHub (secret GH_TOKEN) — nenhuma chave do banco com
 // poder especial. Variáveis: SUPABASE_URL, SUPABASE_ANON_KEY (pública),
 // GH_REPO (ex: lmalerbo/hub-geotech-arquivos), ORIGENS (sites que podem
-// chamar, separados por vírgula).
+// chamar, separados por vírgula), INDICADORES_TOKEN (secret).
 
 export default {
   async fetch(req, env) {
@@ -24,6 +28,11 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/ver') return ver(url, env);
+    if (req.method === 'GET' && url.pathname === '/voos-indicadores') {
+      const r = await voosIndicadores(req, env);
+      for (const [k, v] of Object.entries(cors)) r.headers.set(k, v);
+      return r;
+    }
     if (req.method !== 'POST' || url.pathname !== '/enviar') return json({ erro: 'Não encontrado' }, 404, cors);
     try {
       return json(await enviar(req, env), 200, cors);
@@ -38,10 +47,36 @@ function corsHeaders(req, env) {
   const permitidas = (env.ORIGENS || '').split(',').map(s => s.trim()).filter(Boolean);
   return {
     'Access-Control-Allow-Origin': permitidas.includes(origem) ? origem : (permitidas[0] || ''),
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Vary': 'Origin',
   };
+}
+
+const GEOMAP_VOOS = 'https://geomap-docker.onrender.com/integracao/voos/indicadores';
+
+// Apresentação semanal: voos do GeoMap. Quem pode é decidido pelo banco (hub.pode_usar_apresentacao).
+export async function voosIndicadores(req, env, buscar = fetch) {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return json({ erro: 'Entre no Hub' }, 401, {});
+  const url = new URL(req.url);
+  const de = url.searchParams.get('de') || '', ate = url.searchParams.get('ate') || '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(de) || !/^\d{4}-\d{2}-\d{2}$/.test(ate)) return json({ erro: 'Datas inválidas' }, 400, {});
+  const p = await buscar(`${env.SUPABASE_URL}/rest/v1/rpc/pode_usar_apresentacao`, {
+    method: 'POST',
+    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Profile': 'hub', 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  if (p.status === 401) return json({ erro: 'Sessão expirada' }, 401, {});
+  if (!p.ok || (await p.json()) !== true) return json({ erro: 'Sem acesso à Apresentação semanal' }, 403, {});
+  let g;
+  try {
+    g = await buscar(`${GEOMAP_VOOS}?de=${de}&ate=${ate}`, { headers: { 'x-indicadores-token': env.INDICADORES_TOKEN } });
+  } catch (e) {
+    return json({ erro: 'GeoMap fora do ar' }, 502, {});
+  }
+  if (!g.ok) return json({ erro: `GeoMap respondeu ${g.status}` }, 502, {});
+  return new Response(await g.text(), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
 async function ver(url, env) {

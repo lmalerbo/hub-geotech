@@ -1,0 +1,6 @@
+[
+ {"id": 1, "modulo_id": "preparo", "ordem": 1, "nome": "Identificação", "escopo": "talhao"},
+ {"id": 2, "modulo_id": "preparo", "ordem": 2, "nome": "Escoamento", "escopo": "talhao"},
+ {"id": 3, "modulo_id": "preparo", "ordem": 3, "nome": "Observações", "escopo": "talhao"},
+ {"id": 4, "modulo_id": "preparo", "ordem": 4, "nome": "Preparo", "escopo": "talhao"}
+]

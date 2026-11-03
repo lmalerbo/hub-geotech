@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apresentação semanal · Hub Geotech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link rel="stylesheet" href="apresentacao.css">
+<link rel="stylesheet" href="apresentacao-slides.css">
+<link rel="stylesheet" href="motion.css">
+</head>
+<body>
+
+<div id="apt-carregando" class="apt-tela apt-centro">
+  <div class="apt-lcard" style="max-width:380px">
+    <div class="apt-esq" aria-hidden="true"></div>
+    <p class="apt-msg" role="status">Carregando…</p>
+  </div>
+</div>
+
+<div id="apt-login" class="apt-tela apt-centro off">
+  <form class="apt-lcard" id="apt-form" novalidate>
+    <div class="apt-marca"><span class="apt-selo-m">HG</span><span class="apt-marca-nome">Hub Geotech</span></div>
+    <h1 class="apt-ltitle">Apresentação semanal</h1>
+    <p class="apt-lsub">Entre com a mesma conta do Hub.</p>
+    <div class="apt-form">
+      <div>
+        <label class="apt-lbl" for="apt-email">E-mail</label>
+        <input class="apt-inp" id="apt-email" type="email" autocomplete="username" placeholder="nome@empresa.com">
+      </div>
+      <div>
+        <label class="apt-lbl" for="apt-senha">Senha</label>
+        <input class="apt-inp" id="apt-senha" type="password" autocomplete="current-password">
+      </div>
+      <p class="apt-erro" id="apt-login-erro" role="alert"></p>
+      <button class="apt-btn apt-btn-bloco" id="apt-entrar" type="submit">Entrar</button>
+    </div>
+  </form>
+</div>
+
+<div id="apt-sem-acesso" class="apt-tela apt-centro off">
+  <div class="apt-lcard">
+    <div class="apt-marca"><span class="apt-selo-m">HG</span><span class="apt-marca-nome">Apresentação semanal</span></div>
+    <p class="apt-msg-login" role="status">Sua conta não tem acesso à Apresentação semanal. Peça ao administrador.</p>
+    <button class="apt-btn apt-btn-bloco" type="button" data-sair>Sair</button>
+  </div>
+</div>
+
+<div id="apt-app" class="apt-tela off">
+  <div class="apt-demo off" id="apt-demo">Demonstração — dados fictícios</div>
+
+  <header class="apt-top">
+    <div class="apt-marca">
+      <span class="apt-selo-m sm">HG</span>
+      <span class="apt-trilha"><span>Hub Geotech</span><span class="apt-sep">›</span><span>Apresentação semanal</span></span>
+    </div>
+    <div class="apt-top-acoes">
+      <span class="apt-nome" id="apt-nome"></span>
+      <button class="apt-btn2" type="button" data-sair><span class="ico">logout</span> Sair</button>
+    </div>
+  </header>
+
+  <main class="apt-main">
+    <section id="apt-parametros" aria-label="Parâmetros da apresentação">
+      <div class="apt-cabec-pagina">
+        <h1 class="apt-h1">Parâmetros da semana</h1>
+        <p class="apt-sub">Escolha a semana e confira as metas antes de buscar os dados.</p>
+      </div>
+      <div class="apt-param-grade">
+        <div class="apt-card">
+          <h2 class="apt-card-tit">Semana</h2>
+          <div class="apt-campos">
+            <div>
+              <label class="apt-lbl" for="apt-semana">Semana</label>
+              <input class="apt-inp" id="apt-semana" type="text" maxlength="6" autocomplete="off" placeholder="S5M10">
+            </div>
+            <div>
+              <label class="apt-lbl" for="apt-corte">Dados até</label>
+              <input class="apt-inp" id="apt-corte" type="date">
+            </div>
+          </div>
+          <p class="apt-ajuda">A semana é a quinta-feira mais recente. Os dados vão até a quarta-feira anterior a ela.</p>
+          <p class="apt-aviso-rascunho" id="apt-aviso-rascunho" role="status"></p>
+        </div>
+
+        <div class="apt-card">
+          <h2 class="apt-card-tit">Metas</h2>
+          <div class="apt-campos apt-campos-duas">
+            <div>
+              <label class="apt-lbl" for="apt-meta-meta_ervas_ha">Meta de ervas daninhas (ha)</label>
+              <input class="apt-inp" id="apt-meta-meta_ervas_ha" type="number" min="0" step="1">
+            </div>
+            <div>
+              <label class="apt-lbl" for="apt-meta-meta_fornecedor_ha">Meta fornecedor (ha)</label>
+              <input class="apt-inp" id="apt-meta-meta_fornecedor_ha" type="number" min="0" step="1">
+            </div>
+            <div>
+              <label class="apt-lbl" for="apt-meta-meta_ha_dia">Meta de ha por dia</label>
+              <input class="apt-inp" id="apt-meta-meta_ha_dia" type="number" min="0" step="1">
+            </div>
+            <div>
+              <label class="apt-lbl" for="apt-meta-drone_pendente_ha">Drone pendente (ha)</label>
+              <input class="apt-inp" id="apt-meta-drone_pendente_ha" type="number" min="0" step="1">
+            </div>
+            <div>
+              <label class="apt-lbl" for="apt-meta-safra_atual">Safra atual</label>
+              <input class="apt-inp" id="apt-meta-safra_atual" type="text" autocomplete="off" placeholder="26/27">
+            </div>
+            <div>
+              <label class="apt-lbl" for="apt-meta-inicio_safra">Início da safra</label>
+              <input class="apt-inp" id="apt-meta-inicio_safra" type="date">
+            </div>
+          </div>
+          <div class="apt-acoes-linha">
+            <button class="apt-btn2" type="button" id="apt-salvar-metas">Salvar metas</button>
+            <p class="apt-ajuda" id="apt-metas-alteracao" role="status"></p>
+          </div>
+        </div>
+
+        <div class="apt-card apt-card-painel">
+          <h2 class="apt-card-tit">Dados</h2>
+          <p class="apt-texto">Os números vêm de três fontes: o Hub Geotech (colheita, preparo, plantio), o portal de downloads do módulo Drone e a API de voos do GeoMap. A tela busca as três, mostra o status de cada uma e monta a prévia dos slides.</p>
+          <div class="apt-chips">
+            <span class="apt-chip">Hub Geotech</span>
+            <span class="apt-chip">Drone de Aplicação</span>
+            <span class="apt-chip">Voos com Drone (GeoMap)</span>
+          </div>
+          <p class="apt-erro" id="apt-param-erro" role="alert"></p>
+          <button class="apt-btn apt-btn-bloco" type="button" id="apt-buscar">Buscar dados</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="apt-edicao" class="off" aria-label="Edição da apresentação">
+      <div class="apt-edicao-topo">
+        <button class="apt-link" type="button" id="apt-voltar"><span class="ico">arrow_back</span> <span id="apt-cabec"></span></button>
+        <p class="apt-salvo" id="apt-salvo" role="status"></p>
+        <div class="apt-baixar-grupo">
+          <span class="apt-falta" id="apt-falta"></span>
+          <button class="apt-btn" type="button" id="apt-baixar" disabled aria-disabled="true"><span class="ico">download</span> <span id="apt-baixar-rotulo">Baixar PPTX</span></button>
+        </div>
+      </div>
+
+      <div class="apt-fontes-caixa">
+        <ul id="apt-fontes" class="apt-fontes" aria-label="Status das fontes"></ul>
+        <p class="apt-erro" id="apt-erro-calculo" role="alert"></p>
+      </div>
+
+      <div class="apt-edicao-grade">
+        <nav id="apt-lista" aria-label="Slides"></nav>
+
+        <div class="apt-previa-caixa">
+          <div class="apt-previa" id="apt-previa"></div>
+        </div>
+
+        <aside class="apt-painel-campos" aria-label="Textos do slide">
+          <h2 class="apt-card-tit" id="apt-slide-cab"></h2>
+          <p class="apt-aviso-numeros">Os números vêm do Hub e não são editáveis aqui.</p>
+
+          <div class="apt-campo" id="apt-grupo-subtitulo">
+            <label class="apt-lbl" for="apt-f-subtitulo">Subtítulo</label>
+            <textarea class="apt-inp apt-area" id="apt-f-subtitulo" rows="3"></textarea>
+            <button class="apt-link" type="button" id="apt-padrao">Voltar ao texto padrão</button>
+          </div>
+
+          <div class="apt-campo">
+            <label class="apt-lbl" for="apt-f-destaque">Destaque</label>
+            <input class="apt-inp" id="apt-f-destaque" type="text" autocomplete="off">
+          </div>
+
+          <div class="apt-campo">
+            <label class="apt-lbl" for="apt-f-notas">Notas do apresentador (vão para o PPTX, não aparecem no slide)</label>
+            <textarea class="apt-inp apt-area" id="apt-f-notas" rows="6"></textarea>
+          </div>
+
+          <div class="apt-card apt-sem-dado off" id="apt-sem-dado">
+            <h3 class="apt-card-tit" id="apt-sem-dado-tit"></h3>
+            <p class="apt-ajuda">Sem área ou safra no Hub. Entram em “Anteriores / sem safra” e não somam no realizado. Não bloqueia.</p>
+            <ul class="apt-lista-sem-dado" id="apt-sem-dado-lista"></ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="apt-toast" id="apt-toast" role="status"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script src="motion.js"></script>
+<script src="apresentacao-calculo.js"></script>
+<script src="apresentacao-slides.js"></script>
+<script src="apresentacao-dados.js"></script>
+<script src="apresentacao-exportar.js"></script>
+<script src="apresentacao-demo.js"></script>
+<script src="apresentacao.js"></script>
+</body>
+</html>

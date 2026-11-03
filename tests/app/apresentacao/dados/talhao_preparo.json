@@ -1,0 +1,9 @@
+[
+ {"layer": 1, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Ok", "conservacao_em": null},
+ {"layer": 2, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Preparo", "conservacao_em": null},
+ {"layer": 3, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Ok", "conservacao_em": null},
+ {"layer": 4, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Escoamento", "conservacao_em": null},
+ {"layer": 5, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Ok", "conservacao_em": null},
+ {"layer": 6, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Identificação", "conservacao_em": null},
+ {"layer": 7, "status": null, "tipo_linha": null, "updated_at": "2026-10-28T12:00:00Z", "etapa": "Ok", "conservacao_em": null}
+]

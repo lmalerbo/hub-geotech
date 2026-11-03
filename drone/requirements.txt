@@ -1,6 +1,7 @@
 geopandas>=1.0
 pyogrio>=0.9
 shapely>=2.0
+pyshp>=2.3
 pyproj>=3.6
 pandas>=2.2
 openpyxl

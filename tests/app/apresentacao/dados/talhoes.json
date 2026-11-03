@@ -1,0 +1,9 @@
+[
+ {"cod_faz": 9001, "talhao_num": 1, "layer": 1, "area_ha": 10.0, "estagio": "Planta", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica A"},
+ {"cod_faz": 9001, "talhao_num": 2, "layer": 2, "area_ha": 20.0, "estagio": "Planta", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica A"},
+ {"cod_faz": 9001, "talhao_num": 3, "layer": 3, "area_ha": 15.0, "estagio": "Planta", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica A"},
+ {"cod_faz": 9002, "talhao_num": 1, "layer": 4, "area_ha": 30.0, "estagio": "Soca", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica B"},
+ {"cod_faz": 9002, "talhao_num": 2, "layer": 5, "area_ha": 5.0, "estagio": "Soca", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica B"},
+ {"cod_faz": 9003, "talhao_num": 1, "layer": 6, "area_ha": 12.0, "estagio": "Soca", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica C"},
+ {"cod_faz": 9003, "talhao_num": 2, "layer": 7, "area_ha": 8.0, "estagio": "Soca", "data_ultimo_corte": null, "ciclo": null, "sist_conser": null, "sist_conser_em": null, "updated_at": "2026-10-28T12:00:00Z", "propriedade": "Fazenda Sintetica C"}
+]
