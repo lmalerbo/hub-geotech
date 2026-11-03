@@ -21,10 +21,84 @@ function drPodeGerarCatacao(sol){return !!sol&&['solicitado','em_elaboracao'].in
 function drNomeSeguro(nome){
   return String(nome).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]/g,'_').replace(/\.\./g,'__');
 }
-function drClasseEscolhida(txt){
-  const t=String(txt??'').replace(/m/gi,'').trim();
-  if(!t)return null;                                   // vazio: classe pelo nome do arquivo
-  const n=Number(t);return [15,25,50].includes(n)?n:undefined;
+// Nome sem pasta (aceita / e \) e sem a última extensão; ext em minúscula, sem ponto.
+function drPartesNome(nome){
+  const f=String(nome).split(/[\\/]/).pop();const i=f.lastIndexOf('.');
+  return i>0?{base:f.slice(0,i),ext:f.slice(i+1).toLowerCase()}:{base:f,ext:''};
+}
+// Mesma regra de drone/insumos.py::classe_pelo_nome.
+function drClassePeloNome(nome){
+  const s=drPartesNome(nome).base.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const m=s.match(/(\d+)\s*m(?![a-z])/)||s.match(/(\d+)$/);
+  const n=m?Number(m[1]):null;
+  return [15,25,50].includes(n)?n:null;
+}
+function drNomeComClasse(classe,nome){
+  const p=drPartesNome(nome);
+  return `${classe}m_${drNomeSeguro(p.base)}${p.ext?'.'+p.ext:''}`;
+}
+const DR_EXT_SHAPE=['shp','shx','dbf','prj','cpg'];
+const DR_EXT_OBRIG=['shp','shx','dbf','prj'];
+// Agrupa os arquivos por nome-base (sem diferenciar maiúsculas). Ignora o que não é de shape e o repetido.
+function drAgruparArquivos(arquivos){
+  const vistos=new Set(),mapa=new Map();
+  (arquivos||[]).forEach((a,indice)=>{
+    const {base,ext}=drPartesNome(a.nome);
+    if(!DR_EXT_SHAPE.includes(ext))return;
+    const dup=`${a.origem}|${a.nome}|${a.tamanho}`;
+    if(vistos.has(dup))return;vistos.add(dup);
+    const chave=drNomeSeguro(base).toLowerCase();
+    let g=mapa.get(chave);
+    if(!g){g={chave,base,origens:[],partes:{},nomes:{},repetida:false,itens:[]};mapa.set(chave,g);}
+    if(!g.origens.includes(a.origem))g.origens.push(a.origem);
+    if(ext in g.partes)g.repetida=true;else{g.partes[ext]=indice;g.nomes[ext]=a.nome;}
+    g.itens.push(a);
+  });
+  return [...mapa.values()].map(g=>{
+    const shp=g.itens.find(a=>drPartesNome(a.nome).ext==='shp')||g.itens[0];
+    return{chave:g.chave,base:g.base,origens:g.origens,partes:g.partes,nomes:g.nomes,
+      falta:DR_EXT_OBRIG.filter(e=>!(e in g.partes)),
+      classe:drClassePeloNome(shp.nome),
+      conflito:g.origens.length>1||g.repetida};
+  });
+}
+// Escolhas: {[chave]: 15|25|50}. Não sobe nada; só diz o que enviar e o que falta.
+function drPlanoEnvio(grupos,escolhas){
+  const falhar=motivo=>({pronto:false,motivo,arquivos:[],resumo:motivo});
+  if(!grupos.length)return falhar('Nenhuma camada para enviar.');
+  for(const g of grupos)if(g.falta.length)return falhar(`${g.base}: falta ${g.falta.map(e=>'.'+e).join(', ')}`);
+  for(const g of grupos)if(g.conflito){
+    const orig=[...new Set(g.origens.map(o=>o||'arquivo solto'))].join(' e ');
+    return falhar(`${g.base}: mesmo nome em ${orig} — renomeie um deles`);
+  }
+  if(grupos.some(g=>![15,25,50].includes((escolhas||{})[g.chave])))return falhar('Escolha a classe de todas as camadas.');
+  const arquivos=[],contagem={};
+  for(const g of grupos){
+    const cl=escolhas[g.chave];contagem[cl]=(contagem[cl]||0)+1;
+    for(const e of ['shp','shx','dbf','prj','cpg'])if(e in g.partes)
+      arquivos.push({indice:g.partes[e],nome:drNomeComClasse(cl,g.nomes[e])});
+  }
+  const txt=Object.keys(contagem).map(Number).sort((a,b)=>a-b)
+    .map(c=>`${c} m${contagem[c]>1?` (${contagem[c]} camadas juntas)`:''}`).join(', ');
+  const resumo=`Vai criar uma versão nova de ${txt}. Classes que não aparecem aqui continuam como estão.`;
+  return{pronto:true,motivo:null,arquivos,resumo};
+}
+function drDicaClasse(sugerida,escolhida){
+  if(escolhida==null)return{texto:'escolha a classe',tom:'aviso'};
+  return escolhida===sugerida?{texto:'pelo nome do arquivo',tom:''}:{texto:'trocada por você',tom:''};
+}
+// Cartões das três classes (15, 25, 50), sempre nessa ordem.
+function drCartoesObst(obst,hoje,meses=24){
+  const limite=new Date(hoje);limite.setMonth(limite.getMonth()-meses);
+  return [15,25,50].map(c=>{
+    const o=(obst||[]).find(v=>v.classe_m===c);
+    if(!o)return{classe:c,desc:DR_OBS_DESC[c],texto:'sem cadastro',velho:false};
+    const enviado=new Date(o.enviado_em);
+    const data=enviado.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const velho=enviado<limite;
+    return{classe:c,desc:DR_OBS_DESC[c],velho,
+      texto:`v${o.versao} · ${data} · ${velho?`mais de ${meses} meses`:`${o.n_feicoes} feições`}`};
+  });
 }
 
 function drPodeCancelar(sol,ger,eu){
@@ -50,6 +124,7 @@ function drValidarSolicitacao(v){
 
 // ── obstáculos no mapa (objeto + buffer da classe) ──────────────────────
 const DR_OBS_COR={15:'#2e7d32',25:'#e0a100',50:'#c62828'};
+const DR_OBS_DESC={15:'árvore isolada',25:'rede de energia padrão',50:'alta tensão, sede, APP, rodovia…'};
 
 function drRotuloShape(envio){
   if(!envio)return'Enviar shape de ajuste';
@@ -59,7 +134,15 @@ function drRotuloShape(envio){
 }
 
 // Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
+// O cliente do Supabase devolve {data:null,error} em vez de lançar: sem isto, uma queda vira "lista vazia".
+function drSemErro(r){if(r&&r.error)throw new Error(r.error.message||'Falha ao ler o banco.');return r;}
 function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||null;}
+// Envio em fila/processando há mais de 2 h: o agente provavelmente está fora. Não segura mais a janela.
+const DR_ENVIO_TRAVA_H=2;
+function drEnvioTravado(e,agora){
+  if(!e||!['fila','processando'].includes(e.status)||!e.enviado_em)return false;
+  return new Date(agora)-new Date(e.enviado_em)>DR_ENVIO_TRAVA_H*36e5;
+}
 
 // Muda quando alguma classe ganha versão nova: aí o desenho guardado (DR.obstGeo) não vale mais.
 function drAssinaturaObst(obst){return (obst||[]).map(o=>o.classe_m+':'+o.versao).sort().join('|');}
@@ -111,6 +194,7 @@ function drEstadoPainel({doc,sol,ger,edita}){
 function drDataCurta(iso){return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});}
 function drChipObstaculos(obst,envios,hoje,meses=24){
   const ult=drUltimoEnvio(envios,'obstaculos');
+  if(drEnvioTravado(ult,hoje))return{texto:'envio parado',tom:'velho'};
   if(ult&&['fila','processando'].includes(ult.status))return{texto:'processando envio…',tom:'proc'};
   if(ult&&ult.status==='erro')return{texto:'erro no último envio',tom:'erro'};
   const o=obst||[];if(!o.length)return{texto:'sem cadastro',tom:'velho'};

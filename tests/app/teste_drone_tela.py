@@ -82,7 +82,8 @@ def entrar_e_abrir(pg):
 
 
 H = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(RAIZ / 'app'))
-srv = socketserver.TCPServer(('127.0.0.1', 0), H)
+srv = socketserver.ThreadingTCPServer(('127.0.0.1', 0), H)  # uma conexão parada do navegador não trava os outros arquivos
+srv.daemon_threads = True
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 url = f'http://127.0.0.1:{srv.server_address[1]}/index.html'
 sol_criada = None
@@ -178,6 +179,52 @@ try:
         pg.wait_for_selector('#dr-side-cab .dr-side-sobre:has-text("Nova revisão")', timeout=15000)
         confere(True, 'prévia descartada, seleção liberada')
 
+        # S5.6 editor: janela de obstáculos até antes do envio. Proteção primeiro (decisão 12): nada pode subir.
+        pg.evaluate("""()=>{window.drSubirComProgresso=()=>{throw new Error('teste: envio bloqueado')};
+            const o=window.drRpc;window.drRpc=(n,a)=>{if(n==='drone_registrar_envio')throw new Error('teste: envio bloqueado');return o(n,a);};}""")
+        pg.click('#dr-ph .dr-obst'); pg.wait_for_selector('#dro-jan', state='visible', timeout=10000)
+        confere(pg.locator('#dro-jan .dro-cartao').count() == 3, 'janela de obstáculos com três cartões')
+        obst = Path(__file__).parent / 'fixtures' / 'obst'
+        linha = lambda c: f'#dro-lista [data-chave="{c}"]'
+        pg.set_input_files('#dro-inp', [str(p) for p in sorted(obst.iterdir())])
+        pg.wait_for_function("document.querySelectorAll('#dro-lista .dro-linha').length===4", timeout=60000)
+        confere('mesmo nome' in (pg.text_content(linha('linhas_cemig')) or ''), 'linhas_cemig em conflito: arquivo solto e outro.zip')
+        confere(pg.locator(f'{linha("sem_shx_50m")} .dro-pc.falta').all_text_contents() == ['.shx'], 'sem_shx_50m sem .shx (em falta)')
+        confere(pg.is_disabled('#dro-enviar'), 'botão de enviar desabilitado com 4 camadas')
+        foto(pg, 'obst-janela')
+        # tira o sem .shx e a origem em conflito (tira a camada inteira), depois readiciona só os soltos de linhas_cemig
+        pg.click(f'{linha("sem_shx_50m")} [data-tirar]')
+        pg.click(f'{linha("linhas_cemig")} [data-tirar]')
+        pg.set_input_files('#dro-inp', [str(p) for p in sorted(obst.glob('linhas_cemig.*'))])
+        pg.wait_for_function("document.querySelectorAll('#dro-lista .dro-linha').length===3", timeout=60000)
+        confere(pg.locator('#dro-lista .dro-linha:has-text("mesmo nome")').count() == 0, 'nenhuma camada em conflito depois de readicionar')
+        confere(pg.is_disabled('#dro-enviar') and 'Escolha a classe' in (pg.text_content('#dro-enviar') or ''),
+                'enviar desabilitado com "Escolha a classe" antes de escolher as classes')
+        pg.click(f'{linha("linhas_cemig")} [data-classe="25"]')
+        confere(pg.is_enabled('#dro-enviar'), 'enviar habilitado com as três classes escolhidas')
+        resumo = pg.text_content('.dro-resumo') or ''
+        confere(all(t in resumo for t in ('15 m', '25 m', '50 m')), f'resumo com 15 m, 25 m e 50 m ({resumo[:90]})')
+        # Foco 1: a janela segue igual depois de um ciclo de atualização da fazenda
+        pg.evaluate("async()=>{await drCarregarFazenda();}")
+        confere(pg.locator('#dro-lista .dro-linha').count() == 3
+                and pg.get_attribute(f'{linha("linhas_cemig")} [data-classe="25"]', 'aria-pressed') == 'true',
+                'depois de drCarregarFazenda: 3 camadas e 25 m escolhido')
+        # ordem: grupos na ordem da primeira aparição (app_mata_50m do obst.zip, restricoes15m solto, linhas_cemig readicionado)
+        prev = pg.evaluate("droPreparar()")
+        esperados = [f'{c}m_{base}.{ext}' for c, base in [(50, 'app_mata_50m'), (15, 'restricoes15m'), (25, 'linhas_cemig')]
+                     for ext in ['shp', 'shx', 'dbf', 'prj', 'cpg']]
+        confere(prev['pronto'] is True and prev['nomes'] == esperados, f'droPreparar pronto com os 15 nomes esperados ({prev["nomes"]})')
+        # S5.7: a janela acompanha o envio em andamento e volta sem perder as escolhas (não chama o banco)
+        pg.evaluate("()=>{DR.info.envios.unshift({id:-1,tipo:'obstaculos',status:'processando',erro:null});droAtualizar();}")
+        confere(pg.locator('#dro-solta').count() == 0 and pg.locator('#dro-jan .dro-proc').is_visible(),
+                'com envio em andamento: sem área de soltar e com progresso')
+        pg.evaluate("()=>{DR.info.envios.shift();droAtualizar();}")
+        confere(pg.locator('#dro-solta').count() == 1 and pg.locator('#dro-lista .dro-linha').count() == 3
+                and pg.get_attribute(f'{linha("linhas_cemig")} [data-classe="25"]', 'aria-pressed') == 'true',
+                'janela acompanha o envio em andamento e volta sem perder as escolhas')
+        pg.click('#dro-jan .dro-cancelar')   # nunca #dro-enviar
+        confere(pg.locator('#dro-fundo').count() == 0, 'Cancelar fecha a janela de obstáculos')
+
         # S4.7 caso 5: conta só leitura (Foco 4), depois do descarte e antes do ← Início
         definir_acesso(False, 'leitura')
         pg.reload(); entrar_e_abrir(pg)
@@ -187,8 +234,8 @@ try:
         confere(pg.locator('#dr-side button').count() == 0, 'nenhum botão dentro do painel')
         confere(pg.evaluate("(()=>{const f=document.getElementById('dr-ferr');return !f||f.hidden||!f.innerHTML})()"),
                 'barra de ferramentas escondida ou vazia')
-        confere(pg.evaluate("(()=>{const o=document.querySelector('.dr-obst');return !!o&&o.tagName!=='BUTTON'})()"),
-                '.dr-obst não é botão')
+        # S5 (decisão 8): Obstáculos é botão para todos e abre a janela em modo consulta (conferida mais abaixo)
+        confere(pg.locator('#dr-ph button.dr-obst').count() == 1, '.dr-obst é botão (abre a consulta)')
         pg.evaluate("drMenuAbrir()")
         itens = pg.evaluate("[...document.querySelectorAll('#dr-menu [role=menuitem]')].map(x=>x.textContent.trim())")
         # o menu traz "Cancelar solicitação" quando a conta é a solicitante (regra de drPodeCancelar); fora isso, só Revisões
@@ -199,6 +246,13 @@ try:
         pg.evaluate("""()=>{const f=DR.geo.features.find(f=>f.properties.camada==='talhao'&&f.properties.status!=='fora_da_base');
             drClicarTalhao(f.properties);}""")
         confere(pg.evaluate("DR.sel.size") == antes, 'clicar em talhão não muda a seleção')
+        # S5.6 leitura: a janela abre em consulta, sem área de soltar, sem seletor de arquivo e sem botões de classe
+        pg.click('#dr-ph .dr-obst'); pg.wait_for_selector('#dro-jan', state='visible', timeout=10000)
+        confere(pg.locator('#dro-solta').count() == 0 and pg.locator('#dro-inp').count() == 0
+                and pg.locator('#dro-jan [data-classe]').count() == 0,
+                'janela de obstáculos só leitura: sem área de soltar, sem arquivo e sem classes')
+        pg.keyboard.press('Escape')
+        confere(pg.locator('#dro-fundo').count() == 0, 'Esc fecha a janela de obstáculos')
         devolver_acesso()
         pg.reload(); entrar_e_abrir(pg)
 
