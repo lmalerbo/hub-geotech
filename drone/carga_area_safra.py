@@ -43,11 +43,13 @@ def safra_do_motivo(motivo):
 
 
 def main(aplicar):
+    import truststore
+    truststore.inject_into_ssl()   # o firewall da empresa inspeciona TLS (certificado só no Windows)
     b = DroneBanco()
     vig = [r for r in b.selecionar('arquivos_vigentes', '*', {'modulo_id': 'eq.drone'})
            if r['nome_arquivo'].lower().endswith('.zip')]
     view = {r['revisao_id']: r for r in b.selecionar('drone_projetos_v', 'revisao_id,origem', {})}
-    ok, falhas = 0, []
+    ok, falhas, sem_safra = 0, [], []
     for r in vig:
         if view.get(r['revisao_id'], {}).get('origem') != 'sem_dado':
             continue   # já tem dado (Hub ou carga anterior)
@@ -57,14 +59,18 @@ def main(aplicar):
         except Exception as e:  # noqa: BLE001  ZIP corrompido ou fora do ar: lista e segue
             falhas.append((r['revisao_id'], r['cod_faz'], f'zip: {str(e)[:80]}'))
             continue
-        safra = safra_do_motivo(rev['motivo'])
-        if area is None or safra is None:
-            falhas.append((r['revisao_id'], r['cod_faz'], f'area={area} safra={safra}'))
+        if area is None:
+            falhas.append((r['revisao_id'], r['cod_faz'], 'sem campo de área no ZIP'))
             continue
+        safra = safra_do_motivo(rev['motivo'])
+        if safra is None:   # grava só a área: na view entra em "anteriores / sem safra" (spec, casos de borda)
+            sem_safra.append((r['revisao_id'], r['cod_faz'], f'area={area}'))
         if aplicar:
             b.atualizar('projeto_revisoes', {'id': f"eq.{r['revisao_id']}"}, {'area_aplicacao_ha': area, 'safra': safra})
         ok += 1
-    print(f"{'gravados' if aplicar else 'a gravar'}: {ok} · sem dado: {len(falhas)}")
+    print(f"{'gravados' if aplicar else 'a gravar'}: {ok} (sem safra: {len(sem_safra)}) · sem dado: {len(falhas)}")
+    for f in sem_safra:
+        print('   sem safra', *f)
     for f in falhas:
         print('  ', *f)
 
