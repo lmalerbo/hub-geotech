@@ -1,0 +1,1073 @@
+<title>Visualizador do Paralelismo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<style>
+/* Layout: o mapa é o palco (janela inteira) e a coluna de 380 px à direita muda com a aba; tokens do Hub (app/corretivos.css). */
+:root{
+  --bg:#eff3f7;--sf:#fff;--s2:#edf0f8;--bd:#e5e9ec;--bd2:#dde1f0;
+  --t1:#20262e;--t2:#4d4a57;--t3:#8a8794;
+  --mapa:#e6ecf0;--borda-tal:#ffffff;--carreador:#d5dde3;
+  --plantio:#16a76b;--colheita:#d4890a;--drones:#5b6ee8;--erro:#d23f3f;
+  --ab:#e07b1a;--ad:#16a76b;--ac:#5b6ee8;
+  --r1:#cf5b3f;--r2:#e3a33c;--r3:#9cc76d;--r4:#1f9e63;
+  --sh-sm:0 4px 20px rgb(0 0 0/.06);--sh-md:0 12px 40px rgb(0 0 0/.10);
+  --r-sm:8px;--r-md:12px;--r-lg:20px;
+  --sai:cubic-bezier(.16,1,.3,1);--mola:cubic-bezier(.34,1.56,.64,1);
+  --f:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:light;
+}
+/* Só tema claro, como o Hub. */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--f);font-size:13px;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+.ico{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;display:inline-block;-webkit-font-feature-settings:'liga';font-feature-settings:'liga'}
+:focus-visible{outline:2px solid var(--plantio);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.app{height:100%;display:grid;grid-template-rows:auto 1fr}
+.topo{display:flex;align-items:center;gap:14px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--sf);border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.voltar{display:flex;align-items:center;gap:4px;border:0;background:none;color:var(--t3);cursor:pointer;padding:4px 6px;border-radius:var(--r-sm)}
+.voltar:hover{background:var(--s2);color:var(--t1)}
+.marca{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+.marca .sel{width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--plantio) 14%,transparent);color:var(--plantio);display:grid;place-items:center}
+.abas{display:flex;gap:2px;background:var(--s2);padding:3px;border-radius:10px;margin-left:8px}
+.aba{border:0;background:none;padding:6px 12px;border-radius:8px;cursor:pointer;color:var(--t2);font-weight:500;display:flex;align-items:center;gap:6px;transition:background .2s,color .2s}
+.aba[aria-selected="true"]{background:var(--sf);color:var(--t1);box-shadow:var(--sh-sm)}
+.aba .cont{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--colheita);color:#fff;font-size:11px;font-weight:600;display:inline-grid;place-items:center}
+.aba .cont.pop{animation:pop .45s var(--mola)}
+.espaco{flex:1}
+.nivel{display:flex;align-items:center;gap:6px;color:var(--t3);font-size:12px}
+.nivel select{border:1px solid var(--bd2);background:var(--sf);border-radius:8px;padding:5px 8px}
+.btn-notas{border:1px solid var(--bd2);background:var(--sf);border-radius:8px;padding:5px 10px;cursor:pointer;display:flex;gap:6px;align-items:center;color:var(--t2)}
+
+.palco{display:grid;grid-template-columns:1fr 380px;min-height:0}
+.mapa{position:relative;min-height:0;background:var(--mapa);overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas.arrastando{cursor:grabbing}
+.col{background:var(--sf);border-left:1px solid var(--bd);overflow-y:auto;min-height:0;padding:18px 18px 28px;display:flex;flex-direction:column;gap:16px}
+
+/* sobreposições do mapa */
+.trilha{position:absolute;top:12px;left:12px;display:flex;gap:4px;align-items:center;background:var(--sf);border-radius:10px;padding:6px 10px;box-shadow:var(--sh-sm);font-size:12px;color:var(--t3);max-width:calc(100% - 24px);flex-wrap:wrap}
+.trilha button{border:0;background:none;cursor:pointer;color:var(--t2);padding:0;font-weight:500}
+.trilha button:hover{color:var(--plantio)}
+.trilha b{color:var(--t1);font-weight:600}
+.camadas{position:absolute;top:12px;right:12px;display:flex;gap:2px;background:var(--sf);border-radius:10px;padding:3px;box-shadow:var(--sh-sm)}
+.camadas button{border:0;background:none;border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--t2);font-size:12px;font-weight:500}
+.camadas button[aria-pressed="true"]{background:var(--t1);color:var(--sf)}
+.zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;background:var(--sf);border-radius:10px;box-shadow:var(--sh-sm);overflow:hidden}
+.zoom button{border:0;background:none;width:34px;height:34px;cursor:pointer;color:var(--t2);display:grid;place-items:center}
+.zoom button+button{border-top:1px solid var(--bd)}
+.legenda{position:absolute;left:12px;bottom:12px;background:var(--sf);border-radius:10px;padding:8px 12px;box-shadow:var(--sh-sm);font-size:11px;color:var(--t2);display:flex;flex-direction:column;gap:6px;max-width:calc(100% - 80px)}
+.legenda .lin{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sw{display:inline-flex;align-items:center;gap:5px}
+.sw i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sw i.p{width:8px;height:8px;border-radius:50%}
+.exemplo{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:color-mix(in srgb,var(--colheita) 16%,var(--sf));color:var(--t2);font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;pointer-events:none;white-space:nowrap}
+.dica{position:absolute;pointer-events:none;background:var(--t1);color:var(--sf);border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.45;box-shadow:var(--sh-md);transform:translate(12px,12px);opacity:0;transition:opacity .12s;min-width:150px}
+.dica.on{opacity:1}
+.dica b{font-weight:600}
+.faixa-fase{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:var(--sf);border-radius:14px;box-shadow:var(--sh-md);padding:10px 14px;display:flex;align-items:center;gap:12px;min-width:min(440px,calc(100% - 140px));animation:entra .35s var(--sai)}
+.faixa-fase .txt{flex:1;min-width:0}
+.faixa-fase .t{font-weight:600}
+.faixa-fase .s{font-size:11px;color:var(--t3)}
+.passos{display:flex;gap:4px;margin-top:6px}
+.passos span{flex:1;height:4px;border-radius:2px;background:var(--s2);overflow:hidden;position:relative}
+.passos span i{position:absolute;inset:0;background:var(--plantio);transform-origin:left;transform:scaleX(0)}
+
+/* campo (indicador de espera do Hub, Mo.campo) */
+.campo{display:inline-flex;gap:3px;align-items:flex-end;height:16px}
+.campo i{width:4px;height:16px;border-radius:2px;transform-origin:bottom;animation:cresce 1.1s ease-in-out infinite}
+.campo i:nth-child(1){background:#16a76b}.campo i:nth-child(2){background:#a07840;animation-delay:.12s}.campo i:nth-child(3){background:#d4890a;animation-delay:.24s}.campo i:nth-child(4){background:#5b6ee8;animation-delay:.36s}
+@keyframes cresce{0%,100%{transform:scaleY(.25);opacity:.5}40%{transform:scaleY(1);opacity:1}}
+@keyframes entra{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes entra2{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+@keyframes treme{20%{transform:translateX(-5px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+@keyframes listra{to{background-position:22.6px 0}}
+@keyframes traco{to{stroke-dashoffset:0}}
+@keyframes onda{from{transform:scale(1);opacity:.7}to{transform:scale(2.4);opacity:0}}
+@keyframes some{0%{opacity:0}12%{opacity:1}80%{opacity:1}100%{opacity:0}}
+
+/* coluna */
+.cab .ey{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);font-weight:600}
+.cab h2{margin:2px 0 0;font-size:20px;font-weight:600;text-wrap:balance;line-height:1.25}
+.cab p{margin:4px 0 0;color:var(--t3);font-size:12px}
+.grande{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.grande .v{font-size:38px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.grande .d{font-size:13px;font-weight:600;padding:2px 8px;border-radius:12px}
+.d.sobe{background:color-mix(in srgb,var(--ad) 15%,transparent);color:var(--ad)}
+.d.desce{background:color-mix(in srgb,var(--ab) 15%,transparent);color:var(--ab)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--s2);border-radius:var(--r-md);padding:10px}
+.kpi .l{font-size:11px;color:var(--t3)}
+.kpi .v{font-size:17px;font-weight:600;margin-top:2px}
+.barra3{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--s2)}
+.barra3 i{display:block;height:100%;transition:width .6s var(--sai)}
+.leg3{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:5px}
+.sec h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--t2);display:flex;justify-content:space-between;align-items:center}
+.sec h3 small{font-weight:500;color:var(--t3)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--bd2);background:var(--sf);border-radius:20px;padding:4px 11px;cursor:pointer;font-size:12px;color:var(--t2)}
+.chip[aria-pressed="true"]{background:var(--t1);border-color:var(--t1);color:var(--sf)}
+.lista{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 8px;border-radius:10px;cursor:pointer;border:0;background:none;text-align:left;width:100%}
+.item:hover{background:var(--s2)}
+.item .cod{font-weight:600}
+.item .sub{font-size:11px;color:var(--t3)}
+.item .pct{font-weight:600}
+.mini{height:6px;border-radius:3px;background:var(--s2);overflow:hidden;margin-top:4px}
+.mini i{display:block;height:100%;border-radius:3px}
+.pilula{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.pl-cana{background:color-mix(in srgb,var(--plantio) 14%,transparent);color:var(--plantio)}
+.pl-torta{background:color-mix(in srgb,#a07840 18%,transparent);color:#a07840}
+.pl-pend{background:color-mix(in srgb,var(--colheita) 16%,transparent);color:var(--colheita)}
+.pl-pub{background:color-mix(in srgb,var(--plantio) 14%,transparent);color:var(--plantio)}
+.pl-rec{background:color-mix(in srgb,var(--erro) 13%,transparent);color:var(--erro)}
+.pl-fme{background:var(--s2);color:var(--t3)}
+.pl-ins{background:var(--s2);color:var(--t3)}
+.barras{display:flex;align-items:flex-end;gap:8px;height:92px;padding-top:14px}
+.barras .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.barras .b i{width:100%;border-radius:5px 5px 2px 2px;display:block;position:relative}
+.barras .b span{font-size:10px;color:var(--t3)}
+.barras .b em{font-style:normal;font-size:10px;font-weight:600;color:var(--t2)}
+.tab{width:100%;border-collapse:collapse;font-size:12px}
+.tab th{text-align:left;font-weight:500;color:var(--t3);font-size:11px;padding:4px 6px;border-bottom:1px solid var(--bd)}
+.tab td{padding:6px;border-bottom:1px solid var(--bd)}
+.tab tr.cl{cursor:pointer}
+.tab tr.cl:hover td{background:var(--s2)}
+.tab .r{text-align:right}
+.rolar{overflow-x:auto}
+.botao{border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--t1);color:var(--sf);position:relative;overflow:hidden;min-height:40px}
+.botao.verde{background:var(--plantio);color:#fff}
+.botao.claro{background:var(--s2);color:var(--t1)}
+.botao.perigo{background:color-mix(in srgb,var(--erro) 12%,transparent);color:var(--erro)}
+.botao:disabled{opacity:.5;cursor:default}
+.botao.ok{background:var(--plantio);color:#fff}
+.botao.falhou{background:var(--erro);color:#fff;animation:treme .4s}
+.botoes{display:flex;gap:8px;flex-wrap:wrap}
+.botoes .botao{flex:1}
+.aviso{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--colheita) 10%,transparent);color:var(--t2)}
+.aviso .ico{font-size:17px;color:var(--colheita)}
+.aviso.info{background:var(--s2)}
+.aviso.info .ico{color:var(--t3)}
+.aviso.erro{background:color-mix(in srgb,var(--erro) 9%,transparent)}
+.aviso.erro .ico{color:var(--erro)}
+.solta{border:2px dashed var(--bd2);border-radius:var(--r-lg);padding:22px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;color:var(--t3)}
+.solta .ico{font-size:34px;color:var(--plantio)}
+.solta b{color:var(--t1);font-size:14px}
+.fila{display:flex;flex-direction:column;gap:8px}
+.fi{border:1px solid var(--bd);border-radius:var(--r-md);padding:10px 12px;animation:entra2 .35s var(--sai)}
+.fi .l1{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.fi .n{font-weight:600}
+.fi .s{font-size:11px;color:var(--t3);margin-top:2px}
+.prog{height:8px;border-radius:4px;background:var(--s2);overflow:hidden;margin-top:8px}
+.prog i{display:block;height:100%;background:var(--plantio);border-radius:4px;transition:width .25s linear;background-image:linear-gradient(45deg,rgb(255 255 255/.25) 25%,transparent 25%,transparent 50%,rgb(255 255 255/.25) 50%,rgb(255 255 255/.25) 75%,transparent 75%);background-size:22.6px 22.6px;animation:listra .8s linear infinite}
+.trator{border:1px solid var(--bd);border-radius:var(--r-md);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.trator .l1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.trator .serie{font-size:11px;color:var(--t3);font-variant-numeric:tabular-nums}
+.trator select{border:1px solid var(--bd2);background:var(--sf);border-radius:8px;padding:4px 6px}
+.hist{display:flex;align-items:flex-end;gap:2px;height:70px;position:relative}
+.hist i{flex:1;border-radius:2px 2px 0 0;display:block}
+.hist-eixo{display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:4px}
+.antesdepois{display:flex;gap:2px;background:var(--s2);padding:3px;border-radius:10px}
+.antesdepois button{flex:1;border:0;background:none;border-radius:8px;padding:6px;cursor:pointer;font-weight:500;color:var(--t2)}
+.antesdepois button[aria-pressed="true"]{background:var(--sf);color:var(--t1);box-shadow:var(--sh-sm)}
+textarea{width:100%;border:1px solid var(--bd2);border-radius:10px;padding:8px 10px;background:var(--sf);resize:vertical;min-height:64px}
+.entra{animation:entra2 .35s var(--sai) both}
+
+/* concluído (Mo.concluido) */
+.concl{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--sf) 70%,transparent);animation:some 1.9s var(--sai) forwards;pointer-events:none;z-index:5}
+.concl .selo{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px}
+.concl svg{width:76px;height:76px}
+.concl circle.c{fill:var(--plantio)}
+.concl path{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:traco .5s .25s var(--sai) forwards}
+.concl .onda{position:absolute;top:0;left:50%;width:76px;height:76px;margin-left:-38px;border-radius:50%;border:3px solid var(--plantio);animation:onda .9s .2s ease-out forwards;opacity:0}
+.concl b{font-size:15px;font-weight:600;background:var(--sf);padding:4px 12px;border-radius:12px;box-shadow:var(--sh-sm)}
+
+/* notas da maquete */
+.notas{position:fixed;inset:auto max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) auto;width:min(420px,calc(100% - 32px));max-height:min(70vh,560px);overflow:auto;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r-lg);box-shadow:var(--sh-md);padding:16px 18px;z-index:20;font-size:12.5px;line-height:1.55;color:var(--t2)}
+.notas h4{margin:0 0 6px;font-size:13px;color:var(--t1)}
+.notas ul{margin:0 0 12px;padding-left:18px}
+.notas code{font-size:11.5px;background:var(--s2);padding:1px 5px;border-radius:5px}
+.notas .fechar{float:right;border:0;background:none;cursor:pointer;color:var(--t3)}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .palco{grid-template-columns:1fr}
+  .mapa{height:58vh}
+  .col{border-left:0;border-top:1px solid var(--bd)}
+  .abas{margin-left:0;order:3;width:100%;overflow-x:auto}
+  .camadas{top:auto;bottom:62px;left:12px;right:auto}
+  .exemplo{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+
+<div class="app">
+  <header class="topo">
+    <button class="voltar" type="button" title="Voltar ao Hub"><span class="ico">arrow_back</span>Hub</button>
+    <div class="marca"><span class="sel"><span class="ico">straighten</span></span>Paralelismo</div>
+    <nav class="abas" role="tablist" id="abas"></nav>
+    <div class="espaco"></div>
+    <label class="nivel" for="nivel">Ver como
+      <select id="nivel">
+        <option value="leitura">Leitura</option>
+        <option value="solicitante">Solicitante</option>
+        <option value="editor" selected>Editor</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <button class="btn-notas" type="button" id="btn-notas"><span class="ico" style="font-size:18px">sticky_note_2</span>Notas</button>
+  </header>
+  <main class="palco">
+    <section class="mapa" id="mapa" aria-label="Mapa dos talhões">
+      <canvas id="cv"></canvas>
+      <div class="trilha" id="trilha"></div>
+      <div class="exemplo">Maquete · dados de exemplo</div>
+      <div class="camadas" id="camadas"></div>
+      <div class="legenda" id="legenda"></div>
+      <div class="zoom">
+        <button type="button" id="z-mais" title="Aproximar"><span class="ico">add</span></button>
+        <button type="button" id="z-menos" title="Afastar"><span class="ico">remove</span></button>
+        <button type="button" id="z-tudo" title="Ver a usina"><span class="ico">zoom_out_map</span></button>
+      </div>
+      <div class="dica" id="dica"></div>
+    </section>
+    <aside class="col" id="col"></aside>
+  </main>
+</div>
+<div class="notas" id="notas" hidden></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const REDUZ = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (n, c = 1) => n.toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
+const pct = (a, b) => b ? 100 * a / b : 0;
+const MESES = { '2026-08': 'ago', '2026-09': 'set', '2026-10': 'out' };
+
+// ── dados de exemplo (gerados, determinísticos) ─────────────────────────────
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r) { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+function erfinv(x) { const a = .147, l = Math.log(1 - x * x), b = 2 / (Math.PI * a) + l / 2; return Math.sign(x) * Math.sqrt(Math.sqrt(b * b - l / a) - b); }
+
+const FAZ = [
+  { cod: 10966, op: 'cana', x: 0, y: 0, ang: .32, nx: 4, ny: 3, frotas: ['1034', '1041', 'PLANT CANA'], vig: { alvo: .806, mes: '2026-09' }, nova: { alvo: .889, mes: '2026-10' }, sessoes: 144 },
+  { cod: 10095, op: 'cana', x: 3700, y: 1700, ang: -.25, nx: 3, ny: 3, frotas: ['1034', '1052'], vig: { alvo: .83, mes: '2026-09' } },
+  { cod: 10819, op: 'cana', x: -2700, y: 2200, ang: .9, nx: 3, ny: 2, frotas: ['1041'], vig: { alvo: .742, mes: '2026-08', metodo: 'agrocad_fme' } },
+  { cod: 10073, op: 'cana', x: -1500, y: -2700, ang: .05, nx: 4, ny: 2, frotas: ['1052', 'Antonio Tittoto'], vig: { alvo: .912, mes: '2026-08', metodo: 'agrocad_fme' } },
+  { cod: 10658, op: 'torta', x: 2500, y: -2400, ang: -.6, nx: 3, ny: 2, frotas: ['64086', '64088'], vig: { alvo: .853, mes: '2026-09' }, nova: { alvo: .868, mes: '2026-10' } },
+  { cod: 10233, op: 'torta', x: 5300, y: -700, ang: .4, nx: 3, ny: 2, frotas: ['64086', '55805'], nova: { alvo: .73, mes: '2026-10' }, jdl: 31 },
+  { cod: 10010, op: 'torta', x: -4400, y: -600, ang: -.1, nx: 2, ny: 3, frotas: ['55805', '64088'], nova: { alvo: .762, mes: '2026-10' }, jdl: 22 },
+];
+const PORCOD = Object.fromEntries(FAZ.map(f => [f.cod, f]));
+
+function clip(poly, p, d) {
+  let t0 = -1e9, t1 = 1e9, A = 0; const n = poly.length;
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; A += a[0] * b[1] - b[0] * a[1]; }
+  const sg = A > 0 ? 1 : -1;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i], b = poly[(i + 1) % n], nx = -(b[1] - a[1]) * sg, ny = (b[0] - a[0]) * sg;
+    const num = (p[0] - a[0]) * nx + (p[1] - a[1]) * ny, den = d[0] * nx + d[1] * ny;
+    if (Math.abs(den) < 1e-12) { if (num < 0) return null; continue; }
+    const t = -num / den; if (den > 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t);
+  }
+  return t1 - t0 > 12 ? [t0, t1] : null;
+}
+
+function geometria(f) {
+  const r = rng(f.cod * 7 + 1), G = 14;
+  const ws = Array.from({ length: f.nx }, () => 200 + r() * 110), hs = Array.from({ length: f.ny }, () => 150 + r() * 80);
+  const U = ws.reduce((a, b) => a + b) + G * (f.nx - 1), V = hs.reduce((a, b) => a + b) + G * (f.ny - 1);
+  const vb = [0]; hs.forEach((h, j) => vb.push(j === f.ny - 1 ? V : vb[j] + h + G));
+  const tilt = vb.map((_, j) => (j === 0 || j === f.ny) ? (r() - .5) * 30 : (r() - .5) * 46);
+  const B = (j, u) => vb[j] + tilt[j] * u / U;
+  const c = Math.cos(f.ang), s = Math.sin(f.ang);
+  f.U = U; f.V = V; f.c = c; f.s = s;
+  f.W = (u, v) => [f.x + (u - U / 2) * c - (v - V / 2) * s, f.y + (u - U / 2) * s + (v - V / 2) * c];
+  f.talhoes = [];
+  let u = 0, n = 1;
+  for (let i = 0; i < f.nx; i++) {
+    const u0 = u, u1 = u + ws[i];
+    for (let jj = 0; jj < f.ny; jj++) {
+      const j = i % 2 ? f.ny - 1 - jj : jj;
+      const lo = uu => B(j, uu) + (j > 0 ? G / 2 : 0), up = uu => B(j + 1, uu) - (j < f.ny - 1 ? G / 2 : 0);
+      const loc = [[u0, lo(u0)], [u1, lo(u1)], [u1, up(u1)], [u0, up(u0)]];
+      const poly = loc.map(q => f.W(q[0], q[1]));
+      let A = 0; for (let k = 0; k < 4; k++) { const a = poly[k], b = poly[(k + 1) % 4]; A += a[0] * b[1] - b[0] * a[1]; }
+      const dec = +(1.5 + r() * 12.5).toFixed(1);
+      const virado = r() < .25;
+      f.talhoes.push({
+        n: n++, loc, poly, ha: Math.abs(A) / 2 / 1e4, dec,
+        alfa: (virado ? Math.PI / 2 : 0) + (r() - .5) * .12,
+        dq: (r() - .5) * .16 - (dec - 7) * .006,
+        pouco: false, fr2: r() < .4,
+        fr: f.frotas[Math.floor(r() * f.frotas.length)],
+      });
+    }
+    u = u1 + G;
+  }
+  if (f.cod === 10966 || f.cod === 10233) f.talhoes[f.talhoes.length - 1].pouco = true;
+  const xs = f.talhoes.flatMap(t => t.poly.map(p => p[0])), ys = f.talhoes.flatMap(t => t.poly.map(p => p[1]));
+  f.bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  f.ds = {};
+}
+
+function analise(f, chave) {
+  const cfg = f[chave], r = rng(f.cod * 13 + (chave === 'nova' ? 99 : 3));
+  const X = [], Y = [], C = [], UN = [], T = [], L = [], LT = [], LF = [];
+  const tal = f.talhoes.map((t, ti) => {
+    const alvo = Math.min(.985, Math.max(.42, cfg.alvo + .045 + t.dq + (chave === 'nova' ? (r() - .5) * .05 : 0)));
+    const sig = .1 / (Math.SQRT2 * erfinv(alvo)), mu = (r() - .5) * .07;
+    const d = [Math.cos(t.alfa), Math.sin(t.alfa)], nr = [-d[1], d[0]];
+    const proj = t.loc.map(q => q[0] * nr[0] + q[1] * nr[1]);
+    let o = Math.min(...proj) + 1.5; const oMax = t.pouco ? o + 7 : Math.max(...proj) - 1.5;
+    const offs = []; while (o < oMax) { offs.push(o); o += Math.max(2.45, 3 + mu + gauss(r) * sig); }
+    const segs = offs.map(oo => {
+      const p0 = [nr[0] * oo, nr[1] * oo], tr = clip(t.loc, p0, d); if (!tr) return null;
+      const t1 = t.pouco ? Math.min(tr[1], tr[0] + 40) : tr[1];
+      return { p0, t0: tr[0], t1 };
+    });
+    const st = { am: 0, ad: 0, ac: 0, ab: 0, soma: 0, hist: new Array(16).fill(0), frotas: new Set() };
+    segs.forEach((sg, k) => {
+      if (!sg) return;
+      const fr = t.fr2 && k > segs.length / 2 ? f.frotas[(f.frotas.indexOf(t.fr) + 1) % f.frotas.length] : t.fr;
+      sg.fr = fr;
+      const a = f.W(sg.p0[0] + d[0] * sg.t0, sg.p0[1] + d[1] * sg.t0), b = f.W(sg.p0[0] + d[0] * sg.t1, sg.p0[1] + d[1] * sg.t1);
+      L.push(a[0], a[1], b[0], b[1]); LT.push(ti); LF.push(fr);
+    });
+    for (let k = 0; k < segs.length - 1; k++) {
+      const a = segs[k], b = segs[k + 1]; if (!a || !b) continue;
+      const esp = offs[k + 1] - offs[k], ini = Math.max(a.t0, b.t0), fim = Math.min(a.t1, b.t1);
+      for (let tt = ini + 5; tt < fim; tt += 10) {
+        for (const lado of [a, b]) {
+          const e = esp + gauss(r) * .025;
+          if (e < 2.6 || e > 3.4) continue;
+          const cl = e < 2.9 ? 0 : e > 3.1 ? 2 : 1;
+          const w = f.W(lado.p0[0] + d[0] * tt, lado.p0[1] + d[1] * tt);
+          X.push(w[0]); Y.push(w[1]); C.push(cl); T.push(ti);
+          UN.push(((w[0] - f.x) * f.c + (w[1] - f.y) * f.s) / f.U + .5);
+          st.am++; st[['ab', 'ad', 'ac'][cl]]++; st.soma += e; st.hist[Math.min(15, Math.floor((e - 2.6) / .05))]++; st.frotas.add(lado.fr);
+        }
+      }
+    }
+    const unMax = T.length ? Math.max(...UN.filter((_, i) => T[i] === ti), 0) : 0;
+    return { ...st, frotas: [...st.frotas].sort(), media: st.am ? st.soma / st.am : 0, pct: pct(st.ad, st.am), insuf: st.am < 25, unMax };
+  });
+  const tot = tal.reduce((s, t) => ({ am: s.am + t.am, ad: s.ad + t.ad, ac: s.ac + t.ac, ab: s.ab + t.ab }), { am: 0, ad: 0, ac: 0, ab: 0 });
+  const porFrota = {};
+  tal.forEach((t, ti) => t.frotas.forEach(fr => { const p = porFrota[fr] || (porFrota[fr] = { am: 0, ad: 0 }); const w = t.frotas.length; p.am += t.am / w; p.ad += t.ad / w; }));
+  f.ds[chave] = {
+    cfg, tal, ...tot, pct: pct(tot.ad, tot.am), porFrota,
+    X: Float32Array.from(X), Y: Float32Array.from(Y), C: Uint8Array.from(C), UN: Float32Array.from(UN), T: Uint16Array.from(T),
+    L: Float32Array.from(L), LT: Uint16Array.from(LT), LF,
+  };
+}
+FAZ.forEach(f => { geometria(f); if (f.vig) analise(f, 'vig'); if (f.nova) analise(f, 'nova'); });
+
+// ── estado ──────────────────────────────────────────────────────────────────
+const S = {
+  aba: 'painel', nivel: 'editor', op: 'todas', camada: 'aderencia',
+  faz: null, tal: null,
+  fila: [], filaFase: 'vazia', // vazia | copiando | conferencia | processando | previa | enviando | enviada
+  anim: null, rodadaSel: null, antes: false, recusando: false, subRodadas: 'rodadas',
+  rodadas: [
+    { id: 11, desc: 'pen-drive frente 2 · 22/10/2026', por: 'Operador frente 2', em: '22/10 17:40', status: 'pendente', faz: [10658], tratores: 2, brutos: '1 parte · 48 MB' },
+    { id: 10, desc: 'pen-drives 15/10/2026', por: 'Leonardo', em: '15/10 09:12', val: 'Leonardo', status: 'publicada', faz: [10966, 10095], tratores: 3, brutos: '2 partes · 151 MB' },
+    { id: 9, desc: 'pen-drive frota 1034 · 10/10/2026', por: 'Operador frente 1', em: '10/10 16:05', val: 'Leonardo', status: 'recusada', motivo: 'GPS da 1034 sem correção RTK no dia; refazer depois da revisão do receptor.', faz: [10095], tratores: 1, brutos: '1 parte · 22 MB' },
+    { id: 1, desc: 'histórico até 26/10/2026', por: 'migração', em: '26/10 08:00', val: 'migração', status: 'publicada', faz: [10819, 10073, 10095], tratores: 0, brutos: 'sem brutos (AgroCAD/FME)' },
+  ],
+};
+const PERM = {
+  leitura: { abas: ['painel', 'rodadas'] },
+  solicitante: { abas: ['painel', 'processar', 'pendentes', 'rodadas'], processa: true },
+  editor: { abas: ['painel', 'processar', 'pendentes', 'rodadas'], processa: true, valida: true, frotas: true },
+  admin: { abas: ['painel', 'processar', 'pendentes', 'rodadas'], processa: true, valida: true, frotas: true, exclui: true },
+};
+const ABAS = { painel: ['Painel', 'insights'], processar: ['Processar', 'usb'], pendentes: ['Pendentes', 'fact_check'], rodadas: ['Rodadas', 'history'] };
+
+// qual análise de cada fazenda o mapa mostra agora
+function cena() {
+  const mostra = {}, foco = new Set();
+  const vigentes = () => FAZ.forEach(f => { if (f.ds.vig && (S.op === 'todas' || f.op === S.op)) mostra[f.cod] = 'vig'; });
+  if (S.aba === 'painel') vigentes();
+  else if (S.aba === 'processar') {
+    vigentes();
+    if (['processando', 'previa', 'enviando'].includes(S.filaFase)) {
+      for (const it of S.fila) for (const c of it.faz) {
+        if (S.filaFase === 'processando' && S.anim && S.anim.ordem.indexOf(c) > S.anim.i) continue;
+        mostra[c] = 'nova'; foco.add(c);
+      }
+    }
+  } else if (S.aba === 'pendentes') {
+    vigentes();
+    const r = S.rodadas.find(x => x.id === S.rodadaSel);
+    if (r) r.faz.forEach(c => { foco.add(c); if (S.antes) { if (PORCOD[c].ds.vig) mostra[c] = 'vig'; else delete mostra[c]; } else mostra[c] = 'nova'; });
+  } else if (S.aba === 'rodadas') {
+    vigentes();
+    const r = S.rodadas.find(x => x.id === S.rodadaSel);
+    if (r) r.faz.forEach(c => foco.add(c));
+  }
+  return { mostra, foco };
+}
+
+// ── cores ───────────────────────────────────────────────────────────────────
+let COR = {};
+function lerCores() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  COR = { mapa: v('--mapa'), borda: v('--borda-tal'), t1: v('--t1'), t2: v('--t2'), t3: v('--t3'), sf: v('--sf'), s2: v('--s2'),
+    ab: v('--ab'), ad: v('--ad'), ac: v('--ac'), r: [v('--r1'), v('--r2'), v('--r3'), v('--r4')], erro: v('--erro'), carreador: v('--carreador') };
+  COR.hachura = hachura();
+  desenhar();
+}
+function corAderencia(p) { return p >= 90 ? COR.r[3] : p >= 80 ? COR.r[2] : p >= 70 ? COR.r[1] : COR.r[0]; }
+function corDecliv(d) { const t = Math.min(1, d / 14); return `hsl(205, ${45 + t * 25}%, ${78 - t * 42}%)`; }
+function misturar(a, b, t) {
+  const h = s => { s = s.replace('#', ''); if (s.length === 3) s = [...s].map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16)); };
+  const x = h(a), y = h(b); return `rgb(${x.map((v, i) => Math.round(v * t + y[i] * (1 - t))).join(',')})`;
+}
+const FROTA_COR = ['#2f6db5', '#e07b1a', '#7b4fb3', '#22a39f', '#c2557a', '#8a6d3b'];
+const todasFrotas = [...new Set(FAZ.flatMap(f => f.frotas))];
+function corFrota(fr) { return FROTA_COR[todasFrotas.indexOf(fr) % FROTA_COR.length]; }
+function corMudanca(dl) { if (Math.abs(dl) < 1.5) return COR.s2; const a = Math.min(1, Math.abs(dl) / 15); return misturar(dl > 0 ? COR.ad : COR.ab, COR.sf, .3 + a * .6); }
+function hachura() {
+  const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d');
+  x.strokeStyle = COR.t3; x.globalAlpha = .55; x.lineWidth = 1.2; x.beginPath(); x.moveTo(0, 8); x.lineTo(8, 0); x.stroke();
+  return cv.getContext('2d').createPattern(c, 'repeat');
+}
+
+// ── mapa (canvas) ───────────────────────────────────────────────────────────
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let CW = 0, CH = 0, DPR = 1;
+const VIEW = { cx: 0, cy: 0, k: .1 };
+function w2s(x, y) { return [(x - VIEW.cx) * VIEW.k + CW / 2, CH / 2 - (y - VIEW.cy) * VIEW.k]; }
+function s2w(px, py) { return [(px - CW / 2) / VIEW.k + VIEW.cx, VIEW.cy - (py - CH / 2) / VIEW.k]; }
+function bboxDe(cods) {
+  const fs = cods.map(c => PORCOD[c]);
+  return [Math.min(...fs.map(f => f.bbox[0])), Math.min(...fs.map(f => f.bbox[1])), Math.max(...fs.map(f => f.bbox[2])), Math.max(...fs.map(f => f.bbox[3]))];
+}
+function vistaPara(b, folga = 60) { return { cx: (b[0] + b[2]) / 2, cy: (b[1] + b[3]) / 2, k: Math.min((CW - folga * 2) / (b[2] - b[0]), (CH - folga * 2) / (b[3] - b[1])) }; }
+let voo = null;
+function voar(b, folga) {
+  const alvo = vistaPara(b, folga);
+  if (REDUZ || !CW) { Object.assign(VIEW, alvo); desenhar(); return; }
+  voo = { de: { ...VIEW }, para: alvo, t0: performance.now(), dur: 750 }; pedir();
+}
+function voarUsina() { voar(bboxDe(FAZ.map(f => f.cod)), 50); }
+
+let pedido = false;
+function pedir() { if (!pedido) { pedido = true; requestAnimationFrame(quadro); } }
+function quadro(agora) {
+  pedido = false;
+  if (voo) {
+    let p = Math.min(1, (agora - voo.t0) / voo.dur); const e = 1 - Math.pow(1 - p, 4);
+    const lk = Math.log(voo.de.k) + (Math.log(voo.para.k) - Math.log(voo.de.k)) * e;
+    VIEW.k = Math.exp(lk); VIEW.cx = voo.de.cx + (voo.para.cx - voo.de.cx) * e; VIEW.cy = voo.de.cy + (voo.para.cy - voo.de.cy) * e;
+    if (p >= 1) voo = null;
+  }
+  if (S.anim) passoAnim(agora);
+  desenhar();
+  if (voo || S.anim) pedir();
+}
+function caminho(poly) { ctx.beginPath(); poly.forEach((p, i) => { const q = w2s(p[0], p[1]); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.closePath(); }
+
+function desenhar() {
+  if (!CW) return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = COR.mapa; ctx.fillRect(0, 0, CW, CH);
+  const { mostra, foco } = cena();
+  const k = VIEW.k, pontosVisiveis = k > .42;
+  // fazendas sem análise mostrada: só o contorno, apagado
+  for (const f of FAZ) {
+    const chave = mostra[f.cod]; const ds = chave && f.ds[chave];
+    const apagada = foco.size && !foco.has(f.cod);
+    const emAnim = S.anim && S.anim.cod === f.cod;
+    for (let ti = 0; ti < f.talhoes.length; ti++) {
+      const t = f.talhoes[ti]; caminho(t.poly);
+      if (!ds) {
+        ctx.fillStyle = COR.carreador; ctx.globalAlpha = apagada ? .35 : .7; ctx.fill(); ctx.globalAlpha = 1;
+        continue;
+      }
+      const st = ds.tal[ti];
+      let cor;
+      if (S.camada === 'declividade') cor = corDecliv(t.dec);
+      else if (S.camada === 'frotas') cor = corFrota(t.fr);
+      else if (S.camada === 'mudanca') cor = f.ds.vig && f.ds.nova && chave === 'nova' ? corMudanca(f.ds.nova.tal[ti].pct - f.ds.vig.tal[ti].pct) : COR.s2;
+      else cor = st.insuf ? COR.s2 : corAderencia(st.pct);
+      let a = pontosVisiveis && (!foco.size || foco.has(f.cod)) ? .26 : .85;
+      if (emAnim && chave === 'nova') a *= S.anim.preench[ti] || 0;
+      if (apagada) a *= .35;
+      ctx.globalAlpha = a; ctx.fillStyle = cor; ctx.fill();
+      if (st.insuf && !emAnim) { ctx.fillStyle = COR.hachura; ctx.globalAlpha = apagada ? .3 : .9; ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  // contornos dos talhões
+  ctx.lineWidth = Math.max(.6, Math.min(2, k * 2)); ctx.strokeStyle = COR.borda;
+  for (const f of FAZ) for (const t of f.talhoes) { caminho(t.poly); ctx.stroke(); }
+  // linhas e amostras
+  for (const f of FAZ) {
+    const chave = mostra[f.cod]; const ds = chave && f.ds[chave]; if (!ds) continue;
+    if (foco.size && !foco.has(f.cod)) continue;
+    const vb = f.bbox, a = w2s(vb[0], vb[3]), b = w2s(vb[2], vb[1]);
+    if (b[0] < 0 || a[0] > CW || b[1] < 0 || a[1] > CH) continue;
+    if (S.anim && S.anim.cod === f.cod && chave === 'nova') { desenharAnim(f, ds); continue; }
+    if (k > 1.4) desenharLinhas(ds, COR.t3, .55, Math.min(1, k * .35));
+    if (pontosVisiveis) desenharAmostras(ds, 1);
+  }
+  // talhão selecionado
+  if (S.faz && S.tal != null) { const t = PORCOD[S.faz].talhoes[S.tal]; caminho(t.poly); ctx.lineWidth = 2.5; ctx.strokeStyle = COR.t1; ctx.stroke(); }
+  else if (S.faz && S.aba === 'painel') { for (const t of PORCOD[S.faz].talhoes) { caminho(t.poly); ctx.lineWidth = 1.4; ctx.strokeStyle = COR.t2; ctx.globalAlpha = .5; ctx.stroke(); ctx.globalAlpha = 1; } }
+  rotulos(mostra, foco);
+}
+function desenharLinhas(ds, cor, alfa, lw, ate = Infinity) {
+  ctx.strokeStyle = cor; ctx.globalAlpha = alfa; ctx.lineWidth = lw; ctx.beginPath();
+  const n = Math.min(ds.L.length / 4, ate);
+  for (let i = 0; i < n; i++) { const a = w2s(ds.L[i * 4], ds.L[i * 4 + 1]), b = w2s(ds.L[i * 4 + 2], ds.L[i * 4 + 3]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+  ctx.stroke(); ctx.globalAlpha = 1;
+}
+function desenharAmostras(ds, alfa, limiteUN = 2) {
+  const k = VIEW.k, tam = Math.max(1.2, Math.min(4, k * 1.1)), cores = [COR.ab, COR.ad, COR.ac];
+  for (let c = 0; c < 3; c++) {
+    ctx.fillStyle = cores[c]; ctx.globalAlpha = alfa;
+    for (let i = 0; i < ds.X.length; i++) {
+      if (ds.C[i] !== c || ds.UN[i] > limiteUN) continue;
+      const x = (ds.X[i] - VIEW.cx) * k + CW / 2, y = CH / 2 - (ds.Y[i] - VIEW.cy) * k;
+      if (x < -4 || y < -4 || x > CW + 4 || y > CH + 4) continue;
+      ctx.fillRect(x - tam / 2, y - tam / 2, tam, tam);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function etiqueta(x, y, txt, sub, cor) {
+  ctx.font = '600 12px Poppins, system-ui, sans-serif';
+  const w1 = ctx.measureText(txt).width; ctx.font = '500 11px Poppins, system-ui, sans-serif';
+  const w2 = sub ? ctx.measureText(sub).width : 0; const w = Math.max(w1, w2) + 18 + (cor ? 10 : 0), h = sub ? 36 : 22;
+  ctx.fillStyle = COR.sf; ctx.shadowColor = 'rgba(0,0,0,.12)'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, 8); ctx.fill(); ctx.shadowBlur = 0;
+  const x0 = x - w / 2 + 9 + (cor ? 10 : 0);
+  if (cor) { ctx.fillStyle = cor; ctx.beginPath(); ctx.arc(x - w / 2 + 11, y - (sub ? 7 : 0), 4, 0, 7); ctx.fill(); }
+  ctx.fillStyle = COR.t1; ctx.font = '600 12px Poppins, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x0, y - (sub ? 7 : 0));
+  if (sub) { ctx.fillStyle = COR.t3; ctx.font = '500 11px Poppins, system-ui, sans-serif'; ctx.fillText(sub, x0, y + 8); }
+}
+function rotulos(mostra, foco) {
+  const k = VIEW.k;
+  if (k < .38) {
+    for (const f of FAZ) {
+      const ch = mostra[f.cod]; const ds = ch && f.ds[ch];
+      if (!ds && !(S.anim && S.anim.cod === f.cod)) continue;
+      if (foco.size && !foco.has(f.cod) && k < .2) continue;
+      const p = w2s((f.bbox[0] + f.bbox[2]) / 2, f.bbox[3]);
+      const sub = ds ? `${fmt(ds.pct)}% · ${f.op}` : 'processando…';
+      etiqueta(p[0], p[1] - 22, String(f.cod), sub, ds ? corAderencia(ds.pct) : null);
+    }
+  } else {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of FAZ) {
+      const ch = mostra[f.cod]; const ds = ch && f.ds[ch]; if (!ds) continue;
+      if (foco.size && !foco.has(f.cod)) continue;
+      f.talhoes.forEach((t, ti) => {
+        const cx = t.poly.reduce((s, p) => s + p[0], 0) / 4, cy = t.poly.reduce((s, p) => s + p[1], 0) / 4, q = w2s(cx, cy);
+        if (q[0] < 0 || q[1] < 0 || q[0] > CW || q[1] > CH) return;
+        const st = ds.tal[ti];
+        if (S.anim && S.anim.cod === f.cod && (S.anim.preench[ti] || 0) < .5) return;
+        ctx.font = '600 12px Poppins, system-ui, sans-serif';
+        const txt = `T${t.n}`, val = st.insuf ? 'insuf.' : `${fmt(st.pct, 0)}%`;
+        const w = Math.max(ctx.measureText(txt).width, 34) + 14;
+        ctx.fillStyle = COR.sf; ctx.globalAlpha = .92; ctx.beginPath(); ctx.roundRect(q[0] - w / 2, q[1] - 17, w, 34, 7); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.fillStyle = COR.t1; ctx.fillText(txt, q[0], q[1] - 6);
+        ctx.font = '500 11px Poppins, system-ui, sans-serif'; ctx.fillStyle = st.insuf ? COR.t3 : COR.t2; ctx.fillText(val, q[0], q[1] + 8);
+      });
+    }
+    ctx.textAlign = 'start';
+  }
+}
+
+// ── animação do processamento ───────────────────────────────────────────────
+const FASES = [
+  { ate: .30, t: 'Lendo os arquivos', s: f => f.sessoes ? `${f.sessoes} sessões GS3 · antena do trator, só com gravação ligada` : `${f.jdl} arquivos .jdl · trilha a cada 0,2 s, só com trabalho ligado` },
+  { ate: .50, t: 'Montando as linhas', s: () => 'LSFP 10 m → QBD 160° → CLE 10 m, por frota' },
+  { ate: .62, t: 'Limpando', s: () => 'tira passadas empilhadas, cruzamentos e linhas isoladas' },
+  { ate: 1, t: 'Medindo o espaçamento', s: () => 'PLL a cada 10 m · ideal 2,90–3,10 m' },
+];
+function extras(f) {
+  const r = rng(f.cod + 5), out = { estrada: [], empilhadas: [], manobras: [] };
+  out.estrada.push([f.W(-40, f.V * .52), f.W(f.U + 40, f.V * .46)]);
+  out.estrada.push([f.W(f.U * .3, -30), f.W(f.U * .36, f.V + 30)]);
+  const ds = f.ds.nova, nL = ds.L.length / 4;
+  for (let i = 0; i < 6; i++) { const j = Math.floor(r() * nL); const dx = (ds.L[j * 4 + 2] - ds.L[j * 4]) * .3, dy = (ds.L[j * 4 + 3] - ds.L[j * 4 + 1]) * .3; out.empilhadas.push([[ds.L[j * 4] + dx + .5, ds.L[j * 4 + 1] + dy + .5], [ds.L[j * 4 + 2] - dx + .5, ds.L[j * 4 + 3] - dy + .5]]); }
+  for (let j = 0; j + 3 < nL; j += 4) { if (ds.LT[j] !== ds.LT[j + 3]) continue; const lado = (j / 4) % 2 ? 2 : 0; out.manobras.push([[ds.L[j * 4 + lado], ds.L[j * 4 + lado + 1]], [ds.L[(j + 3) * 4 + lado], ds.L[(j + 3) * 4 + lado + 1]]]); }
+  return out;
+}
+function iniciarAnim(ordem) {
+  S.anim = { ordem, i: -1, cod: null }; proximaFazenda();
+}
+function proximaFazenda() {
+  const a = S.anim; a.i++;
+  const aqui = S.aba === 'processar';
+  if (a.i >= a.ordem.length) {
+    S.anim = null; tirarFaixa(); S.filaFase = 'previa'; S.fila[0].estado = 'pronto'; S.fila[0].sub = '3 fazendas · 203 arquivos · 1 pulado';
+    if (aqui) { S.camada = 'mudanca'; voar(bboxDe(S.fila[0].faz), 70); }
+    tudo(); return;
+  }
+  const f = PORCOD[a.ordem[a.i]];
+  a.cod = f.cod; a.t0 = performance.now() + (REDUZ ? 0 : 650); a.dur = REDUZ ? 1 : (a.i === 0 ? 10000 : 5200);
+  a.extras = extras(f); a.preench = new Array(f.talhoes.length).fill(0); a.fase = -1; a.p = 0; a.feito = false;
+  if (aqui) voar(f.bbox, 70);
+  renderCol(); pedir();
+}
+function passoAnim(agora) {
+  const a = S.anim; if (a.feito) return;
+  const f = PORCOD[a.cod], ds = f.ds.nova;
+  const p = Math.max(0, Math.min(1, (agora - a.t0) / a.dur)); a.p = p;
+  const fase = FASES.findIndex(x => p <= x.ate);
+  if (fase !== a.fase) { a.fase = fase; if (S.aba === 'processar') faixaFase(); }
+  const sweep = p < .62 ? -1 : (p - .62) / .38;
+  ds.tal.forEach((t, ti) => { a.preench[ti] = sweep < 0 ? 0 : Math.max(0, Math.min(1, (sweep - t.unMax + .12) / .12)); });
+  atualizarFaixa(p, sweep);
+  if (p >= 1) { a.feito = true; setTimeout(proximaFazenda, REDUZ ? 0 : 500); }
+}
+function desenharAnim(f, ds) {
+  const a = S.anim, p = a.p, k = VIEW.k, ex = a.extras, nL = ds.L.length / 4;
+  const seg = (ps, cor, alfa, lw) => { ctx.strokeStyle = cor; ctx.globalAlpha = alfa; ctx.lineWidth = lw; ctx.beginPath(); for (const [u, v] of ps) { const q = w2s(u[0], u[1]), w = w2s(v[0], v[1]); ctx.moveTo(q[0], q[1]); ctx.lineTo(w[0], w[1]); } ctx.stroke(); ctx.globalAlpha = 1; };
+  if (p < .3) {
+    const fr = p / .3, n = Math.floor(nL * fr);
+    ctx.setLineDash([1.5, 2.5]); desenharLinhas(ds, COR.t3, .9, Math.max(.8, k * .9), n); ctx.setLineDash([]);
+    seg(ex.manobras.filter((_, i) => i < ex.manobras.length * fr).map(([u, v]) => [u, v]), COR.t3, .8, 1);
+    if (fr > .4) seg(ex.estrada, COR.t3, .8, 1.4);
+    if (fr > .6) seg(ex.empilhadas, COR.t3, .8, 1.2);
+  } else {
+    const l = Math.min(1, (p - .3) / .2);
+    desenharLinhas(ds, COR.t2, p < .62 ? .55 + .3 * l : .35, Math.max(.6, k * .6));
+    if (p < .5) seg(ex.manobras, COR.t3, .8 * (1 - l), 1);
+    if (p < .62) {
+      const q = p < .5 ? 0 : (p - .5) / .12;
+      const cor = p < .5 ? COR.t3 : COR.erro, alfa = p < .5 ? .8 : (q < .5 ? 1 : 1 - (q - .5) * 2);
+      seg(ex.estrada, cor, alfa, p < .5 ? 1.4 : 2.6); seg(ex.empilhadas, cor, alfa, p < .5 ? 1.2 : 2.4);
+    }
+    if (p >= .62) {
+      const sweep = (p - .62) / .38;
+      desenharAmostras(ds, 1, sweep);
+      const fr = PORCOD[a.cod];
+      const x0 = fr.W(fr.U * sweep, -40), x1 = fr.W(fr.U * sweep, fr.V + 40), q0 = w2s(...x0), q1 = w2s(...x1);
+      ctx.strokeStyle = COR.ad; ctx.lineWidth = 2; ctx.globalAlpha = .7; ctx.beginPath(); ctx.moveTo(...q0); ctx.lineTo(...q1); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+  }
+}
+let faixaEl = null;
+function faixaFase() {
+  const a = S.anim, f = PORCOD[a.cod], fs = FASES[a.fase];
+  if (!faixaEl) { faixaEl = document.createElement('div'); faixaEl.className = 'faixa-fase'; $('#mapa').appendChild(faixaEl); }
+  faixaEl.innerHTML = `<span class="campo"><i></i><i></i><i></i><i></i></span>
+    <div class="txt"><div class="t">${f.cod} · ${fs.t}</div><div class="s">${fs.s(f)}</div>
+    <div class="passos">${FASES.map(() => '<span><i></i></span>').join('')}</div></div>
+    <div class="num" style="font-weight:600" id="ff-pct"></div>`;
+}
+function atualizarFaixa(p, sweep) {
+  if (!faixaEl) return;
+  faixaEl.querySelectorAll('.passos i').forEach((el, i) => { const ini = i ? FASES[i - 1].ate : 0; el.style.transform = `scaleX(${Math.max(0, Math.min(1, (p - ini) / (FASES[i].ate - ini)))})`; });
+  const it = S.fila[0]; if (!it) return;
+  const tot = it.faz.length, feito = (S.anim.i + p) / tot;
+  const el = $('#fila-prog'); if (el) el.style.width = `${(feito * 100).toFixed(1)}%`;
+  const tx = $('#fila-txt'); if (tx) tx.textContent = `${PORCOD[S.anim.cod].cod} · ${FASES[S.anim.fase].t.toLowerCase()} · ${Math.round(feito * 100)}%`;
+  const vivo = $('#vivo');
+  if (vivo) {
+    const ds = PORCOD[S.anim.cod].ds.nova; let am = 0, ad = 0;
+    if (sweep >= 0) for (let i = 0; i < ds.X.length; i++) if (ds.UN[i] <= sweep) { am++; ad += ds.C[i] === 1; }
+    vivo.innerHTML = sweep < 0 ? '<span style="color:var(--t3)">aguardando as linhas…</span>' : `<b>${fmt(pct(ad, am))}%</b> <span style="color:var(--t3)">de ${am.toLocaleString('pt-BR')} amostras</span>`;
+  }
+  const fp = $('#ff-pct'); if (fp) fp.textContent = `${Math.round(p * 100)}%`;
+}
+function tirarFaixa() { if (faixaEl) { faixaEl.remove(); faixaEl = null; } }
+
+// ── interação com o mapa ────────────────────────────────────────────────────
+function dentro(p, poly) { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+function acharTalhao(px, py) {
+  const w = s2w(px, py), { mostra } = cena();
+  for (const f of FAZ) { if (w[0] < f.bbox[0] || w[0] > f.bbox[2] || w[1] < f.bbox[1] || w[1] > f.bbox[3]) continue;
+    for (let ti = 0; ti < f.talhoes.length; ti++) if (dentro(w, f.talhoes[ti].poly)) return { f, ti, ch: mostra[f.cod] }; }
+  return null;
+}
+let arrasto = null;
+cv.addEventListener('pointerdown', e => { arrasto = { x: e.clientX, y: e.clientY, cx: VIEW.cx, cy: VIEW.cy, moveu: false }; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect();
+  if (arrasto) {
+    const dx = e.clientX - arrasto.x, dy = e.clientY - arrasto.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) { arrasto.moveu = true; cv.classList.add('arrastando'); }
+    if (arrasto.moveu) { VIEW.cx = arrasto.cx - dx / VIEW.k; VIEW.cy = arrasto.cy + dy / VIEW.k; voo = null; pedir(); }
+    return;
+  }
+  dica(acharTalhao(e.clientX - r.left, e.clientY - r.top), e.clientX - r.left, e.clientY - r.top);
+});
+cv.addEventListener('pointerup', e => {
+  cv.classList.remove('arrastando');
+  const a = arrasto; arrasto = null; if (!a || a.moveu) return;
+  const r = cv.getBoundingClientRect(), h = acharTalhao(e.clientX - r.left, e.clientY - r.top);
+  if (!h || !h.ch) return;
+  if (S.aba !== 'painel') { if (S.aba === 'pendentes' || S.aba === 'rodadas') return; }
+  if (S.aba === 'painel') {
+    if (S.faz !== h.f.cod) { S.faz = h.f.cod; S.tal = null; voar(h.f.bbox, 60); }
+    else { S.tal = h.ti; voar(bboxPoly(h.f.talhoes[h.ti].poly), 90); }
+    renderCol(); trilha();
+  }
+});
+cv.addEventListener('pointerleave', () => dica(null));
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); voo = null;
+  const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, w = s2w(px, py);
+  VIEW.k = Math.max(.03, Math.min(12, VIEW.k * Math.exp(-e.deltaY * .0015)));
+  const w2 = s2w(px, py); VIEW.cx += w[0] - w2[0]; VIEW.cy += w[1] - w2[1]; pedir();
+}, { passive: false });
+$('#z-mais').onclick = () => { voo = null; VIEW.k *= 1.6; pedir(); };
+$('#z-menos').onclick = () => { voo = null; VIEW.k /= 1.6; pedir(); };
+$('#z-tudo').onclick = () => { if (S.aba === 'painel') { S.faz = null; S.tal = null; renderCol(); trilha(); } voarUsina(); };
+function bboxPoly(p) { const xs = p.map(q => q[0]), ys = p.map(q => q[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; }
+function dica(h, x, y) {
+  const el = $('#dica');
+  if (!h || !h.ch) { el.classList.remove('on'); return; }
+  const ds = h.f.ds[h.ch], st = ds.tal[h.ti], t = h.f.talhoes[h.ti];
+  let mud = '';
+  if (h.ch === 'nova' && h.f.ds.vig) { const d = st.pct - h.f.ds.vig.tal[h.ti].pct; mud = `<br>antes ${fmt(h.f.ds.vig.tal[h.ti].pct)}% (${d >= 0 ? '+' : ''}${fmt(d)})`; }
+  el.innerHTML = `<b>${h.f.cod} · Talhão ${t.n}</b><br>${st.insuf ? 'amostra insuficiente' : `aderência <b>${fmt(st.pct)}%</b>`} · ${st.am.toLocaleString('pt-BR')} amostras${mud}<br>${fmt(t.ha)} ha · declividade ${fmt(t.dec)}%<br>${st.frotas.join(', ')}`;
+  el.style.left = x + 'px'; el.style.top = y + 'px'; el.classList.add('on');
+  const r = el.getBoundingClientRect(), m = $('#mapa').getBoundingClientRect();
+  if (r.right > m.right - 8) el.style.left = (x - r.width - 24) + 'px';
+  if (r.bottom > m.bottom - 8) el.style.top = (y - r.height - 24) + 'px';
+}
+
+// ── sobreposições ───────────────────────────────────────────────────────────
+function trilha() {
+  const el = $('#trilha'); let h = '';
+  if (S.aba === 'painel') {
+    h = `<button type="button" data-ir="usina">Usina da Pedra</button>`;
+    if (S.faz) h += ` › <button type="button" data-ir="faz">${S.faz}</button>`;
+    if (S.tal != null) h += ` › <b>Talhão ${PORCOD[S.faz].talhoes[S.tal].n}</b>`;
+    h += `<span style="margin-left:8px;color:var(--t3)">· ${S.op === 'todas' ? 'cana e torta' : S.op} · só análises publicadas</span>`;
+  } else if (S.aba === 'processar') h = { vazia: 'Nenhum pen-drive na fila', copiando: 'Copiando o pen-drive', conferencia: 'Conferência · nada processado ainda', processando: 'Processando no navegador', previa: 'Prévia · ainda não está no painel', enviando: 'Enviando para validação', enviada: 'Enviada · aguardando validação' }[S.filaFase];
+  else if (S.aba === 'pendentes') h = S.rodadaSel ? `Rodada r${S.rodadaSel} · ${S.antes ? 'antes (vigente)' : 'depois (esta rodada)'}` : 'Escolha uma rodada pendente';
+  else h = S.rodadaSel ? `Rodada r${S.rodadaSel} em destaque` : 'Todas as rodadas';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { if (b.dataset.ir === 'usina') { S.faz = null; S.tal = null; voarUsina(); } else { S.tal = null; voar(PORCOD[S.faz].bbox, 60); } renderCol(); trilha(); });
+}
+function camadas() {
+  const ops = [['aderencia', 'Aderência'], ['declividade', 'Declividade'], ['frotas', 'Frotas']];
+  if (['processar', 'pendentes'].includes(S.aba) && (S.filaFase === 'previa' || S.aba === 'pendentes')) ops.push(['mudanca', 'Mudança']);
+  if (!ops.some(o => o[0] === S.camada)) S.camada = 'aderencia';
+  $('#camadas').innerHTML = ops.map(([v, l]) => `<button type="button" aria-pressed="${S.camada === v}" data-c="${v}">${l}</button>`).join('');
+  $('#camadas').querySelectorAll('button').forEach(b => b.onclick = () => { S.camada = b.dataset.c; camadas(); legenda(); desenhar(); });
+  legenda();
+}
+function legenda() {
+  const sw = (c, t, p) => `<span class="sw"><i class="${p ? 'p' : ''}" style="background:${c}"></i>${t}</span>`;
+  let l1 = '';
+  if (S.camada === 'aderencia') l1 = `<span>Talhão</span>${sw(COR.r[0], '&lt; 70%')}${sw(COR.r[1], '70–80')}${sw(COR.r[2], '80–90')}${sw(COR.r[3], '≥ 90%')}<span class="sw"><i style="background:${COR.s2};outline:1px dashed ${COR.t3}"></i>insuficiente</span>`;
+  else if (S.camada === 'declividade') l1 = `<span>Declividade</span>${sw(corDecliv(2), '0–3%')}${sw(corDecliv(6), '3–9%')}${sw(corDecliv(13), '&gt; 9%')}`;
+  else if (S.camada === 'frotas') l1 = `<span>Frota principal</span>` + todasFrotas.slice(0, 6).map(f => sw(corFrota(f), f)).join('');
+  else l1 = `<span>Mudança</span>${sw(`color-mix(in srgb, ${COR.ab} 80%, ${COR.sf})`, 'piorou')}${sw(COR.s2, 'igual')}${sw(`color-mix(in srgb, ${COR.ad} 80%, ${COR.sf})`, 'melhorou')}`;
+  $('#legenda').innerHTML = `<div class="lin">${l1}</div><div class="lin"><span>Amostra</span>${sw(COR.ab, 'abaixo de 2,90', 1)}${sw(COR.ad, 'aderente', 1)}${sw(COR.ac, 'acima de 3,10', 1)}</div>`;
+}
+
+// ── mini Mo (protocolo de movimento do Hub) ─────────────────────────────────
+const CAMPO = '<span class="campo"><i></i><i></i><i></i><i></i></span>';
+function moOcupado(btn, texto) {
+  const orig = btn.innerHTML; btn.style.width = btn.offsetWidth + 'px'; btn.disabled = true;
+  btn.innerHTML = `${CAMPO}<span>${texto || ''}</span>`;
+  return ok => new Promise(res => {
+    btn.innerHTML = `<span class="ico">${ok ? 'check' : 'close'}</span>`; btn.classList.add(ok ? 'ok' : 'falhou');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('ok', 'falhou'); btn.disabled = false; btn.style.width = ''; res(); }, REDUZ ? 300 : 900);
+  });
+}
+function moConcluido(texto) {
+  const el = document.createElement('div'); el.className = 'concl';
+  el.innerHTML = `<div class="selo"><div class="onda"></div><svg viewBox="0 0 76 76"><circle class="c" cx="38" cy="38" r="36"/><path d="M23 39l10 10 20-22"/></svg><b>${texto}</b></div>`;
+  $('#mapa').appendChild(el); return new Promise(r => setTimeout(() => { el.remove(); r(); }, REDUZ ? 600 : 1900));
+}
+const espera = ms => new Promise(r => setTimeout(r, REDUZ ? 0 : ms));
+
+// ── coluna ──────────────────────────────────────────────────────────────────
+function vigentes() { return FAZ.filter(f => f.ds.vig && (S.op === 'todas' || f.op === S.op)); }
+function resumo(fs, ch = 'vig') { const t = fs.reduce((s, f) => { const d = f.ds[ch]; return { am: s.am + d.am, ad: s.ad + d.ad, ac: s.ac + d.ac, ab: s.ab + d.ab, tal: s.tal + d.tal.filter(x => !x.insuf).length }; }, { am: 0, ad: 0, ac: 0, ab: 0, tal: 0 }); t.pct = pct(t.ad, t.am); return t; }
+function barra3(d) { return `<div class="barra3"><i style="width:${pct(d.ab, d.am)}%;background:var(--ab)"></i><i style="width:${pct(d.ad, d.am)}%;background:var(--ad)"></i><i style="width:${pct(d.ac, d.am)}%;background:var(--ac)"></i></div><div class="leg3 num"><span>abaixo ${fmt(pct(d.ab, d.am))}%</span><span>aderente ${fmt(pct(d.ad, d.am))}%</span><span>acima ${fmt(pct(d.ac, d.am))}%</span></div>`; }
+function pil(op) { return `<span class="pilula pl-${op}">${op}</span>`; }
+function chipsOp() { return `<div class="chips">${[['todas', 'Cana e torta'], ['cana', 'Cana'], ['torta', 'Torta']].map(([v, l]) => `<button type="button" class="chip" data-op="${v}" aria-pressed="${S.op === v}">${l}</button>`).join('')}</div>`; }
+function barrasHtml(itens) {
+  const max = 100, min = 60;
+  return `<div class="barras">${itens.map(([rot, p, n]) => `<div class="b"><em class="num">${n ? fmt(p) + '%' : '–'}</em><i style="height:${n ? Math.max(4, (p - min) / (max - min) * 100) : 4}%;background:${n ? corAderencia(p) : COR.s2}"></i><span>${rot}</span></div>`).join('')}</div>`;
+}
+
+function colPainel() {
+  if (S.faz) return S.tal != null ? colTalhao() : colFazenda();
+  const fs = vigentes(), r = resumo(fs);
+  const porMes = Object.keys(MESES).map(m => { const x = fs.filter(f => f.ds.vig.cfg.mes === m); const t = resumo(x); return [MESES[m], t.pct, t.am]; });
+  const faixas = [[0, 3], [3, 6], [6, 9], [9, 12], [12, 99]].map(([a, b]) => { let am = 0, ad = 0; fs.forEach(f => f.talhoes.forEach((t, ti) => { if (t.dec >= a && t.dec < b) { am += f.ds.vig.tal[ti].am; ad += f.ds.vig.tal[ti].ad; } })); return [b === 99 ? `>${a}%` : `${a}–${b}%`, pct(ad, am), am]; });
+  return `
+  <div class="cab"><div class="ey">Usina da Pedra · safra 2026/27</div><h2>Paralelismo do plantio</h2><p>Análises vigentes de ${fs.length} fazendas. Clique numa fazenda no mapa ou na lista.</p></div>
+  ${chipsOp()}
+  <div class="grande"><span class="v num">${fmt(r.pct)}%</span><span style="color:var(--t3)">aderência ponderada por amostra</span></div>
+  ${barra3(r)}
+  <div class="kpis"><div class="kpi"><div class="l">Amostras</div><div class="v num">${r.am.toLocaleString('pt-BR')}</div></div><div class="kpi"><div class="l">Talhões</div><div class="v num">${r.tal}</div></div><div class="kpi"><div class="l">Fazendas</div><div class="v num">${fs.length}</div></div></div>
+  <div class="sec"><h3>Aderência por mês <small>mês com mais amostras</small></h3>${barrasHtml(porMes)}</div>
+  <div class="sec"><h3>Por faixa de declividade</h3>${barrasHtml(faixas)}</div>
+  <div class="sec"><h3>Fazendas <small>da pior para a melhor</small></h3><div class="lista">${fs.slice().sort((a, b) => a.ds.vig.pct - b.ds.vig.pct).map(f => `
+    <button type="button" class="item" data-faz="${f.cod}"><span class="cod num">${f.cod}</span>
+      <span><span class="sub">${pil(f.op)} ${MESES[f.ds.vig.cfg.mes]} · ${f.ds.vig.am.toLocaleString('pt-BR')} amostras${f.ds.vig.cfg.metodo ? ' · <span class="pilula pl-fme">AgroCAD</span>' : ''}</span><div class="mini"><i style="width:${f.ds.vig.pct}%;background:${corAderencia(f.ds.vig.pct)}"></i></div></span>
+      <span class="pct num">${fmt(f.ds.vig.pct)}%</span></button>`).join('')}</div></div>
+  <button type="button" class="botao claro" id="bt-relatorio"><span class="ico">print</span>Relatório gerencial (últimos 3 meses)</button>`;
+}
+function colFazenda() {
+  const f = PORCOD[S.faz], d = f.ds.vig;
+  const hist = f.cod === 10966 ? `<div class="aviso info"><span class="ico">history</span><span>Rodada r10 (set): ${fmt(d.pct)}%. Há uma rodada nova desta fazenda em <b>Pendentes</b> depois do fluxo de exemplo.</span></div>` : '';
+  return `
+  <div class="cab"><div class="ey">${f.op} · ${MESES[d.cfg.mes]}/2026 · ${d.cfg.metodo ? 'AgroCAD/FME (histórico)' : 'trilha do trator'}</div><h2>Fazenda ${f.cod}</h2><p>${f.talhoes.length} talhões · ${fmt(f.talhoes.reduce((s, t) => s + t.ha, 0), 0)} ha · frotas ${f.frotas.join(', ')}</p></div>
+  <div class="grande"><span class="v num">${fmt(d.pct)}%</span><span style="color:var(--t3)">${d.am.toLocaleString('pt-BR')} amostras</span></div>
+  ${barra3(d)}${hist}
+  <div class="sec"><h3>Talhões <small>clique para ver as amostras</small></h3><div class="rolar"><table class="tab num"><thead><tr><th>Talhão</th><th class="r">ha</th><th class="r">Decl.</th><th>Aderência</th><th class="r">Amostras</th></tr></thead><tbody>
+  ${f.talhoes.map((t, ti) => { const s = d.tal[ti]; return `<tr class="cl" data-tal="${ti}"><td>T${t.n}</td><td class="r">${fmt(t.ha)}</td><td class="r">${fmt(t.dec)}%</td><td>${s.insuf ? '<span class="pilula pl-ins">insuficiente</span>' : `<b>${fmt(s.pct)}%</b>`}</td><td class="r">${s.am.toLocaleString('pt-BR')}</td></tr>`; }).join('')}
+  </tbody></table></div></div>
+  <div class="sec"><h3>Frotas</h3><div class="lista">${Object.entries(d.porFrota).map(([fr, v]) => `<div class="item" style="cursor:default"><span class="sw"><i style="background:${corFrota(fr)}"></i></span><span>${fr}<div class="mini"><i style="width:${pct(v.ad, v.am)}%;background:${corAderencia(pct(v.ad, v.am))}"></i></div></span><span class="pct num">${fmt(pct(v.ad, v.am))}%</span></div>`).join('')}</div></div>
+  <div class="botoes"><button type="button" class="botao claro"><span class="ico">folder_zip</span>Brutos (release)</button><button type="button" class="botao claro"><span class="ico">map</span>Shapefile das amostras</button></div>`;
+}
+function colTalhao() {
+  const f = PORCOD[S.faz], d = f.ds.vig, t = f.talhoes[S.tal], s = d.tal[S.tal];
+  const mx = Math.max(...s.hist, 1);
+  return `
+  <div class="cab"><div class="ey">Fazenda ${f.cod} · ${f.op}</div><h2>Talhão ${t.n}</h2><p>${fmt(t.ha)} ha · declividade ${fmt(t.dec)}% · ${s.frotas.join(', ')}</p></div>
+  ${s.insuf ? `<div class="aviso"><span class="ico">warning</span><span>Amostra insuficiente: ${s.am} amostras (mínimo 25). O talhão aparece no relatório sem aderência.</span></div>` : `<div class="grande"><span class="v num">${fmt(s.pct)}%</span><span style="color:var(--t3)">${s.am.toLocaleString('pt-BR')} amostras · média ${fmt(s.media, 2)} m</span></div>`}
+  ${barra3(s)}
+  <div class="sec"><h3>Espaçamento medido <small>faixa ideal em verde</small></h3>
+    <div class="hist">${s.hist.map((v, i) => { const e = 2.6 + i * .05 + .025; return `<i title="${fmt(e, 2)} m: ${v}" style="height:${Math.max(2, v / mx * 100)}%;background:${e < 2.9 ? 'var(--ab)' : e > 3.1 ? 'var(--ac)' : 'var(--ad)'}"></i>`; }).join('')}</div>
+    <div class="hist-eixo num"><span>2,60 m</span><span>2,90</span><span>3,00</span><span>3,10</span><span>3,40 m</span></div></div>
+  <div class="aviso info"><span class="ico">touch_app</span><span>Aproxime o mapa: cada ponto é uma amostra a cada 10 m, colorida pela distância até a linha vizinha.</span></div>`;
+}
+
+function colProcessar() {
+  const p = PERM[S.nivel];
+  const fila = S.fila.map(it => `<div class="fi"><div class="l1"><span class="n">${it.nome}</span>${{ copiando: '<span class="pilula pl-pend">copiando</span>', conferencia: '<span class="pilula pl-ins">conferir</span>', fila: '<span class="pilula pl-ins">na fila</span>', processando: '<span class="pilula pl-pend">processando</span>', pronto: '<span class="pilula pl-pub">pronto para revisar</span>', enviada: '<span class="pilula pl-pub">enviada</span>' }[it.estado] || ''}</div>
+    <div class="s" id="fila-txt">${it.sub}</div>${['copiando', 'processando'].includes(it.estado) ? `<div class="prog"><i id="fila-prog" style="width:${it.estado === 'copiando' ? 0 : 0}%"></i></div>` : ''}</div>`).join('');
+  let corpo = '';
+  if (S.filaFase === 'vazia') corpo = `
+    <div class="solta"><span class="ico">usb</span><b>Escolha a pasta do pen-drive</b><span>A página lê a pasta toda, calcula o SHA-256 de cada arquivo e guarda uma cópia no navegador. Depois disso o pen-drive pode sair.</span>
+    <button type="button" class="botao verde" id="bt-pendrive"><span class="ico">folder_open</span>Escolher pasta (exemplo de 26/10)</button></div>
+    <div class="aviso info"><span class="ico">info</span><span>Dá para incluir vários pen-drives em sequência: enquanto um processa, você confere o próximo. A página precisa ficar aberta enquanto houver item na fila.</span></div>`;
+  else if (S.filaFase === 'copiando') corpo = '';
+  else if (S.filaFase === 'conferencia') corpo = colConferencia();
+  else if (S.filaFase === 'processando') corpo = `<div class="sec"><h3>Aderência parcial <small>${S.anim ? PORCOD[S.anim.cod].cod : ''}</small></h3><div id="vivo" class="num" style="font-size:20px"></div></div>
+    <div class="aviso info"><span class="ico">memory</span><span>Roda no navegador (Pyodide, num Web Worker): a tela não trava. Tempo de referência: 16 s numa fazenda de torta pequena; 2,3 min na 10966.</span></div>`;
+  else if (['previa', 'enviando'].includes(S.filaFase)) corpo = colPrevia(S.fila[0].faz, true);
+  else if (S.filaFase === 'enviada') corpo = `<div class="aviso info"><span class="ico">fact_check</span><span>A rodada r12 está em <b>Pendentes</b>. Ela só entra no painel e no relatório quando um editor publicar.</span></div>
+    <button type="button" class="botao claro" id="bt-ir-pend"><span class="ico">fact_check</span>Abrir Pendentes</button>
+    <button type="button" class="botao verde" id="bt-novo"><span class="ico">usb</span>Outro pen-drive</button>`;
+  return `<div class="cab"><div class="ey">${p.valida ? 'Editor' : 'Solicitante'} · processar pen-drive</div><h2>${S.filaFase === 'previa' ? 'Prévia da rodada' : S.filaFase === 'conferencia' ? 'Conferência' : 'Fila de pen-drives'}</h2></div>
+    ${fila ? `<div class="fila">${fila}</div>` : ''}${corpo}`;
+}
+function colConferencia() {
+  const fo = o => `<option ${o === '1034' ? 'selected' : ''}>${o}</option>`;
+  return `
+  <div class="sec"><h3>Encontrado no pen-drive <small>nada foi processado ainda</small></h3><div class="fila">
+   <div class="trator"><div class="l1"><b>Frota 64086</b>${pil('torta')}</div><div class="serie">.jdl · série BM7230J002231 · 10233 (Rev0) · 31 arquivos</div></div>
+   <div class="trator"><div class="l1"><b>Frota 55805</b>${pil('torta')}</div><div class="serie">.jdl · série BM6195M004117 · 10010 (Rev1) · 22 arquivos</div></div>
+   <div class="trator"><div class="l1"><b>Pasta GS3 “Frota 1034”</b>${pil('cana')}</div><div class="serie">GS3_2630 · 10966 (Rev0) · 144 sessões</div>
+     <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t2)">Frota desta pasta <select id="fr-gs3">${['1034', '1041', '1052', 'PLANT CANA'].map(fo).join('')}</select><span style="color:var(--t3)">(do nome da pasta)</span></label>
+     <div class="aviso info"><span class="ico">content_copy</span><span>12 sessões já analisadas na r10: serão ignoradas.</span></div></div>
+   <div class="trator"><div class="l1"><b>Pasta GS3 “62571”</b><span class="pilula pl-rec">sem executado</span></div><div class="serie">só mapa de cobertura e linhas-guia</div>
+     <div class="aviso"><span class="ico">warning</span><span>Exporte de novo do monitor marcando <b>Documentation</b>. Esta pasta fica de fora.</span></div></div>
+  </div></div>
+  <div class="botoes"><button type="button" class="botao claro" id="bt-descartar">Descartar</button><button type="button" class="botao verde" id="bt-fila"><span class="ico">play_arrow</span>Adicionar à fila</button></div>`;
+}
+function colPrevia(cods, envio) {
+  const linhas = cods.map(c => { const f = PORCOD[c], n = f.ds.nova, v = f.ds.vig; const dl = v ? n.pct - v.pct : null;
+    return `<button type="button" class="item" data-voar="${c}"><span class="cod num">${c}</span><span><span class="sub">${pil(f.op)} ${n.am.toLocaleString('pt-BR')} amostras · ${MESES[n.cfg.mes]}</span><div class="mini"><i style="width:${n.pct}%;background:${corAderencia(n.pct)}"></i></div></span>
+    <span style="text-align:right"><span class="pct num">${fmt(n.pct)}%</span><br>${v ? `<span class="d ${dl >= 0 ? 'sobe' : 'desce'} num" style="font-size:11px;font-weight:600">${dl >= 0 ? '▲' : '▼'} ${fmt(Math.abs(dl))} · era ${fmt(v.pct)}%</span>` : '<span class="sub">fazenda nova</span>'}</span></button>`; }).join('');
+  const r = resumo(cods.map(c => PORCOD[c]), 'nova');
+  return `
+  <div class="grande"><span class="v num">${fmt(r.pct)}%</span><span style="color:var(--t3)">${r.am.toLocaleString('pt-BR')} amostras nesta rodada</span></div>
+  ${barra3(r)}
+  <div class="sec"><h3>Fazendas <small>junta com as linhas já publicadas</small></h3><div class="lista">${linhas}</div></div>
+  <div class="sec"><h3>Avisos</h3><div class="fila">
+    ${cods.includes(10010) ? '<div class="aviso"><span class="ico">agriculture</span><span><b>55805 na 10010</b>: 3 h 40 de trilha, 4% com o implemento ligado. Frota sem trabalho registrado?</span></div>' : ''}
+    ${cods.includes(10966) ? '<div class="aviso info"><span class="ico">grid_off</span><span><b>10966 T12</b>: amostra insuficiente (16 de 25).</span></div>' : ''}
+    ${cods.includes(10233) ? '<div class="aviso info"><span class="ico">location_off</span><span><b>10233</b>: 2,1% das amostras fora de talhão (aviso só acima de 5%).</span></div>' : ''}
+    ${cods.includes(10966) ? '<div class="aviso erro"><span class="ico">broken_image</span><span><b>1 arquivo pulado</b>: 2026_10_21_…fdd truncado.</span></div>' : ''}
+  </div></div>
+  ${envio ? `<div class="aviso info"><span class="ico">cloud_upload</span><span>Enviar zipa os brutos (2 partes de até 90 MB), sobe para a release e grava a rodada como <b>pendente</b>. Se o envio falhar, nada é gravado.</span></div>
+  <div id="envio-prog"></div>
+  <div class="botoes"><button type="button" class="botao claro" id="bt-descartar">Descartar</button><button type="button" class="botao verde" id="bt-enviar"><span class="ico">send</span>Enviar para validação</button></div>` : ''}`;
+}
+
+function colPendentes() {
+  const p = PERM[S.nivel], pend = S.rodadas.filter(r => r.status === 'pendente' && (p.valida || r.por === 'Leonardo'));
+  if (!S.rodadaSel || !pend.some(r => r.id === S.rodadaSel)) {
+    return `<div class="cab"><div class="ey">${p.valida ? 'Editor · validar' : 'Solicitante · suas rodadas'}</div><h2>Pendentes</h2><p>${p.valida ? 'Rodadas enviadas que ainda não aparecem no painel.' : 'Só as rodadas que você enviou. Quem publica é um editor.'}</p></div>
+    ${pend.length ? `<div class="lista">${pend.map(r => `<button type="button" class="item" data-rod="${r.id}"><span class="cod num">r${r.id}</span><span>${r.desc}<div class="sub">${r.por} · ${r.em} · fazendas ${r.faz.join(', ')}</div></span><span class="pilula pl-pend">pendente</span></button>`).join('')}</div>` : '<div class="aviso info"><span class="ico">inbox</span><span>Nenhuma rodada pendente.</span></div>'}`;
+  }
+  const r = S.rodadas.find(x => x.id === S.rodadaSel);
+  return `<div class="cab"><div class="ey"><button type="button" class="voltar" id="bt-volta-pend" style="padding:0"><span class="ico" style="font-size:16px">arrow_back</span>Pendentes</button></div><h2>r${r.id} · ${r.desc}</h2><p>Processada por ${r.por} em ${r.em} · ${r.tratores} tratores · brutos: ${r.brutos}</p></div>
+    <div class="antesdepois"><button type="button" data-ad="0" aria-pressed="${S.antes}">Antes (vigente)</button><button type="button" data-ad="1" aria-pressed="${!S.antes}">Depois (esta rodada)</button></div>
+    ${colPrevia(r.faz, false)}
+    ${p.valida ? (S.recusando ? `<div class="sec entra"><h3>Motivo da recusa</h3><textarea id="motivo" placeholder="Ex.: GPS sem correção RTK no dia"></textarea></div><div class="botoes"><button type="button" class="botao claro" id="bt-rec-cancela">Voltar</button><button type="button" class="botao perigo" id="bt-rec-ok"><span class="ico">block</span>Recusar rodada</button></div>`
+      : `<div class="botoes"><button type="button" class="botao perigo" id="bt-recusar"><span class="ico">block</span>Recusar</button><button type="button" class="botao verde" id="bt-publicar"><span class="ico">verified</span>Publicar</button></div>
+      <div class="aviso info"><span class="ico">sync</span><span>Se outra rodada destas fazendas for publicada antes, a tela refaz a limpeza e o PLL juntando as linhas (1 a 2 min numa fazenda grande) e mostra o resultado novo antes de confirmar.</span></div>`)
+      : '<div class="aviso info"><span class="ico">hourglass_top</span><span>Aguardando um editor publicar.</span></div>'}`;
+}
+
+function colRodadas() {
+  const p = PERM[S.nivel];
+  const sub = `<div class="chips"><button type="button" class="chip" data-sub="rodadas" aria-pressed="${S.subRodadas === 'rodadas'}">Rodadas</button><button type="button" class="chip" data-sub="frotas" aria-pressed="${S.subRodadas === 'frotas'}">Frotas</button></div>`;
+  if (S.subRodadas === 'frotas') {
+    const linhas = [['BM7230J002231', '64086', 'torta', 'própria'], ['BM6195M004117', '55805', 'torta', 'própria'], ['BM7230J002877', '64088', 'torta', 'própria'], ['GS3:1034', '1034', 'cana', 'própria'], ['GS3:1041', '1041', 'cana', 'própria'], ['GS3:1052', '1052', 'cana', 'própria'], ['GS3:PLANT CANA', 'PLANT CANA', 'cana', 'prestador'], ['BM6155M001932', 'Antonio Tittoto', 'cana', 'prestador']];
+    return `<div class="cab"><div class="ey">Tabela de frotas</div><h2>Frotas</h2><p>A frota de cada .jdl vem da série do trator gravada no arquivo. ${p.frotas ? 'Você pode editar.' : 'Só editores alteram.'}</p></div>${sub}
+    <div class="rolar"><table class="tab"><thead><tr><th>Série</th><th>Frota</th><th>Operação</th><th>Tipo</th></tr></thead><tbody>${linhas.map(l => `<tr><td class="num" style="font-size:11px">${l[0]}</td><td><b>${l[1]}</b></td><td>${p.frotas ? `<select aria-label="Operação de ${l[1]}"><option ${l[2] === 'cana' ? 'selected' : ''}>cana</option><option ${l[2] === 'torta' ? 'selected' : ''}>torta</option></select>` : pil(l[2])}</td><td>${l[3]}</td></tr>`).join('')}</tbody></table></div>
+    ${p.frotas ? '<button type="button" class="botao claro"><span class="ico">add</span>Nova frota</button>' : ''}`;
+  }
+  return `<div class="cab"><div class="ey">Prova técnica de tudo que foi analisado</div><h2>Rodadas</h2><p>Cada pen-drive vira uma rodada. Os brutos ficam na release do GitHub, mesmo se a rodada for recusada ou excluída.</p></div>${sub}
+  <div class="lista">${S.rodadas.map(r => `<button type="button" class="item" data-rod2="${r.id}" style="${S.rodadaSel === r.id ? 'background:var(--s2)' : ''}"><span class="cod num">r${r.id}</span>
+   <span>${r.desc}<div class="sub">${r.por} · ${r.em}${r.val ? ` · validou ${r.val}` : ''}<br>${r.tratores ? r.tratores + ' tratores · ' : ''}fazendas ${r.faz.join(', ')} · ${r.brutos}</div>${r.motivo ? `<div class="sub" style="color:var(--erro)">${r.motivo}</div>` : ''}</span>
+   <span class="pilula pl-${{ pendente: 'pend', publicada: 'pub', recusada: 'rec' }[r.status]}">${r.status}</span></button>`).join('')}</div>
+  ${p.exclui && S.rodadaSel ? `<button type="button" class="botao perigo"><span class="ico">delete</span>Excluir r${S.rodadaSel} (admin, vai para a auditoria)</button>` : ''}`;
+}
+
+function renderCol() {
+  const col = $('#col');
+  col.innerHTML = { painel: colPainel, processar: colProcessar, pendentes: colPendentes, rodadas: colRodadas }[S.aba]();
+  ligarCol(col); notas();
+}
+function ligarCol(col) {
+  col.querySelectorAll('[data-op]').forEach(b => b.onclick = () => { S.op = b.dataset.op; renderCol(); desenhar(); trilha(); });
+  col.querySelectorAll('[data-faz]').forEach(b => b.onclick = () => { S.faz = +b.dataset.faz; S.tal = null; voar(PORCOD[S.faz].bbox, 60); renderCol(); trilha(); });
+  col.querySelectorAll('[data-tal]').forEach(b => b.onclick = () => { S.tal = +b.dataset.tal; voar(bboxPoly(PORCOD[S.faz].talhoes[S.tal].poly), 90); renderCol(); trilha(); });
+  col.querySelectorAll('[data-voar]').forEach(b => b.onclick = () => voar(PORCOD[+b.dataset.voar].bbox, 60));
+  col.querySelectorAll('[data-rod]').forEach(b => b.onclick = () => { S.rodadaSel = +b.dataset.rod; S.antes = false; S.recusando = false; S.camada = 'mudanca'; voar(bboxDe(S.rodadas.find(r => r.id === S.rodadaSel).faz), 70); tudo(); });
+  col.querySelectorAll('[data-rod2]').forEach(b => b.onclick = () => { S.rodadaSel = S.rodadaSel === +b.dataset.rod2 ? null : +b.dataset.rod2; if (S.rodadaSel) voar(bboxDe(S.rodadas.find(r => r.id === S.rodadaSel).faz), 70); tudo(); });
+  col.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { S.subRodadas = b.dataset.sub; renderCol(); });
+  col.querySelectorAll('[data-ad]').forEach(b => b.onclick = () => { S.antes = b.dataset.ad === '0'; tudo(); });
+  const on = (id, fn) => { const el = col.querySelector('#' + id); if (el) el.onclick = fn; };
+  on('bt-pendrive', escolherPendrive);
+  on('bt-fila', adicionarFila);
+  on('bt-descartar', () => { S.fila = []; S.filaFase = 'vazia'; tudo(); });
+  on('bt-enviar', e => enviar(e.currentTarget));
+  on('bt-novo', () => { S.fila = []; S.filaFase = 'vazia'; tudo(); });
+  on('bt-ir-pend', () => irAba('pendentes'));
+  on('bt-volta-pend', () => { S.rodadaSel = null; S.camada = 'aderencia'; voarUsina(); tudo(); });
+  on('bt-publicar', e => publicar(e.currentTarget));
+  on('bt-recusar', () => { S.recusando = true; renderCol(); col.querySelector('#motivo')?.focus(); });
+  on('bt-rec-cancela', () => { S.recusando = false; renderCol(); });
+  on('bt-rec-ok', e => recusar(e.currentTarget));
+  on('bt-relatorio', () => { notas(true); });
+}
+
+// ── fluxo ───────────────────────────────────────────────────────────────────
+async function escolherPendrive() {
+  S.fila = [{ nome: 'pen-drives 26/10/2026', sub: 'lendo a pasta…', estado: 'copiando', faz: [10966, 10233, 10010] }];
+  S.filaFase = 'copiando'; tudo();
+  const total = 287.4, passos = REDUZ ? 1 : 40;
+  for (let i = 1; i <= passos; i++) {
+    await espera(45);
+    const mb = total * i / passos, el = $('#fila-prog'), tx = $('#fila-txt');
+    if (el) el.style.width = (100 * i / passos) + '%';
+    if (tx) tx.textContent = `SHA-256 e cópia no navegador · ${fmt(mb)} MB de ${fmt(total)} MB · 203 arquivos`;
+  }
+  S.fila[0].estado = 'conferencia'; S.fila[0].sub = 'Pode retirar o pen-drive · cópia guardada no navegador';
+  S.filaFase = 'conferencia'; tudo();
+}
+function adicionarFila() {
+  S.fila[0].estado = 'processando'; S.fila[0].sub = 'preparando a análise…'; S.filaFase = 'processando';
+  S.camada = 'aderencia'; tudo(); iniciarAnim([10966, 10233, 10010]);
+}
+async function enviar(btn) {
+  const fim = moOcupado(btn, 'Enviando…');
+  const box = $('#envio-prog'); box.innerHTML = '<div class="fi"><div class="s" id="ep-t"></div><div class="prog"><i id="ep-b" style="width:0"></i></div></div>';
+  const total = 151.8, partes = [[0, 90], [90, 151.8]];
+  for (let i = 0; i <= 30; i++) { await espera(50); const mb = total * i / 30, pa = mb <= 90 ? 1 : 2; $('#ep-b').style.width = (100 * i / 30) + '%'; $('#ep-t').textContent = `Parte ${pa} de 2 · ${fmt(mb)} MB de ${fmt(total)} MB (zip dos brutos)`; }
+  $('#ep-t').textContent = 'Gravando a rodada e as linhas…'; await espera(700);
+  await fim(true);
+  S.rodadas.unshift({ id: 12, desc: 'pen-drives 26/10/2026', por: 'Leonardo', em: '29/10 10:31', status: 'pendente', faz: [10966, 10233, 10010], tratores: 3, brutos: '2 partes · 152 MB' });
+  S.fila[0].estado = 'enviada'; S.fila[0].sub = 'rodada r12 · aguardando validação'; S.filaFase = 'enviada';
+  await moConcluido('Enviado para validação');
+  tudo(); contador(true);
+}
+async function publicar(btn) {
+  const fim = moOcupado(btn, 'Publicando…'); await espera(900); await fim(true);
+  const r = S.rodadas.find(x => x.id === S.rodadaSel);
+  r.status = 'publicada'; r.val = 'Leonardo';
+  r.faz.forEach(c => { const f = PORCOD[c]; f.ds.vig = f.ds.nova; f.vig = f.nova; delete f.ds.nova; });
+  await moConcluido('Publicada no painel');
+  S.rodadaSel = null; S.camada = 'aderencia'; tudo(); contador(true);
+}
+async function recusar(btn) {
+  const m = $('#motivo').value.trim();
+  if (!m) { $('#motivo').style.borderColor = 'var(--erro)'; $('#motivo').placeholder = 'Escreva o motivo para recusar'; $('#motivo').focus(); return; }
+  const fim = moOcupado(btn, 'Recusando…'); await espera(700); await fim(true);
+  const r = S.rodadas.find(x => x.id === S.rodadaSel); r.status = 'recusada'; r.val = 'Leonardo'; r.motivo = m;
+  S.rodadaSel = null; S.recusando = false; S.camada = 'aderencia'; tudo(); contador(true);
+}
+
+// ── abas, notas, início ─────────────────────────────────────────────────────
+function contador(pop) {
+  const p = PERM[S.nivel], n = S.rodadas.filter(r => r.status === 'pendente' && (p.valida || r.por === 'Leonardo')).length;
+  const el = document.querySelector('[data-aba="pendentes"] .cont'); if (!el) return;
+  el.textContent = n; el.hidden = !n; if (pop && !REDUZ) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+}
+function abas() {
+  const p = PERM[S.nivel];
+  if (!p.abas.includes(S.aba)) S.aba = 'painel';
+  $('#abas').innerHTML = p.abas.map(a => `<button type="button" role="tab" class="aba" data-aba="${a}" aria-selected="${S.aba === a}"><span class="ico" style="font-size:18px">${ABAS[a][1]}</span>${ABAS[a][0]}${a === 'pendentes' ? '<span class="cont"></span>' : ''}</button>`).join('');
+  $('#abas').querySelectorAll('.aba').forEach(b => b.onclick = () => irAba(b.dataset.aba));
+  contador();
+}
+function irAba(a) {
+  S.aba = a; S.rodadaSel = null; S.recusando = false;
+  if (a !== 'processar') tirarFaixa(); else if (S.anim && S.anim.fase >= 0) faixaFase();
+  if (a === 'painel' && S.faz) voar(PORCOD[S.faz].bbox, 60); else if (a === 'processar' && S.fila[0]) voar(bboxDe(S.fila[0].faz), 70); else voarUsina();
+  if (a === 'painel' || a === 'rodadas') S.camada = 'aderencia';
+  tudo();
+}
+function tudo() { abas(); camadas(); trilha(); renderCol(); desenhar(); }
+
+const NOTAS = {
+  painel: ['O mapa é a tela: a coluna só resume o que está nele. Usina → fazenda → talhão é o mesmo mapa aproximando (voo de 0,75 s, como o do Drone).',
+    'Mostra só análises <b>vigentes de rodadas publicadas</b>. Talhão com menos de 25 amostras fica hachurado.',
+    'Camadas: aderência (padrão), declividade e frotas. Pontos aparecem quando o zoom deixa ver: cada um é uma amostra do PLL.',
+    'Relatório gerencial: escolha de meses (padrão os 3 últimos) e impressão; no Hub abre uma página própria de impressão.',
+    'Movimento: <code>Mo.carregando(col,{discreto})</code> ao trocar de fazenda; o mapa não pisca, só redesenha.'],
+  processar: ['Pouca entrada manual: escolher a pasta, conferir a frota das pastas GS3 e enviar. O resto acontece sozinho.',
+    'A cópia para o navegador usa <code>Mo.progresso</code> (MB de MB). Ao terminar: "pode retirar o pen-drive".',
+    'O processamento é contado <b>no próprio mapa</b>: os pontos da trilha chegam, viram linhas, a limpeza risca em vermelho o que sai, e a varredura do PLL pinta as amostras e os talhões. A faixa embaixo segue o padrão de espera do Hub (campo + etapas).',
+    'Prévia: camada Mudança liga sozinha (verde melhorou, laranja piorou em relação à vigente).',
+    'Enviar: <code>Mo.ocupado</code> no botão + <code>Mo.progresso</code> por parte de 90 MB + <code>Mo.concluido</code> no mapa. O contador de Pendentes dá um pop.',
+    'Com "reduzir movimento" ligado no sistema, tudo pula direto para o estado final.'],
+  pendentes: ['Editor vê todas; solicitante vê só as próprias, sem botões (troque em "Ver como").',
+    'Antes/Depois troca a análise mostrada no mapa; a camada Mudança mostra o ganho por talhão.',
+    'Publicar: <code>Mo.ocupado</code> → <code>Mo.concluido</code>; as fazendas passam a vigentes no painel. Recusar pede o motivo na própria coluna.',
+    'Fazenda que mudou desde a prévia: o recálculo roda aqui mesmo, com a mesma faixa de fases do Processar.'],
+  rodadas: ['Lista de prova técnica: quem processou, quem validou, situação, tratores, fazendas e brutos. Clique destaca as fazendas no mapa.',
+    'Frotas fica aqui como sub-aba (editor edita a operação; série → frota).',
+    'Admin vê "Excluir" na rodada selecionada.'],
+};
+function notas(abrir) {
+  const el = $('#notas');
+  if (abrir === true) el.hidden = false;
+  el.innerHTML = `<button type="button" class="fechar" id="fx-notas"><span class="ico">close</span></button><h4>Notas da maquete · ${ABAS[S.aba][0]}</h4><ul>${NOTAS[S.aba].map(n => `<li>${n}</li>`).join('')}</ul>
+  <h4>Fora da maquete</h4><ul><li>Mapa de fundo (no Hub: MapLibre com <code>talhao_geom</code>); aqui os talhões e as amostras são gerados.</li><li>Números de exemplo, coerentes entre si (a aderência sai das amostras desenhadas).</li></ul>`;
+  $('#fx-notas').onclick = () => { el.hidden = true; };
+}
+$('#btn-notas').onclick = () => { const el = $('#notas'); el.hidden = !el.hidden; if (!el.hidden) notas(); };
+$('#nivel').onchange = e => { S.nivel = e.target.value; S.rodadaSel = null; tudo(); };
+
+function redimensionar() {
+  const r = cv.getBoundingClientRect(); DPR = window.devicePixelRatio || 1;
+  const primeira = !CW; CW = r.width; CH = r.height; cv.width = CW * DPR; cv.height = CH * DPR;
+  if (primeira) Object.assign(VIEW, vistaPara(bboxDe(FAZ.map(f => f.cod)), 50));
+  desenhar();
+}
+new ResizeObserver(redimensionar).observe($('#mapa'));
+lerCores(); tudo();
+document.fonts && document.fonts.ready.then(desenhar);
+</script>
