@@ -13,7 +13,7 @@ No fim, você baixa um arquivo PPTX. O notebook do Leo não é mais preciso para
 
 ## Onde fica e quem acessa
 
-- No Hub, abra o menu **Ferramentas** e clique no cartão **Apresentação semanal**.
+- No Hub, abra o menu **Ferramentas** e clique no cartão **Apresentação semanal**. O cartão aparece para todos; nome, descrição, ícone e cor ficam em **Configurações → Ferramentas**, como as outras ferramentas.
 - O administrador libera o acesso na tela **Usuários**, na aba **Ferramentas**, ligando o interruptor **Apresentação semanal**.
 - Quem é admin já tem acesso.
 - Sem acesso, a tela mostra: "Sua conta não tem acesso à Apresentação semanal. Peça ao administrador."

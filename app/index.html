@@ -1809,15 +1809,7 @@ async function salvarParametro(chave,valor,msg){
 // ── Ferramentas ──
 function rGeotech(){
   const fs=ferramentas().filter(f=>f.id!=='geomap'||EU?.admin||EU?.geomap);
-  // Apresentação semanal: cartão fixo para quem tem a ferramenta (não é ferramenta cadastrada).
-  const ap=podeEditar('apresentacao')?`
-    <div class="gt-card">
-      <div class="gt-ico" style="background:#019640"><span class="ico">slideshow</span></div>
-      <div class="gt-nome">Apresentação semanal</div>
-      <div class="gt-desc">Indicadores e Entregas da Geotecnologia: prévia e PPTX da semana.</div>
-      <div class="gt-rodape"><a class="btn-acao gt-abrir" href="apresentacao.html" style="background:#019640"><span class="ico">open_in_new</span>Abrir</a></div>
-    </div>`:'';
-  document.getElementById('gt-grid').innerHTML=(fs.length||ap)?ap+fs.map(f=>`
+  document.getElementById('gt-grid').innerHTML=fs.length?fs.map(f=>`
     <div class="gt-card">
       <div class="gt-ico" style="background:${esc(f.cor||'#5b6ee8')}"><span class="ico">${esc(f.icone||'apps')}</span></div>
       <div class="gt-nome">${esc(f.nome)}</div>
