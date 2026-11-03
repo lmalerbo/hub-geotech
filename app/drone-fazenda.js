@@ -7,12 +7,12 @@ if(document.addEventListener)document.addEventListener('visibilitychange',()=>{
 
 async function drAbrirFazenda(cod,doc){
   droFechar(true);
-  DR.cod=cod;DR.doc=doc||'normal';DR.obstGeo=null;DR.obstAss=null;DR.obstLigarAoFim=false;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
+  DR.cod=cod;DR.doc=doc||'normal';DR.info=DR.geo=null;DRP.gerando.clear();DR.obstGeo=null;DR.obstAss=null;DR.obstLigarAoFim=false;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
   drPollParar();drMapaDescartar();DR.ass=null;
   const pnl=document.getElementById('dr-faz');
   DR.voo=null;
   Mo.carregando(pnl);await drCarregarFazenda();Mo.pronto(pnl);
-  if(DR.abrirObst){DR.abrirObst=false;droAbrir();}   // Faixa Atenção: obstáculos com mais de 24 meses
+  if(DR.abrirObst&&DR.cod===cod&&DR.ass){DR.abrirObst=false;droAbrir();}   // Faixa Atenção: obstáculos com mais de 24 meses
 }
 
 // Uma atualização por vez: resposta de outra fazenda (ou de um ciclo antigo) é descartada.
@@ -22,20 +22,20 @@ async function drCarregarFazenda(){
   try{
     const [geo,faz,sols,obst]=await Promise.all([
       drRpc('drone_mapa_fazenda',{p_cod_faz:cod}),
-      sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single(),
-      sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id,data_desejada,criado_em').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)'),
-      sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em,n_feicoes').eq('cod_faz',cod).eq('vigente',true)]);
+      sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',cod).single().then(drSemErro),
+      sb.from('drone_solicitacoes').select('id,tipo,status,observacao,solicitante_id,data_desejada,criado_em').eq('cod_faz',cod).neq('origem','legado').not('status','in','(ok,cancelado)').then(drSemErro),
+      sb.from('drone_obstaculo_versoes').select('classe_m,versao,enviado_em,n_feicoes').eq('cod_faz',cod).eq('vigente',true).then(drSemErro)]);
     if(!drRespostaValida(minha,chave()))return;
     const sIds=(sols.data||[]).map(s=>s.id);
     const ger=sIds.length?await sb.from('drone_geracoes').select('id,solicitacao_id,status,alertas,erro,previa_pdf,publicar_pedido_em,publicacao_erro,resumo,escopo,pedido_em,iniciado_em')
-      .in('solicitacao_id',sIds).neq('status','descartada').neq('status','publicada').order('id',{ascending:false}):{data:[]};
+      .in('solicitacao_id',sIds).neq('status','descartada').neq('status','publicada').order('id',{ascending:false}).then(drSemErro):{data:[]};
     if(!drRespostaValida(minha,chave()))return;
-    const env=await sb.from('drone_envios').select('id,tipo,status,erro,enviado_em,arquivos,classe_m').eq('cod_faz',cod).order('id',{ascending:false}).limit(5);
+    const env=await sb.from('drone_envios').select('id,tipo,status,erro,enviado_em,arquivos,classe_m').eq('cod_faz',cod).order('id',{ascending:false}).limit(5).then(drSemErro);
     if(!drRespostaValida(minha,chave()))return;
-    const proj=await sb.from('projetos').select('id').eq('modulo_id','drone').eq('tipo','individual').eq('cod_faz',cod);
+    const proj=await sb.from('projetos').select('id').eq('modulo_id','drone').eq('tipo','individual').eq('cod_faz',cod).then(drSemErro);
     if(!drRespostaValida(minha,chave()))return;
     const revs=proj.data&&proj.data.length?await sb.from('projeto_revisoes').select('numero,documento,motivo,criado_em')
-      .eq('projeto_id',proj.data[0].id).order('numero',{ascending:false}):{data:[]};
+      .eq('projeto_id',proj.data[0].id).order('numero',{ascending:false}).then(drSemErro):{data:[]};
     if(!drRespostaValida(minha,chave()))return;
     DR.geo=geo;DR.info={faz:faz.data,sols:sols.data||[],obst:obst.data||[],ger:ger.data||[],envios:env.data||[],revs:revs.data||[]};
     const ass=drAssinaturaObst(DR.info.obst);
@@ -64,7 +64,12 @@ function drDesenhar(partes){
   const tem=p=>partes.includes(p);
   if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drAjustarAltura();drMapaCriar();drPainelLateral();drEtapasAtualizar();}
   else{
-    if(tem('cab')){drMenuFechar();document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();}
+    if(tem('cab')){
+      drMenuFechar();
+      const bts=()=>[...document.querySelectorAll('#dr-ph button')],i=bts().indexOf(document.activeElement);   // o cabeçalho é trocado inteiro: o foco volta ao botão na mesma posição
+      document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+      if(i>=0)bts()[i]?.focus();
+    }
     if(tem('etapas'))drEtapasAtualizar();
     if(tem('mapa'))drMapaAtualizar();
     if(tem('obst')&&DR.obstLigarAoFim){DR.obstLigarAoFim=false;drObstaculos(true);}   // envio feito nesta tela: a camada liga sozinha
@@ -682,11 +687,11 @@ async function drObstaculos(ligar){
   drFadeCamada('obs-lin','line-opacity',1);drFadeCamada('obs-pt','circle-opacity',1);
 }
 
-// Tab preso na janela do Drone que estiver por cima (obstáculos, prévia, gavetas). O "confirmar" do Hub por cima manda.
+// Tab preso na janela do Drone que estiver por cima (obstáculos, prévia, gavetas, nova solicitação). O "confirmar" do Hub por cima manda.
 function drTabPreso(e){
   if(e.key!=='Tab')return;
   const c=document.getElementById('modal-confirma');if(c&&!c.classList.contains('off'))return;
-  const ds=document.querySelectorAll('.dro-jan[aria-modal="true"],.drp-jan[aria-modal="true"],.dri-gaveta[aria-modal="true"]');
+  const ds=document.querySelectorAll('.dro-jan[aria-modal="true"],.drp-jan[aria-modal="true"],.dri-gaveta[aria-modal="true"],.dr-modal[aria-modal="true"]');
   const d=ds[ds.length-1];if(!d)return;
   const foc=[...d.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]
     .filter(x=>!x.disabled&&x.offsetParent!==null);

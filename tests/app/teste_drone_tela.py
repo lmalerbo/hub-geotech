@@ -82,7 +82,8 @@ def entrar_e_abrir(pg):
 
 
 H = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(RAIZ / 'app'))
-srv = socketserver.TCPServer(('127.0.0.1', 0), H)
+srv = socketserver.ThreadingTCPServer(('127.0.0.1', 0), H)  # uma conexão parada do navegador não trava os outros arquivos
+srv.daemon_threads = True
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 url = f'http://127.0.0.1:{srv.server_address[1]}/index.html'
 sol_criada = None

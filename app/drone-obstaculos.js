@@ -173,7 +173,7 @@ function droAbrir(){
 
 // Fecha e descarta os arquivos. Pelo usuário (×, Esc, Cancelar, fundo) não fecha durante o envio;
 // forca=true é para trocar de fazenda ou voltar ao Início.
-function droFechar(forca){
+function droFechar(forca,devolverFoco){
   if(DRO.enviando&&!forca)return;
   const f=document.getElementById('dro-fundo');
   if(!f)return;
@@ -181,7 +181,7 @@ function droFechar(forca){
   f.remove();
   const foco=DRO.foco;
   Object.assign(DRO,{arquivos:[],escolhas:{},grupos:[],ign:new Set(),erro:null,tecla:null,foco:null,enviando:false,sessao:null,lendo:0,corpo:''});
-  if(!forca)(foco&&foco.isConnected?foco:document.querySelector('#dr-ph .dr-obst'))?.focus();
+  if(!forca||devolverFoco)(foco&&foco.isConnected?foco:document.querySelector('#dr-ph .dr-obst'))?.focus();
 }
 
 function droPlural(n,um,varios){return `${n} ${n===1?um:varios}`;}
@@ -271,7 +271,7 @@ async function droEnviar(btn){
     }
     if(ui())prog.processando('Registrando o envio…');
     await drRpc('drone_registrar_envio',{p_cod_faz:cod,p_tipo:'obstaculos',p_classe_m:null,p_solicitacao_id:null,p_arquivos:caminhos});
-    if(ui()){prog.fim(true);await fim(true);DRO.enviando=false;droFechar(true);}
+    if(ui()){prog.fim(true);await fim(true);DRO.enviando=false;droFechar(true,true);}
     if(DR.cod!==cod)return;   // o envio ficou na fazenda de origem; não mexe na tela da outra
     DR.obstLigarAoFim=true;   // quando o agente gravar, a camada liga sozinha (drDesenhar)
     await drCarregarFazenda();

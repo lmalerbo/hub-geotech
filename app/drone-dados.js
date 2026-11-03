@@ -134,6 +134,8 @@ function drRotuloShape(envio){
 }
 
 // Envios vêm do mais novo para o mais antigo: o primeiro do tipo é o que vale.
+// O cliente do Supabase devolve {data:null,error} em vez de lançar: sem isto, uma queda vira "lista vazia".
+function drSemErro(r){if(r&&r.error)throw new Error(r.error.message||'Falha ao ler o banco.');return r;}
 function drUltimoEnvio(envios,tipo){return (envios||[]).find(e=>e.tipo===tipo)||null;}
 // Envio em fila/processando há mais de 2 h: o agente provavelmente está fora. Não segura mais a janela.
 const DR_ENVIO_TRAVA_H=2;

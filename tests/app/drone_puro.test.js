@@ -440,3 +440,10 @@ test('envio de obstáculos parado há mais de 2 h conta como travado e libera no
     { texto: 'envio parado', tom: 'velho' });
   assert.strictEqual(ctx.drChipObstaculos(obst, [env('fila', '2026-11-02T11:30:00Z')], agora).tom, 'proc');
 });
+
+test('resposta do Supabase com erro lança em vez de virar lista vazia', () => {
+  const ok = { data: [1], error: null };
+  assert.strictEqual(ctx.drSemErro(ok), ok);
+  assert.throws(() => ctx.drSemErro({ data: null, error: { message: 'JWT expired' } }), /JWT expired/);
+  assert.throws(() => ctx.drSemErro({ data: null, error: {} }), /Falha ao ler o banco/);
+});

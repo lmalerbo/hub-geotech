@@ -320,7 +320,7 @@ async function drCancelar(id){
 
 function drNovaSolicitacao(){
   const fundo=document.createElement('div');fundo.className='dr-modal-fundo';
-  fundo.innerHTML=`<div class="dr-modal"><h3>Nova solicitação · projeto Normal</h3>
+  fundo.innerHTML=`<div class="dr-modal" role="dialog" aria-modal="true" aria-labelledby="drs-t"><h3 id="drs-t">Nova solicitação · projeto Normal</h3>
     <label>Fazenda<input id="drs-busca" placeholder="Nome ou código" autocomplete="off"></label>
     <div id="drs-res"></div><input type="hidden" id="drs-cod">
     <label>Data desejada (opcional)<input type="date" id="drs-data"></label>
@@ -329,7 +329,10 @@ function drNovaSolicitacao(){
     <div style="display:flex;gap:8px;margin-top:10px"><button class="dr-btn" id="drs-ok">Enviar solicitação</button>
     <button class="dr-btn2" id="drs-cancela">Cancelar</button></div></div>`;
   document.body.appendChild(fundo);
-  const fechar=()=>fundo.remove();
+  const volta=document.activeElement;
+  const esc_=e=>{if(e.key==='Escape'){e.preventDefault();fechar();}};
+  const fechar=()=>{document.removeEventListener('keydown',esc_);fundo.remove();if(volta&&volta.isConnected)volta.focus();};
+  document.addEventListener('keydown',esc_);
   fundo.querySelector('#drs-cancela').onclick=fechar;
   fundo.onclick=e=>{if(e.target===fundo)fechar();};
   fundo.querySelector('#drs-busca').oninput=async e=>{
