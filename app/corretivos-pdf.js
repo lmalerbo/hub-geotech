@@ -24,8 +24,8 @@ var crGerador = (() => {
       passo(2, 'Baixando bibliotecas de mapa…');
       await py.loadPackage(['matplotlib', 'shapely', 'pandas', 'pyproj', 'geopandas']);
       passo(3, 'Carregando o modelo do PDF…');
-      const { arquivos } = await (await fetch('py/manifest.json')).json();
-      for (const rel of arquivos) {
+      const { modulos } = await (await fetch('py/manifest.json')).json();
+      for (const rel of modulos.corretivos) {
         const dados = new Uint8Array(await (await fetch('py/' + rel)).arrayBuffer());
         py.FS.mkdirTree('/home/pyodide/' + rel.split('/').slice(0, -1).join('/'));
         py.FS.writeFile('/home/pyodide/' + rel, dados);

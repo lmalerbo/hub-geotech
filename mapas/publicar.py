@@ -6,11 +6,14 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-ARQUIVOS = ['mapas/__init__.py', 'mapas/layout.py', 'mapas/corretivo_dados.py', 'mapas/corretivo_pdf.py',
-            'drone/assets/logo-pedra.png',
-            'mapas/fontes/selawk.ttf', 'mapas/fontes/selawksb.ttf', 'mapas/fontes/selawkb.ttf',
-            'paralelismo/__init__.py', 'paralelismo/jdl.py', 'paralelismo/gs3.py', 'paralelismo/pipeline.py',
-            'paralelismo/analise.py']
+MODULOS = {
+    'corretivos': ['mapas/__init__.py', 'mapas/layout.py', 'mapas/corretivo_dados.py', 'mapas/corretivo_pdf.py',
+                   'drone/assets/logo-pedra.png',
+                   'mapas/fontes/selawk.ttf', 'mapas/fontes/selawksb.ttf', 'mapas/fontes/selawkb.ttf'],
+    'paralelismo': ['paralelismo/__init__.py', 'paralelismo/jdl.py', 'paralelismo/gs3.py', 'paralelismo/pipeline.py',
+                    'paralelismo/analise.py'],
+}
+ARQUIVOS = [rel for arquivos in MODULOS.values() for rel in arquivos]
 
 
 def publicar(destino) -> None:
@@ -19,7 +22,8 @@ def publicar(destino) -> None:
         alvo = destino / rel
         alvo.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(RAIZ / rel, alvo)
-    (destino / 'manifest.json').write_text(json.dumps({'arquivos': ARQUIVOS}, indent=2), encoding='utf-8')
+    # 'arquivos' (a união) fica para a página do Corretivos que ainda estiver no cache do navegador.
+    (destino / 'manifest.json').write_text(json.dumps({'arquivos': ARQUIVOS, 'modulos': MODULOS}, indent=2), encoding='utf-8')
 
 
 if __name__ == '__main__':
