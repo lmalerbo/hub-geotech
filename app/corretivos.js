@@ -806,7 +806,7 @@ function crFeicoesMapa() {
   for (const f of CR_ST.geo.features) {
     const t = f.properties.talhao;
     talhoes.push({ type: 'Feature', geometry: f.geometry, properties: { talhao: t } });
-    const cs = crCoresTalhao(apls, t);
+    const cs = crCoresTalhaoMapa(apls, t, CR_ST.trab.operacao);
     if (cs.length >= 2) {
       crFaixas(f.geometry, cs.length).forEach((g, i) => cores.push({ type: 'Feature', geometry: g, properties: { talhao: t, cor: cs[i] } }));
     } else {
@@ -1001,9 +1001,47 @@ async function crAplicarMarcados() {
     fim(ok);   // se o painel já foi redesenhado, o botão antigo saiu da tela e isso não faz nada
   }
 }
+// Aéreo: os talhões marcados entram ou saem do mapa, em todos os insumos de uma vez (uma regravação por insumo).
+async function crMudarTalhoesAerea(acao) {
+  if (CR_ST.gravando) return;
+  const sel = crSelecionados();
+  const atuais = crTalhoesDoMapa(CR_ST.det.apls);
+  const novos = acao === 'incluir' ? crIncluir(atuais, sel) : crTirar(atuais, sel);
+  if (!novos.length) {
+    CR_ST.formMsg = { tipo: 'erro', texto: 'O mapa precisa ter ao menos um talhão. Para começar de novo, exclua os insumos.' };
+    return crRenderPainel();
+  }
+  if (!CR_ST.det.apls.length) {             // sem insumo ainda: os marcados viram os talhões do primeiro insumo
+    CR_ST.formMsg = { tipo: 'info', texto: 'Adicione o primeiro insumo para gravar os talhões do mapa.' };
+    return crRenderPainel();
+  }
+  const areas = {};
+  for (const t of novos) areas[t] = crAreaDe(t);
+  CR_ST.gravando = true;
+  CR_ST.formMsg = null;
+  const fim = Mo.ocupado(document.querySelector(acao === 'incluir' ? '[data-incluir]' : '[data-tirar]'), { texto: 'Gravando…' });
+  let ok = true;
+  try {
+    for (const { apl, talhoes } of crRegravacoes(CR_ST.det.apls, novos)) {
+      await crApi().editarAplicacao(CR_ST.trab.id, apl.id, { tipo: apl.tipo, calcario: apl.calcario, insumo_id: apl.insumo_id,
+        dose: apl.dose, dose_gesso: apl.dose_gesso, os: apl.os, talhoes, areas });
+    }
+  } catch (e) {
+    ok = false;
+    crToast('Não foi possível atualizar todos os insumos. Tente de novo.', true);
+  } finally {
+    CR_ST.gravando = false;
+    fim(ok);
+  }
+  if (ok) crToast(acao === 'incluir' ? 'Talhões incluídos no mapa.' : 'Talhões tirados do mapa.');
+  CR_ST.sel = new Set();
+  CR_ST.areasAbertas = false;
+  CR_ST.areaNova = {};
+  await crRecarregar();
+}
 async function crAplicarMarcadosAgora() {
   const f = CR_ST.form;
-  const talhoes = crSelecionados();
+  const talhoes = crAlvoAplicar();
   const aerea = crAerea(CR_ST.trab.operacao);
   const ins = aerea ? CR_ST.insumos.find(i => String(i.id) === String(f.insumo_id)) : null;
   const dados = aerea ? {
@@ -1061,9 +1099,9 @@ async function crEditarAplicacao(id) {
         <input class="cr-inp" id="cr-ed-gesso" type="number" step="0.01" min="0" value="${a.dose_gesso}"></div>` : ''}
       <div><label class="cr-lbl" for="cr-ed-os">O.S.</label>
         <input class="cr-inp" id="cr-ed-os" type="text" value="${crEsc(a.os)}"></div>
-      <fieldset class="cr-fs"><legend class="cr-lbl">Talhões</legend>
+      ${a.tipo === 'insumo' ? '' : `<fieldset class="cr-fs"><legend class="cr-lbl">Talhões</legend>
         <div class="cr-cks">${todos.map(t => `<label class="cr-ck"><input type="checkbox" value="${t}"${a.talhoes.includes(t) ? ' checked' : ''}> Talhão ${t}</label>`).join('')}</div>
-      </fieldset>
+      </fieldset>`}
       <p class="cr-erro" id="cr-ed-erro" role="alert"></p>
     </div>
     <div class="cr-md-acoes">
@@ -1079,7 +1117,9 @@ async function crEditarAplicacao(id) {
   form.querySelector('input').focus();
   form.onsubmit = async e => {
     e.preventDefault();
-    const talhoes = Array.from(form.querySelectorAll('input[type=checkbox]:checked')).map(c => Number(c.value));
+    // Aéreo: a lista de talhões não aparece no diálogo; o insumo fica com os talhões que já tem.
+    const talhoes = a.tipo === 'insumo' ? [...a.talhoes]
+      : Array.from(form.querySelectorAll('input[type=checkbox]:checked')).map(c => Number(c.value));
     const dados = {
       tipo: a.tipo, calcario: a.calcario, insumo_id: a.insumo_id,
       dose: Number(document.getElementById('cr-ed-dose').value),
@@ -1162,7 +1202,7 @@ function crFecharMenu() {
 
 // ── Painel ──
 function crCardAplicacao(a, areas, cores) {
-  const cor = cores[crChaveCor(a)];
+  const cor = a.tipo === 'insumo' ? CR_PALETA_INSUMOS[0] : cores[crChaveCor(a)];   // aéreo: a mesma cor única do mapa
   const on = CR_ST.destApl === a.id;
   const total = crTotalApl(a, areas);
   const quanto = a.tipo === 'insumo' ? `${crBr(total)} ${crUnidade(a)}` : crTon(total);
@@ -1231,6 +1271,51 @@ function crMsgForm() {
   const m = CR_ST.formMsg;
   return m ? `<p class="${m.tipo === 'erro' ? 'cr-erro' : 'cr-info'}" role="${m.tipo === 'erro' ? 'alert' : 'status'}">${crEsc(m.texto)}</p>` : '';
 }
+// Aéreo: alvo do insumo = talhões do mapa (ou os marcados, se o mapa ainda não tem talhões). Corretivo: os marcados.
+function crAlvoAplicar() {
+  const sel = crSelecionados();
+  if (!crAerea(CR_ST.trab.operacao)) return sel;
+  const doMapa = crTalhoesDoMapa(CR_ST.det.apls);
+  return doMapa.length ? doMapa : sel;
+}
+// Texto do botão Aplicar (aéreo: Adicionar, e pede para marcar quando não há alvo).
+function crRotuloAplicar() {
+  const alvo = crAlvoAplicar();
+  if (!crAerea(CR_ST.trab.operacao)) return crTextoAplicar(alvo);
+  return alvo.length ? crTextoAplicar(alvo).replace(/^Aplicar/, 'Adicionar') : 'Marque os talhões do mapa';
+}
+// Aéreo: os talhões marcados entram ou saem do mapa para todos os insumos de uma vez.
+function crSecaoTalhoesAerea(sel) {
+  if (!sel.length) return `<section class="cr-sec cr-nova-dica"><p class="cr-msg">Marque talhões no mapa para incluir ou tirar do mapa.</p></section>`;
+  const doMapa = crTalhoesDoMapa(CR_ST.det.apls);
+  const entra = sel.filter(t => !doMapa.includes(t));
+  const sai = sel.filter(t => doMapa.includes(t));
+  const n = k => (k === 1 ? '1 talhão' : `${k} talhões`);
+  const abertas = CR_ST.areasAbertas;
+  return `<section class="cr-sec" aria-labelledby="cr-h-tal">
+      <h2 id="cr-h-tal">Talhões do mapa</h2>
+      <div class="cr-md-acoes">
+        ${entra.length ? `<button class="cr-btn" type="button" data-incluir>Incluir ${n(entra.length)} no mapa</button>` : ''}
+        ${sai.length ? `<button class="cr-btn2" type="button" data-tirar>Tirar ${n(sai.length)} do mapa</button>` : ''}
+      </div>
+      <button class="cr-link" type="button" data-areas aria-expanded="${abertas}"><span class="ico" aria-hidden="true">${abertas ? 'expand_more' : 'chevron_right'}</span> Ajustar a área de algum talhão</button>
+      ${abertas ? `<div class="cr-sel-lista">${sel.map(t => `<label class="cr-sel-l"><span>Talhão ${t}, área (ha)</span>
+          <input class="cr-inp cr-inp-sm" type="number" step="0.01" min="0" value="${crAreaDe(t).area_ha}" data-area="${t}"></label>`).join('')}</div>` : ''}
+    </section>`;
+}
+// Aéreo: novo insumo vale para todos os talhões do mapa; o formulário fica ligado sem nenhum talhão marcado.
+function crSecaoInsumoAerea() {
+  const f = CR_ST.form;
+  const alvo = crAlvoAplicar();
+  return `<section class="cr-sec cr-nova" aria-labelledby="cr-h-nova">
+      <h2 id="cr-h-nova">Novo insumo</h2>
+      ${crCamposAerea(f)}
+      <div><label class="cr-lbl" for="cr-f-os">O.S.</label>
+        <input class="cr-inp" id="cr-f-os" type="text" data-f="os" value="${crEsc(f.os)}"></div>
+      ${crMsgForm()}
+      <button class="cr-btn cr-btn-bloco" type="button" data-aplicar${alvo.length ? '' : ' disabled'}>${crEsc(crRotuloAplicar())}</button>
+    </section>`;
+}
 // Sem talhão marcado: só a orientação (e o recado da última gravação, se houver).
 function crSecaoDica() {
   return `<section class="cr-sec cr-nova-dica"><p class="cr-msg">Marque talhões no mapa para lançar uma nova aplicação.</p>${crMsgForm()}</section>`;
@@ -1282,7 +1367,7 @@ function crRenderPainel() {
   alvo.innerHTML = `
     <div class="cr-painel-rol">
       ${fora.length ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Talhões que saíram da Base: ${fora.join(', ')}. Eles continuam no PDF, sem desenho.</span></div>` : ''}
-      ${sel.length ? crSecaoNova(sel, aerea) : crSecaoDica()}
+      ${aerea ? `${crSecaoTalhoesAerea(sel)}${crSecaoInsumoAerea()}` : (sel.length ? crSecaoNova(sel, false) : crSecaoDica())}
       <section class="cr-sec" aria-labelledby="cr-h-lista">
         <h2 id="cr-h-lista">Aplicações do mapa</h2>
         ${apls.length ? crOrdenadas(apls).map(a => crCardAplicacao(a, areas, cores)).join('') : '<p class="cr-msg">Nenhuma aplicação neste mapa ainda.</p>'}
@@ -1497,7 +1582,7 @@ function crLigarTrabalho() {
   };
   const painel = document.getElementById('cr-painel');
   painel.onclick = e => {
-    const b = e.target.closest('[data-dest],[data-menu-apl],[data-areas],[data-aplicar],[data-insumos],[data-tentar-trab]');
+    const b = e.target.closest('[data-dest],[data-menu-apl],[data-areas],[data-aplicar],[data-insumos],[data-tentar-trab],[data-incluir],[data-tirar]');
     if (!b || b.disabled) return;
     const d = b.dataset;
     if (d.dest) crDestacar(Number(d.dest));
@@ -1511,6 +1596,8 @@ function crLigarTrabalho() {
     else if ('areas' in d) { CR_ST.areasAbertas = !CR_ST.areasAbertas; crRenderPainel(); }
     else if ('insumos' in d) crAbrirInsumos();
     else if ('aplicar' in d) crAplicarMarcados();
+    else if ('incluir' in d) crMudarTalhoesAerea('incluir');
+    else if ('tirar' in d) crMudarTalhoesAerea('tirar');
     else if ('tentarTrab' in d) crAbrirMapa(CR_ST.trab);
   };
   painel.onchange = e => {
@@ -1529,7 +1616,7 @@ function crLigarTrabalho() {
     if (!e.target.dataset.f) return;
     CR_ST.form[e.target.dataset.f] = e.target.value;
     const b = painel.querySelector('[data-aplicar]');
-    if (b && !CR_ST.gravando) b.textContent = crTextoAplicar(crSelecionados());
+    if (b && !CR_ST.gravando) b.textContent = crRotuloAplicar();
   };
   document.getElementById('cr-selbar').onclick = e => {
     const b = e.target.closest('[data-todos],[data-limpar]');
