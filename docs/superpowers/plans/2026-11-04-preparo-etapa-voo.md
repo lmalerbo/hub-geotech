@@ -42,7 +42,7 @@
 - Produz `etapaTelaPreparo(t) -> int`: índice do talhão na tela do Preparo (0 a 5).
 - Produz `preparoNoFiltroEtapa(f, filtro) -> bool`: `filtro` é `''`, `'-1'`, `'voo'` ou um índice de `ET_P` em texto.
 
-- [ ] **Passo 1: escrever os testes que falham**
+- [x] **Passo 1: escrever os testes que falham**
 
 Em `tests/app/dados_puro.test.js`, trocar a linha 56 por:
 
@@ -83,12 +83,12 @@ test('Preparo: filtro de etapa da lista', () => {
 });
 ```
 
-- [ ] **Passo 2: rodar e ver falhar**
+- [x] **Passo 2: rodar e ver falhar**
 
 Run: `node --test tests/app/dados_puro.test.js`
 Expected: FAIL (`etapaTelaPreparo` e `preparoNoFiltroEtapa` não existem; `sem_leitura` ainda conta como aguardando).
 
-- [ ] **Passo 3: implementar**
+- [x] **Passo 3: implementar**
 
 Em `app/dados.js`, trocar as linhas 14 e 15 por:
 
@@ -115,12 +115,12 @@ function preparoNoFiltroEtapa(f,filtro){
 }
 ```
 
-- [ ] **Passo 4: rodar e ver passar**
+- [x] **Passo 4: rodar e ver passar**
 
 Run: `node --test tests/app/dados_puro.test.js`
 Expected: PASS em todos.
 
-- [ ] **Passo 5: commit**
+- [x] **Passo 5: commit**
 
 ```bash
 git add app/dados.js tests/app/dados_puro.test.js
@@ -138,7 +138,7 @@ git commit -m "Preparo: funções da etapa Voo calculada (situação, índice na
 
 Procure cada trecho pelo texto, porque as linhas mudam conforme as remoções.
 
-- [ ] **Passo 1: etapas e ações**
+- [x] **Passo 1: etapas e ações**
 
 Trocar o comentário e `PJ_ET_P` (linhas 12 a 20) por:
 
@@ -159,7 +159,7 @@ const PJ_ET_P=[
 
 Em `PJ_ACOES.preparo`, trocar as chaves `0,1,2,3` por `1,2,3,4`, sem mudar mais nada, e acrescentar antes do bloco o comentário `// Preparo: sem ação na etapa Voo (índice 0).`
 
-- [ ] **Passo 2: índice da tela em `pjNorm`**
+- [x] **Passo 2: índice da tela em `pjNorm`**
 
 No `f.tals.map` de `pjNorm`, trocar `e:Number(t.e)||0` por:
 
@@ -167,7 +167,7 @@ No `f.tals.map` de `pjNorm`, trocar `e:Number(t.e)||0` por:
 e:mod==='preparo'?etapaTelaPreparo(t):Number(t.e)||0
 ```
 
-- [ ] **Passo 3: remover o aviso antigo**
+- [x] **Passo 3: remover o aviso antigo**
 
 Apagar:
 - `pjSemVoo` e `pjFundoSeg`, com seus comentários (linhas 75 a 83);
@@ -181,7 +181,7 @@ Depois, nos pontos de uso:
 - `leg`: tirar `${i===0&&semVoo?` <span class="pj-leg-voo">(${semVoo} aguardando voo)</span>`:''}`.
 - `nos`: trocar `<small>${cont[i]}${i===0&&semVoo?` · ${semVoo} s/ voo`:''}</small>` por `<small>${cont[i]}</small>`.
 
-- [ ] **Passo 4: etiqueta da situação**
+- [x] **Passo 4: etiqueta da situação**
 
 Na linha do talhão, trocar a condição da etiqueta `t.e===0&&t.voo&&VOO_PREPARO[t.voo]` por:
 
@@ -191,7 +191,7 @@ t.voo&&VOO_PREPARO[t.voo]
 
 (`t.voo` só vem preenchido para talhão em Identificação no banco. Assim a etiqueta aparece em Voo e em Identificação.)
 
-- [ ] **Passo 5: bloco Voo sem botão**
+- [x] **Passo 5: bloco Voo sem botão**
 
 Em `painelHtml`, no laço de `blocos`, logo depois de `const a=PJ_ACOES[mod][i];`, inserir:
 
@@ -203,7 +203,7 @@ Em `painelHtml`, no laço de `blocos`, logo depois de `const a=PJ_ACOES[mod][i];
         }
 ```
 
-- [ ] **Passo 6: Voo não é destino de retrocesso**
+- [x] **Passo 6: Voo não é destino de retrocesso**
 
 Em `pjVolta`, trocar `if(!c)return;` por:
 
@@ -221,11 +221,11 @@ No arraste (`pointerdown` e `pointermove`):
 - trocar `if(i>g.de)return;` por `if(i>g.de||i<g.min)return;`;
 - trocar `const lo=xs[0]-xs[g.de];` por `const lo=xs[g.min]-xs[g.de];`.
 
-- [ ] **Passo 7: Nova revisão**
+- [x] **Passo 7: Nova revisão**
 
 Em `pjAbrirRev`, trocar `limNovo:c.mod==='plantio'?3:4` por `limNovo:c.mod==='plantio'?3:5` (índices da tela: o Ok do Preparo agora é 5).
 
-- [ ] **Passo 8: conferir que não sobrou referência**
+- [x] **Passo 8: conferir que não sobrou referência**
 
 Run: `git grep -nE "pjSemVoo|pjFundoSeg|SemVoo|pj-leg-voo|semvoo|preparo_aviso_sem_voo" -- app/`
 Expected: sem resultado.
@@ -233,7 +233,7 @@ Expected: sem resultado.
 Run: `node --test tests/app/dados_puro.test.js`
 Expected: PASS.
 
-- [ ] **Passo 9: commit**
+- [x] **Passo 9: commit**
 
 ```bash
 git add app/projetos.js
@@ -250,7 +250,7 @@ git commit -m "Preparo: etapa Voo na tela da fazenda, sem ação e sem retrocess
 
 `ET_P` não muda: a tela antiga, o painel inicial e o detalhe da linha seguem com as 4 etapas do banco.
 
-- [ ] **Passo 1: coluna e filtro**
+- [x] **Passo 1: coluna e filtro**
 
 Na montagem das linhas da Consulta, no ramo `cMod==='preparo'`, trocar:
 
@@ -269,7 +269,7 @@ por:
       const etapaC=done?'var(--plantio)':emVoo?'#5b6ee8':prStepColors[si]||'var(--t3)';
 ```
 
-- [ ] **Passo 2: opção no select**
+- [x] **Passo 2: opção no select**
 
 Trocar:
 
@@ -285,7 +285,7 @@ por:
 
 Confirmar que esta é a linha do select dentro do ramo `else` que usa `FZ_P`, e não a do Plantio.
 
-- [ ] **Passo 3: commit**
+- [x] **Passo 3: commit**
 
 ```bash
 git add app/index.html
@@ -297,7 +297,7 @@ git commit -m "Preparo: coluna Etapa e filtro da lista com Voo"
 **Files:**
 - Create: script temporário no scratchpad, fora do repositório.
 
-- [ ] **Passo 1: abrir com a conta de teste e sem clicar em nada que grave**
+- [x] **Passo 1: abrir com a conta de teste e sem clicar em nada que grave**
 
 Servir a worktree localmente e abrir com Playwright usando `HUB_CONTA_TESTE`, como em `tests/app/teste_apresentacao_tela.py`. Conferir:
 
@@ -310,4 +310,14 @@ Servir a worktree localmente e abrir com Playwright usando `HUB_CONTA_TESTE`, co
 
 Não clicar em avançar, retroceder, enviar nem desfazer. A leitura da situação pode ter mudado desde 29/10: escolher as fazendas pela situação atual.
 
-- [ ] **Passo 2: registrar no plano o resultado e marcar as caixas**
+- [x] **Passo 2: registrar no plano o resultado e marcar as caixas**
+
+## Registro da execução (04/11/2026)
+
+- Tarefas 1 a 3: camada 2, Haiku, aprovadas na revisão do diff.
+- Fora do plano, pela camada 3: título da Consulta com o filtro Voo (`d012f0c`), que saía sem rótulo.
+- `node --test tests/app/dados_puro.test.js`: 19 de 19.
+- Tarefa 4, com gravações bloqueadas na rede e nenhuma tentada; console sem erro:
+  - Dados reais: 6 fazendas em Voo (10173, 10120, 10468, 10121, 10724, 10763), 2 no filtro Identificação; 10173 com bloco Voo sem botão; 10080 em Identificação com o botão; 10314 em Observações.
+  - Hoje não há fazenda real mista nem com `sem_leitura`. Foram simuladas só no navegador, na 10080: 6 nós, etiquetas certas e presença nos filtros Voo e Identificação.
+  - Com a alça em Identificação, a seta e o arraste não abrem o retrocesso, e o nó Voo não é alvo.
