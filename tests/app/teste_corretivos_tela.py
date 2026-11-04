@@ -19,8 +19,9 @@ import pymupdf
 from playwright.sync_api import sync_playwright
 
 RAIZ = Path(__file__).resolve().parents[2]
-# As credenciais (hub-geotech-supabase.env) só existem no clone principal; numa worktree, usa o banco de lá.
-_BANCO = RAIZ if (RAIZ / 'hub-geotech-supabase.env').exists() else RAIZ.parent / 'hub-geotech'
+# As credenciais (hub-geotech-supabase.env) só existem no clone principal; numa worktree, usa o banco de lá
+# (a worktree pode estar ao lado do clone ou dentro dele, em .claude/worktrees).
+_BANCO = next((p for p in (RAIZ, *RAIZ.parents) if (p / 'hub-geotech-supabase.env').exists()), RAIZ.parent / 'hub-geotech')
 sys.path.insert(0, str(_BANCO))
 from drone.banco import DroneBanco  # noqa: E402
 
@@ -153,6 +154,20 @@ try:
         gravadas = b.selecionar('corretivo_aplicacoes', 'tipo,insumo_nome,insumo_unidade', {'mapa_id': f'eq.{mapa_aereo}'})
         confere(gravadas == [{'tipo': 'insumo', 'insumo_nome': 'INSETICIDA REVOLUX', 'insumo_unidade': 'L'}],
                 'aplicação de insumo gravada com nome e unidade')
+
+        # Aéreo (28/10): todos os insumos valem para os mesmos talhões, os "talhões do mapa".
+        def talhoes_aereo():
+            linhas = b.selecionar('corretivo_aplicacoes', 'corretivo_aplicacao_talhoes(talhao_num)', {'mapa_id': f'eq.{mapa_aereo}'})
+            return [sorted(t['talhao_num'] for t in a['corretivo_aplicacao_talhoes']) for a in linhas]
+
+        outro = pg.evaluate("CR_ST.insumos.find(i => i.nome !== 'INSETICIDA REVOLUX').id")
+        aplicar({'tipo': 'insumo', 'insumo_id': str(outro), 'dose': '0.2', 'os': 'E2E-A2'}, [])
+        confere(talhoes_aereo() == [sorted([A, B])] * 2, 'segundo insumo, sem marcar nada, fica nos talhões do mapa')
+        pg.evaluate("ts => { CR_ST.sel = new Set(ts); crAtualizarEstados(); crRenderPainel(); }", [A])
+        pg.click('[data-tirar]')
+        pg.wait_for_timeout(3000)
+        confere(talhoes_aereo() == [[B]] * 2, 'tirar um talhão do mapa tira dos dois insumos')
+
         pg.wait_for_selector('[data-pdf]:not([disabled])', timeout=240000)
         with pg.expect_download(timeout=240000) as dl:
             pg.click('[data-pdf]')
@@ -160,8 +175,9 @@ try:
         dl.value.save_as(destino)
         texto = '\n'.join(pagina.get_text() for pagina in pymupdf.open(destino))
         confere(dl.value.suggested_filename.startswith(f'aplicacao_aerea_{FAZ}_'), 'nome do arquivo do PDF aéreo')
-        for esperado in ['APLICAÇÃO AÉREA', 'Inseticida Revolux', 'E2E-A1', '0,15 L', 'TALHÕES + 5%']:
+        for esperado in ['APLICAÇÃO AÉREA', 'Inseticida Revolux', 'E2E-A1', 'Área de aplicação', 'TALHÕES + 5%']:
             confere(esperado in texto, f'PDF aéreo contém "{esperado}"')
+        confere('INSUMO' not in texto, 'PDF aéreo sem a coluna INSUMO')
         confere(bool(re.search(r'^400$', texto, re.M)), 'PDF aéreo tem a linha do talhão 400')
         pg.click('#cr-voltar'); pg.wait_for_selector(f'[data-menu-mapa="{mapa_aereo}"]', timeout=20000)
         pg.click(f'[data-menu-mapa="{mapa_aereo}"]'); pg.click('.cr-menu button:has-text("Excluir mapa")'); pg.click('#cr-modal-fundo button:has-text("Excluir")')
