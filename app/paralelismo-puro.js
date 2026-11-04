@@ -193,6 +193,50 @@ function parRegistrosDoGrupo(grupo) {
   });
 }
 
+// O que o Web Worker processa: por fazenda e frota, um arquivo de cada vez, em ordem de caminho (a da regressão).
+// grupos = saída de parConferencia com a frota final; todos = tudo o que foi copiado, porque o .fdd de um .fdl novo
+// pode já ter sido analisado (e aí não está em grupo.arquivos).
+function parPlanoDoItem(grupos, todos) {
+  const fdds = new Map((todos || []).filter((a) => parExtensao(a.caminho) === 'fdd').map((a) => [parSemExtensao(a.caminho), a]));
+  const fazendas = new Map();
+  const pulados = [];
+  const pular = (a, motivo) => pulados.push({ caminho: a.caminho, motivo });
+  for (const g of grupos) {
+    const fdlsNovos = new Set(g.arquivos.filter((a) => parExtensao(a.caminho) === 'fdl').map((a) => parSemExtensao(a.caminho)));
+    for (const a of g.arquivos) {
+      const ext = parExtensao(a.caminho);
+      if (ext === 'fdd') {
+        if (!fdlsNovos.has(parSemExtensao(a.caminho))) pular(a, 'fdd_sem_fdl');
+        continue;
+      }
+      if (!g.frota || !g.operacao) { pular(a, 'sem_frota'); continue; }
+      if (a.cod_faz == null) { pular(a, 'sem_fazenda'); continue; }
+      const fdd = ext === 'fdl' ? fdds.get(parSemExtensao(a.caminho)) : null;
+      if (ext === 'fdl' && !fdd) { pular(a, 'sem_fdd'); continue; }
+      const chave = `${g.operacao}|${a.cod_faz}`;
+      if (!fazendas.has(chave)) fazendas.set(chave, { operacao: g.operacao, cod_faz: a.cod_faz, porFrota: new Map() });
+      const porFrota = fazendas.get(chave).porFrota;
+      if (!porFrota.has(g.frota)) porFrota.set(g.frota, []);
+      porFrota.get(g.frota).push({
+        tipo: ext === 'jdl' ? 'jdl' : 'gs3', caminho: a.caminho, opfs: a.opfs, opfs_fdd: fdd ? fdd.opfs : null,
+        data: a.data ?? null, bytes: a.bytes + (fdd ? fdd.bytes : 0),
+      });
+    }
+  }
+  const emOrdem = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+  return {
+    fazendas: [...fazendas.values()]
+      .sort((x, y) => emOrdem(x.operacao, y.operacao) || x.cod_faz - y.cod_faz)
+      .map(({ operacao, cod_faz, porFrota }) => ({
+        operacao, cod_faz,
+        grupos: [...porFrota.entries()].sort((x, y) => emOrdem(x[0], y[0])).map(([frota, arquivos]) => ({
+          frota, arquivos: arquivos.sort((x, y) => emOrdem(x.caminho, y.caminho)),
+        })),
+      })),
+    pulados,
+  };
+}
+
 function parPartes(arquivos, limite = PAR_PARTE_MAX) {
   const partes = [];
   let atual = [], soma = 0;
