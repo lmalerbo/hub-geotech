@@ -516,7 +516,7 @@ def gerar_pdf(dados: dict, destino) -> str:
     totais = totais_por_produto(dados)
     linhas = linhas_tabela(dados)
     total = linha_total(dados)
-    hb =_altura_carimbo(f, totais, aerea(dados))
+    hb = _altura_carimbo(f, totais, aerea(dados))
     intervalos = _paginar(f, linhas, hb)
     # Retrato: a 1ª fatia da tabela vai na folha do mapa. Paisagem: a folha do mapa não tem tabela.
     na_folha_do_mapa = None if f.paisagem else intervalos[0]
