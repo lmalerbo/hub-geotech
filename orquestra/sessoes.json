@@ -1,0 +1,80 @@
+{
+  "comum": [
+    "python -m pytest -q",
+    "python orquestra/verifica.py --sem-dados-reais",
+    "python orquestra/verifica.py --arvore-limpa",
+    "python orquestra/verifica.py --relatorio {id}"
+  ],
+  "sessoes": [
+    {
+      "id": "S1",
+      "titulo": "P2: Worker e funções puras",
+      "modelo": "opus",
+      "etapa": "P2",
+      "pedido": "Faça a etapa P2 inteira: rotas POST /paralelismo/parte e POST /paralelismo/excluida no worker/arquivos.js, e todas as funções puras de app/paralelismo-puro.js. O reenvio com rodada_ja_enviada é tratado como sucesso (ver P1, ajuste 7).",
+      "criterios": ["node --test tests/app/paralelismo_puro.test.js", "python orquestra/verifica.py --contem worker/arquivos.js /paralelismo/parte"]
+    },
+    {
+      "id": "S2",
+      "titulo": "P3a: Pyodide, OPFS e fila de processamento",
+      "modelo": "opus",
+      "etapa": "P3",
+      "pedido": "Faça a metade de lógica da P3: app/paralelismo-worker.js (Pyodide, leitura de um arquivo por vez, linhas_do_grupo, analisar_fazenda), SHA-256 e cópia no OPFS, fila, parOpfsSobras, memória conforme a spec §8. Filtre o manifesto por módulo e fixe a versão do pyshp (pendências da P0). Prove no Edge via Playwright, servindo localmente as amostras de tests/dados/paralelismo, que os números batem com o Python. Sem tela final: isso é da S3.",
+      "criterios": ["python orquestra/verifica.py --existe app/paralelismo-worker.js"]
+    },
+    {
+      "id": "S3",
+      "titulo": "P3b: tela Processar, prévia e envio",
+      "modelo": "sonnet",
+      "etapa": "P3",
+      "pedido": "Faça a tela da P3: app/paralelismo.html, .css e .js, com login, abas, conferência, prévia e envio com fflate, modo demonstração por file:// e erros da spec §10, seguindo a maquete aprovada (mapa como palco, só tema claro). Crie a migration pequena do cartão em Ferramentas, sem aplicá-la. Teste em tests/app/teste_paralelismo_tela.py.",
+      "criterios": ["python orquestra/verifica.py --existe app/paralelismo.html app/paralelismo.js app/paralelismo.css tests/app/teste_paralelismo_tela.py"]
+    },
+    {
+      "id": "S4",
+      "titulo": "P4: Pendentes, Rodadas e Frotas",
+      "modelo": "sonnet",
+      "etapa": "P4",
+      "pedido": "Faça a etapa P4 inteira, inclusive o recálculo no Worker quando o RPC responder recalculo_necessario e os testes de tela por nível no modo demonstração. Trate partes[].url e amostras_url como dado não confiável.",
+      "criterios": ["python orquestra/verifica.py --contem app/paralelismo.js recalculo_necessario"]
+    },
+    {
+      "id": "S5",
+      "titulo": "P5a: Painel (Resumo e Talhões com mapa)",
+      "modelo": "sonnet",
+      "etapa": "P5",
+      "pedido": "Faça da P5 as abas Resumo e Talhões, com o mapa MapLibre e as funções de agregação em app/paralelismo-puro.js. Use a skill dataviz nos gráficos. A maquete aprovada substitui a escolha de variações no Subframe: não espere escolha do usuário.",
+      "criterios": ["node --test tests/app/paralelismo_puro.test.js"]
+    },
+    {
+      "id": "S6",
+      "titulo": "P5b: Fazenda, Frentes e Relatório",
+      "modelo": "sonnet",
+      "etapa": "P5",
+      "pedido": "Faça da P5 as abas Fazenda, Frentes e frotas e Relatório, com CSS de impressão. No fim, rode o polimento da skill impeccable na página inteira.",
+      "criterios": ["python orquestra/verifica.py --contem app/paralelismo.css @media print"]
+    },
+    {
+      "id": "S7",
+      "titulo": "P6a: importação do histórico",
+      "modelo": "opus",
+      "etapa": "P6",
+      "portao": "historico",
+      "pedido": "Faça migracao/paralelismo_historico.py com testes em banco local e rode em modo simulação contra os arquivos reais, conferindo os totais. Não grave no banco real: a gravação é feita depois, com o usuário.",
+      "criterios": ["python orquestra/verifica.py --existe migracao/paralelismo_historico.py"]
+    },
+    {
+      "id": "S8",
+      "titulo": "P6b: ponta a ponta, manual e revisão final",
+      "modelo": "opus",
+      "etapa": "P6",
+      "portao": "e2e",
+      "pedido": "Faça o E2E da spec §11, o manual curto e a revisão de código do conjunto todo do módulo. Liste no relatório tudo o que ainda não estiver 100%.",
+      "criterios": []
+    }
+  ],
+  "portoes": {
+    "historico": "Mesclar e enviar P1 a P5, publicar o Worker e aplicar a migration do cartão.",
+    "e2e": "Importação do histórico gravada no banco real e duas contas de teste criadas."
+  }
+}

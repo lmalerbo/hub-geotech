@@ -27,3 +27,8 @@ tests/dados/paralelismo/*
 *.jdl
 *.fdl
 *.fdd
+
+# Orquestração das sessões: estado e logs ficam na máquina
+orquestra/estado.json
+orquestra/logs/
+orquestra/__pycache__/

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/lmalerbo/Documents/hub-geotech-paralelismo/orquestra/verifica.py\"",
+            "timeout": 900,
+            "statusMessage": "Conferindo os crit\u00e9rios da sess\u00e3o"
+          }
+        ]
+      }
+    ]
+  }
+}
