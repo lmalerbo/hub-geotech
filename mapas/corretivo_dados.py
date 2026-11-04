@@ -12,6 +12,7 @@ OPERACOES = {'subsolagem': 'SubSolagem', 'supergrade': 'SuperGrade', 'arado': 'A
 _CALCARIO = {'dolomitico': 'Dolomítico', 'ph7': 'PH7'}
 # Cores dos insumos, dadas na ordem em que aparecem no mapa (igual a CR_PALETA_INSUMOS na tela).
 PALETA_INSUMOS = ['#2f6db5', '#e07b1a', '#22a39f', '#7b4fb3', '#c23b3b', '#8a6d1f', '#2e8b57', '#d4558f', '#5b6770', '#b59a00']
+COR_AEREA = PALETA_INSUMOS[0]          # aéreo: todos os talhões do mapa numa cor só (spec 2026-10-28)
 MARGEM_AEREA = 0.05
 TALHAO_MARGEM = '400'
 _UNIDADE = {'L': 'L', 'KG': 'kg'}
@@ -87,7 +88,45 @@ def margem(dados) -> float:
     return round(sum(_area(dados, t) for t in dados['areas']) * MARGEM_AEREA, 2)
 
 
+def _por_unidade(soma: dict) -> str:
+    """{'L': 29.45, 'kg': 3.0} -> '29,45 L + 3,00 kg' (L e kg não se somam); vazio -> '—'."""
+    return ' + '.join(f'{br(v)} {un}' for un, v in soma.items()) or '—'
+
+
+def _somar(soma: dict, un: str, v: float):
+    soma[un] = soma.get(un, 0.0) + v
+
+
+def _linhas_aerea(dados) -> list[list[str]]:
+    """Aéreo: TALHÃO | ÁREA | TOTAL (soma de área × dose de todos os insumos do talhão, por unidade)."""
+    linhas = []
+    for chave in sorted(dados['areas'], key=int):
+        t = int(chave)
+        area = _area(dados, t)
+        soma: dict = {}
+        for a in _ordenadas(dados):
+            if t in a['talhoes']:
+                _somar(soma, unidade(a), area * a['dose'])
+        linhas.append([str(t), br(area) + ('*' if dados['areas'][chave].get('editada') else ''), _por_unidade(soma)])
+    soma = {}
+    for a in _ordenadas(dados):            # margem de cada insumo = 5% da área dos talhões dele × dose
+        _somar(soma, unidade(a), sum(_area(dados, t) for t in a['talhoes']) * MARGEM_AEREA * a['dose'])
+    linhas.append([TALHAO_MARGEM, br(margem(dados)), _por_unidade(soma)])
+    return linhas
+
+
+def linha_total(dados) -> list[str]:
+    if not aerea(dados):
+        return ['Total', br(area_total(dados)), '', '', '', '']
+    soma: dict = {}
+    for q in _totais_insumos(dados):
+        _somar(soma, q['unidade'], q['total'])
+    return ['Total', br(area_total(dados)), _por_unidade(soma)]
+
+
 def linhas_tabela(dados) -> list[list[str]]:
+    if aerea(dados):
+        return _linhas_aerea(dados)
     linhas = []
     for chave in sorted(dados['areas'], key=int):
         t = int(chave)
@@ -109,8 +148,6 @@ def linhas_tabela(dados) -> list[list[str]]:
             if a['tipo'] == 'blend':
                 linhas.append(['', '', '+ Gesso', br(a['dose_gesso']), br(area * a['dose_gesso']), a['os']])
             primeira = False
-    if aerea(dados):
-        linhas.append([TALHAO_MARGEM, br(margem(dados)), '', '', '', ''])
     return linhas
 
 

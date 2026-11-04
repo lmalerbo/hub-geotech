@@ -1,7 +1,8 @@
 """Regras do mapa de Aplicação aérea (spec 2026-10-16-mapas-aplicacao-aerea-design.md): talhão 400 com 5% da área,
 total do insumo = dose × área dos talhões dele × 1,05, cores por insumo na ordem de aparição, nomes legíveis."""
 from mapas.corretivo_dados import (
-    PALETA_INSUMOS, area_total, br_dose, cores_do_mapa, linhas_tabela, margem, nome_insumo, rotulo, totais_por_produto,
+    PALETA_INSUMOS, area_total, br_dose, cores_do_mapa, linha_total, linhas_tabela, margem, nome_insumo, rotulo,
+    totais_por_produto,
 )
 
 
@@ -34,14 +35,29 @@ def test_margem_de_5_por_cento_e_area_total_com_ela():
     assert area_total(DADOS) == 105.0
 
 
-def test_tabela_tem_unidade_junto_do_numero_e_talhao_400_so_com_area():
+def test_tabela_do_aereo_tem_talhao_area_e_total_somado_por_unidade():
+    # talhão 1: Revolux 60 × 0,5 + Adjuvante 60 × 0,1 = 36 L; talhão 2: Revolux 40 × 0,5 = 20 L e Regulador 40 × 0,008 kg
+    # 400: margem 5,00 ha; L = 100 × 0,05 × 0,5 + 60 × 0,05 × 0,1 = 2,8; kg = 40 × 0,05 × 0,008 = 0,016
     assert linhas_tabela(DADOS) == [
-        ['1', '60,00', 'Inseticida Revolux', '0,50 L', '30,00 L', '9001'],
-        ['', '', 'Adjuvante Liquido Ochima', '0,10 L', '6,00 L', '9001'],
-        ['2', '40,00*', 'Inseticida Revolux', '0,50 L', '20,00 L', '9001'],
-        ['', '', 'Regulador Sumitomo Progib', '0,008 kg', '0,32 kg', '9001'],
-        ['400', '5,00', '', '', '', ''],
+        ['1', '60,00', '36,00 L'],
+        ['2', '40,00*', '20,00 L + 0,32 kg'],
+        ['400', '5,00', '2,80 L + 0,02 kg'],
     ]
+
+
+def test_linha_total_do_aereo_fecha_com_os_cards():
+    assert linha_total(DADOS) == ['Total', '105,00', '58,80 L + 0,34 kg']        # 52,5 + 6,3 L; 0,336 kg
+
+
+def test_talhao_do_mapa_sem_insumo_fica_com_traco():
+    d = {**DADOS, 'areas': {**DADOS['areas'], '3': {'area_ha': 10.0}}}
+    assert linhas_tabela(d)[2] == ['3', '10,00', '—']
+
+
+def test_linha_total_do_corretivo_continua_com_seis_colunas():
+    d = {'operacao': 'subsolagem', 'areas': {'1': {'area_ha': 10.0}},
+         'aplicacoes': [{'tipo': 'fosfato', 'calcario': None, 'dose': 1.0, 'dose_gesso': None, 'os': '1', 'ordem': 1, 'talhoes': [1]}]}
+    assert linha_total(d) == ['Total', '10,00', '', '', '', '']
 
 
 def test_total_do_insumo_e_dose_vezes_area_dele_com_margem():
