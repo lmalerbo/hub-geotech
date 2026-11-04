@@ -60,6 +60,19 @@ function crCoresTalhao(apls, talhao) {
   const cores = crCoresDoMapa(apls);
   return crOrdenadas(apls).filter(a => a.talhoes.includes(talhao)).map(a => cores[crChaveCor(a)]);
 }
+// Aéreo (spec 2026-10-28): todos os insumos valem para os mesmos talhões, os "talhões do mapa".
+function crTalhoesDoMapa(apls) { return [...new Set(apls.flatMap(a => a.talhoes))].sort((a, b) => a - b); }
+function crCoresTalhaoMapa(apls, talhao, operacao) {
+  if (!crAerea(operacao)) return crCoresTalhao(apls, talhao);
+  return apls.some(a => a.talhoes.includes(talhao)) ? [CR_PALETA_INSUMOS[0]] : [];
+}
+function crIncluir(atuais, sel) { return [...new Set([...atuais, ...sel])].sort((a, b) => a - b); }
+function crTirar(atuais, sel) { return atuais.filter(t => !sel.includes(t)); }
+function crRegravacoes(apls, talhoes) {
+  const alvo = [...talhoes].sort((a, b) => a - b).join(',');
+  return crOrdenadas(apls).filter(a => [...a.talhoes].sort((x, y) => x - y).join(',') !== alvo)
+    .map(apl => ({ apl, talhoes: [...talhoes].sort((a, b) => a - b) }));
+}
 function crTotaisPorProduto(apls, areas, operacao) {
   const soma = {};
   const area = a => a.talhoes.reduce((s, t) => s + Number(areas[t].area_ha), 0);

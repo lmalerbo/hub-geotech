@@ -64,3 +64,14 @@ test('dados do PDF levam nome e unidade do insumo; arquivo com nome do aéreo', 
   assert.strictEqual(ctx.crNomeArquivo(10001, 'aerea', '2026-10-16'), 'aplicacao_aerea_10001_2026-10-16.pdf');
   assert.strictEqual(ctx.crNomeArquivo(10001, 'arado', '2026-10-16'), 'corretivo_10001_arado_2026-10-16.pdf');
 });
+
+test('aéreo: talhões do mapa são a união, uma cor só e regravação só do que difere', () => {
+  igual(ctx.crTalhoesDoMapa(APLS), [1, 2]);
+  igual(ctx.crTalhoesDoMapa([]), []);
+  igual(ctx.crCoresTalhaoMapa(APLS, 2, 'aerea'), ['#2f6db5']);
+  igual(ctx.crCoresTalhaoMapa(APLS, 9, 'aerea'), []);
+  igual(ctx.crIncluir([1, 2], [3, 1]), [1, 2, 3]);
+  igual(ctx.crTirar([1, 2, 3], [2]), [1, 3]);
+  igual(ctx.crRegravacoes(APLS, [1, 2]).map(r => [r.apl.insumo_id, r.talhoes]), [[2, [1, 2]], [3, [1, 2]]]);
+  igual(ctx.crRegravacoes(APLS, [1, 2, 3]).length, 3);
+});
