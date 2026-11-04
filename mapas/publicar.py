@@ -11,7 +11,7 @@ MODULOS = {
                    'drone/assets/logo-pedra.png',
                    'mapas/fontes/selawk.ttf', 'mapas/fontes/selawksb.ttf', 'mapas/fontes/selawkb.ttf'],
     'paralelismo': ['paralelismo/__init__.py', 'paralelismo/jdl.py', 'paralelismo/gs3.py', 'paralelismo/pipeline.py',
-                    'paralelismo/analise.py'],
+                    'paralelismo/analise.py', 'paralelismo/navegador.py'],
 }
 ARQUIVOS = [rel for arquivos in MODULOS.values() for rel in arquivos]
 
