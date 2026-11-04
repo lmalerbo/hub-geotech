@@ -2481,7 +2481,7 @@ function exportWpp(){
     if(cFilters.obst)partes.push('obstáculos '+cFilters.obst);
   } else {
     partes.push('Preparo');
-    if(cFilters.etapa!=='')partes.push(cFilters.etapa==='-1'?'Entregue':ET_P[parseInt(cFilters.etapa)]?.l||'');
+    if(cFilters.etapa!=='')partes.push(cFilters.etapa==='-1'?'Entregue':cFilters.etapa==='voo'?'Voo':ET_P[parseInt(cFilters.etapa)]?.l||'');
     if(cFilters.mes)partes.push(cFilters.mes);
   }
   const titulo=partes.filter(Boolean).join(' · ');
