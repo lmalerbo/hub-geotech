@@ -42,7 +42,7 @@ export default {
     try {
       return json(await rota(req, env), 200, cors);
     } catch (e) {
-      return json({ erro: e.message }, e.status || 400, cors);
+      return json({ erro: e.message, rodada_id: e.rodada_id }, e.status || 400, cors);
     }
   },
 };
@@ -325,12 +325,18 @@ async function paralelismoParte(req, env) {
     throw e;
   }
 
-  const release = await releaseDaTag(env, `paralelismo-r${id}`, `Paralelismo — rodada ${id}`);
-  const antigo = await assetDaRelease(env, release.id, nome);
-  const asset = antigo
-    ? await substituirAsset(env, release.id, antigo, nome, arq)
-    : await subirAsset(env, release.id, nome, arq);
-  return { rodada_id: id, url: asset.browser_download_url, bytes: asset.size };
+  try {
+    const release = await releaseDaTag(env, `paralelismo-r${id}`, `Paralelismo — rodada ${id}`);
+    const antigo = await assetDaRelease(env, release.id, nome);
+    const asset = antigo
+      ? await substituirAsset(env, release.id, antigo, nome, arq)
+      : await subirAsset(env, release.id, nome, arq);
+    return { rodada_id: id, url: asset.browser_download_url, bytes: asset.size };
+  } catch (e) {
+    // Quem tentar de novo precisa do mesmo id, mesmo que a falha tenha sido na primeira parte.
+    e.rodada_id = id;
+    throw e;
+  }
 }
 
 // A rodada foi excluída no banco (hub.paralelismo_excluir): a release fica como
@@ -338,7 +344,7 @@ async function paralelismoParte(req, env) {
 async function paralelismoExcluida(req, env) {
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) throw falha('Faça login no Hub', 401);
-  const { release_tag: tag } = await req.json().catch(() => ({}));
+  const { release_tag: tag } = (await req.json().catch(() => null)) || {};
   if (typeof tag !== 'string' || !/^paralelismo-r\d+$/.test(tag)) throw falha('Release inválida');
   const nivel = await banco(env, token, 'rpc/paralelismo_nivel', { metodo: 'POST', corpo: {} });
   if (nivel !== 'admin') throw falha('Só administradores marcam rodadas excluídas', 403);

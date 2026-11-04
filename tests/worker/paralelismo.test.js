@@ -169,6 +169,19 @@ test('parte: rodada_ja_enviada é sucesso e não toca no GitHub', async () => {
   assert.strictEqual(m.noGithub().length, 0);
 });
 
+test('parte: falha no GitHub depois da reserva devolve o id, para tentar de novo com o mesmo', async () => {
+  const m = montar([RPC_ID(12), ['GET /releases/tags/', { status: 500, corpo: {} }]]);
+  const r = await m.rota(reqParte());
+  assert.strictEqual(r.status, 502);
+  assert.strictEqual((await r.json()).rodada_id, 12);
+});
+
+test('parte: erro antes da reserva não inventa id', async () => {
+  const m = montar([['POST rpc/paralelismo_preparar_parte', { status: 400, corpo: { message: 'Sem permissão' } }]]);
+  const corpo = await (await m.rota(reqParte())).json();
+  assert.strictEqual(corpo.rodada_id, undefined);
+});
+
 test('parte: resposta leva o CORS da origem permitida', async () => {
   const m = montar([RPC_ID(12), RELEASE(), SEM_ASSETS, ASSET_NOVO]);
   const r = await m.rota(reqParte({ rodada: '12' }));
@@ -201,6 +214,13 @@ for (const corpo of [{ release_tag: 'plantio-10728' }, { release_tag: 'paralelis
     assert.strictEqual(m.chamadas.length, 0);
   });
 }
+
+test('excluída: corpo JSON null responde em português', async () => {
+  const m = montar([]);
+  const r = await m.rota(reqExcluida('null'));
+  assert.strictEqual(r.status, 400);
+  assert.strictEqual((await r.json()).erro, 'Release inválida');
+});
 
 for (const nivel of ['editor', 'solicitante', 'leitura', null]) {
   test(`excluída: nível ${nivel} é 403 e nada chega ao GitHub`, async () => {

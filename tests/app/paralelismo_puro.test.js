@@ -114,6 +114,11 @@ test('fdl: filePosition em qualquer tag vale, como no leitor Python', () => {
   assert.strictEqual(ctx.parIdentificarFdl('a.fdl', FDL('10010Rev2', '<OutroBloco filePosition="7" />')).temFdd, true);
 });
 
+test('fdl: usa o primeiro LogTaskRegion que tem timeStamp, como o leitor Python', () => {
+  const x = '<LogTaskRegion id="1" /><LogTaskRegion timeStamp="2026-10-10T10:00:00Z" />';
+  assert.strictEqual(ctx.parIdentificarFdl('a.fdl', x).data, '2026-10-10');
+});
+
 test('fdl: XML sem ligação ou vazio não quebra', () => {
   igual(ctx.parIdentificarFdl('a.fdl', ''), {
     tipo: 'gs3', serie: null, cod_faz: null, revisao: null, fazenda_monitor: '', data: null, temFdd: false,
@@ -134,6 +139,12 @@ test('frota sugerida: número na pasta, sem confundir com GS3_2630, RevN ou ano'
   assert.strictEqual(ctx.parFrotaSugeridaGs3('10966Rev0/90002/GS3_2630'), '90002');
   assert.strictEqual(ctx.parFrotaSugeridaGs3('pen\\90003\\GS3_2630'), '90003');
   assert.strictEqual(ctx.parFrotaSugeridaGs3(''), null);
+});
+
+test('frota sugerida: número separado do GS3 sem ser o modelo continua valendo', () => {
+  assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3 90001'), '90001');
+  assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3_90001'), '90001');
+  assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3 2630'), null);
 });
 
 test('frota sugerida: mantém o número como está escrito na pasta', () => {
@@ -305,6 +316,51 @@ test('conferência: mesma sessão em duas pastas conta uma vez, senão o envio s
   igual(r[1].avisos, ['serie_desconhecida', 'ja_analisados']);
 });
 
+test('conferência: pasta acima que começa com GS3 não junta dois tratores', () => {
+  const r = ctx.parConferencia([fdl('GS3/90005/GS3_2630', 'u1', 's1', 10010), fdl('GS3/90009/GS3_2630', 'u2', 's2', 10010)], FROTAS, []);
+  igual(r.map((g) => g.trator), ['GS3/90005/GS3_2630', 'GS3/90009/GS3_2630']);
+  igual(r.map((g) => g.frotaSugerida), ['90005', '90009']);
+});
+
+test('conferência: nome de arquivo que começa com GS3 não vira pasta', () => {
+  const g = ctx.parConferencia([arq('pen/90005/GS3.pth', 's1')], FROTAS, [])[0];
+  assert.strictEqual(g.trator, 'pen/90005');
+});
+
+test('conferência: pasta abaixo de RCD que começa com GS3 não muda a pasta do trator', () => {
+  const g = ctx.parConferencia([arq('pen/GS3_2630/org/RCD/EIC/GS3x/u.fdl', 's1', { tipo: 'gs3', cod_faz: 10010, temFdd: true })], FROTAS, [])[0];
+  assert.strictEqual(g.trator, 'pen/GS3_2630');
+});
+
+// ── parRegistrosDoGrupo ────────────────────────────────────────────────
+test('registros: tipo pela extensão, frota do grupo, .fdd herda a fazenda do .fdl vizinho', () => {
+  const raiz = 'pen/90005/GS3_2630';
+  const f = fdl(raiz, 'u1', 's1', 10010);
+  f.fazenda_monitor = '10010Rev0';
+  const g = ctx.parConferencia([f, fdd(raiz, 'u1', 's2')], FROTAS, [])[0];
+  igual(ctx.parRegistrosDoGrupo(g), [
+    { sha256: 's1', caminho: f.caminho, bytes: 10, tipo: 'fdl', serie: null, frota: '90005', cod_faz: 10010, fazenda_monitor: '10010Rev0' },
+    { sha256: 's2', caminho: `${raiz}/org/${DOC}/u1.fdd`, bytes: 10, tipo: 'fdd', serie: null, frota: '90005', cod_faz: 10010, fazenda_monitor: '10010Rev0' },
+  ]);
+});
+
+test('registros: .jdl leva a série, e a frota escolhida pelo usuário é a que vale', () => {
+  const g = ctx.parConferencia([jdl('a', 'a1', S2, 10010)], FROTAS, [])[0];
+  const [r] = ctx.parRegistrosDoGrupo({ ...g, frota: '90007' });
+  assert.strictEqual(r.tipo, 'jdl');
+  assert.strictEqual(r.serie, S2);
+  assert.strictEqual(r.frota, '90007');
+  assert.strictEqual(r.fazenda_monitor, null);
+});
+
+test('registros: .fdd sem .fdl novo ao lado fica sem fazenda, e o manifesto sai com a frota', () => {
+  const raiz = 'pen/90005/GS3_2630';
+  const g = ctx.parConferencia([fdd(raiz, 'u1', 's2')], FROTAS, [])[0];
+  const r = ctx.parRegistrosDoGrupo(g);
+  assert.strictEqual(r[0].cod_faz, null);
+  assert.strictEqual(ctx.parManifestoCsv(r).split('\n')[1], `${raiz}/org/${DOC}/u1.fdd;10;s2;90005;`);
+});
+
 test('conferência: aceita Set em jaAnalisados e frotas nula', () => {
   const g = ctx.parConferencia([jdl('a', 'a1', S1, 10010)], null, new Set(['a1']))[0];
   assert.strictEqual(g.nJaAnalisados, 1);
@@ -363,6 +419,12 @@ test('mesclar: junta vigentes e novas, vigentes primeiro', () => {
 test('mesclar: mesma linha não duplica, mesmo com menos decimais vindos do banco', () => {
   const vig = [linha('90001', '2026-10-01', [[600000.123456789, 7600000.5], [600010, 7600000.5]])];
   const nova = [linha('90001', '2026-10-01', [[600000.12345678912, 7600000.5000000001], [600010, 7600000.5]], { operacao: 'cana', cod_faz: 10010 })];
+  assert.strictEqual(ctx.parMesclarComVigente(vig, nova).length, 1);
+});
+
+test('mesclar: não duplica no limite de arredondamento entre memória e banco', () => {
+  const vig = [linha('90001', null, [[0.0005, 1], [2, 1]])];
+  const nova = [linha('90001', null, [[0.00049999999999, 1], [2, 1]])];
   assert.strictEqual(ctx.parMesclarComVigente(vig, nova).length, 1);
 });
 

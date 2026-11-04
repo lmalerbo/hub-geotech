@@ -82,7 +82,7 @@ function parIdentificarFdl(nomeRel, textoXml) {
   const fazenda = parTags(xml, 'rcdsetup:Farm').find((t) => parAtributo(t, 'erid') === farmRef);
   const fazenda_monitor = (ref && fazenda && parAtributo(fazenda, 'name')) || '';
   const rev = PAR_REV.exec(fazenda_monitor);
-  const inicio = parAtributo(parTags(xml, 'LogTaskRegion')[0] || '', 'timeStamp') || '';
+  const inicio = parTags(xml, 'LogTaskRegion').map((t) => parAtributo(t, 'timeStamp')).find(Boolean) || '';
   const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(inicio);
   return {
     tipo: 'gs3', serie: null,
@@ -95,7 +95,8 @@ function parIdentificarFdl(nomeRel, textoXml) {
 }
 
 function parFrotaSugeridaGs3(caminhoPasta) {
-  const limpo = parNormalizar(caminhoPasta).replace(/GS3(?:[_ -]?\d+)?/gi, '').replace(/\d{5}Rev\d+/gi, '');
+  // 2630 é o modelo do monitor, não a frota.
+  const limpo = parNormalizar(caminhoPasta).replace(/GS3(?:[_ -]?2630)?/gi, '').replace(/\d{5}Rev\d+/gi, '');
   const numeros = (limpo.match(/(?<!\d)\d{4,6}(?!\d)/g) || []).filter((n) => !/^20\d{2}$/.test(n));
   return numeros.length ? numeros[numeros.length - 1] : null;
 }
@@ -115,20 +116,22 @@ function parSepararJaAnalisados(arquivos, shaRegistrados) {
   return { novos, repetidos };
 }
 
-// Estrutura do monitor: <raiz>/GS3_2630/<org>/RCD/EIC/...
+// Estrutura do monitor: <raiz>/GS3_2630/<org>/RCD/EIC/... Vale o último GS3 antes de RCD:
+// a pasta escolhida no pen-drive também pode começar com GS3, e aí juntaria dois tratores.
 function parPastaGs3(caminho) {
-  const s = parNormalizar(caminho).split('/');
-  const gs3 = s.findIndex((p) => /^GS3/i.test(p));
-  if (gs3 >= 0) return s.slice(0, gs3 + 1).join('/');
-  const rcd = s.findIndex((p) => /^RCD$/i.test(p));
-  return s.slice(0, rcd >= 0 ? rcd : -1).join('/');
+  const pastas = parNormalizar(caminho).split('/').slice(0, -1);
+  const rcd = pastas.findIndex((p) => /^RCD$/i.test(p));
+  const acima = rcd >= 0 ? pastas.slice(0, rcd) : pastas;
+  const gs3 = acima.map((p) => /^GS3/i.test(p)).lastIndexOf(true);
+  return (gs3 >= 0 ? acima.slice(0, gs3 + 1) : acima).join('/');
 }
 
 function parSemExtensao(caminho) {
   return parNormalizar(caminho).replace(/\.[^./]+$/, '').toLowerCase();
 }
 
-// Documentação = um .fdl com blocos e o .fdd ao lado. Olha todos os arquivos da pasta, inclusive os já analisados.
+// Documentação = um .fdl com blocos e o .fdd ao lado. Olha todos os arquivos da pasta, inclusive os já analisados:
+// por isso a tela precisa rodar parIdentificarFdl em todo .fdl, mesmo o já analisado (senão falta temFdd).
 function parTemDocumentacao(arquivosDaPasta) {
   const fdds = new Set(arquivosDaPasta.filter((a) => parExtensao(a.caminho) === 'fdd').map((a) => parSemExtensao(a.caminho)));
   return arquivosDaPasta.some((a) => parExtensao(a.caminho) === 'fdl' && a.temFdd && fdds.has(parSemExtensao(a.caminho)));
@@ -175,6 +178,21 @@ function parConferencia(arquivos, frotas, jaAnalisados) {
   });
 }
 
+// O que vai para paralelismo_enviar e para o manifesto. O tipo do banco é a extensão (jdl|fdl|fdd), não o da
+// identificação; a frota é a do grupo (a tela passa a escolhida pelo usuário); o .fdd herda a fazenda do .fdl ao lado.
+function parRegistrosDoGrupo(grupo) {
+  const fdls = new Map(grupo.arquivos.filter((a) => parExtensao(a.caminho) === 'fdl').map((a) => [parSemExtensao(a.caminho), a]));
+  return grupo.arquivos.map((a) => {
+    const tipo = parExtensao(a.caminho);
+    const origem = tipo === 'fdd' ? (fdls.get(parSemExtensao(a.caminho)) || {}) : a;
+    return {
+      sha256: a.sha256, caminho: a.caminho, bytes: a.bytes, tipo,
+      serie: a.serie ?? null, frota: grupo.frota,
+      cod_faz: origem.cod_faz ?? null, fazenda_monitor: origem.fazenda_monitor ?? null,
+    };
+  });
+}
+
 function parPartes(arquivos, limite = PAR_PARTE_MAX) {
   const partes = [];
   let atual = [], soma = 0;
@@ -197,9 +215,14 @@ function parPartes(arquivos, limite = PAR_PARTE_MAX) {
   return partes;
 }
 
-// Em milímetros: o ST_AsGeoJSON devolve até 9 decimais e a linha em memória tem mais.
+// Em milímetros, passando antes pelos 9 decimais do ST_AsGeoJSON: a linha em memória tem mais, e sem isso os dois
+// lados poderiam arredondar para milímetros diferentes.
+function parCoordChave(v) {
+  return Number(v.toFixed(9)).toFixed(3);
+}
+
 function parChaveLinha(l) {
-  return `${l.frota ?? ''}|${l.data ?? ''}|${(l.coords || []).map((c) => `${c[0].toFixed(3)},${c[1].toFixed(3)}`).join(' ')}`;
+  return `${l.frota ?? ''}|${l.data ?? ''}|${(l.coords || []).map((c) => `${parCoordChave(c[0])},${parCoordChave(c[1])}`).join(' ')}`;
 }
 
 function parMesclarComVigente(linhasVigentes, linhasNovas) {
