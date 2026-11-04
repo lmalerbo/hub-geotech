@@ -20,3 +20,10 @@ app/py/
 
 # Lista de candidatos do ciclo 25-26 (gerada por migracao/lancar_ciclo_25_26.py)
 migracao/ciclo_25_26_candidatos.csv
+
+# Amostras reais do paralelismo (GPS real; o repositório é público)
+tests/dados/paralelismo/*
+!tests/dados/paralelismo/LEIAME.md
+*.jdl
+*.fdl
+*.fdd
