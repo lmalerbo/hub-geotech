@@ -49,10 +49,12 @@
 ## P0 — Núcleo Python `paralelismo/`
 
 **Desvios na execução (04/11/2026):**
-- **Amostras reais fora do git.** O `lmalerbo/hub-geotech` é público e os arquivos têm GPS real. `tests/dados/paralelismo/amostra.*` está no `.gitignore`, `test_leitores.py` usa o marcador `dados_reais` e `LEIAME.md` diz de onde copiar. O `pytest` normal não cobre os leitores.
-- **Pastas de origem mudaram:** agora `EXECUTADOS6-2027\BRUTOS\TORTAB33Rev0` e `BRUTOS\CANA966Rev0`.
+- **Amostras reais fora do git.** O `lmalerbo/hub-geotech` é público e os arquivos têm GPS real. `tests/dados/paralelismo/amostra.*` está no `.gitignore`, `test_leitores.py` usa o marcador `dados_reais` e `LEIAME.md` diz de onde copiar. O `pytest` normal cobre os leitores com arquivos sintéticos (`test_leitores_sinteticos.py`).
+- **Pastas de origem mudaram:** agora `EXECUTADOS\2026-2027\BRUTOS\TORTA\10233Rev0` e `BRUTOS\CANA\10966Rev0`.
 - **10966 agrupa por pasta de frota** (a cada subpasta da 10966Rev0, uma frota). Com isso deu 30.395 / 88,86%, igual ao `base-op`.
 - **Código copiado do `base-op` no commit `935543c`.** A execução da P0 foi toda na camada 3, sem executor externo.
+- **Mês conta todas as amostras da análise** (spec §4), inclusive as fora de talhão, para a fazenda sem polígono na base não ficar sem mês. Isso substitui a nota da Tarefa P0.3.
+- **Para a P3:** fixar a versão do `pyshp` no `micropip` e filtrar o manifesto por módulo (hoje o Corretivos baixa os arquivos do paralelismo sem usar, e vice-versa).
 
 **Arquivos:**
 - Criar: `paralelismo/__init__.py`, `paralelismo/jdl.py`, `paralelismo/gs3.py`, `paralelismo/pipeline.py`, `paralelismo/analise.py`
@@ -479,7 +481,7 @@ def analisar_fazenda(linhas, talhoes):
     }
 ```
 
-  Notas para quem implementa: `mes` conta as amostras **dentro** de talhão pela data da linha; frota sem amostra em talhão não aparece em `frotas`. Se algum teste numérico não bater, **não ajuste o número do teste**: os números vêm do código validado; investigue a implementação.
+  Notas para quem implementa: `mes` conta todas as amostras da análise pela data da linha; frota sem amostra em talhão não aparece em `frotas`. Se algum teste numérico não bater, **não ajuste o número do teste**: os números vêm do código validado; investigue a implementação.
 
 - [x] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo -v` → todos passam.
 

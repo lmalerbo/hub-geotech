@@ -8,6 +8,8 @@ from paralelismo.jdl import ler_jdl
 # As amostras têm GPS real e o repositório é público: ficam fora do git (ver LEIAME.md).
 pytestmark = pytest.mark.dados_reais
 DADOS = Path(__file__).resolve().parent.parent / 'dados' / 'paralelismo'
+if not (DADOS / 'amostra.jdl').exists():
+    pytest.skip('amostras reais ausentes (ver LEIAME.md)', allow_module_level=True)
 N_JDL, TICKS_JDL = 10682, 23663   # do LEIAME.md
 N_GS3, REG_GS3 = 366, 366         # do LEIAME.md
 

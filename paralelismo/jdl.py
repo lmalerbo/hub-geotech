@@ -254,6 +254,6 @@ def ler_jdl(caminho: str) -> tuple[list[tuple[float, float]], int]:
     try:
         trilha = ler_trilha_trator(caminho)
         _, eventos = ler_documentacao(caminho)
-    except OSError:
+    except (OSError, ValueError):
         return [], 0
     return _filtrar_por_estado(trilha, eventos), len(trilha)

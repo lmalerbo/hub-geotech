@@ -61,11 +61,12 @@ def classe(espacamento):
 
 
 def mes_execucao(contagem):
-    if not contagem:
-        return None
     por_mes = collections.Counter()
     for data, n in contagem.items():
-        por_mes[data[:7]] += n
+        if data:
+            por_mes[data[:7]] += n
+    if not por_mes:
+        return None
     return por_mes.most_common(1)[0][0] + '-01'
 
 
@@ -103,6 +104,7 @@ def analisar_fazenda(linhas, talhoes):
         pll_aderentes += cl == 'aderente'
         num = talhao_em(a.x, a.y)
         pontos.append([a.x, a.y, a.x_vizinha, a.y_vizinha, round(a.espacamento, 3), cl, num, linha['frota']])
+        datas[linha['data']] += 1
         if num is None:
             fora += 1
             continue
@@ -114,7 +116,6 @@ def analisar_fazenda(linhas, talhoes):
         f = por_frota[linha['frota']]
         f['amostras'] += 1
         f['aderentes'] += cl == 'aderente'
-        datas[linha['data']] += 1
 
     talhoes_saida = [{'talhao_num': n, 'amostras': t['amostras'], 'aderentes': t['aderentes'],
                       'acima': t['acima'], 'abaixo': t['abaixo'],

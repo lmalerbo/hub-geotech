@@ -1,12 +1,14 @@
 import io
+import json
 import zipfile
 
 import pytest
 import shapefile
 from shapely.geometry import box, mapping
 
-from paralelismo.analise import (analisar_fazenda, classe, exportar_shapefiles, mes_execucao, para_utm,
-                                 sem_trabalho, talhoes_de_geojson)
+from paralelismo.analise import (CLE_M, LSFP_M, MIN_AMOSTRAS_TALHAO, PASSO_PLL, QBD_GRAUS, analisar_fazenda, classe,
+                                 exportar_shapefiles, linhas_do_grupo, mes_execucao, para_utm, sem_trabalho,
+                                 talhoes_de_geojson)
 
 
 def linhas(n, espacamento, frota='64086', data='2026-10-03', y0=0.0, comprimento=200.0):
@@ -91,3 +93,28 @@ def test_exportar_shapefiles(tmp_path):
     li = shapefile.Reader(str(tmp_path / '10233_torta_Linhas'))
     assert len(li) == 8 and [f[0] for f in li.fields[1:]] == ['Frota', 'Data']
     assert 'SIRGAS_2000_UTM_Zone_23S' in z.read('10233_torta_Amostras.prj').decode()
+
+
+def test_parametros_validados():
+    assert (LSFP_M, QBD_GRAUS, CLE_M, PASSO_PLL, MIN_AMOSTRAS_TALHAO) == (10.0, 160.0, 10.0, 10.0, 25)
+
+
+def test_linhas_do_grupo_quebra_no_salto_na_manobra_e_tira_as_curtas():
+    ida = [(d / 2, 0.0) for d in range(401)]
+    volta = [(200 - d / 2, 3.0) for d in range(401)]
+    curta = [(500.0, 0.0), (505.0, 0.0)]
+    assert [round(l.length) for l in linhas_do_grupo(ida + [(201.5, 1.5)] + volta + curta)] == [200, 200]
+
+
+def test_mes_sem_talhao_na_base():
+    r = analisar_fazenda(linhas(8, 3.00), {})
+    assert (r['pll_total'], r['amostras'], r['fora_talhao'], r['mes']) == (266, 0, 266, '2026-10-01')
+
+
+def test_mes_ignora_data_vazia():
+    assert mes_execucao({'': 3}) is None
+    assert mes_execucao({'': 30, '2026-10-02': 1}) == '2026-10-01'
+
+
+def test_resultado_vai_em_json():
+    json.dumps(analisar_fazenda(linhas(8, 3.00), TALHOES), allow_nan=False)
