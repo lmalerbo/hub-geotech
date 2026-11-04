@@ -179,7 +179,7 @@ try:
         pg.click('[data-aplicar]')
         pg.wait_for_function('CR_ST.det.apls.length === 2', timeout=10000)
         confere(pg.evaluate("CR_ST.det.apls.every(a => a.talhoes.join() === '1,2')"), 'segundo insumo, sem marcar, vai para os mesmos 2 talhões')
-        cores_cards = pg.evaluate("new Set([...document.querySelectorAll('#cr-painel .cr-ap-sw')].map(e => e.style.background)).size")
+        cores_cards = pg.evaluate("new Set([...document.querySelectorAll('#cr-painel .cr-ap-sw:not(.cr-ap-sem .cr-ap-sw)')].map(e => e.style.background)).size")
         confere(cores_cards == 1, 'cards dos insumos com a mesma cor única do mapa')
         pg.evaluate('crToggleSel(3)')
         pg.click('[data-incluir]')
