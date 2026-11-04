@@ -69,10 +69,10 @@
 
 **Interfaces:** as da seção P2 do plano geral. A conferência recebe arquivos `{caminho, bytes, sha256, ...identificação}` e devolve também `tipo` (`'jdl'|'gs3'`), `frotaSugerida` e `nJaAnalisados`. `revisao` é número; `cod_faz` é número.
 
-- [ ] Escrever `tests/app/paralelismo_puro.test.js` com todos os comportamentos, inclusive o foco 2, 3 e 4.
-- [ ] Rodar `node --test tests/app/paralelismo_puro.test.js` e ver falhar. Commit dos testes (a worktree do executor só leva o que está versionado).
-- [ ] Rodar `delegar.sh -a build` com o brief; revisar o diff e rodar os testes.
-- [ ] Integrar com cherry-pick. Se falhar duas vezes, subir de camada e registrar o motivo.
+- [x] Escrever `tests/app/paralelismo_puro.test.js` com todos os comportamentos, inclusive o foco 2, 3 e 4.
+- [x] Rodar `node --test tests/app/paralelismo_puro.test.js` e ver falhar. Commit dos testes (a worktree do executor só leva o que está versionado).
+- [x] Rodar `delegar.sh -a build` com o brief; revisar o diff e rodar os testes.
+- [x] Integrar. **Mudou na execução:** a revisão reprovou a entrega (6 defeitos, cada um com teste novo) e o merge do branch foi negado pelo controle de permissões. O arquivo foi reescrito pelo Claude (camada 3), sem integrar o commit do executor.
 
 ### Tarefa 4: fechamento
 

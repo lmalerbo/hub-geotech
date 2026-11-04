@@ -110,6 +110,10 @@ test('fdl: sem blocos no catálogo não tem .fdd útil', () => {
   assert.strictEqual(ctx.parIdentificarFdl('a.fdl', FDL('10010Rev2', '')).temFdd, false);
 });
 
+test('fdl: filePosition em qualquer tag vale, como no leitor Python', () => {
+  assert.strictEqual(ctx.parIdentificarFdl('a.fdl', FDL('10010Rev2', '<OutroBloco filePosition="7" />')).temFdd, true);
+});
+
 test('fdl: XML sem ligação ou vazio não quebra', () => {
   igual(ctx.parIdentificarFdl('a.fdl', ''), {
     tipo: 'gs3', serie: null, cod_faz: null, revisao: null, fazenda_monitor: '', data: null, temFdd: false,
@@ -130,6 +134,10 @@ test('frota sugerida: número na pasta, sem confundir com GS3_2630, RevN ou ano'
   assert.strictEqual(ctx.parFrotaSugeridaGs3('10966Rev0/90002/GS3_2630'), '90002');
   assert.strictEqual(ctx.parFrotaSugeridaGs3('pen\\90003\\GS3_2630'), '90003');
   assert.strictEqual(ctx.parFrotaSugeridaGs3(''), null);
+});
+
+test('frota sugerida: mantém o número como está escrito na pasta', () => {
+  assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/09001/GS3_2630'), '09001');
 });
 
 // ── parSepararJaAnalisados ─────────────────────────────────────────────
@@ -282,6 +290,37 @@ test('conferência: sem arquivos', () => {
   igual(ctx.parConferencia([], FROTAS, []), []);
 });
 
+test('conferência: pasta documentada não esconde o aviso de outra pasta só com mapa', () => {
+  const doc = 'pen/90005/GS3_2630', sem = 'pen/90009/GS3_2630';
+  const r = ctx.parConferencia([fdl(doc, 'u1', 's1', 10010), fdd(doc, 'u1', 's2'), pth(doc, 's3'), pth(sem, 's4')], FROTAS, []);
+  assert.ok(!r[0].avisos.includes('gs3_sem_documentacao'));
+  assert.ok(r[1].avisos.includes('gs3_sem_documentacao'));
+});
+
+test('conferência: mesma sessão em duas pastas conta uma vez, senão o envio seria recusado', () => {
+  const r = ctx.parConferencia([fdl('p/90005/GS3_2630', 'u1', 's1', 10010), fdl('p/90009/GS3_2630', 'u1', 's1', 10010)], FROTAS, []);
+  assert.strictEqual(r[0].nArquivos, 1);
+  assert.strictEqual(r[1].nArquivos, 0);
+  assert.strictEqual(r[1].nJaAnalisados, 1);
+  igual(r[1].avisos, ['serie_desconhecida', 'ja_analisados']);
+});
+
+test('conferência: aceita Set em jaAnalisados e frotas nula', () => {
+  const g = ctx.parConferencia([jdl('a', 'a1', S1, 10010)], null, new Set(['a1']))[0];
+  assert.strictEqual(g.nJaAnalisados, 1);
+  assert.strictEqual(g.frota, null);
+});
+
+test('conferência: .FDD maiúsculo e caminho com contrabarra contam como documentação', () => {
+  const g = ctx.parConferencia([
+    arq('pen\\GS3_2630\\org\\RCD\\u.FDL', 's1', { tipo: 'gs3', cod_faz: 10010, temFdd: true }),
+    arq('pen\\GS3_2630\\org\\RCD\\u.FDD', 's2'),
+    arq('pen\\GS3_2630\\org\\RCD\\m.pth', 's3'),
+  ], FROTAS, [])[0];
+  assert.strictEqual(g.trator, 'pen/GS3_2630');
+  assert.ok(!g.avisos.includes('gs3_sem_documentacao'));
+});
+
 // ── parPartes ──────────────────────────────────────────────────────────
 const it = (caminho, bytes) => ({ caminho, bytes });
 
@@ -300,6 +339,11 @@ test('partes: arquivo maior que o limite vai sozinho, com aviso, sem mudar a ent
   const r = ctx.parPartes(entrada, 100);
   igual(r, [[it('a', 10)], [{ caminho: 'grande', bytes: 500, aviso: 'maior_que_limite' }], [it('b', 10)]]);
   assert.strictEqual(entrada[1].aviso, undefined);
+});
+
+test('partes: arquivo grande mantém os outros campos', () => {
+  const r = ctx.parPartes([{ caminho: 'g', bytes: 500, sha256: 'aa', frota: '90001' }], 100);
+  igual(r, [[{ caminho: 'g', bytes: 500, sha256: 'aa', frota: '90001', aviso: 'maior_que_limite' }]]);
 });
 
 test('partes: limite padrão é 90 MB e lista vazia não gera parte', () => {
