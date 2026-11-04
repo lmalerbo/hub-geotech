@@ -96,7 +96,7 @@ function parIdentificarFdl(nomeRel, textoXml) {
 
 function parFrotaSugeridaGs3(caminhoPasta) {
   // 2630 é o modelo do monitor, não a frota.
-  const limpo = parNormalizar(caminhoPasta).replace(/GS3(?:[_ -]?2630)?/gi, '').replace(/\d{5}Rev\d+/gi, '');
+  const limpo = parNormalizar(caminhoPasta).replace(/GS3(?:[_ -]?2630(?!\d))?/gi, '').replace(/\d{5}Rev\d+/gi, '');
   const numeros = (limpo.match(/(?<!\d)\d{4,6}(?!\d)/g) || []).filter((n) => !/^20\d{2}$/.test(n));
   return numeros.length ? numeros[numeros.length - 1] : null;
 }
@@ -116,11 +116,11 @@ function parSepararJaAnalisados(arquivos, shaRegistrados) {
   return { novos, repetidos };
 }
 
-// Estrutura do monitor: <raiz>/GS3_2630/<org>/RCD/EIC/... Vale o último GS3 antes de RCD:
-// a pasta escolhida no pen-drive também pode começar com GS3, e aí juntaria dois tratores.
+// Estrutura do monitor: <raiz>/GS3_2630/<org>/RCD/EIC/... Vale o último GS3 antes do último RCD:
+// a pasta escolhida no pen-drive também pode se chamar GS3 ou RCD, e aí juntaria dois tratores.
 function parPastaGs3(caminho) {
   const pastas = parNormalizar(caminho).split('/').slice(0, -1);
-  const rcd = pastas.findIndex((p) => /^RCD$/i.test(p));
+  const rcd = pastas.map((p) => /^RCD$/i.test(p)).lastIndexOf(true);
   const acima = rcd >= 0 ? pastas.slice(0, rcd) : pastas;
   const gs3 = acima.map((p) => /^GS3/i.test(p)).lastIndexOf(true);
   return (gs3 >= 0 ? acima.slice(0, gs3 + 1) : acima).join('/');

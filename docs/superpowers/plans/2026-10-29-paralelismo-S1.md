@@ -76,10 +76,10 @@
 
 ### Tarefa 4: fechamento
 
-- [ ] `requesting-code-review` sobre `git diff d0c0546..HEAD`; corrigir o que for crítico ou importante.
-- [ ] `verification-before-completion`: `node --test` em todos os testes JS e `pytest tests/paralelismo -m "not banco and not dados_reais"`.
-- [ ] Escrever `orquestra/relatorios/S1.md` e commitar.
+- [x] `requesting-code-review` sobre `git diff d0c0546..HEAD`; corrigir o que for crítico ou importante.
+- [x] `verification-before-completion`: `node --test` em todos os testes JS e `pytest tests/paralelismo -m "not banco and not dados_reais"`.
+- [x] Escrever `orquestra/relatorios/S1.md` e commitar.
 
 ## Registro de delegação
 
-Preenchido ao final, no relatório.
+No relatório `orquestra/relatorios/S1.md`.

@@ -145,6 +145,7 @@ test('frota sugerida: número separado do GS3 sem ser o modelo continua valendo'
   assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3 90001'), '90001');
   assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3_90001'), '90001');
   assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3 2630'), null);
+  assert.strictEqual(ctx.parFrotaSugeridaGs3('pen/GS3 26305'), '26305');
 });
 
 test('frota sugerida: mantém o número como está escrito na pasta', () => {
@@ -320,6 +321,12 @@ test('conferência: pasta acima que começa com GS3 não junta dois tratores', (
   const r = ctx.parConferencia([fdl('GS3/90005/GS3_2630', 'u1', 's1', 10010), fdl('GS3/90009/GS3_2630', 'u2', 's2', 10010)], FROTAS, []);
   igual(r.map((g) => g.trator), ['GS3/90005/GS3_2630', 'GS3/90009/GS3_2630']);
   igual(r.map((g) => g.frotaSugerida), ['90005', '90009']);
+});
+
+test('conferência: pasta acima chamada RCD não junta dois tratores', () => {
+  const f = (raiz, sha) => arq(`RCD/${raiz}/GS3_2630/org/RCD/EIC/a.fdl`, sha, { tipo: 'gs3', cod_faz: 10010, temFdd: true });
+  const r = ctx.parConferencia([f('90005', 's1'), f('90009', 's2')], FROTAS, []);
+  igual(r.map((g) => g.trator), ['RCD/90005/GS3_2630', 'RCD/90009/GS3_2630']);
 });
 
 test('conferência: nome de arquivo que começa com GS3 não vira pasta', () => {
