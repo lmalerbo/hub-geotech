@@ -1,4 +1,4 @@
-"""Copia para app/py/ os arquivos que o navegador carrega no Pyodide (fonte única: mapas/).
+"""Copia para app/py/ os arquivos que o navegador carrega no Pyodide (fonte única: mapas/ e paralelismo/).
 Uso: python mapas/publicar.py [destino]   (padrão: app/py)"""
 import json
 import shutil
@@ -8,7 +8,9 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 ARQUIVOS = ['mapas/__init__.py', 'mapas/layout.py', 'mapas/corretivo_dados.py', 'mapas/corretivo_pdf.py',
             'drone/assets/logo-pedra.png',
-            'mapas/fontes/selawk.ttf', 'mapas/fontes/selawksb.ttf', 'mapas/fontes/selawkb.ttf']
+            'mapas/fontes/selawk.ttf', 'mapas/fontes/selawksb.ttf', 'mapas/fontes/selawkb.ttf',
+            'paralelismo/__init__.py', 'paralelismo/jdl.py', 'paralelismo/gs3.py', 'paralelismo/pipeline.py',
+            'paralelismo/analise.py']
 
 
 def publicar(destino) -> None:

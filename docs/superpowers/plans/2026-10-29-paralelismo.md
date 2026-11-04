@@ -48,6 +48,12 @@
 
 ## P0 — Núcleo Python `paralelismo/`
 
+**Desvios na execução (04/11/2026):**
+- **Amostras reais fora do git.** O `lmalerbo/hub-geotech` é público e os arquivos têm GPS real. `tests/dados/paralelismo/amostra.*` está no `.gitignore`, `test_leitores.py` usa o marcador `dados_reais` e `LEIAME.md` diz de onde copiar. O `pytest` normal não cobre os leitores.
+- **Pastas de origem mudaram:** agora `EXECUTADOS6-2027\BRUTOS\TORTAB33Rev0` e `BRUTOS\CANA966Rev0`.
+- **10966 agrupa por pasta de frota** (a cada subpasta da 10966Rev0, uma frota). Com isso deu 30.395 / 88,86%, igual ao `base-op`.
+- **Código copiado do `base-op` no commit `935543c`.** A execução da P0 foi toda na camada 3, sem executor externo.
+
 **Arquivos:**
 - Criar: `paralelismo/__init__.py`, `paralelismo/jdl.py`, `paralelismo/gs3.py`, `paralelismo/pipeline.py`, `paralelismo/analise.py`
 - Criar: `tests/paralelismo/__init__.py`, `tests/paralelismo/test_leitores.py`, `tests/paralelismo/test_pipeline.py`, `tests/paralelismo/test_analise.py`, `tests/paralelismo/test_regressao.py`
@@ -75,7 +81,7 @@
 
 **Interfaces:** produz `ler_jdl`, `ler_gs3` (acima).
 
-- [ ] **Passo 1: preparar os arquivos de amostra.** Escolher na pasta de torta organizada (`G:\...\EXECUTADOS\2026-2027\TORTA\ORGANIZAR\unificado\10233Rev0`, ou onde o usuário indicar) o **menor `.jdl` com pontos de trabalho** (rodar `pontos_trator` do `base-op` em cada um e pegar o menor com > 500 pontos), e em `CANA\ORGANIZAR\UNIFICADO` uma sessão GS3 (`.fdl` + `.fdd` de mesmo nome) da 10966 com > 300 registros. Copiar para `tests/dados/paralelismo/` como `amostra.jdl`, `amostra.fdl`, `amostra.fdd`. Anotar em `tests/dados/paralelismo/LEIAME.md` a origem de cada um e os números que o `base-op` dá para eles:
+- [x] **Passo 1: preparar os arquivos de amostra.** Escolher na pasta de torta organizada (`G:\...\EXECUTADOS\2026-2027\TORTA\ORGANIZAR\unificado\10233Rev0`, ou onde o usuário indicar) o **menor `.jdl` com pontos de trabalho** (rodar `pontos_trator` do `base-op` em cada um e pegar o menor com > 500 pontos), e em `CANA\ORGANIZAR\UNIFICADO` uma sessão GS3 (`.fdl` + `.fdd` de mesmo nome) da 10966 com > 300 registros. Copiar para `tests/dados/paralelismo/` como `amostra.jdl`, `amostra.fdl`, `amostra.fdd`. Anotar em `tests/dados/paralelismo/LEIAME.md` a origem de cada um e os números que o `base-op` dá para eles:
 
 ```bash
 cd /c/Users/lmalerbo/Documents/GitHub/base-op/scripts
@@ -89,7 +95,7 @@ s=ler_sessao(d+'amostra.fdl'); print('gs3', len(pontos_plantio(s, antena='5140')
 
 Esses números (`N_JDL`, `TICKS_JDL`, `N_GS3`, `REG_GS3`) vão nos testes do Passo 2.
 
-- [ ] **Passo 2: escrever o teste que falha** — `tests/paralelismo/test_leitores.py` (substituir `N_JDL` etc. pelos números do Passo 1):
+- [x] **Passo 2: escrever o teste que falha** — `tests/paralelismo/test_leitores.py` (substituir `N_JDL` etc. pelos números do Passo 1):
 
 ```python
 from pathlib import Path
@@ -136,9 +142,9 @@ def test_gs3_sem_fdd_e_jdl_inexistente(tmp_path):
     assert ler_jdl(str(tmp_path / 'nao_existe.jdl')) == ([], 0)
 ```
 
-- [ ] **Passo 3: rodar e ver falhar.** `pytest tests/paralelismo/test_leitores.py -v` → `ModuleNotFoundError: No module named 'paralelismo'`.
+- [x] **Passo 3: rodar e ver falhar.** `pytest tests/paralelismo/test_leitores.py -v` → `ModuleNotFoundError: No module named 'paralelismo'`.
 
-- [ ] **Passo 4: implementar.**
+- [x] **Passo 4: implementar.**
   - `paralelismo/__init__.py`: docstring de uma linha (`"""Análise de paralelismo do plantio (fonte única; publicada em app/py/paralelismo/)."""`).
   - `paralelismo/jdl.py`: no topo, as funções de `jdl_rich_fields.py` que `jdl_documentacao.py` usa (`read_varint`, `decode_flat`, `_zigzag`, `ticks_item_rico`, e o que elas chamam), depois o conteúdo de `jdl_documentacao.py` **sem alterar a lógica**, trocando o `from jdl_rich_fields import ...` pelas funções locais. Manter as docstrings do original. Acrescentar no fim:
 
@@ -169,9 +175,9 @@ def ler_gs3(caminho_fdl: str) -> tuple[list[tuple[float, float]], int]:
 
   Se `ler_documentacao` ou `ler_sessao` levantarem outra exceção no arquivo truncado, capture **essa** exceção específica no `ler_*` (não `except Exception`).
 
-- [ ] **Passo 5: rodar e ver passar.** `pytest tests/paralelismo/test_leitores.py -v` → 5 passed.
+- [x] **Passo 5: rodar e ver passar.** `pytest tests/paralelismo/test_leitores.py -v` → 5 passed.
 
-- [ ] **Passo 6: commit.**
+- [x] **Passo 6: commit.**
 
 ```bash
 git add paralelismo/__init__.py paralelismo/jdl.py paralelismo/gs3.py tests/paralelismo tests/dados/paralelismo
@@ -182,7 +188,7 @@ git commit -m "Paralelismo P0.1: leitores .jdl e GS3 copiados do base-op (<hash>
 
 **Interfaces:** produz `paralelismo.pipeline.{lsfp, qbd, cle, limpar, pll_amostras, Amostra}`.
 
-- [ ] **Passo 1: escrever o teste que falha** — `tests/paralelismo/test_pipeline.py`. Os números (desta tarefa, da P0.3 e da P0.4) foram conferidos em 29/10/2026 rodando o código deste plano sobre o `paralelismo_pipeline.py` atual do `base-op`: 16 testes passando.
+- [x] **Passo 1: escrever o teste que falha** — `tests/paralelismo/test_pipeline.py`. Os números (desta tarefa, da P0.3 e da P0.4) foram conferidos em 29/10/2026 rodando o código deste plano sobre o `paralelismo_pipeline.py` atual do `base-op`: 16 testes passando.
 
 ```python
 from shapely.geometry import LineString
@@ -241,13 +247,13 @@ def test_lsfp_quebra_no_salto_e_qbd_corta_manobra():
     assert [round(l.length) for l in linhas] == [200, 200]
 ```
 
-- [ ] **Passo 2: rodar e ver falhar.** `pytest tests/paralelismo/test_pipeline.py -v` → `ModuleNotFoundError: No module named 'paralelismo.pipeline'`.
+- [x] **Passo 2: rodar e ver falhar.** `pytest tests/paralelismo/test_pipeline.py -v` → `ModuleNotFoundError: No module named 'paralelismo.pipeline'`.
 
-- [ ] **Passo 3: implementar.** `paralelismo/pipeline.py` = `base-op/scripts/paralelismo_pipeline.py` **sem alterar a lógica**, removendo o bloco `if __name__ == "__main__":` e as funções `pll`, `PLLResultado` e `analisar` (o Hub não as usa; a agregação fica em `analise.py`). Manter as docstrings.
+- [x] **Passo 3: implementar.** `paralelismo/pipeline.py` = `base-op/scripts/paralelismo_pipeline.py` **sem alterar a lógica**, removendo o bloco `if __name__ == "__main__":` e as funções `pll`, `PLLResultado` e `analisar` (o Hub não as usa; a agregação fica em `analise.py`). Manter as docstrings.
 
-- [ ] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo/test_pipeline.py -v` → 7 passed.
+- [x] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo/test_pipeline.py -v` → 7 passed.
 
-- [ ] **Passo 5: commit.** `git add paralelismo/pipeline.py tests/paralelismo/test_pipeline.py && git commit -m "Paralelismo P0.2: pipeline LSFP/QBD/CLE/limpar/PLL"`
+- [x] **Passo 5: commit.** `git add paralelismo/pipeline.py tests/paralelismo/test_pipeline.py && git commit -m "Paralelismo P0.2: pipeline LSFP/QBD/CLE/limpar/PLL"`
 
 ### Tarefa P0.3: análise por fazenda e talhão (camada 1, `delegar.sh -a build` — só dados sintéticos)
 
@@ -267,7 +273,7 @@ def test_lsfp_quebra_no_salto_e_qbd_corta_manobra():
 }
 ```
 
-- [ ] **Passo 1: escrever o teste que falha** — `tests/paralelismo/test_analise.py`:
+- [x] **Passo 1: escrever o teste que falha** — `tests/paralelismo/test_analise.py`:
 
 ```python
 import pytest
@@ -344,9 +350,9 @@ def test_fazenda_vazia():
     assert (r['pll_total'], r['amostras'], r['mes'], r['talhoes']) == (0, 0, None, [])
 ```
 
-- [ ] **Passo 2: rodar e ver falhar.** `pytest tests/paralelismo/test_analise.py -v` → `ModuleNotFoundError`.
+- [x] **Passo 2: rodar e ver falhar.** `pytest tests/paralelismo/test_analise.py -v` → `ModuleNotFoundError`.
 
-- [ ] **Passo 3: implementar** `paralelismo/analise.py`:
+- [x] **Passo 3: implementar** `paralelismo/analise.py`:
 
 ```python
 """Agregação do paralelismo por fazenda, talhão e frota (parâmetros fixos, iguais ao validado no base-op)."""
@@ -475,15 +481,15 @@ def analisar_fazenda(linhas, talhoes):
 
   Notas para quem implementa: `mes` conta as amostras **dentro** de talhão pela data da linha; frota sem amostra em talhão não aparece em `frotas`. Se algum teste numérico não bater, **não ajuste o número do teste**: os números vêm do código validado; investigue a implementação.
 
-- [ ] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo -v` → todos passam.
+- [x] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo -v` → todos passam.
 
-- [ ] **Passo 5: commit.** `git add paralelismo/analise.py tests/paralelismo/test_analise.py && git commit -m "Paralelismo P0.3: análise por fazenda, talhão e frota"`
+- [x] **Passo 5: commit.** `git add paralelismo/analise.py tests/paralelismo/test_analise.py && git commit -m "Paralelismo P0.3: análise por fazenda, talhão e frota"`
 
 ### Tarefa P0.4: shapefiles de amostras e linhas (camada 1, `delegar.sh -a build`)
 
 **Interfaces:** consome o resultado de `analisar_fazenda`; produz `exportar_shapefiles(resultado, linhas, prefixo) -> bytes`.
 
-- [ ] **Passo 1: escrever o teste que falha** — acrescentar em `tests/paralelismo/test_analise.py`:
+- [x] **Passo 1: escrever o teste que falha** — acrescentar em `tests/paralelismo/test_analise.py`:
 
 ```python
 import io
@@ -511,9 +517,9 @@ def test_exportar_shapefiles(tmp_path):
     assert 'SIRGAS_2000_UTM_Zone_23S' in z.read('10233_torta_Amostras.prj').decode()
 ```
 
-- [ ] **Passo 2: rodar e ver falhar** (`ImportError: cannot import name 'exportar_shapefiles'`).
+- [x] **Passo 2: rodar e ver falhar** (`ImportError: cannot import name 'exportar_shapefiles'`).
 
-- [ ] **Passo 3: implementar** em `paralelismo/analise.py` (import `io`, `zipfile` e `shapefile` no topo):
+- [x] **Passo 3: implementar** em `paralelismo/analise.py` (import `io`, `zipfile` e `shapefile` no topo):
 
 ```python
 PRJ_31983 = ('PROJCS["SIRGAS_2000_UTM_Zone_23S",GEOGCS["GCS_SIRGAS_2000",DATUM["D_SIRGAS_2000",'
@@ -552,19 +558,19 @@ def exportar_shapefiles(resultado, linhas, prefixo):
     return buf.getvalue()
 ```
 
-- [ ] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo -v`.
+- [x] **Passo 4: rodar e ver passar.** `pytest tests/paralelismo -v`.
 
-- [ ] **Passo 5: commit.** `git commit -am "Paralelismo P0.4: shapefiles de amostras e linhas"` (com `git add` dos arquivos novos, se houver).
+- [x] **Passo 5: commit.** `git commit -am "Paralelismo P0.4: shapefiles de amostras e linhas"` (com `git add` dos arquivos novos, se houver).
 
 ### Tarefa P0.5: regressão com dados reais e publicação para o navegador (camada 3)
 
 **Interfaces:** consome tudo da P0; produz `mapas/publicar.py` publicando `paralelismo/*.py` em `app/py/paralelismo/`.
 
-- [ ] **Passo 1: marcador.** Em `pytest.ini`, acrescentar à lista `markers` a linha `dados_reais: lê pastas reais fora do repositório (rode com -m dados_reais)` e trocar `addopts` para `-m "not banco and not dados_reais"`.
+- [x] **Passo 1: marcador.** Em `pytest.ini`, acrescentar à lista `markers` a linha `dados_reais: lê pastas reais fora do repositório (rode com -m dados_reais)` e trocar `addopts` para `-m "not banco and not dados_reais"`.
 
-- [ ] **Passo 2: confirmar o número de referência no `base-op`.** Localizar com o usuário as pastas `10233Rev0` (torta, `.jdl`) e `10966Rev0` (cana, GS3) que deram os números da spec. Rodar o `base-op` em modo trator para cada uma e conferir que dá **2.506 amostras / 77,85%** e **30.395 / 88,86%** (o total do PLL, com as amostras fora de talhão). Se não der, parar e falar com o usuário antes de seguir.
+- [x] **Passo 2: confirmar o número de referência no `base-op`.** Localizar com o usuário as pastas `10233Rev0` (torta, `.jdl`) e `10966Rev0` (cana, GS3) que deram os números da spec. Rodar o `base-op` em modo trator para cada uma e conferir que dá **2.506 amostras / 77,85%** e **30.395 / 88,86%** (o total do PLL, com as amostras fora de talhão). Se não der, parar e falar com o usuário antes de seguir.
 
-- [ ] **Passo 3: escrever o teste** — `tests/paralelismo/test_regressao.py`:
+- [x] **Passo 3: escrever o teste** — `tests/paralelismo/test_regressao.py`:
 
 ```python
 """Regressão contra o resultado do base-op (spec §8). Rode com:
@@ -634,11 +640,11 @@ def test_regressao_10966_gs3():
 
   Atenção ao agrupamento: o `base-op` agrupa a cana por **frota da pasta** (`mapa_frotas`), e o LSFP só liga pontos da mesma frota. Se o 10966 não bater com tudo em `'gs3'`, agrupe pela frota do nome da pasta, como o `base-op` faz, e registre isso no `LEIAME.md` (é o que a conferência da P2 vai fazer: frota escolhida por pasta GS3).
 
-- [ ] **Passo 4: rodar.** `PARALELISMO_10233=... PARALELISMO_10966=... pytest -m dados_reais -v` → 2 passed. Sem as variáveis, `pytest` normal continua verde (os dois pulam por estarem fora do `addopts`).
+- [x] **Passo 4: rodar.** `PARALELISMO_10233=... PARALELISMO_10966=... pytest -m dados_reais -v` → 2 passed. Sem as variáveis, `pytest` normal continua verde (os dois pulam por estarem fora do `addopts`).
 
-- [ ] **Passo 5: publicar para o navegador.** Em `mapas/publicar.py`, acrescentar a `ARQUIVOS` (mesma lista, para o workflow do Pages já existente copiar): `'paralelismo/__init__.py', 'paralelismo/jdl.py', 'paralelismo/gs3.py', 'paralelismo/pipeline.py', 'paralelismo/analise.py'`. Em `.github/workflows/pages.yml`, acrescentar `'paralelismo/**'` em `paths`. Atualizar a docstring de `publicar.py` ("fonte única: mapas/ e paralelismo/"). Conferir: `python mapas/publicar.py /tmp/py_teste && ls /tmp/py_teste/paralelismo` mostra os 5 arquivos; `pytest tests/mapas/test_publicar.py -v` passa (ajustar o teste se ele fixar a lista).
+- [x] **Passo 5: publicar para o navegador.** Em `mapas/publicar.py`, acrescentar a `ARQUIVOS` (mesma lista, para o workflow do Pages já existente copiar): `'paralelismo/__init__.py', 'paralelismo/jdl.py', 'paralelismo/gs3.py', 'paralelismo/pipeline.py', 'paralelismo/analise.py'`. Em `.github/workflows/pages.yml`, acrescentar `'paralelismo/**'` em `paths`. Atualizar a docstring de `publicar.py` ("fonte única: mapas/ e paralelismo/"). Conferir: `python mapas/publicar.py /tmp/py_teste && ls /tmp/py_teste/paralelismo` mostra os 5 arquivos; `pytest tests/mapas/test_publicar.py -v` passa (ajustar o teste se ele fixar a lista).
 
-- [ ] **Passo 6: prova no Pyodide** (rápida, sem tela ainda): uma página de rascunho no scratchpad que carrega Pyodide 0.27.7, `loadPackage(['numpy','shapely','pyproj','micropip'])`, `micropip.install('pyshp')`, grava os 5 arquivos e roda `analisar_fazenda` com as linhas sintéticas de `test_analise.py` → `pll_total` 532. Abrir no Edge via Playwright e ler o resultado no console. Não commitar a página.
+- [x] **Passo 6: prova no Pyodide** (rápida, sem tela ainda): uma página de rascunho no scratchpad que carrega Pyodide 0.27.7, `loadPackage(['numpy','shapely','pyproj','micropip'])`, `micropip.install('pyshp')`, grava os 5 arquivos e roda `analisar_fazenda` com as linhas sintéticas de `test_analise.py` → `pll_total` 532. Abrir no Edge via Playwright e ler o resultado no console. Não commitar a página.
 
 - [ ] **Passo 7: fechamento da P0.** `pytest -v` verde; `verification-before-completion`; `requesting-code-review` do diff da P0; mostrar ao usuário; mesclar e enviar só com o ok dele. Commit: `Paralelismo P0.5: regressão 10233/10966 e publicação em app/py/paralelismo` (cite o hash do `base-op` copiado).
 
