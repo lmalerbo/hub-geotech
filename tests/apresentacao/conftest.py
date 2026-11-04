@@ -4,7 +4,8 @@ import pytest
 from tests.fluxo import conftest as fluxo
 from tests.fluxo.conftest import pg, fazenda, pessoa, como  # noqa: F401
 
-MIGRACOES = fluxo.MIGRACOES + ['../../tests/apresentacao/stub_drone.sql', '20261029110000_drone_projetos_v.sql']
+MIGRACOES = fluxo.MIGRACOES + ['../../tests/apresentacao/stub_drone.sql', '20261029110000_drone_projetos_v.sql',
+                              '20261104120000_drone_encerrar_projeto.sql']
 
 
 @pytest.fixture(scope='session')

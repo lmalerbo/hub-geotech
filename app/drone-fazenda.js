@@ -316,7 +316,8 @@ function drMenuAbrir(){
   m.id='dr-menu';m.className='dr-menu';m.setAttribute('role','menu');
   m.style.top=r.bottom+6+'px';m.style.right=innerWidth-r.right+'px';
   m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span aria-hidden="true" class="ico">history</span>Revisões</button>`
-    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${sol.id});drMenuFechar()"><span aria-hidden="true" class="ico">cancel</span>Cancelar solicitação</button>`:'');
+    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${sol.id});drMenuFechar()"><span aria-hidden="true" class="ico">cancel</span>Cancelar solicitação</button>`:'')
+    +(drPodeEncerrar(DR.geo,podeEditar('drone'))?`<button role="menuitem" class="perigo" onclick="drMenuFechar();drEncerrar()"><span aria-hidden="true" class="ico">inventory_2</span>Encerrar projeto</button>`:'');
   document.body.appendChild(m);
   btn.setAttribute('aria-expanded','true');
   m.querySelector('button').focus();
@@ -660,6 +661,19 @@ async function drPublicar(id){
     fim(true);
     await drCarregarFazenda();drCarregarPainel();
   }catch(e){fim(false);drErro(e);}
+}
+
+async function drEncerrar(){
+  drLimparErro();
+  const cod=DR.cod,motivo=prompt('Motivo do encerramento:');
+  if(motivo===null)return;
+  if(!motivo.trim()){alert('Informe o motivo.');return;}
+  try{
+    if(!await confirmar('A fazenda não tem talhões na Base. O projeto sai do portal e da lista de Atenção, as solicitações abertas são canceladas e o histórico fica guardado.',
+                        {titulo:'Encerrar projeto',ok:'Encerrar projeto',perigo:true}))return;
+    await drRpc('drone_encerrar_projeto',{p_cod_faz:cod,p_motivo:motivo});
+    await drCarregarFazenda();drCarregarPainel();
+  }catch(e){drErro(e);}
 }
 
 async function drDescartar(id){
