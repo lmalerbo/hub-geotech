@@ -487,3 +487,13 @@ test('janela da prévia diz o que sai do projeto', () => {
   assert.strictEqual(ctx.drSaiHtml({ escopo: { remover: [] } }), '');
   assert.strictEqual(ctx.drSaiHtml({}), '');
 });
+
+test('Encerrar projeto só para quem edita, com projeto vigente e nenhum talhão na Base', () => {
+  const fora = { properties: { camada: 'talhao', talhao: 1, status: 'fora_da_base' } };
+  const base = { properties: { camada: 'talhao', talhao: 2, status: 'com_projeto' } };
+  assert.strictEqual(ctx.drPodeEncerrar({ normal: { revisao: 0 }, features: [fora] }, true), true);
+  assert.strictEqual(ctx.drPodeEncerrar({ catacao: { revisao: 0 }, features: [] }, true), true);
+  assert.strictEqual(ctx.drPodeEncerrar({ normal: { revisao: 0 }, features: [fora] }, false), false);
+  assert.strictEqual(ctx.drPodeEncerrar({ normal: { revisao: 0 }, features: [fora, base] }, true), false);
+  assert.strictEqual(ctx.drPodeEncerrar({ normal: null, catacao: null, features: [] }, true), false);
+});

@@ -216,6 +216,11 @@ function drTalhaoDoClique(feats,remover){
   const ignora=remover?'sem_projeto':'fora_da_base';
   return(feats.find(f=>f.properties.status!==ignora)||feats[0]).properties;
 }
+// Fazenda que saiu inteira da Base: não há revisão possível, só encerrar o projeto.
+function drPodeEncerrar(geo,edita){
+  const tal=(geo.features||[]).filter(f=>f.properties.camada==='talhao');
+  return !!(edita&&(geo.normal||geo.catacao)&&tal.every(f=>f.properties.status==='fora_da_base'));
+}
 function drEscopo(sel,rem,ajusteId){
   const inc=[...sel].sort((a,b)=>a[0]-b[0]);
   if(inc.some(([,f])=>f==='shape')&&!ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
