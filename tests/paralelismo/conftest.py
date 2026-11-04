@@ -20,17 +20,17 @@ create schema if not exists extensions;
 create function extensions.st_geomfromgeojson(text) returns text language sql immutable as 'select $1';
 create function extensions.st_setsrid(text, int) returns text language sql immutable as 'select $1';
 create function extensions.st_asgeojson(text) returns text language sql immutable as 'select $1';
+create function extensions.st_asgeojson(text, int) returns text language sql immutable as 'select $1';
 create table hub.talhao_geom (cod_faz int not null, talhao_num int not null, geom text not null,
                               area_ha numeric not null, primary key (cod_faz, talhao_num));
 """
 
 
-@pytest.fixture(scope='session')
-def banco(pg):  # noqa: F811
-    adm = psycopg.connect(f'host=127.0.0.1 port={pg} user=postgres dbname=postgres', autocommit=True)
-    adm.execute('create database paralelismo')
+def montar(porta, nome):
+    adm = psycopg.connect(f'host=127.0.0.1 port={porta} user=postgres dbname=postgres', autocommit=True)
+    adm.execute(f'create database {nome}')
     adm.close()
-    con = psycopg.connect(f'host=127.0.0.1 port={pg} user=postgres dbname=paralelismo', autocommit=True)
+    con = psycopg.connect(f'host=127.0.0.1 port={porta} user=postgres dbname={nome}', autocommit=True)
     con.execute((Path(fluxo.__file__).parent / 'stub_supabase.sql').read_text(encoding='utf-8'))
     con.execute("set check_function_bodies = off")
     for m in MIGRACOES:
@@ -39,6 +39,19 @@ def banco(pg):  # noqa: F811
             con.execute(STUB_POSTGIS)
             sql = sql.replace('extensions.geometry(LineString, 31983)', 'text')
         con.execute(sql)
+    return con
+
+
+@pytest.fixture(scope='session')
+def banco(pg):  # noqa: F811
+    con = montar(pg, 'paralelismo')
+    yield con
+    con.close()
+
+
+@pytest.fixture
+def banco_descartavel(pg):  # noqa: F811
+    con = montar(pg, f'paralelismo_{uuid.uuid4().hex[:8]}')
     yield con
     con.close()
 
@@ -68,20 +81,24 @@ def cod_novo():
 
 @pytest.fixture
 def enviar(como):  # noqa: F811
-    """enviar(uid, cod, base=None, shas=None, amostras=100, op='torta') -> id da rodada ou ('ERRO', msg)."""
-    def _envia(uid, cod, base=None, shas=None, amostras=100, op='torta'):
-        rid = como(uid, 'select hub.paralelismo_preparar_parte()')[0][0]
+    """enviar(uid, cod ou [cods], base=None, shas=None, amostras=100, op='torta', rid=None, **extra) -> id ou ('ERRO', msg).
+    rid reaproveita um id já reservado; extra sobrescreve campos do payload."""
+    def _envia(uid, cod, base=None, shas=None, amostras=100, op='torta', rid=None, **extra):
+        cods = cod if isinstance(cod, list) else [cod]
+        cod = cods[0]
+        rid = rid or como(uid, 'select hub.paralelismo_preparar_parte()')[0][0]
         shas = shas or [f'sha{next(_sha)}']
         r = como(uid, 'select hub.paralelismo_enviar(%s::jsonb)', (json.dumps({
-            'rodada_id': rid, 'descricao': 'teste', 'partes': [{'url': 'u', 'bytes': 1, 'sha256': 'p'}],
+            'rodada_id': rid, 'descricao': 'teste', 'partes': [{'url': 'https://x/u', 'bytes': 1, 'sha256': 'p'}],
             'arquivos': [{'sha256': s, 'caminho': f'{s}.jdl', 'bytes': 9, 'tipo': 'jdl', 'frota': '64086', 'cod_faz': cod}
                          for s in shas],
-            'linhas': [{'operacao': op, 'cod_faz': cod, 'frota': '64086', 'data': '2026-10-03',
-                        'coords': [[0, rid], [100, rid]]}],
-            'analises': [{'operacao': op, 'cod_faz': cod, 'mes': '2026-10-01', 'amostras': amostras,
+            'linhas': [{'operacao': op, 'cod_faz': c, 'frota': '64086', 'data': '2026-10-03',
+                        'coords': [[0, rid], [100, rid]]} for c in cods],
+            'analises': [{'operacao': op, 'cod_faz': c, 'mes': '2026-10-01', 'amostras': amostras,
                           'aderentes': amostras - 10, 'acima': 6, 'abaixo': 4, 'fora_talhao': 2,
                           'pll_total': amostras + 2, 'pll_aderentes': amostras - 9, 'base_analise_id': base,
                           'talhoes': [{'talhao_num': 1, 'amostras': amostras, 'aderentes': amostras - 10, 'acima': 6,
-                                       'abaixo': 4, 'media_m': 3.012, 'frotas': ['64086']}]}]}),))
+                                       'abaixo': 4, 'media_m': 3.012, 'frotas': ['64086']}]} for c in cods],
+            **extra}),))
         return r if r[0] == 'ERRO' else r[0][0]
     return _envia

@@ -5,7 +5,7 @@ Fonte: o .dbf mais recente do shapefile diário do FME
 arquivo que o GeoMap publica às 8:05.
 
 Grava só os campos de que a Base Fazendas é dona: nome da fazenda, área
-produtiva, estágio, data do último corte e propriedade. O layer é calculado
+produtiva, estágio, data do último corte, propriedade e declividade. O layer é calculado
 pelo banco a partir de SECAO + TALHAO; a coluna Layer do arquivo não é usada.
 
 Uso:  python ingestao/base_fazendas.py [--simular]

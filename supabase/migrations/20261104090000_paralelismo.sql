@@ -109,6 +109,13 @@ create table hub.paralelismo_rodadas (
   motivo_recusa text
 );
 
+create table hub.paralelismo_reservas (
+  id         bigint primary key,
+  criado_por uuid not null references hub.usuarios (id),
+  criado_em  timestamptz not null default now(),
+  enviada_em timestamptz
+);
+
 create table hub.paralelismo_arquivos (
   sha256          text primary key,
   rodada_id       bigint not null references hub.paralelismo_rodadas (id) on delete cascade,
@@ -151,7 +158,9 @@ create table hub.paralelismo_analises (
   vigente         boolean not null default false,
   base_analise_id bigint references hub.paralelismo_analises (id) on delete set null,
   amostras_url    text,
-  unique (rodada_id, operacao, cod_faz)
+  unique (rodada_id, operacao, cod_faz),
+  check (aderentes + acima + abaixo = amostras),
+  check (amostras + fora_talhao = pll_total)
 );
 create unique index paralelismo_analises_vigente_idx on hub.paralelismo_analises (operacao, cod_faz) where vigente;
 
@@ -164,7 +173,8 @@ create table hub.paralelismo_talhoes (
   abaixo     int not null default 0,
   media_m    numeric,
   frotas     text[] not null default '{}',
-  primary key (analise_id, talhao_num)
+  primary key (analise_id, talhao_num),
+  check (aderentes + acima + abaixo = amostras)
 );
 
 -- ── Acesso ─────────────────────────────────────────────────────────────
@@ -182,20 +192,30 @@ returns boolean language sql stable security definer set search_path = hub as $$
 $$;
 
 -- ── Envio ──────────────────────────────────────────────────────────────
--- Sem id: reserva um sem criar linha (a release precisa dele antes de a rodada existir).
+-- O link vira href nas telas de quem valida: só https (bloqueia javascript: e afins).
+create function hub.paralelismo_url_ok(p_url text)
+returns boolean language sql immutable set search_path = hub as $$
+  select coalesce(p_url ~ '^https://', false);
+$$;
+
+-- Sem id: reserva um para quem pediu, sem criar a rodada (a release precisa dele antes). A reserva nunca é
+-- apagada: id de rodada já enviada, mesmo que excluída depois, não volta a valer e não sobrescreve a release.
 create function hub.paralelismo_preparar_parte(p_rodada_id bigint default null)
 returns bigint language plpgsql security definer set search_path = hub as $$
 declare
-  v_ultimo bigint;
+  v_id      bigint := p_rodada_id;
+  v_enviada timestamptz;
 begin
   if not hub.paralelismo_processa() then raise exception 'Sem permissão para enviar ao Paralelismo'; end if;
-  if p_rodada_id is null then return nextval('hub.paralelismo_rodadas_id_seq'); end if;
-  select last_value into v_ultimo from hub.paralelismo_rodadas_id_seq;
-  if p_rodada_id < 1 or p_rodada_id > v_ultimo then raise exception 'rodada_invalida:%', p_rodada_id; end if;
-  if exists (select 1 from hub.paralelismo_rodadas where id = p_rodada_id) then
-    raise exception 'rodada_ja_enviada:%', p_rodada_id;
+  if v_id is null then
+    v_id := nextval('hub.paralelismo_rodadas_id_seq');
+    insert into hub.paralelismo_reservas (id, criado_por) values (v_id, auth.uid());
+    return v_id;
   end if;
-  return p_rodada_id;
+  select enviada_em into v_enviada from hub.paralelismo_reservas where id = v_id and criado_por = auth.uid();
+  if not found then raise exception 'rodada_invalida:%', v_id; end if;
+  if v_enviada is not null then raise exception 'rodada_ja_enviada:%', v_id; end if;
+  return v_id;
 end $$;
 
 create function hub.paralelismo_ja_analisados(p_sha256 text[])
@@ -234,7 +254,7 @@ begin
   if not hub.paralelismo_processa() then raise exception 'Sem permissão para processar o Paralelismo'; end if;
   return jsonb_build_object('type', 'FeatureCollection', 'features', coalesce((
     select jsonb_agg(jsonb_build_object(
-             'type', 'Feature', 'geometry', st_asgeojson(g.geom)::jsonb,
+             'type', 'Feature', 'geometry', st_asgeojson(g.geom, 6)::jsonb,
              'properties', jsonb_build_object('talhao', g.talhao_num, 'area_ha', g.area_ha,
                                               'declividade', t.declividade)) order by g.talhao_num)
       from hub.talhao_geom g
@@ -255,22 +275,43 @@ create function hub.paralelismo_enviar(p jsonb)
 returns bigint language plpgsql security definer set search_path = hub, extensions as $$
 declare
   v_id      bigint := (p ->> 'rodada_id')::bigint;
-  v_ultimo  bigint;
+  v_enviada timestamptz;
   v_shas    text[] := array(select x ->> 'sha256' from jsonb_array_elements(coalesce(p -> 'arquivos', '[]')) x);
   v_repet   text;
   a         jsonb;
   v_analise bigint;
 begin
   if not hub.paralelismo_processa() then raise exception 'Sem permissão para enviar ao Paralelismo'; end if;
-  select last_value into v_ultimo from hub.paralelismo_rodadas_id_seq;
-  if v_id is null or v_id < 1 or v_id > v_ultimo then raise exception 'rodada_invalida:%', v_id; end if;
+  perform pg_advisory_xact_lock(hashtext('hub.paralelismo'));
+  select enviada_em into v_enviada from hub.paralelismo_reservas
+   where id = v_id and criado_por = auth.uid() for update;
+  if not found then raise exception 'rodada_invalida:%', v_id; end if;
+  if v_enviada is not null then raise exception 'rodada_ja_enviada:%', v_id; end if;
   if jsonb_array_length(coalesce(p -> 'analises', '[]')) = 0 then raise exception 'rodada_sem_analise'; end if;
+
+  select string_agg(s, ',') into v_repet
+    from (select s from unnest(v_shas) s group by s having count(*) > 1) d;
+  if v_repet is not null then raise exception 'arquivo_repetido_no_envio:%', v_repet; end if;
+
+  select string_agg(distinct l.operacao || '/' || l.cod_faz, ',') into v_repet
+    from jsonb_to_recordset(coalesce(p -> 'linhas', '[]')) l (operacao text, cod_faz int)
+   where not exists (select 1 from jsonb_to_recordset(p -> 'analises') n (operacao text, cod_faz int)
+                      where n.operacao = l.operacao and n.cod_faz = l.cod_faz);
+  if v_repet is not null then raise exception 'linha_sem_analise:%', v_repet; end if;
+
+  if exists (select 1 from jsonb_array_elements(coalesce(p -> 'partes', '[]')) x where not hub.paralelismo_url_ok(x ->> 'url'))
+     or exists (select 1 from jsonb_array_elements(p -> 'analises') x
+                 where x ->> 'amostras_url' is not null and not hub.paralelismo_url_ok(x ->> 'amostras_url')) then
+    raise exception 'url_invalida';
+  end if;
 
   -- arquivo de rodada recusada pode voltar; de pendente ou publicada, não
   delete from hub.paralelismo_arquivos a using hub.paralelismo_rodadas r
    where r.id = a.rodada_id and r.status = 'recusada' and a.sha256 = any (v_shas);
   select string_agg(sha256, ',') into v_repet from hub.paralelismo_arquivos where sha256 = any (v_shas);
   if v_repet is not null then raise exception 'arquivo_ja_analisado:%', v_repet; end if;
+
+  update hub.paralelismo_reservas set enviada_em = now() where id = v_id;
 
   insert into hub.paralelismo_rodadas (id, descricao, release_tag, partes, criado_por)
   values (v_id, p ->> 'descricao', 'paralelismo-r' || v_id, coalesce(p -> 'partes', '[]'), auth.uid());
@@ -314,6 +355,9 @@ begin
   if v_status is distinct from 'pendente' then raise exception 'rodada_nao_pendente:%', p_rodada_id; end if;
 
   for c in select * from jsonb_array_elements(coalesce(p_recalculo, '[]')) loop
+    if c ->> 'amostras_url' is not null and not hub.paralelismo_url_ok(c ->> 'amostras_url') then
+      raise exception 'url_invalida';
+    end if;
     update hub.paralelismo_analises
        set mes = (c ->> 'mes')::date, amostras = (c ->> 'amostras')::int, aderentes = (c ->> 'aderentes')::int,
            acima = (c ->> 'acima')::int, abaixo = (c ->> 'abaixo')::int, fora_talhao = (c ->> 'fora_talhao')::int,
@@ -363,6 +407,7 @@ declare
   v_status   text;
   v_validado timestamptz;
   v_bloqueio text;
+  v_tocadas  jsonb;
   f          record;
 begin
   if not hub.eh_admin() then raise exception 'Só administradores excluem rodadas do Paralelismo'; end if;
@@ -386,22 +431,18 @@ begin
    where a.rodada_id = p_rodada_id and r.status = 'pendente';
   if v_bloqueio is not null then raise exception 'rodada_pendente_depende:%', v_bloqueio; end if;
 
-  for f in select operacao, cod_faz from hub.paralelismo_analises where rodada_id = p_rodada_id loop
+  v_tocadas := (select jsonb_agg(jsonb_build_object('operacao', operacao, 'cod_faz', cod_faz))
+                  from hub.paralelismo_analises where rodada_id = p_rodada_id);
+  delete from hub.paralelismo_rodadas where id = p_rodada_id;
+  for f in select * from jsonb_to_recordset(v_tocadas) x (operacao text, cod_faz int) loop
     insert into hub.log_auditoria (modulo_id, entidade_tipo, entidade_id, campo, valor_anterior, valor_novo, usuario_id, origem)
     values ('paralelismo', 'fazenda', f.cod_faz, 'rodada_paralelismo_excluida', v_tag, f.operacao, auth.uid(), 'usuario');
-  end loop;
-
-  create temporary table paralelismo_tocadas on commit drop as
-    select operacao, cod_faz from hub.paralelismo_analises where rodada_id = p_rodada_id;
-  delete from hub.paralelismo_rodadas where id = p_rodada_id;
-  update hub.paralelismo_analises a set vigente = true
-    from paralelismo_tocadas t
-   where a.operacao = t.operacao and a.cod_faz = t.cod_faz
-     and a.id = (select x.id from hub.paralelismo_analises x
+    update hub.paralelismo_analises set vigente = true
+     where id = (select x.id from hub.paralelismo_analises x
                    join hub.paralelismo_rodadas r on r.id = x.rodada_id
-                  where x.operacao = t.operacao and x.cod_faz = t.cod_faz and r.status = 'publicada'
+                  where x.operacao = f.operacao and x.cod_faz = f.cod_faz and r.status = 'publicada'
                   order by r.validado_em desc, x.id desc limit 1);
-  drop table paralelismo_tocadas;
+  end loop;
   return v_tag;
 end $$;
 
@@ -415,6 +456,9 @@ begin
     execute format('grant select on hub.%I to authenticated', t);
   end loop;
 end $$;
+-- reservas: só as RPCs usam
+alter table hub.paralelismo_reservas enable row level security;
+revoke all on hub.paralelismo_reservas from public, anon, authenticated;
 
 create policy ver on hub.paralelismo_frotas for select to authenticated using (hub.pode_ver('paralelismo'));
 create policy editar on hub.paralelismo_frotas for all to authenticated
@@ -446,6 +490,7 @@ begin
     execute format('grant execute on function hub.%s to authenticated, service_role', f);
   end loop;
   execute 'revoke all on function hub.paralelismo_gravar_talhoes(bigint, jsonb) from public, anon, authenticated';
+  execute 'revoke all on function hub.paralelismo_url_ok(text) from public, anon, authenticated';
 end $$;
 
 commit;

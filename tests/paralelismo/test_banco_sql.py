@@ -1,5 +1,6 @@
 """Banco do Paralelismo: níveis, RLS e o ciclo enviar → publicar/recusar → excluir (spec §5 e decisões 2, 3 e 4)."""
 import json
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -84,7 +85,7 @@ def test_quem_ve_o_que(banco, conta, como, enviar, cod_novo):
     assert como(lei, ver, (rid,)) == [(1,)] and como(lei, ana, (rid,)) == [(1,)]
     assert como(lei, 'select count(*) from hub.paralelismo_talhoes where analise_id=%s', (analise_id(banco, rid),)) == [(1,)]
     assert como(conta(None), ana, (rid,)) == [(0,)]
-    # leitura vê o resultado, não as linhas nem a prova técnica
+    # leitura vê o resultado, não as linhas nem os registros de arquivo
     assert como(lei, 'select count(*) from hub.paralelismo_linhas where rodada_id=%s', (rid,)) == [(0,)]
     assert como(lei, 'select count(*) from hub.paralelismo_arquivos where rodada_id=%s', (rid,)) == [(0,)]
     erro(como(lei, LINHAS, ('torta', cod, None)), 'Sem permissão')
@@ -140,7 +141,7 @@ def test_fora_de_ordem_exige_recalculo(banco, conta, como, enviar, cod_novo):
 
     recalculo = [{'operacao': 'torta', 'cod_faz': cod, 'base_analise_id': analise_id(banco, r1), 'mes': '2026-10-01',
                   'amostras': 240, 'aderentes': 230, 'acima': 6, 'abaixo': 4, 'fora_talhao': 0, 'pll_total': 240,
-                  'pll_aderentes': 230, 'amostras_url': 'nova',
+                  'pll_aderentes': 230, 'amostras_url': 'https://x/nova',
                   'talhoes': [{'talhao_num': 2, 'amostras': 240, 'aderentes': 230, 'acima': 6, 'abaixo': 4,
                                'media_m': 3.0, 'frotas': ['64086', 'PLANT CANA']}]}]
     como(ed, RECALCULAR, (r2, json.dumps(recalculo)))
@@ -249,3 +250,99 @@ def test_solicitante_vale_no_paralelismo_e_continua_barrado_nos_outros(banco, co
     banco.execute("insert into hub.usuario_modulos (usuario_id, modulo_id, nivel) values (%s, 'paralelismo', 'solicitante')", (uid,))
     with pytest.raises(psycopg.errors.CheckViolation):
         banco.execute("insert into hub.usuario_modulos (usuario_id, modulo_id, nivel) values (%s, 'plantio', 'solicitante')", (uid,))
+
+
+def test_reserva_tem_dono(conta, como, enviar, cod_novo):
+    a, b = conta('solicitante'), conta('solicitante')
+    rid = como(a, 'select hub.paralelismo_preparar_parte()')[0][0]
+    erro(como(b, 'select hub.paralelismo_preparar_parte(%s)', (rid,)), 'rodada_invalida')
+    erro(enviar(b, cod_novo(), rid=rid), 'rodada_invalida')
+    assert enviar(a, cod_novo(), rid=rid) == rid
+
+
+def test_enviar_de_novo_avisa_que_ja_foi(banco, conta, enviar, cod_novo):
+    sol = conta('solicitante')
+    rid = enviar(sol, cod_novo())
+    erro(enviar(sol, cod_novo(), rid=rid), f'rodada_ja_enviada:{rid}')
+
+
+def test_id_de_rodada_excluida_nao_volta(conta, como, enviar, cod_novo):
+    ed, adm = conta('editor'), conta('admin')
+    rid = enviar(ed, cod_novo())
+    como(ed, PUBLICAR, (rid,))
+    como(adm, EXCLUIR, (rid,))
+    erro(como(ed, 'select hub.paralelismo_preparar_parte(%s)', (rid,)), 'rodada_ja_enviada')
+    erro(enviar(ed, cod_novo(), rid=rid), 'rodada_ja_enviada')
+
+
+def test_payload_incoerente_recusa_sem_gravar(banco, conta, enviar, cod_novo):
+    sol, cod = conta('solicitante'), cod_novo()
+    erro(enviar(sol, cod, shas=['dup1', 'dup1']), 'arquivo_repetido_no_envio:dup1')
+    erro(enviar(sol, cod, linhas=[{'operacao': 'cana', 'cod_faz': 11111, 'coords': [[0, 0], [1, 1]]}]),
+         'linha_sem_analise:cana/11111')
+    erro(enviar(sol, cod, partes=[{'url': 'javascript:alert(1)'}]), 'url_invalida')
+    erro(enviar(sol, cod, analises=[{'operacao': 'torta', 'cod_faz': cod, 'amostras': 1, 'aderentes': 999, 'acima': 0,
+                                     'abaixo': 0, 'fora_talhao': 0, 'pll_total': 1}]))
+    assert banco.execute('select count(*) from hub.paralelismo_analises where cod_faz=%s', (cod,)).fetchone() == (0,)
+
+
+def test_recalculo_com_url_invalida_recusa(banco, conta, como, enviar, cod_novo):
+    ed = conta('editor')
+    cod = cod_novo()
+    rid = enviar(ed, cod)
+    erro(como(ed, RECALCULAR, (rid, json.dumps([{'operacao': 'torta', 'cod_faz': cod, 'amostras_url': 'javascript:x'}]))),
+         'url_invalida')
+
+
+def test_rodada_com_varias_fazendas(banco, conta, como, enviar, cod_novo):
+    ed, adm, c1, c2 = conta('editor'), conta('admin'), cod_novo(), cod_novo()
+    r1 = enviar(ed, c1)
+    como(ed, PUBLICAR, (r1,))
+    r2 = enviar(ed, [c1, c2])
+    erro(como(ed, PUBLICAR, (r2,)), f'recalculo_necessario:torta/{c1}')
+    assert vigente(banco, c2) is None
+    banco.execute('update hub.paralelismo_analises set base_analise_id = %s where rodada_id = %s and cod_faz = %s',
+                  (analise_id(banco, r1), r2, c1))
+    como(ed, PUBLICAR, (r2,))
+    assert vigente(banco, c1)[0] == r2 and vigente(banco, c2)[0] == r2
+    como(adm, EXCLUIR, (r2,))
+    assert vigente(banco, c1)[0] == r1 and vigente(banco, c2) is None
+
+
+def test_matriz_de_permissoes(banco):
+    def funcoes():
+        return banco.execute("""select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                                 where n.nspname = 'hub' and p.proname like 'paralelismo%'""").fetchall()
+    internas = ('paralelismo_gravar_talhoes', 'paralelismo_url_ok')
+    nomes = [f[0] for f in funcoes()]
+    assert len(nomes) == 12
+    for f in nomes:
+        interna = any(i in f for i in internas)
+        assert banco.execute('select has_function_privilege(%s, %s, %s)', ('anon', f, 'execute')).fetchone() == (False,), f
+        assert banco.execute('select has_function_privilege(%s, %s, %s)',
+                             ('authenticated', f, 'execute')).fetchone() == (not interna,), f
+    for t in ('frotas', 'rodadas', 'reservas', 'arquivos', 'linhas', 'analises', 'talhoes'):
+        tab = f'hub.paralelismo_{t}'
+        assert banco.execute('select relrowsecurity from pg_class where oid = %s::regclass', (tab,)).fetchone() == (True,), t
+        for priv in ('select', 'insert', 'update', 'delete'):
+            esperado = t == 'frotas' or (priv == 'select' and t != 'reservas')
+            assert banco.execute('select has_table_privilege(%s, %s, %s)',
+                                 ('authenticated', tab, priv)).fetchone() == (esperado,), (t, priv)
+            assert banco.execute('select has_table_privilege(%s, %s, %s)', ('anon', tab, priv)).fetchone() == (False,), (t, priv)
+
+
+def test_script_de_volta_desfaz_com_dados(banco_descartavel):
+    b = banco_descartavel
+    uid = b.execute("insert into auth.users (email) values ('v@x.com') returning id").fetchone()[0]
+    b.execute("insert into hub.usuarios (id, nome) values (%s, 'V')", (uid,))
+    b.execute("insert into hub.usuario_modulos (usuario_id, modulo_id, nivel) values (%s, 'paralelismo', 'solicitante')", (uid,))
+    b.execute("""insert into hub.acessos (email, nome, niveis, modulos)
+                 values ('v@x.com', 'V', '{"paralelismo": "solicitante", "plantio": "leitura"}', '{paralelismo,plantio}')""")
+    b.execute("""insert into hub.log_auditoria (modulo_id, entidade_tipo, entidade_id, campo)
+                 values ('paralelismo', 'fazenda', 1, 'rodada_paralelismo_excluida')""")
+    raiz = Path(__file__).resolve().parents[2]
+    b.execute((raiz / 'supabase/migrations/volta/20261104090000_paralelismo_volta.sql').read_text(encoding='utf-8'))
+    assert b.execute("select to_regclass('hub.paralelismo_rodadas'), to_regproc('hub.paralelismo_nivel')").fetchone() == (None, None)
+    assert b.execute("select count(*) from hub.modulos where id = 'paralelismo'").fetchone() == (0,)
+    assert b.execute("select niveis, modulos from hub.acessos where email = 'v@x.com'").fetchone() == ({'plantio': 'leitura'}, ['plantio'])
+    assert b.execute("select modulo_id from hub.log_auditoria where campo = 'rodada_paralelismo_excluida'").fetchone() == (None,)
