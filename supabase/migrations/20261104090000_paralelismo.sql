@@ -88,7 +88,7 @@ end $$;
 alter table hub.talhoes add column if not exists declividade numeric;
 
 create table hub.paralelismo_frotas (
-  serie         text primary key,                 -- BM7230J002231; GS3: 'GS3:<frota>'
+  serie         text primary key,                 -- BM0000X000000; GS3: 'GS3:<frota>'
   frota         text not null,
   operacao      text check (operacao in ('cana', 'torta')),
   tipo          text check (tipo in ('propria', 'prestador')),

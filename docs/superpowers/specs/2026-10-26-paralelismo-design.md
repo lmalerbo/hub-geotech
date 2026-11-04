@@ -94,7 +94,7 @@ Fora do escopo: AgroCAD/FME (as análises antigas entram só como histórico), m
 
 ```
 paralelismo_frotas                -- editável pela tela (editor)
-  serie text pk                   -- BM7230J002231; GS3: 'GS3:<frota>'
+  serie text pk                   -- BM0000X000000; GS3: 'GS3:<frota>'
   frota text not null             -- '55805' ou nome do prestador
   operacao text check (operacao in ('cana','torta'))
   tipo text check (tipo in ('propria','prestador'))
