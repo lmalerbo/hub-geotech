@@ -11,7 +11,7 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 MIGRACOES = ['20261015090000_corretivos.sql', '20261016090000_corretivos_transacoes.sql',
-             '20261017090000_mapas_aplicacao.sql', '20261104090000_operacao_experimento.sql']
+             '20261017090000_mapas_aplicacao.sql', '20261104100000_operacao_experimento.sql']
 
 
 def _porta_livre():

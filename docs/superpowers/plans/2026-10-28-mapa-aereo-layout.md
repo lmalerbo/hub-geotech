@@ -572,5 +572,5 @@ alter table hub.corretivo_mapas add constraint corretivo_mapas_operacao_check
 - Task 3: camada 2, aprovada.
 - Task 4: camada 2, aprovada.
 - Task 5: camada 2 (código e demo); camada 3 no E2E e nos ajustes. Desvio: quadrado dos cards do aéreo também na cor única; `crAlvoAplicar` e `crRotuloAplicar` novos.
-- Task 6: camada 2; camada 3 incluiu a migração no conftest. Desvio: migração em `20261104090000_operacao_experimento.sql` (já havia migrações de 29/10); `.cr-seg-4` para os 4 botões.
+- Task 6: camada 2; camada 3 incluiu a migração no conftest. Desvio: migração em `20261104100000_operacao_experimento.sql` (já havia migrações de 29/10 e a 20261104090000 é do Paralelismo); `.cr-seg-4` para os 4 botões.
 - Camada 1 não usada: o isolamento da sessão recusa o `HOME` exigido pelo `delegar.sh`.
