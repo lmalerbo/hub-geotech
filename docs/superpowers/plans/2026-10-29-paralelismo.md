@@ -20,7 +20,7 @@
 - Frota vem da série do `.jdl` (`BM\d{4}[A-Z]\d{6}`) pela tabela de frotas; nunca do nome da pasta. GS3 não tem série: chave `'GS3:<frota>'`. Prestador aparece pelo nome. Operação (`cana`|`torta`) vem da frota.
 - Fazenda: 5 dígitos do nome gravado no monitor (pasta do log do `.jdl`, `Farm` do `.fdl`); revisão (`Rev1`) só informativa; talhão sai da geometria.
 - Arquivo bruto identificado por **SHA-256**; arquivo já registrado em qualquer rodada pendente ou publicada = "já analisado" e é ignorado.
-- Partes zipadas de até **90 MB** (limite do Worker é 100 MB). Release `paralelismo-r<id>` em `lmalerbo/hub-geotech-paralelismo-arquivos`, **privado** (brutos têm GPS real; decisão do usuário em 04/11/2026).
+- Partes zipadas de até **90 MB** (limite do Worker é 100 MB). Release `paralelismo-r<id>` em `lmalerbo/hub-geotech-arquivos`, **público** por ora: o usuário aceitou a exposição dos brutos em 04/11/2026 e pretende torná-lo privado depois.
 - Níveis: leitura | solicitante | editor (+ admin), em `hub.usuario_modulos.nivel`, módulo `paralelismo` escondido do menu lateral e cadastrado em Ferramentas.
 - Textos da tela em português do Brasil, vírgula decimal. Página HTML/CSS/JS puro, funções com prefixo `par`, estado em `PAR`, funciona em 390 px.
 - Dado real (pen-drives, Base Fazendas, `Paralelismo8.xlsx`) **nunca** vai para o executor externo (camada 1). Tarefas com arquivos reais são camada 2 ou 3.
@@ -685,8 +685,8 @@ def test_regressao_10966_gs3():
 **Camada:** Worker = 3 (segurança); funções puras = 1 (`delegar.sh -a build`, só dados sintéticos).
 
 **Arquivos:**
-- Modificar: `worker/arquivos.js` — rota `POST /paralelismo/parte` (form: `rodada_id`, `nome`, `arquivo`). Chama `rpc/paralelismo_preparar_parte` com o token do usuário, cria/acha a release `paralelismo-r<id>` (`releaseDaTag`), sobe o asset, substitui se já existir com o mesmo nome (reenvio), devolve `{url, bytes}`. Recusa corpo > 95 MB. Rota `POST /paralelismo/excluida` (admin) que acrescenta "EXCLUÍDA em dd/mm/aaaa" à descrição da release. Rota `GET /paralelismo/arquivo` que confere o login e o acesso ao módulo e entrega o asset, porque o link direto não abre em repositório privado.
-- Repositório: criar `lmalerbo/hub-geotech-paralelismo-arquivos` como privado. O Worker usa uma variável própria (`GH_REPO_PARALELISMO`), sem mudar o `GH_REPO` dos outros módulos. O **usuário** confere se o `GH_TOKEN` do Worker alcança o repositório novo.
+- Modificar: `worker/arquivos.js` — rota `POST /paralelismo/parte` (form: `rodada_id`, `nome`, `arquivo`). Chama `rpc/paralelismo_preparar_parte` com o token do usuário, cria/acha a release `paralelismo-r<id>` (`releaseDaTag`), sobe o asset, substitui se já existir com o mesmo nome (reenvio), devolve `{url, bytes}`. Recusa corpo > 95 MB. Rota `POST /paralelismo/excluida` (admin) que acrescenta "EXCLUÍDA em dd/mm/aaaa" à descrição da release.
+- Quando o repositório ficar privado (trabalho à parte, para todos os módulos): o link direto do GitHub para de abrir, então é preciso uma rota de download com login e atualizar os links já salvos no banco, **antes** de mudar a visibilidade. As funções do Vercel têm limite de ~4,5 MB por requisição: o envio das partes continua no Worker.
 - Criar: `app/paralelismo-puro.js` (sem DOM, exportado para `node --test` como o `drone-dados.js`) e `tests/app/paralelismo_puro.test.js`.
 
 **Funções puras (interfaces para a P3–P5):**

@@ -1,7 +1,8 @@
 // Regras da tela Usuários, sem DOM (testadas em tests/app/usuarios_puro.test.js).
-// Nível por módulo: leitura | solicitante (só Drone) | editor; sem chave = sem acesso.
+// Nível por módulo: leitura | solicitante (Drone e Paralelismo) | editor; sem chave = sem acesso.
 // GeoMap: o acesso individual por mapa soma ao dos grupos e só acrescenta.
-const USR_MODULOS_HUB = [['plantio', 'Plantio'], ['preparo', 'Preparo'], ['colheita', 'Colheita'], ['drone', 'Drone']];
+const USR_MODULOS_HUB = [['plantio', 'Plantio'], ['preparo', 'Preparo'], ['colheita', 'Colheita'], ['drone', 'Drone'], ['paralelismo', 'Paralelismo']];
+const USR_MODULOS_SOLICITANTE = ['drone', 'paralelismo'];
 const USR_NIVEIS = { leitura: 'Leitura', solicitante: 'Solicitante', editor: 'Editor' };
 const USR_FILTROS = [['todos', 'Todos'], ['plantio', 'Plantio'], ['preparo', 'Preparo'], ['colheita', 'Colheita'],
   ['drone', 'Drone'], ['geomap', 'GeoMap'], ['provisoria', 'Senha provisória']];
@@ -31,6 +32,10 @@ function usrMapasParaBanco(tela) {
     .map(([id, n]) => ({ mapa_id: Number(id), pode_editar: n === 'editar' }));
 }
 function usrPlural(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+function usrOpcoesNivel(modulo) {
+  return [['', 'Sem acesso'], ['leitura', 'Leitura'],
+    ...(USR_MODULOS_SOLICITANTE.includes(modulo) ? [['solicitante', 'Solicitante']] : []), ['editor', 'Editor']];
+}
 function usrResumo(a) {
   if (a.bloqueado) return 'Sem acesso — bloqueado';
   const niveis = a.niveis || {}, partes = [];

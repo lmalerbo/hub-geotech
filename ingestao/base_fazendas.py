@@ -5,7 +5,7 @@ Fonte: o .dbf mais recente do shapefile diário do FME
 arquivo que o GeoMap publica às 8:05.
 
 Grava só os campos de que a Base Fazendas é dona: nome da fazenda, área
-produtiva, estágio, data do último corte e propriedade. O layer é calculado
+produtiva, estágio, data do último corte, propriedade e declividade. O layer é calculado
 pelo banco a partir de SECAO + TALHAO; a coluna Layer do arquivo não é usada.
 
 Uso:  python ingestao/base_fazendas.py [--simular]
@@ -41,6 +41,15 @@ def para_int(valor):
         return int(str(valor).strip())
     except (TypeError, ValueError):
         return None
+
+
+def para_declividade(valor):
+    # 99 na Base Fazendas quer dizer sem informação
+    try:
+        v = float(str(valor).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+    return None if v == 99 else v
 
 
 def para_data(valor):
@@ -87,6 +96,7 @@ def ler(caminho):
             'estagio': texto(r.get('ESTAGIO')),
             'data_ultimo_corte': para_data(r.get('DATA_CORTE')),
             'propriedade': texto(r.get('PROPRIEDAD')),
+            'declividade': para_declividade(r.get('DECLIVIDAD')),
         }
     return list(fazendas.values()), list(talhoes.values()), vazias, invalidas, repetidos
 

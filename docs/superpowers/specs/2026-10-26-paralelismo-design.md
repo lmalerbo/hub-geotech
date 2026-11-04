@@ -94,7 +94,7 @@ Fora do escopo: AgroCAD/FME (as análises antigas entram só como histórico), m
 
 ```
 paralelismo_frotas                -- editável pela tela (editor)
-  serie text pk                   -- BM7230J002231; GS3: 'GS3:<frota>'
+  serie text pk                   -- BM0000X000000; GS3: 'GS3:<frota>'
   frota text not null             -- '55805' ou nome do prestador
   operacao text check (operacao in ('cana','torta'))
   tipo text check (tipo in ('propria','prestador'))
@@ -129,7 +129,7 @@ paralelismo_analises              -- uma por (operação, fazenda) a cada rodada
   mes date                        -- 1º dia do mês de execução
   amostras int, aderentes int, acima int, abaixo int
   vigente boolean                 -- a mais recente por (operação, cod_faz)
-  amostras_url text               -- shapefile zipado das amostras na release (aberto pela rota de download do Worker)
+  amostras_url text               -- shapefile zipado das amostras na release
 
 paralelismo_talhoes
   analise_id bigint fk on delete cascade
@@ -154,8 +154,8 @@ paralelismo_talhoes
 
 - Rota nova no Worker: `POST /paralelismo/parte`, com o login do usuário.
   - O banco confere o acesso (`hub.paralelismo_preparar_parte`).
-  - O Worker sobe a parte na release `paralelismo-r<id>` de `lmalerbo/hub-geotech-paralelismo-arquivos`, repositório **privado**: os brutos têm GPS real (decisão do usuário, 04/11/2026).
-- Como o repositório é privado, o link direto do GitHub não abre para quem usa o Hub. Os downloads passam por uma rota do Worker, `GET /paralelismo/arquivo`, que confere o login e o acesso ao módulo.
+  - O Worker sobe a parte na release `paralelismo-r<id>` de `lmalerbo/hub-geotech-arquivos`.
+- **Esse repositório é público**, e os brutos têm GPS real. O usuário aceitou a exposição por ora (04/11/2026). Ele pretende torná-lo privado depois, com links novos de download. Tornar privado não desfaz o que já tiver sido baixado.
 - Cada parte é um zip de até 90 MB, porque o limite do Worker é 100 MB por requisição. Os caminhos do pen-drive são mantidos dentro do zip.
 - A release também recebe `manifesto.csv` (caminho; bytes; sha256; frota; fazenda) e os shapefiles de amostras e linhas de cada fazenda, que são o entregável para o GIS.
 - Zip no navegador com **fflate** (streaming, versão fixada).
