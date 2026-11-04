@@ -73,6 +73,63 @@ def achar_item_rico(field9_bytes: bytes) -> dict | None:
     return None
 
 
+def _zigzag(v: int) -> int:
+    return (v >> 1) ^ -(v & 1)
+
+
+def ticks_item_rico(field9_bytes: bytes) -> list[tuple[float, float]]:
+    """Trajetoria tick a tick (0,2s, ~150 por registro de 30s) em graus decimais.
+
+    Campos 1/2 do item rico = lat/lon base em nanograus; campos 12/13 = deltas
+    zigzag (nanograus) de lat/lon, um por tick. lat_k = campo1 + soma dos k
+    primeiros deltas. Validado contra o export do GOIMP da fazenda 10233: o
+    ultimo tick de um registro coincide (0,0cm) com a base do seguinte, e os
+    ticks ficam a ~9cm (mediana) da trilha do AgroCAD (que tem passo de ~30cm).
+    A base nao entra na lista: ela e o ultimo tick do registro anterior."""
+    top = decode_flat(field9_bytes, 0, len(field9_bytes))
+    for fn, wire, val in top:
+        if fn != 3 or wire != "bytes":
+            continue
+        sub = {f: v for f, w, v in decode_flat(val, 0, len(val))}
+        if not (isinstance(sub.get(4), float) and 300_000 < sub[4] < 2_000_000):
+            continue
+        if not (isinstance(sub.get(1), float) and isinstance(sub.get(2), float)
+                and isinstance(sub.get(12), bytes) and isinstance(sub.get(13), bytes)):
+            return []
+        dlat, dlon = [], []
+        for arr, dst in ((sub[12], dlat), (sub[13], dlon)):
+            p = 0
+            while p < len(arr):
+                v, p = read_varint(arr, p)
+                dst.append(_zigzag(v))
+        if len(dlat) != len(dlon):
+            return []
+        lat, lon = sub[1], sub[2]
+        ticks = []
+        for a, b in zip(dlat, dlon):
+            lat += a
+            lon += b
+            ticks.append((lat / 1e9, lon / 1e9))
+        return ticks
+    return []
+
+
+def estado_trabalho(field9_bytes: bytes) -> int | None:
+    """Estado 0/1 do registro: item {3, 12} (sem campo 4) cujo campo 3 e a
+    mensagem 0a 01 XX. Nao e o WorkStatus da plantadeira (no 10658 acerta ~78%
+    contra o executado do AgroCAD; parece ser piloto automatico engatado), mas
+    ajuda a separar plantio de deslocamento. None se o item nao vier."""
+    estado = None
+    for fn, wire, val in decode_flat(field9_bytes, 0, len(field9_bytes)):
+        if fn != 3 or wire != "bytes":
+            continue
+        sub = {f: v for f, w, v in decode_flat(val, 0, len(val))}
+        v3 = sub.get(3)
+        if 4 not in sub and 12 in sub and isinstance(v3, bytes) and len(v3) == 3 and v3[:2] == b"\x0a\x01":
+            estado = v3[2]
+    return estado
+
+
 def extrair_atributos_extra(field9_bytes: bytes) -> dict:
     """Retorna dict com ELEVATION_APROX (confirmado, faixa plausivel) +
     CAMPO_N genericos (nao identificados) a partir do item rico."""

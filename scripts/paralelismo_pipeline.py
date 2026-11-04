@@ -18,6 +18,7 @@ import math
 from dataclasses import dataclass
 
 from shapely.geometry import LineString, Point
+from shapely.ops import nearest_points
 from shapely.strtree import STRtree
 
 
@@ -82,6 +83,143 @@ def cle(lines: list[LineString], min_length: float = 15.0) -> list[LineString]:
     return [line for line in lines if line.length >= min_length]
 
 
+def _perfil_vizinhanca(lines: list[LineString], tree: STRtree, i: int, passo: float,
+                       max_angulo: float, colada: float, raio: float) -> tuple[float, float]:
+    """(fracao das amostras com vizinha paralela entre `colada` e `raio` m,
+    fracao das amostras com vizinha paralela a menos de `colada` m)."""
+    line = lines[i]
+    n = max(int(line.length // passo), 1)
+    apoio = sobreposta = 0
+    for k in range(n):
+        d = (k + 0.5) * line.length / n
+        p = line.interpolate(d)
+        a = line.interpolate(max(d - 1.0, 0))
+        b = line.interpolate(min(d + 1.0, line.length))
+        dx, dy = b.x - a.x, b.y - a.y
+        norm = math.hypot(dx, dy)
+        if norm == 0:
+            continue
+        nx, ny = -dy / norm, dx / norm
+        raio_perp = LineString([(p.x - nx * raio, p.y - ny * raio), (p.x + nx * raio, p.y + ny * raio)])
+        tem_apoio = tem_sobreposta = False
+        for j in tree.query(raio_perp):
+            if j == i:
+                continue
+            outra = lines[j]
+            inter = raio_perp.intersection(outra)
+            if inter.is_empty:
+                continue
+            q = nearest_points(p, inter)[1]
+            s = outra.project(q)
+            qa = outra.interpolate(max(s - 1.0, 0))
+            qb = outra.interpolate(min(s + 1.0, outra.length))
+            ox, oy = qb.x - qa.x, qb.y - qa.y
+            onorm = math.hypot(ox, oy)
+            if onorm == 0:
+                continue
+            cos_ang = abs(dx * ox + dy * oy) / (norm * onorm)
+            if math.degrees(math.acos(min(1.0, cos_ang))) > max_angulo:
+                continue
+            if p.distance(q) < colada:
+                tem_sobreposta = True
+            else:
+                tem_apoio = True
+        apoio += tem_apoio
+        sobreposta += tem_sobreposta
+    return apoio / n, sobreposta / n
+
+
+def _direcao(line: LineString, s: float) -> tuple[float, float]:
+    a = line.interpolate(max(s - 1.0, 0))
+    b = line.interpolate(min(s + 1.0, line.length))
+    return b.x - a.x, b.y - a.y
+
+
+def _cruza_em_angulo(l1: LineString, l2: LineString, min_angulo: float) -> bool:
+    """True se l1 cruza l2 em algum ponto com angulo > min_angulo graus.
+    Cruzamento rasante (encontro de passadas em curva de nivel, ponta de
+    passada) nao conta."""
+    if not l1.crosses(l2):
+        return False
+    inter = l1.intersection(l2)
+    pontos = getattr(inter, "geoms", [inter])
+    for g in pontos:
+        if g.geom_type != "Point":
+            continue
+        d1 = _direcao(l1, l1.project(g))
+        d2 = _direcao(l2, l2.project(g))
+        n = math.hypot(*d1) * math.hypot(*d2)
+        if n == 0:
+            continue
+        cos_ang = abs(d1[0] * d2[0] + d1[1] * d2[1]) / n
+        if math.degrees(math.acos(min(1.0, cos_ang))) > min_angulo:
+            return True
+    return False
+
+
+def limpar(lines: list[LineString], passo: float = 5.0, max_angulo: float = 15.0,
+           colada: float = 1.0, raio: float = 4.5, min_apoio: float = 0.2,
+           max_sobreposta: float = 0.5, min_angulo_cruzamento: float = 25.0,
+           max_apoio_cruzamento: float = 0.6,
+           motivos: dict | None = None) -> list[LineString]:
+    """Limpeza depois do CLE, pra tirar o que sobrou de manobra/deslocamento
+    (o que o analista apagava na mao no AutoCAD antes do PLL). Linha de
+    plantio nao cruza outra linha, nao anda colada em outra e tem vizinha
+    paralela a ~1,5-3 m. Entao:
+      1. em cada par que se cruza em angulo > `min_angulo_cruzamento`, sai a
+         linha com menos apoio paralelo (empate: a mais curta), desde que
+         esse apoio seja < `max_apoio_cruzamento` -- em curva de nivel duas
+         passadas boas as vezes se encostam na ponta, e essas ficam;
+      2. sai a linha com mais de `max_sobreposta` do comprimento a menos de
+         `colada` m de outra paralela (passada repetida por cima), se for a
+         mais curta do par;
+      3. sai a linha com menos de `min_apoio` do comprimento com vizinha
+         paralela (deslocamento solto na borda)."""
+    linhas = list(lines)
+    if len(linhas) < 2:
+        return linhas
+    tree = STRtree(linhas)
+    perfil = [_perfil_vizinhanca(linhas, tree, i, passo, max_angulo, colada, raio) for i in range(len(linhas))]
+    nota = [(perfil[i][0], linhas[i].length) for i in range(len(linhas))]
+    fora = set()
+
+    # 1. cruzamentos -- da pior pra melhor, pra que uma linha ruim que cruza
+    # varias boas saia antes de derrubar alguma delas
+    for i in sorted(range(len(linhas)), key=lambda k: nota[k]):
+        if i in fora:
+            continue
+        for j in tree.query(linhas[i]):
+            if j == i or j in fora or not _cruza_em_angulo(linhas[i], linhas[j], min_angulo_cruzamento):
+                continue
+            k = i if nota[i] <= nota[j] else j
+            if perfil[k][0] >= max_apoio_cruzamento:
+                continue  # as duas sao passadas boas que se encostam numa ponta
+            fora.add(k)
+            if motivos is not None:
+                motivos[k] = "cruza"
+            if i in fora:
+                break
+
+    # 2. passada repetida por cima de outra
+    for i in sorted(range(len(linhas)), key=lambda k: linhas[k].length):
+        if i in fora or perfil[i][1] <= max_sobreposta:
+            continue
+        perto = linhas[i].buffer(colada)
+        if any(j != i and j not in fora and linhas[j].length >= linhas[i].length
+               and linhas[j].intersects(perto) for j in tree.query(perto)):
+            fora.add(i)
+            if motivos is not None:
+                motivos[i] = "sobreposta"
+
+    # 3. sem vizinha paralela
+    for i in range(len(linhas)):
+        if i not in fora and perfil[i][0] < min_apoio:
+            fora.add(i)
+            if motivos is not None:
+                motivos[i] = "isolada"
+    return [l for k, l in enumerate(linhas) if k not in fora]
+
+
 @dataclass
 class PLLResultado:
     total_amostras: int
@@ -122,15 +260,48 @@ def pll(
     ignore_below: float = 2.60,
     ignore_above: float = 3.40,
     sample_interval: float = 10.0,
+    max_angulo_vizinha: float = 15.0,
 ) -> PLLResultado:
+    """Resumo do PLL -- ver pll_amostras."""
+    espacamentos = [a.espacamento for a in pll_amostras(lines, ignore_below, ignore_above,
+                                                         sample_interval, max_angulo_vizinha)]
+    abaixo = sum(1 for e in espacamentos if e < ideal_min)
+    ideais = sum(1 for e in espacamentos if ideal_min <= e <= ideal_max)
+    acima = sum(1 for e in espacamentos if e > ideal_max)
+    media = sum(espacamentos) / len(espacamentos) if espacamentos else 0.0
+    return PLLResultado(len(espacamentos), abaixo, ideais, acima, media, ideal_min, ideal_max)
+
+
+@dataclass
+class Amostra:
+    linha: int          # indice da linha amostrada em `lines`
+    x: float            # ponto amostrado na linha
+    y: float
+    x_vizinha: float    # ponto correspondente na linha vizinha
+    y_vizinha: float
+    espacamento: float
+
+
+def pll_amostras(
+    lines: list[LineString],
+    ignore_below: float = 2.60,
+    ignore_above: float = 3.40,
+    sample_interval: float = 10.0,
+    max_angulo_vizinha: float = 15.0,
+) -> list[Amostra]:
     """Amostra cada linha a cada sample_interval metros; em cada amostra,
-    lanca uma perpendicular a direcao local da linha (nos dois sentidos) e
-    mede a distancia ate a linha vizinha mais proxima nessa direcao.
-    Classifica o espacamento e ignora amostras fora de
-    [ignore_below, ignore_above] (nao entram no total)."""
+    lanca uma perpendicular a direcao local da linha e mede, em CADA lado, a
+    distancia ate a linha vizinha mais proxima -- cada lado e uma amostra.
+    (Ficar so com o menor dos dois lados enviesava a media pra baixo: validado
+    contra o PLL do AgroCAD na fazenda 10233, media 2,94 -> 3,00.)
+    So conta como vizinha uma linha cuja direcao local no cruzamento difere
+    no maximo max_angulo_vizinha graus -- senao um trecho de manobra cruzando
+    em angulo vira um "espacamento" sem sentido.
+    Devolve so as amostras dentro de [ignore_below, ignore_above] (as de fora
+    nao entram no total), com a posicao de cada uma."""
     search_radius = ignore_above * 1.5
     tree = STRtree(lines)
-    espacamentos = []
+    amostras = []
 
     for i, line in enumerate(lines):
         length = line.length
@@ -148,7 +319,7 @@ def pll(
                 continue
             nx, ny = -dy / norm, dx / norm  # direcao perpendicular
 
-            melhor_dist = None
+            melhor_por_lado = {}
             for j in tree.query(p.buffer(search_radius)):
                 if j == i:
                     continue
@@ -158,19 +329,25 @@ def pll(
                     inter = LineString([p, alvo]).intersection(outra)
                     if inter.is_empty:
                         continue
-                    dist = p.distance(inter)
-                    if melhor_dist is None or dist < melhor_dist:
-                        melhor_dist = dist
-            if melhor_dist is not None:
-                espacamentos.append(melhor_dist)
+                    q = nearest_points(p, inter)[1]
+                    s = outra.project(q)
+                    q_antes = outra.interpolate(max(s - 0.5, 0))
+                    q_depois = outra.interpolate(min(s + 0.5, outra.length))
+                    ox, oy = q_depois.x - q_antes.x, q_depois.y - q_antes.y
+                    onorm = math.hypot(ox, oy)
+                    if onorm == 0:
+                        continue
+                    cos_ang = abs(dx * ox + dy * oy) / (norm * onorm)
+                    if math.degrees(math.acos(min(1.0, cos_ang))) > max_angulo_vizinha:
+                        continue
+                    dist = p.distance(q)
+                    if dist < melhor_por_lado.get(sinal, (math.inf,))[0]:
+                        melhor_por_lado[sinal] = (dist, q)
+            for dist, q in melhor_por_lado.values():
+                if ignore_below <= dist <= ignore_above:
+                    amostras.append(Amostra(i, p.x, p.y, q.x, q.y, dist))
 
-    validos = [e for e in espacamentos if ignore_below <= e <= ignore_above]
-    abaixo = sum(1 for e in validos if e < ideal_min)
-    ideais = sum(1 for e in validos if ideal_min <= e <= ideal_max)
-    acima = sum(1 for e in validos if e > ideal_max)
-    media = sum(validos) / len(validos) if validos else 0.0
-
-    return PLLResultado(len(validos), abaixo, ideais, acima, media, ideal_min, ideal_max)
+    return amostras
 
 
 def analisar(
@@ -184,10 +361,11 @@ def analisar(
     pll_ignore_above: float = 3.40,
     pll_sample_interval: float = 10.0,
 ) -> PLLResultado:
-    """Roda o fluxo completo LSFP -> QBD -> CLE -> PLL."""
+    """Roda o fluxo completo LSFP -> QBD -> CLE -> limpar -> PLL."""
     linhas = lsfp(grouped_points, max_dist=lsfp_max_dist)
     linhas = qbd(linhas, min_angle_deg=qbd_min_angle)
     linhas = cle(linhas, min_length=cle_min_length)
+    linhas = limpar(linhas)
     return pll(
         linhas,
         ideal_min=pll_ideal_min,

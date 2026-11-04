@@ -41,8 +41,10 @@ def converter_pasta(pasta_entrada: str, pasta_saida: str, recursivo: bool = Fals
         raise RuntimeError(f"ODAFileConverter falhou (codigo {resultado.returncode}): {resultado.stderr}")
 
 
-def converter_dxf_para_dwg(dxf_path: str, pasta_saida: str, exe_path: Path = EXE_PADRAO) -> Path:
-    """Converte um unico .dxf pra .dwg (sentido inverso de converter_arquivo)."""
+def converter_dxf_para_dwg(dxf_path: str, pasta_saida: str, exe_path: Path = EXE_PADRAO,
+                           timeout: int = 1800) -> Path:
+    """Converte um unico .dxf pra .dwg (sentido inverso de converter_arquivo).
+    timeout alto por padrao: DXFs com ~2M de POINTs levam minutos no ODA."""
     import shutil
     import tempfile
 
@@ -53,7 +55,7 @@ def converter_dxf_para_dwg(dxf_path: str, pasta_saida: str, exe_path: Path = EXE
         shutil.copy2(dxf_path, tmp_in)
         resultado = subprocess.run(
             [str(exe_path), tmp, pasta_saida, VERSAO_SAIDA, "DWG", "0", "1"],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, timeout=timeout,
         )
         if resultado.returncode != 0:
             raise RuntimeError(f"ODAFileConverter falhou (codigo {resultado.returncode}): {resultado.stderr}")

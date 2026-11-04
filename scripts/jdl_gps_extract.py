@@ -24,7 +24,7 @@ import re
 import struct
 from datetime import datetime, timedelta
 
-from jdl_rich_fields import read_varint, decode_flat, extrair_atributos_extra
+from jdl_rich_fields import read_varint, decode_flat, estado_trabalho, extrair_atributos_extra, ticks_item_rico
 
 CAMPOS_EXTRA_NOMES = ["TEMPO_MS", "DATA_HORA", "ELEVATION_APROX"] + \
     [f"CAMPO_{n}" for n in (3, 5, 8, 9, 23, 24, 25, 27, 28)]
@@ -105,6 +105,81 @@ def extrair_pontos(buf: bytes) -> list[tuple[int, dict]]:
         else:
             break
     return pontos
+
+
+def extrair_ticks(buf: bytes) -> list[tuple[float, float]]:
+    """Trajetoria completa tick a tick (lat, lon) do arquivo, na ordem de
+    gravacao -- ver ticks_item_rico em jdl_rich_fields.py."""
+    ticks = []
+    pos = 0
+    n = len(buf)
+    while pos < n:
+        tag, pos = read_varint(buf, pos)
+        field_no = tag >> 3
+        wire_type = tag & 0x7
+        if wire_type == 0:
+            _, pos = read_varint(buf, pos)
+        elif wire_type == 1:
+            pos += 8
+        elif wire_type == 5:
+            pos += 4
+        elif wire_type == 2:
+            length, pos = read_varint(buf, pos)
+            data = buf[pos:pos + length]
+            pos += length
+            if field_no == 4:
+                for fn, wire, val in decode_flat(data, 0, len(data)):
+                    if fn == 9 and wire == "bytes":
+                        ticks.extend(ticks_item_rico(val))
+        else:
+            break
+    return ticks
+
+
+def extrair_ticks_de_arquivo(caminho: str) -> list[tuple[float, float]]:
+    with open(caminho, "rb") as f:
+        buf = f.read()
+    try:
+        return extrair_ticks(buf)
+    except (IndexError, struct.error):
+        return []
+
+
+def extrair_ticks_por_registro(caminho: str) -> list[tuple[list[tuple[float, float]], int | None]]:
+    """Como extrair_ticks_de_arquivo, mas agrupado por registro de 30s:
+    [(ticks, estado_trabalho), ...] na ordem de gravacao. Arquivo corrompido
+    devolve o que deu pra ler ate o ponto da falha."""
+    with open(caminho, "rb") as f:
+        buf = f.read()
+    registros = []
+    pos = 0
+    n = len(buf)
+    try:
+        while pos < n:
+            tag, pos = read_varint(buf, pos)
+            field_no = tag >> 3
+            wire_type = tag & 0x7
+            if wire_type == 0:
+                _, pos = read_varint(buf, pos)
+            elif wire_type == 1:
+                pos += 8
+            elif wire_type == 5:
+                pos += 4
+            elif wire_type == 2:
+                length, pos = read_varint(buf, pos)
+                data = buf[pos:pos + length]
+                pos += length
+                if field_no == 4:
+                    for fn, wire, val in decode_flat(data, 0, len(data)):
+                        if fn == 9 and wire == "bytes":
+                            ticks = ticks_item_rico(val)
+                            if ticks:
+                                registros.append((ticks, estado_trabalho(val)))
+            else:
+                break
+    except (IndexError, struct.error):
+        pass
+    return registros
 
 
 def extrair_de_arquivo(caminho: str) -> list[tuple[int, dict]]:
