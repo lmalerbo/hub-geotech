@@ -447,3 +447,43 @@ test('resposta do Supabase com erro lança em vez de virar lista vazia', () => {
   assert.throws(() => ctx.drSemErro({ data: null, error: { message: 'JWT expired' } }), /JWT expired/);
   assert.throws(() => ctx.drSemErro({ data: null, error: {} }), /Falha ao ler o banco/);
 });
+
+test('talhões fora da Base: lista só os que vêm marcados para sair', () => {
+  const geo = { features: [
+    { properties: { camada: 'talhao', talhao: 2, status: 'com_projeto' } },
+    { properties: { camada: 'talhao', talhao: 8, status: 'fora_da_base' } },
+    { properties: { camada: 'talhao', talhao: 3, status: 'sem_projeto' } },
+    { properties: { camada: 'normal' } }] };
+  assert.deepStrictEqual([...ctx.drForaDaBase(geo)], [8]);
+  assert.deepStrictEqual([...ctx.drForaDaBase(null)], []);
+});
+
+test('clique em área sobreposta: cada ferramenta pula o talhão que ela não aceita', () => {
+  const fora = { properties: { talhao: 8, status: 'fora_da_base' } };
+  const novo = { properties: { talhao: 803, status: 'sem_projeto' } };
+  assert.strictEqual(ctx.drTalhaoDoClique([fora, novo], false).talhao, 803);
+  assert.strictEqual(ctx.drTalhaoDoClique([novo, fora], true).talhao, 8);
+  assert.strictEqual(ctx.drTalhaoDoClique([fora], false).talhao, 8);
+  assert.strictEqual(ctx.drTalhaoDoClique([novo], true).talhao, 803);
+});
+
+test('marca fora da Base uma vez por montagem, só no estado montando', () => {
+  const geo = { features: [{ properties: { camada: 'talhao', talhao: 8, status: 'fora_da_base' } }] };
+  const rem = new Set();
+  assert.strictEqual(ctx.drMarcarForaDaBase(geo, 'previa', rem, false), false);   // marca quando a prévia sair
+  assert.strictEqual(ctx.drMarcarForaDaBase(geo, 'consulta', rem, false), false);
+  assert.strictEqual(ctx.drMarcarForaDaBase(geo, 'catacao', rem, false), false);
+  assert.deepStrictEqual([...rem], []);
+  assert.strictEqual(ctx.drMarcarForaDaBase(geo, 'montando', rem, false), true);
+  assert.deepStrictEqual([...rem], [8]);
+  rem.delete(8);                                                                  // analista desmarcou
+  assert.strictEqual(ctx.drMarcarForaDaBase(geo, 'montando', rem, true), true);
+  assert.deepStrictEqual([...rem], []);
+});
+
+test('janela da prévia diz o que sai do projeto', () => {
+  assert.match(ctx.drSaiHtml({ escopo: { remover: [8] } }), /Sai do projeto<\/h3>Talhão 8</);
+  assert.match(ctx.drSaiHtml({ escopo: { remover: [1, 2] } }), /Talhões 1, 2</);
+  assert.strictEqual(ctx.drSaiHtml({ escopo: { remover: [] } }), '');
+  assert.strictEqual(ctx.drSaiHtml({}), '');
+});

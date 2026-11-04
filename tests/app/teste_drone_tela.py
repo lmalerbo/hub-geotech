@@ -158,6 +158,7 @@ try:
         pg.wait_for_selector('#dr-side-cab h2:has-text("Confira antes de publicar")', timeout=60000)
         confere(' ha' in (pg.text_content('.drp-indic') or ''), 'painel mostra o indicador de área em ha')
         confere(pg.locator('.dr-mot-painel').count() == 1, 'campo de motivo no painel')
+        confere('Sai do projeto' in (pg.text_content('#dr-side-corpo') or ''), 'painel da prévia diz o que sai do projeto')
         foto(pg, 'previa')
         # a janela abre sozinha quando a geração termina com a tela aberta
         pg.wait_for_selector('#drp-fundo', timeout=10000)
@@ -178,6 +179,53 @@ try:
         pg.click('#confirma-sim')
         pg.wait_for_selector('#dr-side-cab .dr-side-sobre:has-text("Nova revisão")', timeout=15000)
         confere(True, 'prévia descartada, seleção liberada')
+
+        # Fora da Base: simulado só no navegador, copiando a geometria de um talhão (nada é gravado nem gerado)
+        pg.evaluate("""()=>{const o=window.drRpc;window.__rpcOrig=o;window.drRpc=async(n,a)=>{const r=await o(n,a);
+            if(n==='drone_mapa_fazenda'){const t=r.features.find(f=>f.properties.camada==='talhao'&&f.properties.status==='sem_projeto')
+                ||r.features.find(f=>f.properties.camada==='talhao');
+              window.__base=t.properties.talhao;
+              r.features.push({type:'Feature',geometry:t.geometry,properties:{camada:'talhao',talhao:9001,status:'fora_da_base',area_ha:1}});}
+            return r;};}""")
+        pg.evaluate(f"drAbrirFazenda({FAZ},'normal')")
+        pg.wait_for_selector('.dr-chip-bt', timeout=20000)
+        pg.wait_for_function("DR.mapa&&DR.mapa.isStyleLoaded()&&DR.mapa.getSource('tal')", timeout=20000)
+        pg.wait_for_timeout(1500)
+        confere(pg.evaluate("[...DR.rem]") == [9001], 'talhão fora da Base já vem marcado para sair')
+        confere(pg.locator('#dr-side-rodape button:has-text("Gerar prévia")').is_enabled(), 'Gerar prévia ativo só com a remoção')
+        confere('fora da Base já vêm marcados' in (pg.text_content('#dr-side-corpo') or ''), 'aviso de fora da Base no painel')
+        foto(pg, 'fora-da-base')
+        # clique de verdade num ponto onde os dois talhões se sobrepõem
+        ponto = pg.evaluate("""()=>{const m=DR.mapa,c=m.getCanvas().getBoundingClientRect();
+            for(let y=10;y<c.height;y+=8)for(let x=10;x<c.width;x+=8){
+              const f=m.queryRenderedFeatures([x,y],{layers:['tal-f']}).map(q=>q.properties.talhao);
+              if(f.includes(9001)&&f.includes(window.__base))return{x:c.left+x,y:c.top+y,ordem:f};}
+            return null;}""")
+        confere(ponto is not None, f'há ponto com os dois talhões sobrepostos ({ponto and ponto["ordem"]})')
+        base_t = pg.evaluate('window.__base')
+        pg.evaluate("drFerramenta('limpar');drFerramenta('incluir')")
+        pg.mouse.click(ponto['x'], ponto['y']); pg.wait_for_timeout(300)
+        confere(pg.evaluate("[...DR.sel.keys()]") == [base_t], f'Incluir em área sobreposta pega o talhão da Base ({base_t})')
+        pg.evaluate("drFerramenta('limpar');drFerramenta('remover')")
+        if pg.evaluate("drTalhaoProps().get(window.__base).status") == 'sem_projeto':
+            pg.mouse.click(ponto['x'], ponto['y']); pg.wait_for_timeout(300)
+            confere(pg.evaluate("[...DR.rem]") == [9001], 'Remover em área sobreposta pula o talhão sem projeto')
+        pg.evaluate("drFerramenta('limpar');drFerramenta('incluir')")
+        confere(pg.evaluate("DR.rem.size") == 0, 'Limpar tira as marcas')
+        pg.evaluate("async()=>{await drCarregarFazenda();}")
+        confere(pg.evaluate("DR.rem.size") == 0, 'limpo não volta no ciclo de atualização')
+        pg.evaluate("drTrocarDoc('catacao')")
+        confere(pg.evaluate("DR.rem.size") == 0, 'Catação não marca nada')
+        pg.evaluate("drTrocarDoc('normal')")
+        confere(pg.evaluate("[...DR.rem]") == [9001], 'voltar para a Normal marca de novo')
+        pg.click('.dr-chip-bt:has-text("9001")')
+        confere(pg.evaluate("DR.rem.size") == 0, 'clique no número desmarca')
+        pg.evaluate("async()=>{await drCarregarFazenda();}")
+        confere(pg.evaluate("DR.rem.size") == 0, 'desmarcado não volta no ciclo de atualização')
+        pg.evaluate("()=>{window.drRpc=window.__rpcOrig;}")
+        pg.evaluate(f"drAbrirFazenda({FAZ},'normal')")
+        pg.wait_for_selector('#dr-side-cab .dr-side-sobre:has-text("Nova revisão")', timeout=20000)
+        pg.wait_for_timeout(1500)
 
         # S5.6 editor: janela de obstáculos até antes do envio. Proteção primeiro (decisão 12): nada pode subir.
         pg.evaluate("""()=>{window.drSubirComProgresso=()=>{throw new Error('teste: envio bloqueado')};

@@ -65,6 +65,12 @@ def test_primeira_normal_parte_do_vazio_e_escopo_nulo_e_fazenda_inteira(base):
     assert sorted(itens) == [1, 2, 3] and all(v['origem'] == 'sistema' for v in itens.values())
 
 
+def test_revisao_so_com_remocao_tira_talhao_fora_da_base(base):
+    vig = {1: _item(box(0, 0, 100, 100)), 9: _item(box(500, 0, 600, 100))}
+    itens = montar_normal(vig, {'incluir': [], 'remover': [9]}, base, Polygon(), [], 2)
+    assert sorted(itens) == [1] and itens[1]['desde_rev'] == 0
+
+
 def test_remover_tudo_da_erro_de_area_vazia(base):
     vig = {1: _item(box(0, 0, 100, 100))}
     with pytest.raises(ErroGeracao, match='vazia'):
