@@ -84,7 +84,7 @@ As do plano geral, em especial: parâmetros fixos; dado real nunca no git nem em
 
 **Mensagens:** entra `{tipo: 'processar', item}`; saem `{tipo: 'progresso', id, fazenda, pct, pct_item, fase}`, `{tipo: 'pronto', id, resultado}` e `{tipo: 'erro', id, msg}`.
 
-**Resultado:** `{id, pulados, fazendas: [{operacao, cod_faz, base_analise_id, linhas_novas, sem_trabalho: [...], analise, shapefile: Uint8Array}]}`.
+**Resultado:** `{id, pulados, fazendas: [{operacao, cod_faz, base_analise_id, linhas_novas, frotas_leitura: [{frota, duracao_total_s, duracao_trabalho_s, sem_trabalho}], analise, shapefile: Uint8Array}]}`.
 
 **Prova no Edge (servidor só em 127.0.0.1; `app/` + `py/` publicado numa pasta temporária + amostras):**
 1. Amostras reais pelo caminho inteiro (OPFS → fila → Worker): `.jdl` e `.fdl`+`.fdd` em duas fazendas. Contagens iguais às do Python nativo, inclusive por talhão, e coordenadas a menos de 1 µm.

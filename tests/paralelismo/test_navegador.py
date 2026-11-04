@@ -2,9 +2,12 @@
 import io
 import json
 import os
+import re
 import zipfile
+from pathlib import Path
 
 import pytest
+import shapefile
 
 from paralelismo import navegador
 from paralelismo.analise import analisar_fazenda, linhas_do_grupo, para_utm
@@ -175,3 +178,8 @@ def test_analisar_com_linha_sem_data_grava_shapefile():
 def test_publicado_no_modulo_paralelismo():
     from mapas.publicar import MODULOS
     assert 'paralelismo/navegador.py' in MODULOS['paralelismo']
+
+
+def test_worker_fixa_a_versao_validada_do_pyshp():
+    worker = (Path(__file__).resolve().parents[2] / 'app' / 'paralelismo-worker.js').read_text(encoding='utf-8')
+    assert re.search(r"pyshp==([\d.]+)", worker).group(1) == shapefile.__version__
