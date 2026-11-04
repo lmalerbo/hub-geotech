@@ -1832,7 +1832,7 @@ function irConfig(aba){
 // As regras (níveis, resumo, filtro, mapas) estão em app/usuarios.js. Aqui fica só a tela.
 let ACESSOS=[], selEmail=null;
 let USR={filtro:'todos',busca:'',aba:'conta',rasc:null,base:null,mapas:undefined};
-const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone',corretivos:'Mapas de aplicação',apresentacao:'Apresentação semanal'};
+const MOD_ROTULO={plantio:'Plantio',preparo:'Preparo',colheita:'Colheita',voo:'Voo',drone:'Drone',paralelismo:'Paralelismo',corretivos:'Mapas de aplicação',apresentacao:'Apresentação semanal'};
 const USR_ABAS=[['conta','Conta'],['modulos','Módulos do Hub'],['ferramentas','Ferramentas']];
 const USR_CHIP_NIVEL={nada:'rc-dash',ver:'rc-a',editar:'rc-admin'};
 let GRUPOS_GM=null, MAPAS_GM=null;
@@ -1974,10 +1974,10 @@ function usrHtmlConta(r){
     <button class="btn-retro usr-perigo" data-email="${esc(r.email)}" onclick="removerUsr(this.dataset.email)">Remover</button></div>`}`;
 }
 function usrHtmlModulos(r){
-  return `<p class="usr-nota-topo">Nível em cada módulo. Leitura consulta; Solicitante pede projetos (Drone); Editor faz ações e envia arquivos.</p>
+  return `<p class="usr-nota-topo">Nível em cada módulo. Leitura consulta; Solicitante pede projetos (Drone) ou envia análises (Paralelismo); Editor faz ações e envia arquivos.</p>
   ${USR_MODULOS_HUB.map(([id,nome])=>{
     const n=r.niveis[id]||'';
-    const opcoes=[['','Sem acesso'],['leitura','Leitura'],...(id==='drone'?[['solicitante','Solicitante']]:[]),['editor','Editor']];
+    const opcoes=usrOpcoesNivel(id);
     return `<div class="usr-linha"><div class="cfg-row-lbl">${esc(nome)}</div>
       <div class="seg usr-niveis" aria-label="Nível em ${esc(nome)}">${opcoes.map(([v,t])=>
         `<button type="button" class="${n===v?'on':''}" data-mod="${id}" data-n="${v}" onclick="usrNivel(this)">${t}</button>`).join('')}</div></div>`;

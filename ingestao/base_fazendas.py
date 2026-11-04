@@ -43,6 +43,15 @@ def para_int(valor):
         return None
 
 
+def para_declividade(valor):
+    # 99 na Base Fazendas quer dizer sem informação
+    try:
+        v = float(str(valor).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+    return None if v == 99 else v
+
+
 def para_data(valor):
     if isinstance(valor, datetime.date):
         return valor.isoformat()
@@ -87,6 +96,7 @@ def ler(caminho):
             'estagio': texto(r.get('ESTAGIO')),
             'data_ultimo_corte': para_data(r.get('DATA_CORTE')),
             'propriedade': texto(r.get('PROPRIEDAD')),
+            'declividade': para_declividade(r.get('DECLIVIDAD')),
         }
     return list(fazendas.values()), list(talhoes.values()), vazias, invalidas, repetidos
 

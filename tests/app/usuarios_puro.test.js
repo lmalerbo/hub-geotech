@@ -8,6 +8,16 @@ const ctx = { console };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(__dirname + '/../../app/usuarios.js', 'utf8'), ctx);
 
+test('nível solicitante só aparece no Drone e no Paralelismo', () => {
+  const niveis = (m) => Array.from(ctx.usrOpcoesNivel(m), (o) => o[0]);
+  assert.deepStrictEqual(niveis('paralelismo'), ['', 'leitura', 'solicitante', 'editor']);
+  assert.deepStrictEqual(niveis('drone'), ['', 'leitura', 'solicitante', 'editor']);
+  assert.deepStrictEqual(niveis('plantio'), ['', 'leitura', 'editor']);
+});
+test('resumo mostra o nível no Paralelismo', () => {
+  assert.strictEqual(ctx.usrResumo({ niveis: { paralelismo: 'solicitante' } }), 'Paralelismo (solicitante)');
+});
+
 const mapa = { id: 7, nome: 'Voos', grupos: [{ grupoId: 1, podeEditar: false }, { grupoId: 2, podeEditar: true }] };
 
 test('o que os grupos marcados dão num mapa', () => {
