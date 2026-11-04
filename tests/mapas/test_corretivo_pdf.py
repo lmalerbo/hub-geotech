@@ -134,3 +134,12 @@ def test_legenda_blend_unico(tmp_path):
         esperado = sum(1 for l in linhas if rot in l)
         assert texto.count(rot) == esperado, rot
     assert 'Blend' in texto
+
+
+def test_tipo_do_corretivo_e_titulo_em_destaque(tmp_path):
+    from tests.mapas.test_corretivo_layout import CASOS
+    destino = tmp_path / 'c.pdf'
+    gerar_pdf(CASOS['1_linha'], destino)
+    spans = [s for b in pymupdf.open(destino)[0].get_text('dict')['blocks'] for l in b.get('lines', [])
+             for s in l['spans'] if s['text'].strip().startswith('CORRETIVO ·')]
+    assert spans and spans[0]['size'] >= 10

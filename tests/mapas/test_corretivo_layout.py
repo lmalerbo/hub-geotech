@@ -176,9 +176,16 @@ def test_titulos_dos_quadros_de_totais_iguais(pdf):
     spans = list(_spans(p))
     # Os títulos dos quadros são os textos de produto em letra pequena ("Fosfato" grande é a legenda ou a tabela).
     produtos = {t['titulo'] for t in __import__('mapas.corretivo_dados', fromlist=['x']).totais_por_produto(CASOS[nome])}
-    pequenos = {s['text'].strip(): round(s['size'], 1) for s in spans
-                if s['text'].strip() in produtos and s['size'] < 11}
-    assert set(pequenos) == produtos, f'{nome}: quadros de totais {sorted(pequenos)} ≠ produtos {sorted(produtos)}'
+    if nome.startswith('aereo'):                 # no aéreo o nome pode vir em duas linhas: confere os pedaços
+        palavras = {w for t in produtos for w in t.split()}
+        pequenos = {s['text'].strip(): round(s['size'], 1) for s in spans
+                    if s['size'] < 11 and set(s['text'].split()) <= palavras}
+        juntos = ' '.join(pequenos)
+        assert all(t in juntos for t in produtos), f'{nome}: quadros de totais {juntos!r} ≠ produtos {sorted(produtos)}'
+    else:
+        pequenos = {s['text'].strip(): round(s['size'], 1) for s in spans
+                    if s['text'].strip() in produtos and s['size'] < 11}
+        assert set(pequenos) == produtos, f'{nome}: quadros de totais {sorted(pequenos)} ≠ produtos {sorted(produtos)}'
     assert len(set(pequenos.values())) <= 1, f'{nome}: títulos dos quadros com tamanhos diferentes {pequenos}'
 
 
