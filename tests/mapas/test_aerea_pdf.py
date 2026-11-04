@@ -26,12 +26,22 @@ def test_talhao_400_com_a_margem_e_total_com_ela(texto):
     assert 'TALHÕES + 5%' in texto
 
 
-def test_unidade_do_insumo_na_tabela_e_nos_quadros(texto):
-    assert '0,15 L' in texto and '0,11 kg' in texto
-    assert 'DOSE/ha' in texto and 'INSUMO' in texto
+def test_tabela_so_com_talhao_area_e_total(texto):
+    assert 'TALHÃO' in texto and 'ÁREA (ha)' in texto and 'TOTAL' in texto
+    for fora in ('INSUMO', 'DOSE/ha', 'O.S.\n'):
+        assert fora not in texto, f'{fora!r} não deveria estar no PDF aéreo'
+    assert '+ 0,' in texto and 'kg' in texto            # talhões 1–3 têm L e kg: total com as duas unidades
 
 
-def test_total_grande_nao_encosta_na_dose_nem_na_os(tmp_path):
+def test_legenda_tem_area_de_aplicacao_e_os_insumos(texto):
+    from mapas.corretivo_dados import nome_insumo
+    from tests.mapas.test_corretivo_layout import INSUMOS
+    assert 'Área de aplicação' in texto
+    for i in (0, 1, 3):
+        assert nome_insumo(INSUMOS[i]) in texto
+
+
+def test_total_grande_cabe_na_coluna(tmp_path):
     from tests.mapas.test_corretivo_layout import _aereo, _ins
     d = _aereo(2, [_ins(0, 1, [1, 2], 20.0, os='OS-2026-123')], deitada=False)          # retrato: o mais estreito
     d['areas'] = {'1': {'area_ha': 480.0, 'editada': False}, '2': {'area_ha': 5200.0, 'editada': False}}
@@ -46,8 +56,8 @@ def test_total_grande_nao_encosta_na_dose_nem_na_os(tmp_path):
                 y = (s['bbox'][1] + s['bbox'][3]) / 2
                 vizinhos = sorted((t for t in spans if t['bbox'][1] <= y <= t['bbox'][3]), key=lambda t: t['bbox'][0])
                 i = vizinhos.index(s)
-                assert vizinhos[i - 1]['bbox'][2] + 8 <= s['bbox'][0], 'total encosta na dose'
-                assert s['bbox'][2] + 8 <= vizinhos[i + 1]['bbox'][0], 'total encosta na O.S.'
+                assert s['bbox'][2] <= p.rect.width - 10 * 72 / 25.4, 'total sai da folha'
+                assert vizinhos[i - 1]['bbox'][2] + 8 <= s['bbox'][0], 'total encosta na área'
                 return
     raise AssertionError('total 104.000,00 L não encontrado')
 

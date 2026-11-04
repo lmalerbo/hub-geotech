@@ -160,7 +160,9 @@ def test_tabela_e_legenda_com_letra_grande(pdf):
         spans = list(_spans(p))
         for s in spans:
             t = s['text'].strip()
-            if t in ROTULOS and _linha_da_tabela(s, spans):
+            if nome.startswith('aereo') and re.search(r'\d,\d\d (L|kg)', t):   # aéreo: a célula é o TOTAL "x,xx L"
+                tabela.append(s['size'])
+            elif t in ROTULOS and _linha_da_tabela(s, spans):
                 tabela.append(s['size'])
             elif t in ROTULOS + ('Blend',):
                 legenda[t] = max(legenda.get(t, 0), s['size'])
@@ -212,9 +214,14 @@ def test_cada_linha_aparece_uma_vez_e_inteira(pdf):
     dados = CASOS[nome]
     # cada (talhão, dose) da tabela tem de aparecer exatamente uma vez no documento
     texto = '\n'.join(p.get_text() for p in doc)
-    for ap in dados['aplicacoes']:
-        dose = f"{ap['dose']:.2f}".replace('.', ',')
-        assert texto.count(dose) >= len(ap['talhoes']), f'{nome}: faltou linha com dose {dose}'
+    if nome.startswith('aereo'):                 # a tabela aérea não mostra dose: cada talhão aparece na tabela (12 pt)
+        tabela = [s['text'].strip() for p in doc for s in _spans(p) if abs(s['size'] - LETRA_TABELA) < 0.5]
+        for t in sorted(int(k) for k in dados['areas']):
+            assert str(t) in tabela, f'{nome}: talhão {t} fora da tabela'
+    else:
+        for ap in dados['aplicacoes']:
+            dose = f"{ap['dose']:.2f}".replace('.', ',')
+            assert texto.count(dose) >= len(ap['talhoes']), f'{nome}: faltou linha com dose {dose}'
     # nenhuma linha partida: numa linha da tabela (rótulo + números na mesma altura), estão dose, total e O.S.
     for p in doc:
         spans = list(_spans(p))
@@ -235,7 +242,10 @@ def test_toda_pagina_organizada(pdf):
         texto = p.get_text()
         spans = list(_spans(p))
         assert 'Gerado em' in texto, f'{nome} pág. {i + 1}: sem rodapé'
-        if any(s['text'].strip() in ROTULOS and _linha_da_tabela(s, spans) for s in spans):   # legenda não conta
+        if nome.startswith('aereo'):             # aéreo: sem coluna O.S.; a página com células de total tem o cabeçalho
+            if any(re.search(r'\d,\d\d (L|kg)', s['text']) and abs(s['size'] - LETRA_TABELA) < 0.5 for s in spans):
+                assert 'TALHÃO' in texto, f'{nome} pág. {i + 1}: tabela sem cabeçalho'
+        elif any(s['text'].strip() in ROTULOS and _linha_da_tabela(s, spans) for s in spans):   # legenda não conta
             assert 'TALHÃO' in texto and 'O.S.' in texto, f'{nome} pág. {i + 1}: tabela sem cabeçalho'
         if n > 1:
             assert f'Página {i + 1} de {n}' in texto, f'{nome} pág. {i + 1}: sem numeração'

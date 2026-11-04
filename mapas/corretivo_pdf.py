@@ -4,7 +4,8 @@ Fazenda em pé (retrato), página 1 de cima para baixo: MAPA em largura total (l
 CARIMBO numa faixa horizontal (identificação | totais por produto | escala/área/safra e norte) e TABELA
 "APLICAÇÕES POR TALHÃO" com letra grande. Linhas que não cabem vão para as páginas seguintes.
 Fazenda larga (paisagem): folha 1 só com MAPA e CARIMBO; a TABELA, com a mesma letra grande, da folha 2 em diante.
-Aplicação aérea: coluna INSUMO, unidade junto do número e talhão 400 (margem de 5%) no fim da tabela.
+Aplicação aérea: tabela só com TALHÃO, ÁREA e TOTAL (soma dos insumos por unidade), mapa de uma cor e a legenda com
+os insumos; talhão 400 (margem de 5%) no fim da tabela.
 
 Coordenadas da página em mm (origem no topo). Usa só as peças genéricas de mapas/layout.py (Pagina, eixo_mapa,
 escala, moldura, norte, nova_pagina); a tabela, o carimbo e a legenda são locais, para não mexer no Drone."""
@@ -25,8 +26,8 @@ from shapely.geometry import box
 from shapely.ops import unary_union
 
 from mapas.corretivo_dados import (
-    OPERACOES, SEM_APLICACAO, aerea, area_total, chave_cor, cores_do_mapa, faixas, linhas_tabela, lista_os, rotulo,
-    totais_por_produto, _ordenadas,
+    COR_AEREA, OPERACOES, SEM_APLICACAO, aerea, area_total, chave_cor, cores_do_mapa, faixas, linha_total,
+    linhas_tabela, lista_os, rotulo, totais_por_produto, _ordenadas,
 )
 from mapas.layout import (
     CINZA, GRAFITE, LINHA, MARCA, Pagina, br, caixa_norte, eixo_mapa, escala_grafica, escala_numerica,
@@ -51,12 +52,9 @@ LARG_RETRATO = 190               # as colunas abaixo são para 190 mm; em paisag
 COLUNAS = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 42, 'right'), ('APLICAÇÃO', 52, 'left'),
            ('DOSE (t/ha)', 124, 'right'), ('TOTAL (t)', 148, 'right'), ('O.S.', 153, 'left')]
 NOTA = '* área editada · ÁREA ha · DOSE t/ha · TOTAL t'
-# Aéreo: o nome do insumo é mais longo e a unidade vai junto do número ("0,15 L", "15,75 L").
-# TOTAL fica 36 mm depois da DOSE: cabe "104.000,00 L" a 14 pt sem encostar (teste do total grande).
-COLUNAS_AEREA = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 36, 'right'), ('INSUMO', 41, 'left'),
-                 ('DOSE/ha', 126, 'right'), ('TOTAL', 162, 'right'), ('O.S.', 166, 'left')]
-NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · DOSE por ha e TOTAL na unidade de cada insumo'
-LIVRE_DOSE = 25                  # mm reservados antes da coluna DOSE (o número fica alinhado à direita)
+# Aéreo (28/10): só TALHÃO | ÁREA | TOTAL (soma dos insumos, por unidade). O insumo fica na legenda e nos cards.
+COLUNAS_AEREA = [('TALHÃO', 2, 'left'), ('ÁREA (ha)', 60, 'right'), ('TOTAL', 186, 'right')]
+NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · TOTAL = soma dos insumos do talhão'
 
 
 def _colunas(dados):
@@ -241,6 +239,8 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
         aps = por_talhao.get(t, [])
         if not aps:
             gpd.GeoSeries([geom], crs=gdf.crs).plot(ax=ax, facecolor=SEM_APLICACAO, edgecolor='none')
+        elif aerea(dados):                          # aéreo: todos os insumos em todos os talhões, uma cor só
+            gpd.GeoSeries([geom], crs=gdf.crs).plot(ax=ax, facecolor=COR_AEREA, edgecolor='none', alpha=0.92)
         else:
             for parte, ap in zip(faixas(geom, len(aps)), aps):
                 if parte.is_empty or parte.area == 0:
@@ -280,7 +280,11 @@ PASSO_LEG, PAD_LEG, SW_LEG = 6.2, 2.5, 5.0
 
 
 def _itens_legenda(dados) -> list:
-    """[(cor, texto)]: só os tipos usados; Blend é um item só; '◩ duas aplicações' se algum talhão tiver duas."""
+    """[(cor, texto)]: só os tipos usados; Blend é um item só; '◩ duas aplicações' se algum talhão tiver duas.
+    Aéreo: um quadrado só ('Área de aplicação') e, embaixo, o nome de cada insumo sem quadrado (cor '')."""
+    if aerea(dados):
+        nomes = list(dict.fromkeys(rotulo(a) for a in _ordenadas(dados)))
+        return ([(COR_AEREA, 'Área de aplicação')] + [('', n) for n in nomes]) if nomes else []
     cores = cores_do_mapa(dados)
     rotulos: dict[str, str] = {}
     for a in _ordenadas(dados):                  # Blend Dolomítico e PH7 têm a mesma cor: um item só
@@ -311,6 +315,8 @@ def _legenda_mapa(pg: Pagina, itens, x, y, w, h, ax, gdf):
         yy = by + pad + i * passo + passo / 2
         if cor is None:
             pg.texto(bx + pad, yy, texto, LETRA_LEGENDA, CINZA, va='center')
+        elif cor == '':                              # insumo do aéreo: nome sem quadrado, alinhado com os outros
+            pg.texto(bx + pad + sw + 2.5, yy, texto, LETRA_LEGENDA, GRAFITE, va='center')
         else:
             pg.ret(bx + pad, yy - 1.5, sw, 3, cor)
             pg.texto(bx + pad + sw + 2.5, yy, texto, LETRA_LEGENDA, GRAFITE, va='center')
@@ -416,10 +422,10 @@ def _linha_tabela(pg: Pagina, f: Folha, dados, yy: float, valores, bold=False, c
             continue
         x = f.col(fx)
         tam = LETRA_LINHA
-        if i == ultima:                               # O.S.: reduz/corta para caber na coluna
+        if i == ultima and aerea(dados):              # TOTAL: reduz/corta para caber depois da ÁREA
+            valor, tam = _caber(pg, valor, x - f.col(colunas[1][1]) - 10, LETRA_LINHA, 9)
+        elif i == ultima:                             # O.S.: reduz/corta para caber na coluna
             valor, tam = _caber(pg, valor, M + f.larg - x - 1, LETRA_LINHA, 9)
-        elif i == 2 and aerea(dados):                 # insumo: reduz até 11 pt antes de cortar
-            valor, tam = _caber(pg, valor, f.col(colunas[3][1]) - LIVRE_DOSE - x, LETRA_LINHA, 11)
         pg.texto(x, yy + LINHA_TAB / 2, valor, tam, cor, 'bold' if bold else 'normal', ha=ha, va='center')
 
 
@@ -509,8 +515,8 @@ def gerar_pdf(dados: dict, destino) -> str:
     f = PAISAGEM if orientacao(gdf) == 'paisagem' else RETRATO
     totais = totais_por_produto(dados)
     linhas = linhas_tabela(dados)
-    total = ['Total', br(area_total(dados)), '', '', '', '']
-    hb = _altura_carimbo(f, totais, aerea(dados))
+    total = linha_total(dados)
+    hb =_altura_carimbo(f, totais, aerea(dados))
     intervalos = _paginar(f, linhas, hb)
     # Retrato: a 1ª fatia da tabela vai na folha do mapa. Paisagem: a folha do mapa não tem tabela.
     na_folha_do_mapa = None if f.paisagem else intervalos[0]
