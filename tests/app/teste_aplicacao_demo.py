@@ -193,6 +193,13 @@ try:
         pg.click('[data-tirar]')
         confere('ao menos um talhão' in pg.locator('#cr-painel').inner_text(), 'tirar todos os talhões bloqueia com mensagem')
         confere(pg.evaluate("CR_ST.det.apls.every(a => a.talhoes.join() === '2,3')"), 'tirar todos não grava nada')
+        # mapa antigo: listas diferentes geram aviso; mesmo insumo, dose e O.S. repetidos bloqueiam antes de gravar
+        pg.evaluate("CR_ST.det.apls[0].talhoes = [2]; crLimparSel(); crRenderPainel()")
+        confere('talhões diferentes' in pg.locator('#cr-painel').inner_text(), 'listas diferentes mostram aviso no painel')
+        pg.evaluate("const [a, b] = CR_ST.det.apls; Object.assign(a, { insumo_id: b.insumo_id, insumo_nome: b.insumo_nome, dose: b.dose, os: b.os }); crToggleSel(3)")
+        pg.click('[data-tirar]')
+        confere('duas vezes' in pg.locator('#cr-painel').inner_text(), 'insumo repetido bloqueia com mensagem clara')
+        confere(pg.evaluate("CR_ST.det.apls[1].talhoes.join()") == '2,3', 'insumo repetido não grava nada')
 
         # fim das conferências
         confere(not erros, f'sem erros de JavaScript ({erros[:2]})')

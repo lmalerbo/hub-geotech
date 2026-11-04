@@ -75,3 +75,11 @@ test('aéreo: talhões do mapa são a união, uma cor só e regravação só do 
   igual(ctx.crRegravacoes(APLS, [1, 2]).map(r => [r.apl.insumo_id, r.talhoes]), [[2, [1, 2]], [3, [1, 2]]]);
   igual(ctx.crRegravacoes(APLS, [1, 2, 3]).length, 3);
 });
+
+test('aéreo: mapa antigo com listas diferentes ou insumo repetido', () => {
+  assert.strictEqual(ctx.crMapaDesigual(APLS), true);
+  assert.strictEqual(ctx.crMapaDesigual([APLS[0], { ...APLS[1], talhoes: [2, 1] }]), false);
+  assert.strictEqual(ctx.crMapaDesigual([]), false);
+  assert.strictEqual(ctx.crInsumoRepetido(APLS), null);
+  assert.strictEqual(ctx.crInsumoRepetido([APLS[0], { ...APLS[0], id: 99, talhoes: [3] }]).insumo_nome, 'INSETICIDA REVOLUX');
+});

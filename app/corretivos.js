@@ -73,6 +73,10 @@ function crRegravacoes(apls, talhoes) {
   return crOrdenadas(apls).filter(a => [...a.talhoes].sort((x, y) => x - y).join(',') !== alvo)
     .map(apl => ({ apl, talhoes: [...talhoes].sort((a, b) => a - b) }));
 }
+// Mapa antigo: insumos em talhões diferentes (o PDF mostra o que está gravado; incluir ou tirar iguala as listas).
+function crMapaDesigual(apls) { return crRegravacoes(apls, crTalhoesDoMapa(apls)).length > 0; }
+// Mapa antigo: mesmo insumo, dose e O.S. em duas aplicações. O banco recusa que as duas fiquem com o mesmo talhão.
+function crInsumoRepetido(apls) { return apls.find((a, i) => apls.some((b, j) => j > i && crMesma(a, b))) || null; }
 function crTotaisPorProduto(apls, areas, operacao) {
   const soma = {};
   const area = a => a.talhoes.reduce((s, t) => s + Number(areas[t].area_ha), 0);
@@ -1015,6 +1019,11 @@ async function crMudarTalhoesAerea(acao) {
     CR_ST.formMsg = { tipo: 'info', texto: 'Adicione o primeiro insumo para gravar os talhões do mapa.' };
     return crRenderPainel();
   }
+  const repetido = crInsumoRepetido(CR_ST.det.apls);
+  if (repetido) {
+    CR_ST.formMsg = { tipo: 'erro', texto: `${crNomeInsumo(repetido.insumo_nome)} aparece duas vezes com a mesma dose e O.S. Exclua uma das aplicações para mudar os talhões.` };
+    return crRenderPainel();
+  }
   const areas = {};
   for (const t of novos) areas[t] = crAreaDe(t);
   CR_ST.gravando = true;
@@ -1367,6 +1376,7 @@ function crRenderPainel() {
   alvo.innerHTML = `
     <div class="cr-painel-rol">
       ${fora.length ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Talhões que saíram da Base: ${fora.join(', ')}. Eles continuam no PDF, sem desenho.</span></div>` : ''}
+      ${aerea && crMapaDesigual(apls) ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Os insumos deste mapa estão em talhões diferentes, e o PDF mostra o que está gravado. Incluir ou tirar um talhão iguala todos.</span></div>` : ''}
       ${aerea ? `${crSecaoTalhoesAerea(sel)}${crSecaoInsumoAerea()}` : (sel.length ? crSecaoNova(sel, false) : crSecaoDica())}
       <section class="cr-sec" aria-labelledby="cr-h-lista">
         <h2 id="cr-h-lista">Aplicações do mapa</h2>
