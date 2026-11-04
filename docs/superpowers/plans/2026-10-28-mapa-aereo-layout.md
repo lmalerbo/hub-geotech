@@ -47,7 +47,7 @@ de talhões; a tela passa a manter todas as listas iguais.
   (corretivo continua com 6 colunas); `linha_total(dados) -> list[str]` (aéreo: `['Total', área_total_txt, total_txt]`,
   corretivo: `['Total', área_total_txt, '', '', '', '']`); `COR_AEREA = PALETA_INSUMOS[0]`.
 
-- [ ] **Step 1: Teste que falha.** Em `tests/mapas/test_aerea_dados.py`, troque
+- [x] **Step 1: Teste que falha.** Em `tests/mapas/test_aerea_dados.py`, troque
   `test_tabela_tem_unidade_junto_do_numero_e_talhao_400_so_com_area` por:
 
 ```python
@@ -78,9 +78,9 @@ def test_linha_total_do_corretivo_continua_com_seis_colunas():
 
   E no import do topo acrescente `linha_total`.
 
-- [ ] **Step 2:** `python -m pytest tests/mapas/test_aerea_dados.py -q` → FAIL (`ImportError: linha_total`).
+- [x] **Step 2:** `python -m pytest tests/mapas/test_aerea_dados.py -q` → FAIL (`ImportError: linha_total`).
 
-- [ ] **Step 3: Implementação.** Em `mapas/corretivo_dados.py`, depois de `PALETA_INSUMOS`:
+- [x] **Step 3: Implementação.** Em `mapas/corretivo_dados.py`, depois de `PALETA_INSUMOS`:
 
 ```python
 COR_AEREA = PALETA_INSUMOS[0]          # aéreo: todos os talhões do mapa numa cor só (spec 2026-10-28)
@@ -129,9 +129,9 @@ def linha_total(dados) -> list[str]:
   `if aerea(dados): linhas.append([TALHAO_MARGEM, …])`. Observação: `linha_total` soma os totais já arredondados dos
   cards, então o Total bate com os cards.
 
-- [ ] **Step 4:** `python -m pytest tests/mapas/test_aerea_dados.py tests/mapas/test_corretivo_dados.py -q` → PASS.
+- [x] **Step 4:** `python -m pytest tests/mapas/test_aerea_dados.py tests/mapas/test_corretivo_dados.py -q` → PASS.
 
-- [ ] **Step 5: Commit** — `git add mapas/corretivo_dados.py tests/mapas/test_aerea_dados.py && git commit -m "Aereo: tabela com talhao, area e total somado por unidade"`
+- [x] **Step 5: Commit** — `git add mapas/corretivo_dados.py tests/mapas/test_aerea_dados.py && git commit -m "Aereo: tabela com talhao, area e total somado por unidade"`
 
 ---
 
@@ -145,7 +145,7 @@ def linha_total(dados) -> list[str]:
 - Consumes: nada novo.
 - Produces: `_altura_carimbo(f, totais, grande: bool)`; `_quadros(pg, totais, x, y, w, por_linha, grande: bool)`.
 
-- [ ] **Step 1: Testes que falham.** Em `tests/mapas/test_aerea_pdf.py`, acrescente:
+- [x] **Step 1: Testes que falham.** Em `tests/mapas/test_aerea_pdf.py`, acrescente:
 
 ```python
 def _spans(destino):
@@ -186,9 +186,9 @@ def test_tipo_do_corretivo_e_titulo_em_destaque(tmp_path):
 
   (Se `pymupdf` não estiver importado no arquivo, importe como no topo de `test_aerea_pdf.py`.)
 
-- [ ] **Step 2:** `python -m pytest tests/mapas/test_aerea_pdf.py tests/mapas/test_corretivo_pdf.py -q` → os três novos FAIL.
+- [x] **Step 2:** `python -m pytest tests/mapas/test_aerea_pdf.py tests/mapas/test_corretivo_pdf.py -q` → os três novos FAIL.
 
-- [ ] **Step 3: Título.** Em `_carimbo`, troque o bloco da etiqueta (de `tag = …` até `y = yb + 7.5`) por:
+- [x] **Step 3: Título.** Em `_carimbo`, troque o bloco da etiqueta (de `tag = …` até `y = yb + 7.5`) por:
 
 ```python
     tipo = 'APLICAÇÃO AÉREA' if aerea(dados) else f"CORRETIVO · {OPERACOES[dados['operacao']].upper()}"
@@ -199,7 +199,7 @@ def test_tipo_do_corretivo_e_titulo_em_destaque(tmp_path):
 
   e nas constantes do topo: `TIPO_TAM = 11                     # tipo do mapa, título do carimbo (28/10: era etiqueta de 4,5 pt)`.
 
-- [ ] **Step 4: Cards.** Parametrize por `grande` (aéreo):
+- [x] **Step 4: Cards.** Parametrize por `grande` (aéreo):
 
 ```python
 CARD = {False: dict(h=15, passo=18, tit=(4.8, 4.0), val=(12, 9), un=5.5, y_val=5, y_un=6.8),
@@ -226,11 +226,11 @@ def _tamanho_titulos(pg: Pagina, titulos, max_mm: float, inicio=4.8, minimo=4.0)
   com `cy + c['y_val']`, e a unidade com `c['un']` em `cy + c['y_un']`. Em `_carimbo`:
   `_quadros(pg, totais, xb, yb, f.wb, f.por_linha, aerea(dados))`. Em `gerar_pdf`: `hb = _altura_carimbo(f, totais, aerea(dados))`.
 
-- [ ] **Step 5:** `python -m pytest tests/mapas -q` → PASS (inclusive `test_nenhum_texto_sobre_outro` e
+- [x] **Step 5:** `python -m pytest tests/mapas -q` → PASS (inclusive `test_nenhum_texto_sobre_outro` e
   `test_nenhum_texto_sai_da_margem` para todos os casos; se o título sobrepuser o nome da fazenda, aumente o
   fator `1.35`). `python -m pytest tests/drone/test_mapa_pdf_regressao.py -q` → PASS.
 
-- [ ] **Step 6: Commit** — `git commit -am "PDF dos mapas: tipo do mapa como titulo e cards maiores no aereo"`
+- [x] **Step 6: Commit** — `git commit -am "PDF dos mapas: tipo do mapa como titulo e cards maiores no aereo"`
 
 ---
 
@@ -243,7 +243,7 @@ def _tamanho_titulos(pg: Pagina, titulos, max_mm: float, inicio=4.8, minimo=4.0)
 **Interfaces:**
 - Consumes: `linhas_tabela`, `linha_total`, `COR_AEREA` (Task 1).
 
-- [ ] **Step 1: Testes.** Em `tests/mapas/test_aerea_pdf.py`:
+- [x] **Step 1: Testes.** Em `tests/mapas/test_aerea_pdf.py`:
   - Troque `test_unidade_do_insumo_na_tabela_e_nos_quadros` por:
 
 ```python
@@ -275,9 +275,9 @@ def test_legenda_tem_area_de_aplicacao_e_os_insumos(texto):
   - `test_toda_pagina_organizada`: o cabeçalho exige `'O.S.'` só quando não for aéreo; no aéreo, exija
     `'TALHÃO' in texto` nas páginas que têm células `\d,\d\d (L|kg)` a 12 pt.
 
-- [ ] **Step 2:** `python -m pytest tests/mapas -q` → os novos/ajustados FAIL.
+- [x] **Step 2:** `python -m pytest tests/mapas -q` → os novos/ajustados FAIL.
 
-- [ ] **Step 3: Tabela.**
+- [x] **Step 3: Tabela.**
 
 ```python
 # Aéreo (28/10): só TALHÃO | ÁREA | TOTAL (soma dos insumos, por unidade). O insumo fica na legenda e nos cards.
@@ -297,7 +297,7 @@ NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · TOTAL = 
   Em `gerar_pdf`, troque `total = ['Total', br(area_total(dados)), '', '', '', '']` por `total = linha_total(dados)`
   (importe `linha_total` e `COR_AEREA` de `mapas.corretivo_dados`).
 
-- [ ] **Step 4: Mapa de uma cor.** Em `_mapa`, no ramo `else:` (talhão com aplicação), antes do laço das faixas:
+- [x] **Step 4: Mapa de uma cor.** Em `_mapa`, no ramo `else:` (talhão com aplicação), antes do laço das faixas:
 
 ```python
         elif aerea(dados):                          # aéreo: todos os insumos em todos os talhões, uma cor só
@@ -306,7 +306,7 @@ NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · TOTAL = 
 
   (fica entre `if not aps:` e o `else:` das faixas).
 
-- [ ] **Step 5: Legenda.** Em `_itens_legenda`, no começo:
+- [x] **Step 5: Legenda.** Em `_itens_legenda`, no começo:
 
 ```python
     if aerea(dados):                             # um quadrado só e, embaixo, o nome de cada insumo
@@ -317,10 +317,10 @@ NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · TOTAL = 
   Em `_legenda_mapa`, trate `cor == ''` (insumo do aéreo): texto em `GRAFITE`, alinhado com os textos que têm
   quadrado (`bx + pad + sw + 2.5`), sem quadrado. `_ordenadas` vem de `mapas.corretivo_dados` (importe se ainda não estiver).
 
-- [ ] **Step 6:** `python -m pytest tests/mapas tests/drone/test_mapa_pdf_regressao.py -q` → PASS. Gere e olhe os
+- [x] **Step 6:** `python -m pytest tests/mapas tests/drone/test_mapa_pdf_regressao.py -q` → PASS. Gere e olhe os
   dois PDFs aéreos dos casos (`aereo_em_pe_3_insumos`, `aereo_largo_8_insumos`) em `.prints/` para conferir à vista.
 
-- [ ] **Step 7: Commit** — `git commit -am "PDF aereo: tabela talhao/area/total, mapa de uma cor e insumos na legenda"`
+- [x] **Step 7: Commit** — `git commit -am "PDF aereo: tabela talhao/area/total, mapa de uma cor e insumos na legenda"`
 
 ---
 
@@ -336,7 +336,7 @@ NOTA_AEREA = '* área editada · talhão 400 = margem de 5% da área · TOTAL = 
   `crRegravacoes(apls, talhoes) -> [{ apl, talhoes }]` (só as aplicações cuja lista difere de `talhoes`, ordenada);
   `crIncluir(atuais, sel)` e `crTirar(atuais, sel)` -> `number[]` ordenados.
 
-- [ ] **Step 1: Teste que falha** (no fim de `tests/app/aerea_puro.test.js`):
+- [x] **Step 1: Teste que falha** (no fim de `tests/app/aerea_puro.test.js`):
 
 ```js
 test('aéreo: talhões do mapa são a união, uma cor só e regravação só do que difere', () => {
@@ -351,9 +351,9 @@ test('aéreo: talhões do mapa são a união, uma cor só e regravação só do 
 });
 ```
 
-- [ ] **Step 2:** `node --test tests/app/*.test.js` → FAIL (`crTalhoesDoMapa is not a function`).
+- [x] **Step 2:** `node --test tests/app/*.test.js` → FAIL (`crTalhoesDoMapa is not a function`).
 
-- [ ] **Step 3: Implementação** (depois de `crCoresTalhao`):
+- [x] **Step 3: Implementação** (depois de `crCoresTalhao`):
 
 ```js
 // Aéreo (spec 2026-10-28): todos os insumos valem para os mesmos talhões, os "talhões do mapa".
@@ -371,9 +371,9 @@ function crRegravacoes(apls, talhoes) {
 }
 ```
 
-- [ ] **Step 4:** `node --test tests/app/*.test.js` → PASS.
+- [x] **Step 4:** `node --test tests/app/*.test.js` → PASS.
 
-- [ ] **Step 5: Commit** — `git commit -am "Tela aereo: funcoes de talhoes do mapa e cor unica"`
+- [x] **Step 5: Commit** — `git commit -am "Tela aereo: funcoes de talhoes do mapa e cor unica"`
 
 ---
 
@@ -388,10 +388,10 @@ function crRegravacoes(apls, talhoes) {
 - Consumes: `crTalhoesDoMapa`, `crCoresTalhaoMapa`, `crIncluir`, `crTirar`, `crRegravacoes` (Task 4);
   `crApi().editarAplicacao(mapaId, aplId, { tipo, calcario, insumo_id, dose, dose_gesso, os, talhoes, areas })`.
 
-- [ ] **Step 1: Mapa.** Em `crFeicoesMapa`, troque `crCoresTalhao(apls, t)` por
+- [x] **Step 1: Mapa.** Em `crFeicoesMapa`, troque `crCoresTalhao(apls, t)` por
   `crCoresTalhaoMapa(apls, t, CR_ST.trab.operacao)`.
 
-- [ ] **Step 2: Painel.** Em `crRenderPainel`, no aéreo (`aerea`), troque
+- [x] **Step 2: Painel.** Em `crRenderPainel`, no aéreo (`aerea`), troque
   `${sel.length ? crSecaoNova(sel, aerea) : crSecaoDica()}` por `${crSecaoTalhoesAerea(sel)}${crSecaoInsumoAerea(sel)}`
   (corretivo continua igual). Novas funções:
 
@@ -435,7 +435,7 @@ function crSecaoInsumoAerea(sel) {
   igual à `crSecaoNova`). Ligue `[data-incluir]` e `[data-tirar]` no mesmo `closest(...)` do clique do painel
   (linha ~1487) chamando `crMudarTalhoesAerea('incluir')` / `crMudarTalhoesAerea('tirar')`.
 
-- [ ] **Step 3: Gravar talhões.**
+- [x] **Step 3: Gravar talhões.**
 
 ```js
 async function crMudarTalhoesAerea(acao) {
@@ -476,29 +476,29 @@ async function crMudarTalhoesAerea(acao) {
 }
 ```
 
-- [ ] **Step 4: Novo insumo.** Em `crAplicarMarcadosAgora`, no aéreo use
+- [x] **Step 4: Novo insumo.** Em `crAplicarMarcadosAgora`, no aéreo use
   `const talhoes = aerea ? (crTalhoesDoMapa(CR_ST.det.apls).length ? crTalhoesDoMapa(CR_ST.det.apls) : crSelecionados()) : crSelecionados();`
   A mensagem de validação sem talhão (`crValidarAplicacao`) já cobre o caso vazio.
 
-- [ ] **Step 5: Editar insumo.** Em `crEditarAplicacao`, quando `a.tipo === 'insumo'`, não desenhe o `fieldset` de
+- [x] **Step 5: Editar insumo.** Em `crEditarAplicacao`, quando `a.tipo === 'insumo'`, não desenhe o `fieldset` de
   Talhões e, no `onsubmit`, use `talhoes = a.talhoes` em vez das caixas marcadas.
 
-- [ ] **Step 6: Demo.** Em `tests/app/teste_aplicacao_demo.py` (bloco aéreo, linha ~68): marque 2 talhões, adicione
+- [x] **Step 6: Demo.** Em `tests/app/teste_aplicacao_demo.py` (bloco aéreo, linha ~68): marque 2 talhões, adicione
   o insumo (`[data-aplicar]`), adicione um segundo insumo sem marcar nada e confira em `CR_ST.det.apls` que os dois têm
   os mesmos talhões; marque um terceiro talhão, clique `[data-incluir]` e confira os três nos dois insumos; marque
   um, clique `[data-tirar]` e confira. Rode: `python tests/app/teste_aplicacao_demo.py` → 0 falha.
 
-- [ ] **Step 7: E2E real.** Em `tests/app/teste_corretivos_tela.py`, no bloco aéreo: depois do primeiro insumo
+- [x] **Step 7: E2E real.** Em `tests/app/teste_corretivos_tela.py`, no bloco aéreo: depois do primeiro insumo
   (`aplicar(..., [A, B])`), adicione um segundo insumo sem marcar talhões; confira no banco
   (`corretivo_aplicacao_talhoes` das duas aplicações) os talhões `{A, B}` em ambas; marque `A` e clique
   `[data-tirar]`, confira `{B}` em ambas. No PDF, troque `'0,15 L'` por `'Área de aplicação'` e acrescente
   `confere('INSUMO' not in texto, ...)`. O teste já apaga o mapa aéreo que criou. Rode com a conta de teste
   (veja a memória do projeto) → nenhuma falha.
 
-- [ ] **Step 8: Verificação geral.** `node --test tests/app/*.test.js`, `python -m pytest tests/mapas tests/drone/test_mapa_pdf_regressao.py -q`,
+- [x] **Step 8: Verificação geral.** `node --test tests/app/*.test.js`, `python -m pytest tests/mapas tests/drone/test_mapa_pdf_regressao.py -q`,
   demo e E2E → tudo verde. Conferir à vista um mapa aéreo e um de corretivo na tela e no PDF.
 
-- [ ] **Step 9: Commit** — `git commit -am "Tela aereo: talhoes do mapa valem para todos os insumos"`
+- [x] **Step 9: Commit** — `git commit -am "Tela aereo: talhoes do mapa valem para todos os insumos"`
 
 ---
 
@@ -513,7 +513,7 @@ async function crMudarTalhoesAerea(acao) {
 **Interfaces:**
 - Produces: operação `experimento` (rótulo `Experimento`), aceita pelo banco, pela tela e pelo PDF.
 
-- [ ] **Step 1: Testes que falham.**
+- [x] **Step 1: Testes que falham.**
   - `tests/mapas/test_corretivo_pdf.py`:
 
 ```python
@@ -538,9 +538,9 @@ test('operação Experimento', () => {
     acrescente a criação de um mapa `'experimento'` e confira que gravou (só roda depois da migração aplicada; o teste
     apaga o que criou, como os demais desse arquivo).
 
-- [ ] **Step 2:** `python -m pytest tests/mapas/test_corretivo_pdf.py -q` e `node --test tests/app/*.test.js` → FAIL.
+- [x] **Step 2:** `python -m pytest tests/mapas/test_corretivo_pdf.py -q` e `node --test tests/app/*.test.js` → FAIL.
 
-- [ ] **Step 3: Implementação.**
+- [x] **Step 3: Implementação.**
   - `OPERACOES` (Python) e `CR_OPERACOES` (JS): acrescente `'experimento': 'Experimento'` / `experimento: 'Experimento'`
     antes de `aerea`.
   - `CR_OP_VAR`: `experimento: '--experimento'`; em `app/corretivos.css:8` acrescente `--experimento:#c2557a;`.
@@ -556,9 +556,21 @@ alter table hub.corretivo_mapas add constraint corretivo_mapas_operacao_check
   check (operacao in ('subsolagem', 'supergrade', 'arado', 'experimento', 'aerea'));
 ```
 
-- [ ] **Step 4:** testes do Step 2 → PASS. Pedir ao Leo para aplicar a migração; depois rodar
+- [ ] **Step 4:** testes do Step 2 → PASS (feito, inclusive SQL em Postgres local). Falta: pedir ao Leo para aplicar a migração; depois rodar
   `python -m pytest tests/aplicacao/test_mapas_aplicacao_sql.py -q` → PASS.
 
-- [ ] **Step 5: Commit** — `git add -A supabase/migrations mapas app tests && git commit -m "Corretivo: operacao de preparo Experimento"`
+- [x] **Step 5: Commit** — `git add -A supabase/migrations mapas app tests && git commit -m "Corretivo: operacao de preparo Experimento"`
 
 **Deploy:** a migração tem de estar aplicada antes de publicar a tela; sem ela, criar mapa de Experimento dá erro.
+
+---
+
+## Registro da execução (04/11/2026)
+
+- Task 1: camada 2 (Haiku), aprovada.
+- Task 2: camada 2 parou no card; camada 3 fechou. Desvio: nome do insumo em até 2 linhas e número até 8 pt (com 6,5–5 pt em 1 linha e mínimo de 11 pt, nomes de 25 letras e totais grandes seriam cortados em retrato).
+- Task 3: camada 2, aprovada.
+- Task 4: camada 2, aprovada.
+- Task 5: camada 2 (código e demo); camada 3 no E2E e nos ajustes. Desvio: quadrado dos cards do aéreo também na cor única; `crAlvoAplicar` e `crRotuloAplicar` novos.
+- Task 6: camada 2; camada 3 incluiu a migração no conftest. Desvio: migração em `20261104090000_operacao_experimento.sql` (já havia migrações de 29/10); `.cr-seg-4` para os 4 botões.
+- Camada 1 não usada: o isolamento da sessão recusa o `HOME` exigido pelo `delegar.sh`.
