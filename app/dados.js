@@ -12,7 +12,7 @@ const SEL_PREPARO='layer,etapa,conservacao_em,talhoes(cod_faz,talhao_num,area_ha
 // Etapas do Preparo, na ordem, como o banco guarda em talhao_preparo.etapa (A1). Índice = e do talhão.
 const ETAPAS_PREPARO=['Identificação','Escoamento','Observações','Preparo','Ok'];
 // Situação do voo (Sistematização/Expansão) de cada talhão em Identificação, da view preparo_voo_talhao.
-// Só "liberado" tem material para identificar; o resto aguarda voo.
+// nao_solicitado, solicitado e processando aparecem na etapa Voo (só na tela; o banco segue em Identificação).
 const VOO_PREPARO={
   sem_leitura:{l:'Voo sem leitura',c:'#9895a2'},
   nao_solicitado:{l:'Voo não solicitado',c:'#9895a2'},
@@ -20,7 +20,19 @@ const VOO_PREPARO={
   processando:{l:'Voado, processando',c:'#d4890a'},
   liberado:{l:'Material disponível',c:'#16a76b'},
 };
-function vooAguardando(t){return t.e===0&&t.voo!=='liberado'}
+function vooAguardando(t){return t.e===0&&['nao_solicitado','solicitado','processando'].includes(t.voo)}
+// Índice do talhão na tela do Preparo: Voo = 0; os demais, o índice do banco + 1.
+function etapaTelaPreparo(t){return vooAguardando(t)?0:(Number(t.e)||0)+1}
+// Filtro de etapa da lista do Preparo. Fazenda mista entra em Voo e em Identificação.
+function preparoNoFiltroEtapa(f,filtro){
+  if(filtro==='')return true;
+  const done=f.ok.every(x=>x);
+  if(filtro==='-1')return done;
+  if(done)return false;
+  if(filtro==='voo')return f.tals.some(vooAguardando);
+  if(filtro==='0')return f.tals.some(t=>t.e===0&&!vooAguardando(t));
+  return f.ok.indexOf(false)===Number(filtro);
+}
 const SEL_COLHEITA='layer,cod_faz,talhao_num,area_ha,estagio,data_ultimo_corte,frente,periodo_op,cortado,tipo_linha,ciclo,projeto_desatualizado,status,voo_id,voo_tipo,voo_status,voo_liberar_em';
 const SEL_VOOS='id,layer,tipo,problema,pedido_por,apontado_por,apontado_em,status,data_corte,liberar_em,agendado_em,erro';
 const SEL_NOTAS='id,entidade_id,valor_novo,usuario_id,criado_em';

@@ -53,7 +53,36 @@ test('Preparo: talhão em Identificação leva a situação do voo; sem dado = s
   const linhas = [talPrep(10724, 1, 'Identificação'), talPrep(10724, 2, 'Identificação'), talPrep(10724, 3, 'Escoamento')];
   const [f] = ctx.montarPreparo(linhas, [], [], {}, [], [{ layer: 10724001, situacao: 'liberado' }]);
   assert.deepStrictEqual(limpo(f.tals.map((t) => t.voo)), ['liberado', 'sem_leitura', null]);
-  assert.deepStrictEqual(limpo(f.tals.map((t) => ctx.vooAguardando(t))), [false, true, false]);
+  assert.deepStrictEqual(limpo(f.tals.map((t) => ctx.vooAguardando(t))), [false, false, false]);
+});
+
+test('Preparo: só nao_solicitado, solicitado e processando ficam em Voo', () => {
+  for (const voo of ['nao_solicitado', 'solicitado', 'processando']) {
+    assert.strictEqual(ctx.vooAguardando({ e: 0, voo }), true, voo);
+  }
+  for (const voo of ['liberado', 'sem_leitura', null, undefined]) {
+    assert.strictEqual(ctx.vooAguardando({ e: 0, voo }), false, String(voo));
+  }
+  assert.strictEqual(ctx.vooAguardando({ e: 1, voo: 'solicitado' }), false);
+});
+
+test('Preparo: índice na tela desloca uma casa, e Voo fica no 0', () => {
+  assert.strictEqual(ctx.etapaTelaPreparo({ e: 0, voo: 'processando' }), 0);
+  assert.strictEqual(ctx.etapaTelaPreparo({ e: 0, voo: 'liberado' }), 1);
+  assert.strictEqual(ctx.etapaTelaPreparo({ e: 0, voo: 'sem_leitura' }), 1);
+  assert.strictEqual(ctx.etapaTelaPreparo({ e: 1, voo: null }), 2);
+  assert.strictEqual(ctx.etapaTelaPreparo({ e: 4, voo: null }), 5);
+});
+
+test('Preparo: filtro de etapa da lista', () => {
+  const faz = (si, tals) => ({ ok: [0, 1, 2, 3].map((i) => si === -1 || i < si), tals });
+  const voo = { e: 0, voo: 'solicitado' }, ident = { e: 0, voo: 'liberado' }, semLeit = { e: 0, voo: 'sem_leitura' }, esc = { e: 1, voo: null }, ok = { e: 4, voo: null };
+  const entra = (f) => ['', 'voo', '0', '1', '2', '3', '-1'].filter((x) => ctx.preparoNoFiltroEtapa(f, x));
+  assert.deepStrictEqual(entra(faz(0, [voo, ident, esc])), ['', 'voo', '0']);   // mista: nos dois
+  assert.deepStrictEqual(entra(faz(0, [voo])), ['', 'voo']);                    // só Voo: fora de Identificação
+  assert.deepStrictEqual(entra(faz(0, [semLeit])), ['', '0']);                  // sem leitura: em Identificação
+  assert.deepStrictEqual(entra(faz(1, [esc, ok])), ['', '1']);                  // menos avançado em Escoamento
+  assert.deepStrictEqual(entra(faz(-1, [ok])), ['', '-1']);                     // tudo Ok: só Entregue
 });
 
 test('Preparo: todas as situações têm rótulo e cor', () => {
