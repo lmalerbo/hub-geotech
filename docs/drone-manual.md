@@ -43,7 +43,7 @@ A tela **Drone** do Hub é onde a Geo faz os projetos de aplicação por drone. 
 3. No painel, escolha a fonte de **cada talhão**:
    - **Sistema:** usa o talhão da Base menos os obstáculos;
    - **Shape:** usa um shape de ajuste feito no QGIS. Arraste os arquivos na área que aparece no painel (`.shp` + `.shx` + `.dbf` + `.prj`, ou um `.zip`).
-4. Para tirar talhões, use **Remover** e clique neles.
+4. Para tirar talhões, use **Remover** e clique neles. Os talhões **fora da Base já vêm marcados para sair**; para manter um deles, clique no número dele em "Remover", no painel. **Limpar** tira todas as marcas.
 5. Clique em **Gerar prévia**. O mapa mostra a varredura e os talhões em geração pulsam; o painel mostra recebido → processando → pronta.
 
 ![Gerando a prévia](img/drone/gerando.png)

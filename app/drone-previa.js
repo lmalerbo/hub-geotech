@@ -79,6 +79,10 @@ async function drMostrarPdf(ger){
 }
 
 // ── Janela da prévia ──
+function drSaiHtml(ger){
+  const r=ger.escopo?.remover||[];
+  return r.length?`<div class="dr-box"><h3>Sai do projeto</h3>${r.length>1?'Talhões':'Talhão'} ${esc(r.join(', '))}</div>`:'';
+}
 function drPrevAbrir(){
   const ger=DRP.ger;
   if(!ger||document.getElementById('drp-fundo'))return;
@@ -95,6 +99,7 @@ function drPrevAbrir(){
       <button class="dr-x" onclick="drPrevFechar()" title="Fechar (Esc)" aria-label="Fechar"><span aria-hidden="true" class="ico">close</span></button></div>
     <div class="drp-pags" id="drp-pags"><div class="drp-carga" id="drp-carga"></div></div>
     <div class="drp-lado">
+      ${drSaiHtml(ger)}
       ${al?`<div class="dr-box"><h3><span aria-hidden="true" class="ico" style="color:#d4890a;font-size:15px;vertical-align:-3px">warning</span> Alertas</h3><ul style="margin:0;padding-left:16px;color:#d4890a">${al}</ul></div>`:''}
       ${ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:''}
       <div style="font-size:12px;font-weight:600">Motivo</div>

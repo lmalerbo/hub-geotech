@@ -7,7 +7,7 @@ if(document.addEventListener)document.addEventListener('visibilitychange',()=>{
 
 async function drAbrirFazenda(cod,doc){
   droFechar(true);
-  DR.cod=cod;DR.doc=doc||'normal';DR.info=DR.geo=null;DRP.gerando.clear();DR.obstGeo=null;DR.obstAss=null;DR.obstLigarAoFim=false;DR.sel=new Map();DR.rem=new Set();DR.modoRemover=false;DR.ajusteId=null;
+  DR.cod=cod;DR.doc=doc||'normal';DR.info=DR.geo=null;DRP.gerando.clear();DR.obstGeo=null;DR.obstAss=null;DR.obstLigarAoFim=false;DR.sel=new Map();DR.rem=new Set();DR.foraMarcado=false;DR.modoRemover=false;DR.ajusteId=null;
   drPollParar();drMapaDescartar();DR.ass=null;
   const pnl=document.getElementById('dr-faz');
   DR.voo=null;
@@ -47,6 +47,7 @@ async function drCarregarFazenda(){
     else document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;
     return;
   }
+  drMarcarFora();
   drRedesenhar();
   if(drOcupado(DR.info,drAtual().ger))drPollIniciar(drCicloFazenda,5000);
   else drPollParar();
@@ -59,7 +60,11 @@ function drRedesenhar(){
   DR.ass=ass;drDesenhar(partes);
 }
 // Troca Normal/Catação: o mapa fica, só as fontes e a cor mudam.
-function drTrocarDoc(doc){if(doc===DR.doc)return;DR.doc=doc;DR.sel=new Map();DR.rem=new Set();drRedesenhar();}
+function drTrocarDoc(doc){if(doc===DR.doc)return;DR.doc=doc;DR.sel=new Map();DR.rem=new Set();DR.foraMarcado=false;drMarcarFora();drRedesenhar();}
+function drMarcarFora(){
+  const {sol,ger}=drAtual();
+  DR.foraMarcado=drMarcarForaDaBase(DR.geo,drEstadoPainel({doc:DR.doc,sol,ger,edita:podeEditar('drone')}),DR.rem,DR.foraMarcado);
+}
 function drDesenhar(partes){
   const tem=p=>partes.includes(p);
   if(!DR.mapa||!document.getElementById('dr-map')){drMapaDescartar();drEsqueleto();drAjustarAltura();drMapaCriar();drPainelLateral();drEtapasAtualizar();}
@@ -216,7 +221,7 @@ function drMapaCriar(){
       .forEach(p=>p[0].forEach(c=>b.extend(c))));
     if(!b.isEmpty())m.fitBounds(b,{padding:30,duration:0});
     Mo.pronto(box,{cascata:false});
-    m.on('click','tal-f',e=>drClicarTalhao(e.features[0].properties));
+    m.on('click','tal-f',e=>drClicarTalhao(drTalhaoDoClique(e.features,DR.modoRemover)));
     m.on('mouseenter','tal-f',()=>m.getCanvas().style.cursor='pointer');
     m.on('mouseleave','tal-f',()=>m.getCanvas().style.cursor='');
     drAtualizarSelecaoMapa();if(DR.mostrarObst)drObstaculos(true);drAnimGeracao();
@@ -246,6 +251,8 @@ function drClicarTalhao(p){
   }
   drAtualizarSelecaoMapa();drPainelLateral();
 }
+
+function drManterTalhao(n){DR.rem.delete(n);drAtualizarSelecaoMapa();drPainelLateral();}
 
 function drSelecionarSemProjeto(){
   DR.geo.features.filter(f=>f.properties.camada==='talhao'&&f.properties.status==='sem_projeto')
@@ -439,7 +446,8 @@ function drPainel_montando(){
       ${linhas||'<p class="dr-msg-l">Nenhum talhão. Clique no mapa.</p>'}
       ${solta}
       <div class="dr-cab-ln"><h3>Remover <span>· ${rem.length?drPlural(rem.length,'talhão','talhões'):'nenhum'}</span></h3></div>
-      ${rem.length?`<div class="dr-chips">${rem.map(t=>`<span class="dr-chip r">${t}</span>`).join('')}</div>`:'<p class="dr-msg-l">Use a ferramenta Remover no mapa.</p>'}
+      ${rem.length?`<div class="dr-chips">${rem.map(t=>`<button type="button" class="dr-chip r dr-chip-bt" aria-label="Manter o talhão ${t} no projeto" onclick="drManterTalhao(${t})">${t}</button>`).join('')}</div>`:'<p class="dr-msg-l">Use a ferramenta Remover no mapa.</p>'}
+      ${rem.some(t=>props.get(t)?.status==='fora_da_base')?'<div class="dr-nota"><span aria-hidden="true" class="ico">wrong_location</span><span>Talhões fora da Base já vêm marcados para sair. Clique no número para manter.</span></div>':''}
       <div class="dr-nota"><span aria-hidden="true" class="ico">info</span><span>A prévia mostra a fazenda inteira: os talhões de antes e os novos. Você confere antes de publicar.</span></div>`,
     rodape:`<button class="dr-btn" ${n?'':'disabled'} onclick="drGerarNormal()"><span aria-hidden="true" class="ico">play_arrow</span> Gerar prévia</button>`};
 }
@@ -501,7 +509,7 @@ function drPainel_previa(){
     :'<p class="dr-msg-l">Sem alertas.</p>';
   return{sobre:`Prévia · ${drNomeDoc(doc)} Rev${drRevProx(doc)}`,titulo:'Confira antes de publicar',
     corpo:`<button type="button" class="drp-capa" id="dr-pdf" onclick="drPrevAbrir()" title="Abrir a prévia" aria-label="Abrir a prévia"></button>`
-      +indic+alertas
+      +indic+(doc==='normal'&&ger.escopo?drLinhaResumo('Sai do projeto',(ger.escopo.remover||[]).join(', ')||'nenhum'):'')+alertas
       +(ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:'')
       +`<label class="dr-campo">Motivo da revisão<input class="dr-mot-painel" data-foco="motivo" value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${ger.id}]=this.value"></label>`,
     rodape:`<div class="dr-rodape-l"><button class="dr-btn2 perigo" onclick="drDescartar(${ger.id})"><span aria-hidden="true" class="ico">undo</span> Descartar</button>
@@ -619,7 +627,7 @@ async function drGerarNormal(){
     const escopo=drEscopo(DR.sel,DR.rem,DR.ajusteId);
     const sol=drAtual().sol?.id||await drRpc('drone_solicitar',{p_cod_faz:DR.cod,p_tipo:'normal',p_data_desejada:null,p_observacao:null});
     await drRpc('drone_pedir_geracao',{p_solicitacao_id:sol,p_escopo:escopo});
-    DR.sel=new Map();DR.rem=new Set();
+    DR.sel=new Map();DR.rem=new Set();DR.foraMarcado=false;
     fim(true);
     await drCarregarFazenda();drCarregarPainel();
   }catch(e){fim(false);drErro(e);}

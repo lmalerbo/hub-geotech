@@ -202,6 +202,20 @@ function drChipObstaculos(obst,envios,hoje,meses=24){
   const datas=o.map(v=>new Date(v.enviado_em)),recente=new Date(Math.max(...datas));
   return{texto:`${o.length} classe${o.length>1?'s':''} · ${drDataCurta(recente)}`,tom:datas.some(d=>d<limite)?'velho':'ok'};
 }
+function drForaDaBase(geo){
+  return((geo&&geo.features)||[]).filter(f=>f.properties.camada==='talhao'&&f.properties.status==='fora_da_base').map(f=>f.properties.talhao);
+}
+// Marca os talhões fora da Base para sair, uma vez por montagem: o que o analista desmarcar não volta no ciclo seguinte.
+function drMarcarForaDaBase(geo,est,rem,marcado){
+  if(marcado||est!=='montando')return !!marcado;
+  drForaDaBase(geo).forEach(n=>rem.add(n));
+  return true;
+}
+// Área sobreposta (talhão antigo sobre os novos): cada ferramenta pula o talhão que ela não aceita.
+function drTalhaoDoClique(feats,remover){
+  const ignora=remover?'sem_projeto':'fora_da_base';
+  return(feats.find(f=>f.properties.status!==ignora)||feats[0]).properties;
+}
 function drEscopo(sel,rem,ajusteId){
   const inc=[...sel].sort((a,b)=>a[0]-b[0]);
   if(inc.some(([,f])=>f==='shape')&&!ajusteId)throw new Error('Envie o shape de ajuste antes de gerar.');
