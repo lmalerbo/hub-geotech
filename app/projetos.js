@@ -9,9 +9,12 @@ function pjMo(){return window.Mo||PJ_MO_VAZIO}
 const pjH=v=>esc(v==null?'':String(v));
 
 const PJ_COR_P='#a07840';
-// Preparo: 5 etapas (0–4). p = rótulo que o banco guarda em talhao_preparo.etapa e recebe em p_para (A1).
-// A etapa 3 aparece como "Projeto" na tela, mas o banco a chama de "Preparo".
+const PJ_COR_VOO='#5b6ee8';
+// Preparo: 6 etapas na tela (0–5). p = rótulo que o banco guarda em talhao_preparo.etapa e recebe em p_para (A1).
+// Voo é só da tela (p:null): não existe no banco nem é destino de retrocesso; ver etapaTelaPreparo.
+// A etapa 4 aparece como "Projeto" na tela, mas o banco a chama de "Preparo".
 const PJ_ET_P=[
+  {l:'Voo',c:PJ_COR_VOO,i:'flight',p:null},
   {l:'Identificação',c:PJ_COR_P,i:'pin_drop',p:'Identificação'},
   {l:'Escoamento',c:PJ_COR_P,i:'water',p:'Escoamento'},
   {l:'Observações',c:PJ_COR_P,i:'comment',p:'Observações'},
@@ -45,11 +48,12 @@ const PJ_ACOES={
     2:{tipo:'envio',txt:'Enviar exportação e projeto',ico:'upload_file',campos:['exportacao','projeto'],acaoDepois:'exportacao_enviada'},
     3:{tipo:'envio',txt:'Enviar Mapa de Plantio',ico:'map',campos:['mapa'],acaoDepois:null},
   },
+  // Preparo: sem ação na etapa Voo (índice 0).
   preparo:{
-    0:{tipo:'rpc',acao:'identificacao',txt:'Confirmar identificação',ico:'check'},
-    1:{tipo:'envio',txt:'Enviar Mapa de Escoamento',ico:'water',campos:['escoamento'],acaoDepois:'escoamento'},
-    2:{tipo:'rpc',acao:'observacoes',txt:'Confirmar observações',ico:'check'},
-    3:{tipo:'envio',txt:'Enviar projeto, exportação e sistematização',ico:'construction',campos:['projeto','exportacao','sistematizacao'],acaoDepois:'preparo'},
+    1:{tipo:'rpc',acao:'identificacao',txt:'Confirmar identificação',ico:'check'},
+    2:{tipo:'envio',txt:'Enviar Mapa de Escoamento',ico:'water',campos:['escoamento'],acaoDepois:'escoamento'},
+    3:{tipo:'rpc',acao:'observacoes',txt:'Confirmar observações',ico:'check'},
+    4:{tipo:'envio',txt:'Enviar projeto, exportação e sistematização',ico:'construction',campos:['projeto','exportacao','sistematizacao'],acaoDepois:'preparo'},
   },
 };
 
@@ -65,21 +69,12 @@ function pjCodDoc(x){return x&&typeof x==='object'?x.codigo:x}
 function pjNorm(mod,f){
   if(!f||!Array.isArray(f.tals))return null;
   return {modulo:mod,cod:Number(f.cod),nome:f.n,ha:f.ha,obs:f.obs||'',
-    talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:Number(t.e)||0,sist_conser:t.sist_conser,mes:t.mes,cons:t.cons,mapeamento:t.mapeamento,voo:t.voo})),etapas:pjEtapas(mod)};
+    talhoes:f.tals.map(t=>({num:t.num,ha:t.ha,e:mod==='preparo'?etapaTelaPreparo(t):Number(t.e)||0,sist_conser:t.sist_conser,mes:t.mes,cons:t.cons,mapeamento:t.mapeamento,voo:t.voo})),etapas:pjEtapas(mod)};
 }
 function pjContagens(fz){
   const c=Array(fz.etapas.length).fill(0);
   fz.talhoes.forEach(t=>{if(t.e>=0&&t.e<c.length)c[t.e]++});
   return c;
-}
-// Preparo: talhões em Identificação ainda sem material de voo (só aparece no Preparo).
-function pjSemVoo(fz,lista){return fz.modulo==='preparo'?(lista||fz.talhoes).filter(vooAguardando):[]}
-// Fundo do segmento de Identificação: a parte que aguarda voo em cinza, à esquerda.
-function pjFundoSeg(fz,i,q){
-  const a=i===0?pjSemVoo(fz).length:0,cor=fz.etapas[i].c;
-  if(!a)return cor;
-  const p=Math.round(a/q*100);
-  return `linear-gradient(90deg,${VOO_PREPARO.nao_solicitado.c} 0 ${p}%,${cor} ${p}% 100%)`;
 }
 function pjSel(key){
   if(!PJ.sel.has(key))PJ.sel.set(key,new Set());
@@ -220,10 +215,6 @@ async function pjAcaoRpc(btn,acao,idx){
   const c=PJ.ctx;
   const nums=pjUsados(c.fz,c.key,idx).map(t=>t.num);
   if(acao==='observacoes'){pjAbrirObs(c,idx,nums);return}
-  if(acao==='identificacao'){
-    const sem=pjSemVoo(c.fz,c.fz.talhoes.filter(t=>nums.includes(t.num)));
-    if(sem.length){pjAbrirSemVoo(c,nums,sem.map(t=>t.num));return}
-  }
   try{
     const d=await pjChamar(btn,'projeto_avancar',{p_modulo:c.mod,p_cod_faz:c.cod,p_acao:acao,p_talhoes:nums});
     delete PJ.tl[c.key];
@@ -299,61 +290,10 @@ async function pjConfirmarObs(btn,m){
   }
 }
 
-// Aviso: talhões sem material de voo. Avançar continua permitido; a decisão fica no log.
-function pjModalSemVoo(){
-  let m=document.getElementById('pj-modal-semvoo');
-  if(m)return m;
-  m=document.createElement('div');
-  m.id='pj-modal-semvoo';
-  m.className='modal-fundo off pj-modal';
-  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-semvoo-t">`+
-    `<div class="modal-t" id="pj-semvoo-t">Talhões sem material de voo</div>`+
-    `<div class="pj-volta-txt" data-pj-semvoo-txt></div>`+
-    `<div class="pj-erro" data-pj-semvoo-erro role="alert"></div>`+
-    `<div class="modal-botoes"><button type="button" class="btn-retro" data-pj-fechar>Cancelar</button>`+
-    `<button type="button" class="btn-acao" data-pj-semvoo-ok>Avançar mesmo assim</button></div></div>`;
-  document.body.appendChild(m);
-  m.addEventListener('click',e=>{
-    if(e.target===m||e.target.closest('[data-pj-fechar]'))return pjFecharModal(m);
-    const ok=e.target.closest('[data-pj-semvoo-ok]');
-    if(ok)pjConfirmarSemVoo(ok,m);
-  });
-  m.addEventListener('keydown',e=>{if(e.key==='Escape')pjFecharModal(m)});
-  return m;
-}
-function pjAbrirSemVoo(c,nums,sem){
-  const m=pjModalSemVoo();
-  m._V={c,nums,sem};
-  m._busy=false;
-  const lista=sem.map(n=>{const t=c.fz.talhoes.find(x=>x.num===n);return `${pjH(n)} (${pjH(VOO_PREPARO[t.voo]?.l||'sem dado')})`}).join(', ');
-  m.querySelector('[data-pj-semvoo-txt]').innerHTML=`<strong>${pjNTal(sem.length)}</strong> de ${nums.length} ainda não ${sem.length===1?'tem':'têm'} material de voo liberado: ${lista}. Avançar mesmo assim?`;
-  m.querySelector('[data-pj-semvoo-erro]').textContent='';
-  m.classList.remove('off');
-  setTimeout(()=>m.querySelector('[data-pj-semvoo-ok]').focus(),50);
-}
-async function pjConfirmarSemVoo(btn,m){
-  const V=m._V,c=V.c;
-  const err=m.querySelector('[data-pj-semvoo-erro]');
-  err.textContent='';
-  m._busy=true;
-  try{
-    const d=await pjChamar(btn,'projeto_avancar',{p_modulo:c.mod,p_cod_faz:c.cod,p_acao:'identificacao',p_talhoes:V.nums},{silencioso:true});
-    await pjChamar(null,'preparo_aviso_sem_voo',{p_cod_faz:c.cod,p_talhoes:V.sem},{silencioso:true}).catch(()=>{});
-    m._busy=false;
-    m.classList.add('off');
-    delete PJ.tl[c.key];
-    showToast(`${pjNTal(Number(pjVal(d))||V.nums.length)} avançaram`);
-    await recarregar(pjAlvo(c));
-  }catch(e){
-    m._busy=false;
-    err.textContent=e.message||'Não foi possível avançar.';
-  }
-}
-
 // Retroceder: alça ou clique numa etapa anterior. Abre a justificativa; depois, aviso com Desfazer.
 function pjVolta(idx){
   const c=PJ.ctx;
-  if(!c)return;
+  if(!c||!c.fz.etapas[idx].p)return;
   const sel=PJ.sel.get(c.key);
   const base=(sel&&sel.size)?c.fz.talhoes.filter(t=>sel.has(String(t.num))):c.fz.talhoes;
   const nums=base.filter(t=>t.e>idx).map(t=>t.num);
@@ -518,7 +458,7 @@ async function pjAbrirRev(acaoIdx){
   const acao=(acaoIdx==null)?null:(PJ_ACOES[c.mod][acaoIdx]||null);
   const acaoTal=acao?pjUsados(fz,c.key,acaoIdx):[];
   const M={mod:c.mod,cod:c.cod,key:c.key,campos,talhoes:fz.talhoes,etapas:fz.etapas,
-    limNovo:c.mod==='plantio'?3:4,acao,acaoIdx,
+    limNovo:c.mod==='plantio'?3:5,acao,acaoIdx,
     acaoTal:acaoTal.map(t=>t.num),
     etapaNome:acao?fz.etapas[acaoIdx].l:'',
     talMarcados:new Set(acaoTal.map(t=>String(t.num))),
@@ -750,7 +690,7 @@ function pjLigar(raiz){
     const row=al.closest('.stp-row');
     const nodes=[...row.querySelectorAll('.snode')];
     const de=pjAtual(c.fz,c.key);
-    PJ.drag={al,nodes,de,alvo:de};
+    PJ.drag={al,nodes,de,alvo:de,min:c.fz.etapas[0].p?0:1};
     al.setPointerCapture(e.pointerId);
     al.classList.add('arrastando');
     e.preventDefault();
@@ -761,13 +701,13 @@ function pjLigar(raiz){
     const xs=g.nodes.map(n=>{const b=n.getBoundingClientRect();return b.left+b.width/2});
     let alvo=g.de,dist=Infinity;
     xs.forEach((x,i)=>{
-      if(i>g.de)return;
+      if(i>g.de||i<g.min)return;
       const d=Math.abs(e.clientX-x);
       if(d<dist){dist=d;alvo=i}
     });
     g.alvo=alvo;
     g.nodes.forEach((n,i)=>n.classList.toggle('alvo',i===alvo&&alvo<g.de));
-    const lo=xs[0]-xs[g.de];
+    const lo=xs[g.min]-xs[g.de];
     const dx=Math.max(lo,Math.min(0,e.clientX-xs[g.de]));
     g.al.style.transform=`translateX(${dx}px)`;
   });
@@ -792,7 +732,7 @@ window.Proj={
     const fz=pjNorm(mod,f);
     if(!fz)return '';
     const c=pjContagens(fz),tot=fz.talhoes.length,ok=c[fz.etapas.length-1];
-    const segs=c.map((q,i)=>q?`<span class="pj-dseg" style="flex:${q};background:${pjFundoSeg(fz,i,q)}" title="${pjH(fz.etapas[i].l)}: ${q}"></span>`:'').join('');
+    const segs=c.map((q,i)=>q?`<span class="pj-dseg" style="flex:${q};background:${fz.etapas[i].c}" title="${pjH(fz.etapas[i].l)}: ${q}"></span>`:'').join('');
     return `<div class="pj-dcard"><div class="pj-dist pj-dist-s" aria-hidden="true">${segs}</div><div class="pj-dtxt">${ok}/${tot} Ok</div></div>`;
   },
 
@@ -801,22 +741,21 @@ window.Proj={
     if(!fz)return '';
     const key=pjKey(mod,fz.cod),edit=podeEditar(mod),et=fz.etapas,n=et.length;
     const cont=pjContagens(fz),tot=fz.talhoes.length,ok=cont[n-1];
-    const semVoo=pjSemVoo(fz).length;
     PJ.arq[key]=htmlArq;
     const sel=pjSel(key),atual=pjAtual(fz,key),pct=n>1?atual/(n-1)*100:0;
     const todosSel=tot>0&&fz.talhoes.every(t=>sel.has(String(t.num)));
     const nomeMod=mod==='plantio'?'Plantio':'Preparo';
 
-    const dist=cont.map((q,i)=>q?`<button type="button" class="pj-seg" data-pj-etapa="${i}" style="flex:${q};background:${pjFundoSeg(fz,i,q)}" title="Selecionar ${pjH(et[i].l)} (${q})" aria-label="Selecionar talhões em ${pjH(et[i].l)}"></button>`:'').join('');
-    const leg=cont.map((q,i)=>q?`<span class="pj-leg-i"><i style="background:${et[i].c}"></i>${pjH(et[i].l)} ${q}${i===0&&semVoo?` <span class="pj-leg-voo">(${semVoo} aguardando voo)</span>`:''}</span>`:'').join('');
+    const dist=cont.map((q,i)=>q?`<button type="button" class="pj-seg" data-pj-etapa="${i}" style="flex:${q};background:${et[i].c}" title="Selecionar ${pjH(et[i].l)} (${q})" aria-label="Selecionar talhões em ${pjH(et[i].l)}"></button>`:'').join('');
+    const leg=cont.map((q,i)=>q?`<span class="pj-leg-i"><i style="background:${et[i].c}"></i>${pjH(et[i].l)} ${q}</span>`:'').join('');
 
     const nos=et.map((s,i)=>{
       const feito=i<atual,ativo=i===atual;
       const ds=(feito||ativo)?`background:${s.c};border-color:${s.c}`:'';
-      const alca=(ativo&&edit)?`<span class="pj-alca" role="slider" tabindex="0" aria-label="Etapa atual: ${pjH(s.l)}. Arraste ou use a seta para a esquerda para voltar." aria-valuemin="0" aria-valuemax="${n-1}" aria-valuenow="${i}" aria-valuetext="${pjH(s.l)}" style="color:${s.c}"><span class="ico">chevron_left</span></span>`:'';
-      const volta=(edit&&i<atual)?` data-pj-no="${i}" title="Voltar para ${pjH(s.l)}"`:'';
+      const alca=(ativo&&edit&&s.p)?`<span class="pj-alca" role="slider" tabindex="0" aria-label="Etapa atual: ${pjH(s.l)}. Arraste ou use a seta para a esquerda para voltar." aria-valuemin="${et[0].p?0:1}" aria-valuemax="${n-1}" aria-valuenow="${i}" aria-valuetext="${pjH(s.l)}" style="color:${s.c}"><span class="ico">chevron_left</span></span>`:'';
+      const volta=(edit&&i<atual&&s.p)?` data-pj-no="${i}" title="Voltar para ${pjH(s.l)}"`:'';
       return `<div class="snode${feito?' done':ativo?' act':''}"${volta}><div class="sdot" data-etapa="${pjH(s.l)}" style="${ds}"><span class="ico">${feito?'check':s.i}</span></div>`+
-        `<div class="slbl" style="${ativo?`color:${s.c};font-weight:700`:''}">${pjH(s.l)}<br><small>${cont[i]}${i===0&&semVoo?` · ${semVoo} s/ voo`:''}</small></div>${alca}</div>`;
+        `<div class="slbl" style="${ativo?`color:${s.c};font-weight:700`:''}">${pjH(s.l)}<br><small>${cont[i]}</small></div>${alca}</div>`;
     }).join('');
 
     const linhas=fz.talhoes.map(t=>{
@@ -825,7 +764,7 @@ window.Proj={
         `<td><strong>${pjH(t.num)}</strong></td><td>${fmtNum(t.ha)} ha</td>`+
         (mod==='plantio'?`<td>${pjH(t.sist_conser||'—')}</td><td>${pjH(t.mes||'—')}</td><td>${pjH(t.mapeamento??'—')}</td>`:`<td>${t.cons?pjH(t.cons.split('-').reverse().join('/')):'—'}</td>`)+
         `<td><span class="ebadge" style="background:${e.c}1a;color:${e.c}">${pjH(e.l)}</span>`+
-        (t.e===0&&t.voo&&VOO_PREPARO[t.voo]?`<span class="pj-voo" style="background:${VOO_PREPARO[t.voo].c}1a;color:${VOO_PREPARO[t.voo].c}">${pjH(VOO_PREPARO[t.voo].l)}</span>`:'')+
+        (t.voo&&VOO_PREPARO[t.voo]?`<span class="pj-voo" style="background:${VOO_PREPARO[t.voo].c}1a;color:${VOO_PREPARO[t.voo].c}">${pjH(VOO_PREPARO[t.voo].l)}</span>`:'')+
         `</td></tr>`;
     }).join('');
 
@@ -841,6 +780,11 @@ window.Proj={
         const usados=pjUsados(fz,key,i),grupo=fz.talhoes.filter(t=>t.e===i);
         const selG=grupo.filter(t=>sel.has(String(t.num)));
         const a=PJ_ACOES[mod][i];
+        if(!a){
+          bl.push(`<div class="pj-bloco"><div class="pj-bloco-h"><span class="ebadge" style="background:${et[i].c}1a;color:${et[i].c}">${pjH(et[i].l)}</span>`+
+            `<span>· ${pjNTal(grupo.length)}</span></div><div class="pj-dica">Aguardando o material do voo. Pedido e correção são feitos no Drone MGMT.</div></div>`);
+          continue;
+        }
         const cor=mod==='plantio'?et[i+1].c:PJ_COR_P;
         const attrs=a.tipo==='rpc'?`data-pj-rpc="${a.acao}" data-pj-idx="${i}"`:`data-pj-envio="${i}"`;
         bl.push(`<div class="pj-bloco"><div class="pj-bloco-h"><span class="ebadge" style="background:${et[i].c}1a;color:${et[i].c}">${pjH(et[i].l)}</span>`+
@@ -923,7 +867,6 @@ window.Proj={
 .pj-tal-chk{width:16px;height:16px;cursor:pointer;accent-color:${PJ_COR_P}}
 .pj-tal-sel td{background:rgba(160,120,64,.06)}
 .pj-voo{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px}
-.pj-leg-voo{color:var(--t3)}
 .pj-blocos{display:flex;flex-direction:column;gap:10px}
 .pj-bloco{display:flex;flex-direction:column;gap:10px;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;background:var(--sf)}
 .pj-bloco-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--t2)}
