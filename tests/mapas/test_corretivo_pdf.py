@@ -143,3 +143,11 @@ def test_tipo_do_corretivo_e_titulo_em_destaque(tmp_path):
     spans = [s for b in pymupdf.open(destino)[0].get_text('dict')['blocks'] for l in b.get('lines', [])
              for s in l['spans'] if s['text'].strip().startswith('CORRETIVO ·')]
     assert spans and spans[0]['size'] >= 10
+
+
+def test_operacao_experimento_no_titulo(tmp_path):
+    from tests.mapas.test_corretivo_layout import CASOS
+    d = {**CASOS['1_linha'], 'operacao': 'experimento'}
+    destino = tmp_path / 'exp.pdf'
+    gerar_pdf(d, destino)
+    assert 'CORRETIVO · EXPERIMENTO' in '\n'.join(p.get_text() for p in pymupdf.open(destino))

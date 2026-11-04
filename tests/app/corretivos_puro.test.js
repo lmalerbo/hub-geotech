@@ -67,6 +67,11 @@ test('JSON para o gerador e nome do arquivo', () => {
   assert.strictEqual(ctx.crNomeArquivo(10156, 'arado', '2026-10-15'), 'corretivo_10156_arado_2026-10-15.pdf');
 });
 
+test('operação Experimento', () => {
+  assert.strictEqual(ctx.CR_OPERACOES.experimento, 'Experimento');
+  assert.strictEqual(ctx.crNomeArquivo(10156, 'experimento', '2026-10-28'), 'corretivo_10156_experimento_2026-10-28.pdf');
+});
+
 test('faixas cobrem o talhão', () => {
   const areaAnel = a => { let s = 0; for (let i = 0; i < a.length - 1; i++) s += a[i][0] * a[i + 1][1] - a[i + 1][0] * a[i][1]; return Math.abs(s) / 2; };
   const areaPol = p => areaAnel(p[0]) - p.slice(1).reduce((s, h) => s + areaAnel(h), 0);

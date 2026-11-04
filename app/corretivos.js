@@ -2,7 +2,7 @@
 // `var` (não const) para as constantes ficarem visíveis no contexto vm dos testes.
 var CR_CORES = { 'calcario:dolomitico': '#2f6db5', 'calcario:ph7': '#22a39f', fosfato: '#e07b1a', blend: '#7b4fb3' };
 var CR_SEM = '#e4e7e8';
-var CR_OPERACOES = { subsolagem: 'SubSolagem', supergrade: 'SuperGrade', arado: 'Arado', aerea: 'Aplicação aérea' };
+var CR_OPERACOES = { subsolagem: 'SubSolagem', supergrade: 'SuperGrade', arado: 'Arado', experimento: 'Experimento', aerea: 'Aplicação aérea' };
 var CR_CALC = { dolomitico: 'Dolomítico', ph7: 'PH7' };
 // Aplicação aérea (iguais a mapas/corretivo_dados.py): cores dos insumos na ordem em que aparecem; margem de 5%.
 var CR_PALETA_INSUMOS = ['#2f6db5', '#e07b1a', '#22a39f', '#7b4fb3', '#c23b3b', '#8a6d1f', '#2e8b57', '#d4558f', '#5b6770', '#b59a00'];
@@ -259,7 +259,7 @@ function crSb() {
 }
 const CR_ST = { eu: null, fazendas: [], faz: null, mapas: [], trab: null, map: null, geo: null, det: null,
   sel: new Set(), destApl: null, areaNova: {}, form: null, formMsg: null, insumos: [], insEdit: null };
-const CR_OP_VAR = { subsolagem: '--irrigacao', supergrade: '--plantio', arado: '--colheita', aerea: '--drones' };
+const CR_OP_VAR = { subsolagem: '--irrigacao', supergrade: '--plantio', arado: '--colheita', experimento: '--experimento', aerea: '--drones' };
 
 function crEsc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function crNorm(s) { return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
@@ -571,7 +571,7 @@ function crEscolherNovoMapa() {
   return new Promise(resolver => {
     const fundo = document.getElementById('cr-modal-fundo');
     const est = { grupo: 'corretivo', op: 'subsolagem' };
-    const ops = [['subsolagem', 'SubSolagem'], ['supergrade', 'SuperGrade'], ['arado', 'Arado']];
+    const ops = [['subsolagem', 'SubSolagem'], ['supergrade', 'SuperGrade'], ['arado', 'Arado'], ['experimento', 'Experimento']];
     const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; resolver(valor); };
     const desenhar = () => {
       const aerea = est.grupo === 'aerea';
@@ -586,7 +586,7 @@ function crEscolherNovoMapa() {
             <span>Insumos aplicados por avião, com dose na unidade de cada insumo e 5% de margem na área.</span></button>
         </div>
         ${aerea ? '' : `<fieldset class="cr-fs"><legend class="cr-lbl">Operação de preparo</legend>
-          <div class="cr-seg">${ops.map(([v, r]) => `<label class="cr-seg-o"><input type="radio" name="cr-nm-op" value="${v}" data-op="${v}"${est.op === v ? ' checked' : ''}><span>${r}</span></label>`).join('')}</div>
+          <div class="cr-seg cr-seg-4">${ops.map(([v, r]) => `<label class="cr-seg-o"><input type="radio" name="cr-nm-op" value="${v}" data-op="${v}"${est.op === v ? ' checked' : ''}><span>${r}</span></label>`).join('')}</div>
         </fieldset>`}
         <div class="cr-md-acoes">
           <button class="cr-btn2" type="button" data-cancel>Cancelar</button>

@@ -1,6 +1,6 @@
 """Regras dos Mapas de aplicação que não dependem de desenho: cores, rótulos, linhas da tabela,
 totais por produto e divisão do talhão em faixas (duas ou mais aplicações).
-Corretivo (subsolagem/supergrade/arado): calcário, fosfato e blend em t/ha.
+Corretivo (subsolagem/supergrade/arado/experimento): calcário, fosfato e blend em t/ha.
 Aplicação aérea: insumos do cadastro em L/ha ou kg/ha, com margem de 5% (linha do talhão 400 na tabela e
 total de cada insumo = dose × área dos talhões dele × 1,05)."""
 from shapely.geometry import Polygon
@@ -8,7 +8,8 @@ from shapely.geometry.base import BaseGeometry
 
 CORES = {'calcario:dolomitico': '#2f6db5', 'calcario:ph7': '#22a39f', 'fosfato': '#e07b1a', 'blend': '#7b4fb3'}
 SEM_APLICACAO = '#e4e7e8'
-OPERACOES = {'subsolagem': 'SubSolagem', 'supergrade': 'SuperGrade', 'arado': 'Arado', 'aerea': 'Aplicação aérea'}
+OPERACOES = {'subsolagem': 'SubSolagem', 'supergrade': 'SuperGrade', 'arado': 'Arado', 'experimento': 'Experimento',
+             'aerea': 'Aplicação aérea'}
 _CALCARIO = {'dolomitico': 'Dolomítico', 'ph7': 'PH7'}
 # Cores dos insumos, dadas na ordem em que aparecem no mapa (igual a CR_PALETA_INSUMOS na tela).
 PALETA_INSUMOS = ['#2f6db5', '#e07b1a', '#22a39f', '#7b4fb3', '#c23b3b', '#8a6d1f', '#2e8b57', '#d4558f', '#5b6770', '#b59a00']

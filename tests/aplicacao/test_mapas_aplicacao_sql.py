@@ -82,6 +82,8 @@ def test_cada_tipo_de_mapa_so_aceita_o_seu_tipo_de_aplicacao(banco, como, pessoa
     assert r1[0] == 'ERRO' and r2[0] == 'ERRO'
     ok = _aplicar(como, uid, corretivo, {'tipo': 'calcario', 'calcario': 'dolomitico', 'dose': 2, 'os': '1'})
     assert ok[0] != 'ERRO', ok                                   # corretivo continua como antes
+    exp = _mapa(como, uid, 'experimento')                        # operação Experimento é aceita pelo banco
+    assert banco.execute('select operacao from hub.corretivo_mapas where id = %s', (exp,)).fetchone() == ('experimento',)
 
 
 def test_duplicada_considera_o_insumo(banco, como, pessoa):
