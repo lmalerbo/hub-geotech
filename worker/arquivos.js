@@ -17,6 +17,10 @@
 // ferramenta do usuário e repassa à API do GeoMap com o segredo
 // INDICADORES_TOKEN, que nunca sai do Worker.
 //
+// Também serve POST /paralelismo/parte (sobe uma parte dos brutos na release
+// da rodada; hub.paralelismo_preparar_parte decide quem pode) e POST
+// /paralelismo/excluida (marca a release de uma rodada excluída; só admin).
+//
 // Guarda só o token do GitHub (secret GH_TOKEN) — nenhuma chave do banco com
 // poder especial. Variáveis: SUPABASE_URL, SUPABASE_ANON_KEY (pública),
 // GH_REPO (ex: lmalerbo/hub-geotech-arquivos), ORIGENS (sites que podem
@@ -33,9 +37,10 @@ export default {
       for (const [k, v] of Object.entries(cors)) r.headers.set(k, v);
       return r;
     }
-    if (req.method !== 'POST' || url.pathname !== '/enviar') return json({ erro: 'Não encontrado' }, 404, cors);
+    const rota = req.method === 'POST' && ROTAS_POST[url.pathname];
+    if (!rota) return json({ erro: 'Não encontrado' }, 404, cors);
     try {
-      return json(await enviar(req, env), 200, cors);
+      return json(await rota(req, env), 200, cors);
     } catch (e) {
       return json({ erro: e.message }, e.status || 400, cors);
     }
@@ -276,3 +281,89 @@ async function enviar(req, env) {
   }
   return { revisao: `${prep.marcador}${prep.numero}`, arquivos: enviados };
 }
+
+const PAR_CORPO_MAX = 95 * 1048576;
+// O GitHub troca caracteres como espaço no nome do asset, e aí o reenvio não acharia o de mesmo nome.
+const PAR_NOME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.(zip|csv)$/;
+
+// Listagem paginada: uma rodada grande pode passar do que cabe numa página.
+async function assetDaRelease(env, releaseId, nome) {
+  for (let pagina = 1; ; pagina++) {
+    const r = await github(env, `/releases/${releaseId}/assets?per_page=100&page=${pagina}`);
+    if (!r.ok) throw falha(`GitHub: não foi possível listar a release (${r.status})`, 502);
+    const lista = await r.json();
+    const achado = lista.find(a => a.name === nome);
+    if (achado || lista.length < 100) return achado;
+  }
+}
+
+// Sobe uma parte dos brutos na release da rodada. Sem rodada_id, o banco reserva
+// o id (é a primeira parte); reenviar o mesmo nome substitui o asset.
+async function paralelismoParte(req, env) {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) throw falha('Faça login no Hub para enviar arquivos', 401);
+  if (Number(req.headers.get('Content-Length')) > PAR_CORPO_MAX) throw falha('Parte maior que 95 MB', 413);
+
+  const form = await req.formData();
+  const rodada = form.get('rodada_id') || '';
+  const nome = form.get('nome');
+  const arq = form.get('arquivo');
+  if (rodada && !/^\d{1,15}$/.test(rodada)) throw falha('Rodada inválida');
+  if (typeof nome !== 'string' || !PAR_NOME.test(nome)) throw falha('Nome de arquivo inválido');
+  if (!arq || typeof arq !== 'object' || !arq.size) throw falha('Envio incompleto: falta o arquivo');
+  if (arq.size > PAR_CORPO_MAX) throw falha('Parte maior que 95 MB', 413);
+
+  let id;
+  try {
+    id = await banco(env, token, 'rpc/paralelismo_preparar_parte', {
+      metodo: 'POST',
+      corpo: { p_rodada_id: rodada ? Number(rodada) : null },
+    });
+  } catch (e) {
+    // A rodada já foi gravada (a resposta anterior se perdeu): a release fica como está.
+    if (/^rodada_ja_enviada:/.test(e.message)) return { rodada_id: Number(rodada), ja_enviada: true, url: null, bytes: 0 };
+    throw e;
+  }
+
+  const release = await releaseDaTag(env, `paralelismo-r${id}`, `Paralelismo — rodada ${id}`);
+  const antigo = await assetDaRelease(env, release.id, nome);
+  const asset = antigo
+    ? await substituirAsset(env, release.id, antigo, nome, arq)
+    : await subirAsset(env, release.id, nome, arq);
+  return { rodada_id: id, url: asset.browser_download_url, bytes: asset.size };
+}
+
+// A rodada foi excluída no banco (hub.paralelismo_excluir): a release fica como
+// prova e só ganha a marca na descrição. Quem pode é o admin, conforme o banco.
+async function paralelismoExcluida(req, env) {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) throw falha('Faça login no Hub', 401);
+  const { release_tag: tag } = await req.json().catch(() => ({}));
+  if (typeof tag !== 'string' || !/^paralelismo-r\d+$/.test(tag)) throw falha('Release inválida');
+  const nivel = await banco(env, token, 'rpc/paralelismo_nivel', { metodo: 'POST', corpo: {} });
+  if (nivel !== 'admin') throw falha('Só administradores marcam rodadas excluídas', 403);
+  const viva = await banco(env, token, `paralelismo_rodadas?select=id&release_tag=eq.${tag}`);
+  if (viva.length) throw falha('Esta rodada ainda não foi excluída', 409);
+
+  const r = await github(env, `/releases/tags/${tag}`);
+  if (r.status === 404) throw falha(`Release ${tag} não encontrada`, 404);
+  if (!r.ok) throw falha(`GitHub: não foi possível abrir a release ${tag} (${r.status})`, 502);
+  const release = await r.json();
+  const descricao = release.body || '';
+  if (descricao.includes('EXCLUÍDA em')) return { release_tag: tag, marcada: false };
+  const hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const marca = `EXCLUÍDA em ${hoje}`;
+  const ed = await github(env, `/releases/${release.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body: descricao ? `${descricao}\n\n${marca}` : marca }),
+  });
+  if (!ed.ok) throw falha(`GitHub: não foi possível marcar a release ${tag} (${ed.status})`, 502);
+  return { release_tag: tag, marcada: true };
+}
+
+const ROTAS_POST = {
+  '/enviar': enviar,
+  '/paralelismo/parte': paralelismoParte,
+  '/paralelismo/excluida': paralelismoExcluida,
+};
