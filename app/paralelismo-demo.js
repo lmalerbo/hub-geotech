@@ -84,13 +84,19 @@ const PAR_API_DEMO = {
     const i = PAR_DEMO_FROTAS.findIndex((x) => x.serie === f.serie);
     if (i >= 0) PAR_DEMO_FROTAS[i] = { ...f }; else PAR_DEMO_FROTAS.push({ ...f });
   },
-  async jaAnalisados() { return []; },
+  async jaAnalisados() {
+    if (window.PAR_DEMO_FALHA_JA) { window.PAR_DEMO_FALHA_JA--; throw new Error('Failed to fetch'); }
+    return [];
+  },
   async buscarBase(operacao, codFaz) {
     return { analise_id: operacao === 'cana' && codFaz === 10001 ? 1 : null, linhas: [], talhoes: parTalhoesDemo(codFaz),
              vigente: PAR_API_DEMO.vigentes[`${operacao}|${codFaz}`] || null };
   },
   async pendentes() { return 2; },
-  async preparar(id) { return id ?? 9001; },
+  async preparar(id) {
+    if (window.PAR_DEMO_JA_ENVIADO) throw new Error(`rodada_ja_enviada:${id ?? 9001}`);   // gravou, mas a resposta se perdeu
+    return id ?? 9001;
+  },
   async subir(nome, conteudo, id) {
     if (window.PAR_DEMO_FALHA_ENVIO) { window.PAR_DEMO_FALHA_ENVIO--; throw new Error('Failed to fetch'); }
     return { rodada_id: id, url: `https://exemplo.invalid/${nome}`, bytes: conteudo.size || conteudo.length || 0 };

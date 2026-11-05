@@ -206,6 +206,46 @@ with sync_playwright() as p:
             'sobras: descartar apaga a cópia do OPFS')
     pg.close()
 
+    # ── Achados da revisão: formulário em edição, conferência que falha, resposta perdida, mesmo pen-drive duas vezes ──
+    print('\n— Robustez')
+    with tempfile.TemporaryDirectory() as tmp:
+        pen = pen_sintetico(Path(tmp))
+        pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 300; window.PAR_DEMO_FALHA_JA = 1')
+        pg.wait_for_selector('#par-app:visible', timeout=20000)
+        pg.evaluate('parPasta()')
+        pg.set_input_files('#par-pasta', str(pen))
+        pg.wait_for_selector('[data-acao="reconferir"]', timeout=15000)
+        confere(pg.evaluate("PAR.rascunho.arquivos.length") == 3 and pg.locator('[data-acao="adicionar"]').is_disabled(),
+                'conferência que falha: a cópia fica guardada e o botão de adicionar espera')
+        pg.click('[data-acao="reconferir"]')
+        pg.wait_for_selector('.par-trator', timeout=10000)
+        pg.wait_for_function("PAR.rascunho.ja !== null")
+        # o item de demonstração ainda processa (passos de 300 ms): o texto digitado não pode sumir
+        pg.click('[data-acao="cadastrar"]')
+        pg.fill('[name="frota"]', 'digitando')
+        pg.wait_for_timeout(1500)
+        confere(pg.input_value('[name="frota"]') == 'digitando', 'formulário: o texto digitado sobrevive ao progresso da fila')
+        pg.click('[data-acao="cancelar-cadastro"]')
+        pg.click('[data-acao="adicionar"]')
+        esperar_pronto(pg, 20000)
+        # a mesma pasta de novo: o que já está na fila conta como repetido
+        pg.evaluate('parPasta()')
+        pg.set_input_files('#par-pasta', str(pen))
+        pg.wait_for_selector('.par-trator', timeout=15000)
+        pg.wait_for_function("PAR.rascunho && PAR.rascunho.ja !== null")
+        confere('já foram analisados' in pg.inner_text('#par-col') or 'já foi analisado' in pg.inner_text('#par-col'),
+                'mesmo pen-drive de novo: arquivos da fila aparecem como já analisados')
+        pg.close()
+
+    pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 5; window.PAR_DEMO_JA_ENVIADO = true')
+    pg.wait_for_selector('#par-app:visible', timeout=20000)
+    esperar_pronto(pg)
+    pg.click('[data-acao="enviar"]')
+    pg.wait_for_function('PAR.itens.length === 0 && PAR.enviados.length === 1', timeout=10000)
+    confere('já tinha sido gravada' in pg.inner_text('#par-toast') or 'aguardando validação' in pg.inner_text('#par-fila'),
+            'resposta perdida: rodada já gravada vira "enviado", sem prender o item')
+    pg.close()
+
     # ── 390 px: sem rolagem horizontal ──
     print('\n— Celular')
     mov = nav.new_context(viewport={'width': 390, 'height': 800})

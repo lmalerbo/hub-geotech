@@ -208,7 +208,7 @@ function parCriarFilaDaTela() {
   PAR.fila = parCriarFila({
     criarWorker: () => (PAR_DEMO ? new ParWorkerDemo() : new Worker('paralelismo-worker.js')),
     buscarBase: parBuscarBase,
-    aoMudar: (itens) => { PAR.itens = itens; parRenderTudo(); },
+    aoMudar: (itens) => { PAR.itens = itens; parRenderTudo(true); },
   });
 }
 async function parBuscarBase(operacao, codFaz) {
@@ -220,7 +220,7 @@ async function parBuscarBase(operacao, codFaz) {
 }
 async function parVerSobras() {
   try { PAR.sobras = await parOpfsSobras(); } catch (e) { PAR.sobras = []; }
-  parRenderTudo();
+  parRenderTudo(true);
 }
 async function parDescartarSobras() {
   const ok = await parDialogo('Descartar cópias antigas?', 'Elas são de uma sessão que acabou e nada foi enviado delas. Para analisar de novo, escolha a pasta do pen-drive outra vez.',
@@ -253,14 +253,26 @@ async function parAoEscolher(e) {
   const r = PAR.rascunho = { id, nome, estado: 'copiando', pct: 0, arquivos: [], mapas: [], falhas: [], ja: [], gs3: {}, cadastrando: null, erro: null };
   parRenderTudo();
   try {
-    const copia = await parOpfsCopiar(id, files, { aoProgresso: ({ feitos, total }) => { r.pct = total ? Math.floor(100 * feitos / total) : 100; parRenderTudo(); } });
+    const copia = await parOpfsCopiar(id, files, { aoProgresso: ({ feitos, total }) => { r.pct = total ? Math.floor(100 * feitos / total) : 100; parRenderTudo(true); } });
     Object.assign(r, copia);
-    r.ja = await parApi().jaAnalisados(r.arquivos.map((a) => a.sha256));
-    r.estado = 'conferencia';
   } catch (err) {
     r.estado = 'erro';
-    r.erro = /espaço/.test(err.message) ? err.message : (r.arquivos.length || /já analis/.test(err.message) ? err.message : 'Não foi possível copiar o pen-drive para o navegador ou conferir os arquivos. Escolha a pasta de novo.');
+    r.erro = /espaço/.test(err.message) ? err.message : 'Não foi possível copiar o pen-drive para o navegador. Escolha a pasta de novo.';
     await parOpfsDescartar(id).catch(() => {});
+    parRenderTudo();
+    return;
+  }
+  r.estado = 'conferencia';
+  await parConferirJaAnalisados();   // falha aqui não descarta a cópia: só repete esta consulta
+}
+async function parConferirJaAnalisados() {
+  const r = PAR.rascunho;
+  if (!r) return;
+  r.ja = null;
+  try {
+    r.ja = await parApi().jaAnalisados(r.arquivos.map((a) => a.sha256));
+  } catch (err) {
+    r.ja = null;
   }
   parRenderTudo();
 }
@@ -273,7 +285,9 @@ async function parDescartarRascunho() {
 // Conferência com a frota final: o GS3 usa a frota digitada (ou a sugerida pela pasta) no cadastro 'GS3:<frota>'.
 function parGruposRascunho() {
   const r = PAR.rascunho;
-  const grupos = parConferencia([...r.arquivos, ...r.mapas], PAR.frotas, r.ja);
+  // Além do banco, o que já está na fila desta página (ainda não enviado) também conta como repetido.
+  const locais = [...PAR.metas.values()].flatMap((m) => m.todos.map((a) => a.sha256));
+  const grupos = parConferencia([...r.arquivos, ...r.mapas], PAR.frotas, [...(r.ja || []), ...locais]);
   return grupos.map((g) => {
     if (g.tipo !== 'gs3') return g;
     const escolhida = r.gs3[g.trator] ?? g.frotaSugerida ?? '';
@@ -350,8 +364,18 @@ async function parEnviar(id) {
     parToast(`Enviado para validação (rodada ${r.rodadaId}).`);
     if (parEhEditor()) api.pendentes().then(parContador).catch(() => {});
   } catch (e) {
-    meta.erroEnvio = e.message;
-    meta.rodadaId = e.rodadaId ?? meta.rodadaId;
+    const causa = (e.causa && e.causa.message) || '';
+    if (/rodada_ja_enviada/.test(causa)) {   // gravou, mas a resposta se perdeu: já está enviado
+      PAR.enviados.push({ nome: meta.nome, rodadaId: e.rodadaId, fazendas: previa.enviaveis });
+      PAR.metas.delete(id);
+      if (PAR.sel === id) PAR.sel = null;
+      PAR.faz = null;
+      await PAR.fila.remover(id).catch(() => {});
+      parToast(`A rodada ${e.rodadaId} já tinha sido gravada; está aguardando validação.`);
+    } else {
+      meta.erroEnvio = e.message;
+      meta.rodadaId = /rodada_invalida/.test(causa) ? null : (e.rodadaId ?? meta.rodadaId);   // reserva inválida: pede outro id
+    }
   } finally {
     meta.enviando = false;
     parRenderTudo();
@@ -381,12 +405,17 @@ function parExemploDemo() {
 function parDesenharAbas() {
   document.querySelectorAll('.par-aba').forEach((b) => { b.onclick = () => { PAR.aba = b.dataset.aba; PAR.faz = null; parRenderTudo(); }; });
 }
-function parRenderTudo() {
+// auto = disparado pela fila ou pela cópia, não pelo usuário: se ele está digitando na coluna (cadastro de frota,
+// frota do GS3), a coluna não é refeita, para não apagar o texto, o foco nem engolir o clique.
+function parRenderTudo(auto = false) {
   if (!$par('par-app') || $par('par-app').classList.contains('off')) return;
   document.querySelectorAll('.par-aba').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.aba === PAR.aba)));
   const col = $par('par-col'), topo = col.scrollTop;
-  col.innerHTML = PAR.aba === 'processar' ? parHtmlProcessar() : parHtmlOutraAba();
-  col.scrollTop = topo;
+  const editando = col.contains(document.activeElement) && /^(INPUT|SELECT)$/.test(document.activeElement.tagName);
+  if (!(auto && (editando || (PAR.rascunho && PAR.rascunho.cadastrando != null)))) {
+    col.innerHTML = PAR.aba === 'processar' ? parHtmlProcessar() : parHtmlOutraAba();
+    col.scrollTop = topo;
+  }
   parRenderFaixa();
   parMapaAtualizar();
 }
@@ -427,10 +456,12 @@ function parHtmlRascunho() {
       <div class="par-acoes" style="margin-top:8px"><button class="par-btn2" type="button" data-acao="escolher">Escolher a pasta de novo</button><button class="par-btn2" type="button" data-acao="descartar-rascunho">Fechar</button></div></div>`;
   }
   const grupos = parGruposRascunho();
-  const usaveis = grupos.filter((g) => g.nArquivos > 0 && g.frota);
+  const usaveis = r.ja === null ? [] : grupos.filter((g) => g.nArquivos > 0 && g.frota);
   const faltaMapa = grupos.length === 0;
   return `<div>${cab}
     <div class="par-aviso ok" style="margin-top:8px"><span class="ico">usb</span><div><b>Cópia pronta: pode retirar o pen-drive.</b></div></div></div>
+    ${r.ja === null ? `<div class="par-aviso erro" role="alert"><span class="ico">wifi_off</span><div>Não foi possível conferir no Hub se os arquivos já foram analisados. A cópia está guardada.
+      <div class="par-acoes" style="margin-top:6px"><button class="par-btn2" type="button" data-acao="reconferir">Conferir de novo</button></div></div></div>` : ''}
     ${r.falhas.length ? `<div class="par-aviso erro"><span class="ico">error</span><div>${parPlural(r.falhas.length, 'arquivo não pôde', 'arquivos não puderam')} ser copiado(s) e ficaram de fora.</div></div>` : ''}
     <div><h3>Conferência <small>${parPlural(grupos.length, 'trator', 'tratores')}</small></h3>
     <div class="par-cartoes-trator">${grupos.map((g, i) => parHtmlTrator(g, i)).join('') || '<p>Nenhum arquivo .jdl, .fdl ou .fdd nesta pasta.</p>'}</div></div>
@@ -543,12 +574,14 @@ function parLigarColuna() {
   col.addEventListener('click', (e) => {
     const b = e.target.closest('[data-acao]');
     if (!b) return;
+    clearTimeout(parLigarColuna.timer);
     const id = b.dataset.id;
     const acao = {
       escolher: () => parPasta().click(),
       'descartar-sobras': parDescartarSobras,
       'descartar-rascunho': parDescartarRascunho,
       adicionar: parAdicionarAFila,
+      reconferir: parConferirJaAnalisados,
       cadastrar: () => { PAR.rascunho.cadastrando = Number(b.dataset.i); parRenderTudo(); },
       'cancelar-cadastro': () => { PAR.rascunho.cadastrando = null; parRenderTudo(); },
       abrir: () => { PAR.sel = id; PAR.faz = null; parRenderTudo(); },
@@ -568,7 +601,11 @@ function parLigarColuna() {
   });
   col.addEventListener('change', (e) => {
     const g = e.target.closest('[data-gs3]');
-    if (g && PAR.rascunho) { PAR.rascunho.gs3[g.dataset.gs3] = g.value.trim(); parRenderTudo(); }
+    if (g && PAR.rascunho) {
+      PAR.rascunho.gs3[g.dataset.gs3] = g.value.trim();
+      clearTimeout(parLigarColuna.timer);
+      parLigarColuna.timer = setTimeout(parRenderTudo, 500);   // um clique logo em seguida já refaz a coluna, sem perdê-lo
+    }
   });
 }
 
@@ -706,7 +743,7 @@ function parIniciarMapa() {
     const tl = f && f.talhoes.find((z) => z.talhao_num === t.talhao);
     dica.classList.toggle('on', !!t);
     if (t) {
-      dica.innerHTML = `<b>Talhão ${t.talhao}</b> · ${t.area} ha${tl ? `<br>${tl.pctTxt} aderente · ${tl.amostras} amostras` : ''}`;
+      dica.innerHTML = `<b>Talhão ${parEsc(t.talhao)}</b> · ${parEsc(t.area)} ha${tl ? `<br>${parEsc(tl.pctTxt)} aderente · ${parEsc(tl.amostras)} amostras` : ''}`;
       dica.style.left = `${Math.min(x + 12, r.width - 190)}px`;
       dica.style.top = `${y + 12}px`;
     }

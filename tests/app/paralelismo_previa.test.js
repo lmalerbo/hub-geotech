@@ -126,6 +126,9 @@ test('textos de erro do envio', () => {
   assert.match(ctx.parTextoErro(new Error('rodada_ja_enviada:5')), /já foi enviada/);
   assert.match(ctx.parTextoErro(new Error('Sem permissão para enviar ao Paralelismo')), /nível/);
   assert.match(ctx.parTextoErro(new TypeError('Failed to fetch')), /conexão/);
+  assert.match(ctx.parTextoErro(new Error('Sessão expirada; entre de novo')), /sessão expirou/);
+  assert.match(ctx.parTextoErro(new Error('Parte maior que 95 MB')), /95 MB/);
+  assert.doesNotMatch(ctx.parTextoErro(new TypeError("Cannot read properties of undefined")), /conexão/);
   assert.match(ctx.parTextoErro(new Error('qualquer coisa')), /Nada foi gravado/);
 });
 
@@ -180,4 +183,9 @@ test('envio: sem nenhuma fazenda enviável nem reserva id', async () => {
   item.resultado = resultado({ fazendas: [fazenda({ linhas_novas: [] })] });
   await assert.rejects(ctx.parEnviarItem(item, d), /Nada novo/);
   assert.strictEqual(d.chamadas.length, 0);
+});
+
+test('envio: o id inválido e o já enviado chegam em causa, para a tela decidir', async () => {
+  const d = deps({ preparar: async () => { throw new Error('rodada_ja_enviada:5'); } });
+  await assert.rejects(ctx.parEnviarItem({ ...entrada(), rodadaId: 5 }, d), (e) => e.rodadaId === 5 && /rodada_ja_enviada/.test(e.causa.message));
 });

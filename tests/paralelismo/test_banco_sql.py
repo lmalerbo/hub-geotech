@@ -359,3 +359,8 @@ def test_cartao_em_ferramentas_entra_uma_vez_e_preserva_os_outros(banco):
     banco.execute(sql)
     depois = json.loads(banco.execute("select valor from hub.parametros where chave = 'ferramentas'").fetchone()[0])
     assert depois == lista
+    volta = (RAIZ / 'supabase' / 'migrations' / 'volta' / '20261105090000_paralelismo_cartao_volta.sql').read_text(encoding='utf-8')
+    banco.execute(volta)
+    sem = json.loads(banco.execute("select valor from hub.parametros where chave = 'ferramentas'").fetchone()[0])
+    assert [f['id'] for f in sem] == [i for i in ids if i != 'paralelismo']
+    banco.execute(sql)   # deixa o cartão de volta para os outros testes

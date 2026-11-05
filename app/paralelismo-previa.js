@@ -110,8 +110,10 @@ function parTextoErro(e) {
   const m = String((e && e.message) || e || '');
   if (/arquivo_ja_analisado|arquivo_repetido_no_envio/.test(m)) return 'Alguns arquivos já foram analisados em outra rodada; escolha o pen-drive de novo. Nada foi gravado.';
   if (/rodada_ja_enviada/.test(m)) return 'Esta rodada já foi enviada. Nada mais foi gravado.';
-  if (/Sem permissão|permission denied|403/.test(m)) return 'Seu nível não permite enviar ao Paralelismo. Nada foi gravado.';
-  if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(m) || (e && e.name === 'TypeError')) return 'Sem conexão com o Hub. Nada foi gravado; tente de novo.';
+  if (/Sessão expirada|JWT expired|jwt/i.test(m)) return 'Sua sessão expirou. Entre de novo no Hub e tente de novo; a cópia do pen-drive continua neste navegador. Nada foi gravado.';
+  if (/maior que 95/.test(m)) return 'Uma parte passou do limite de 95 MB e não pôde ser enviada. Nada foi gravado.';
+  if (/Sem permissão|permission denied|403/.test(m)) return 'Seu nível não permite enviar ao Paralelismo. Nada foi gravado.';
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Sem conexão com o Hub. Nada foi gravado; tente de novo.';
   if (/Nada novo/.test(m)) return m;
   return 'Não foi possível enviar para validação. Nada foi gravado; tente de novo.';
 }
