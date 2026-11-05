@@ -224,13 +224,19 @@ function parPlanoDoItem(grupos, todos) {
     }
   }
   const emOrdem = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+  // Pasta por pasta, como o sorted de Path: inteiro, 'x-y/' viria antes de 'x/' e mudaria a emenda entre arquivos no LSFP.
+  const porCaminho = (x, y) => {
+    const a = x.split('/'), b = y.split('/');
+    for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return emOrdem(a[i], b[i]);
+    return a.length - b.length;
+  };
   return {
     fazendas: [...fazendas.values()]
       .sort((x, y) => emOrdem(x.operacao, y.operacao) || x.cod_faz - y.cod_faz)
       .map(({ operacao, cod_faz, porFrota }) => ({
         operacao, cod_faz,
         grupos: [...porFrota.entries()].sort((x, y) => emOrdem(x[0], y[0])).map(([frota, arquivos]) => ({
-          frota, arquivos: arquivos.sort((x, y) => emOrdem(x.caminho, y.caminho)),
+          frota, arquivos: arquivos.sort((x, y) => porCaminho(x.caminho, y.caminho)),
         })),
       })),
     pulados,

@@ -7,7 +7,6 @@ import zipfile
 from pathlib import Path
 
 import pytest
-import shapefile
 
 from paralelismo import navegador
 from paralelismo.analise import analisar_fazenda, linhas_do_grupo, para_utm
@@ -30,30 +29,55 @@ def escrever_gs3(tmp_path):
 def test_ler_devolve_contagens_e_apaga_o_arquivo(tmp_path):
     caminho = escrever_jdl(tmp_path)
     r = Grupo('90001').ler('jdl', caminho, '2026-10-10')
-    assert r == {'pontos': 3, 'registros': 5, 'legivel': True}
+    assert r == {'pontos': 3, 'registros': 5, 'legivel': True, 'completo': True}
     assert not os.path.exists(caminho)
 
 
 def test_ler_gs3_apaga_o_fdl_e_o_fdd(tmp_path):
     caminho = escrever_gs3(tmp_path)
     r = Grupo('90001').ler('gs3', caminho, '2026-10-10')
-    assert r == {'pontos': 3, 'registros': 4, 'legivel': True}
+    assert r == {'pontos': 3, 'registros': 4, 'legivel': True, 'completo': True}
     assert list(tmp_path.iterdir()) == []
 
 
-def test_ler_apaga_o_arquivo_mesmo_se_o_leitor_estourar(tmp_path, monkeypatch):
+def test_falta_de_memoria_nao_vira_arquivo_ilegivel(tmp_path, monkeypatch):
+    # É falha do ambiente, não do arquivo: o item dá erro e pode ser refeito, em vez de sair com números menores.
     caminho = escrever_jdl(tmp_path)
     def estoura(_):
         raise MemoryError
     monkeypatch.setattr(navegador, 'ler_jdl', estoura)
+    with pytest.raises(MemoryError):
+        Grupo('90001').ler('jdl', caminho, None)
+    assert not os.path.exists(caminho)
+
+
+def test_excecao_inesperada_do_leitor_pula_o_arquivo_e_aparece_no_console(tmp_path, monkeypatch, capsys):
+    caminho = escrever_jdl(tmp_path)
+    def estoura(_):
+        raise RuntimeError('formato novo')
+    monkeypatch.setattr(navegador, 'ler_jdl', estoura)
     assert Grupo('90001').ler('jdl', caminho, None)['legivel'] is False
     assert not os.path.exists(caminho)
+    assert 'formato novo' in capsys.readouterr().err
+
+
+def test_jdl_cortado_aproveita_os_pontos_e_marca_incompleto(tmp_path):
+    inteiro = jdl_sintetico()
+    r = Grupo('90001').ler('jdl', escrever_jdl(tmp_path, dados=inteiro[:-1]), None)
+    assert r['legivel'] is True and r['completo'] is False
+
+
+def test_gs3_com_bloco_alem_do_fim_do_fdd_marca_incompleto(tmp_path):
+    (tmp_path / 's.fdl').write_text(FDL.replace('<EvenByteDelta filePosition="0" />', '<A filePosition="0" /><A filePosition="999999" />'), encoding='latin-1')
+    (tmp_path / 's.fdd').write_bytes(fdd_sintetico())
+    r = Grupo('90001').ler('gs3', str(tmp_path / 's.fdl'), None)
+    assert r['legivel'] is True and r['completo'] is False
 
 
 def test_arquivo_ilegivel_nao_quebra_e_o_grupo_segue(tmp_path):
     g = Grupo('90001')
     assert g.ler('jdl', escrever_jdl(tmp_path, 'ruim.jdl', b'isto nao e um jdl'), '2026-10-09') == {
-        'pontos': 0, 'registros': 0, 'legivel': False}
+        'pontos': 0, 'registros': 0, 'legivel': False, 'completo': False}
     assert g.ler('jdl', escrever_jdl(tmp_path), '2026-10-10')['pontos'] == 3
     assert g.fechar()['frota'] == '90001'
 
@@ -61,7 +85,7 @@ def test_arquivo_ilegivel_nao_quebra_e_o_grupo_segue(tmp_path):
 def test_trilha_sem_trabalho_e_legivel(tmp_path):
     so_trilha = registro_jdl(1000, campo_int(5, 1000), [item_rico(-22.0, -48.0, [1000] * 5)])
     r = Grupo('90001').ler('jdl', escrever_jdl(tmp_path, dados=so_trilha), None)
-    assert r == {'pontos': 0, 'registros': 5, 'legivel': True}
+    assert r == {'pontos': 0, 'registros': 5, 'legivel': True, 'completo': True}
 
 
 def test_tipo_desconhecido_e_erro(tmp_path):
@@ -180,6 +204,6 @@ def test_publicado_no_modulo_paralelismo():
     assert 'paralelismo/navegador.py' in MODULOS['paralelismo']
 
 
-def test_worker_fixa_a_versao_validada_do_pyshp():
+def test_worker_fixa_a_versao_do_pyshp():
     worker = (Path(__file__).resolve().parents[2] / 'app' / 'paralelismo-worker.js').read_text(encoding='utf-8')
-    assert re.search(r"pyshp==([\d.]+)", worker).group(1) == shapefile.__version__
+    assert re.search(r"'pyshp==\d+\.\d+\.\d+'", worker)  # exata: o micropip não pode trazer outra sozinho

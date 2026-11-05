@@ -33,7 +33,8 @@ async function parPreparar() {
   return py;
 }
 
-// Copia do OPFS para o sistema de arquivos do Pyodide. O Python apaga depois de ler. Sem o arquivo = pulado.
+// Copia do OPFS para o sistema de arquivos do Pyodide. O Python apaga depois de ler. Se a cópia sumiu (o navegador pode
+// evacuar o OPFS), o item dá erro: pular mudaria os números sem que o arquivo tivesse culpa.
 async function parTrazerArquivo(py, id, arq) {
   const fdl = `${PAR_DIR}/atual.${arq.tipo === 'jdl' ? 'jdl' : 'fdl'}`;
   py.FS.writeFile(fdl, await parOpfsLer(id, arq.opfs));
@@ -41,42 +42,39 @@ async function parTrazerArquivo(py, id, arq) {
   return fdl;
 }
 
-async function parLerGrupo(py, item, grupo, avisar, pulados) {
+// listas = {pulados, parciais}. Parcial = cortado, mas os pontos valem: é o que os leitores devolvem e o que a regressão contou.
+async function parLerGrupo(py, item, grupo, avisar, listas) {
   const g = py.globals.get('Grupo')(grupo.frota);
   try {
     for (const arq of grupo.arquivos) {
-      let caminho;
-      try {
-        caminho = await parTrazerArquivo(py, item.id, arq);
-      } catch (e) {
-        pulados.push({ caminho: arq.caminho, motivo: 'nao_lido' });
-        continue;
-      }
+      const caminho = await parTrazerArquivo(py, item.id, arq);
       const lido = g.ler(arq.tipo, caminho, arq.data);
-      if (!lido.get('legivel')) pulados.push({ caminho: arq.caminho, motivo: 'ilegivel' });
+      if (!lido.get('legivel')) listas.pulados.push({ caminho: arq.caminho, motivo: 'ilegivel' });
+      else if (!lido.get('completo')) listas.parciais.push({ caminho: arq.caminho });
       lido.destroy();
-      avisar(arq.bytes);
+      avisar(arq.bytes, 'lendo');
     }
+    avisar(0, 'linhas');
     return JSON.parse(g.fechar_json());
   } finally {
     g.destroy();
   }
 }
 
-async function parAnalisarFazenda(py, item, faz, avisar, pulados) {
+async function parAnalisarFazenda(py, item, faz, avisar, listas) {
   const total = faz.grupos.reduce((s, g) => s + g.arquivos.reduce((t, a) => t + a.bytes, 0), 0);
   let lidos = 0;
+  const pctLeitura = () => (total ? Math.floor(70 * lidos / total) : 70);
   const linhas_novas = [], frotas_leitura = [];
   avisar(0, 'lendo');
   for (const grupo of faz.grupos) {
-    const fechado = await parLerGrupo(py, item, grupo, (bytes) => {
+    const fechado = await parLerGrupo(py, item, grupo, (bytes, fase) => {
       lidos += bytes;
-      avisar(Math.floor(70 * lidos / total), 'lendo');
-    }, pulados);
+      avisar(pctLeitura(), fase);
+    }, listas);
     for (const l of fechado.linhas) linhas_novas.push(l);
     const { frota, duracao_total_s, duracao_trabalho_s, sem_trabalho } = fechado;
     frotas_leitura.push({ frota, duracao_total_s, duracao_trabalho_s, sem_trabalho });
-    avisar(Math.floor(70 * lidos / total), 'linhas');
   }
   avisar(70, 'analise');
   const linhas = parMesclarComVigente(faz.vigentes, linhas_novas);
@@ -105,12 +103,12 @@ async function parProcessar(item) {
     postMessage({ tipo: 'erro', id: item.id, msg: PAR_ERRO_PREPARO });
     return;
   }
-  const pulados = [...item.pulados];
+  const listas = { pulados: [...item.pulados], parciais: [] };
   const fazendas = [];
   for (const [i, faz] of item.fazendas.entries()) {
     const avisar = (pct, fase) => progresso(faz.cod_faz, pct, Math.floor((i + pct / 100) / item.fazendas.length * 100), fase);
     try {
-      fazendas.push(await parAnalisarFazenda(py, item, faz, avisar, pulados));
+      fazendas.push(await parAnalisarFazenda(py, item, faz, avisar, listas));
     } catch (e) {
       console.error(e);
       postMessage({ tipo: 'erro', id: item.id, msg: `Não foi possível analisar a fazenda ${faz.cod_faz}; tente de novo` });
@@ -118,9 +116,14 @@ async function parProcessar(item) {
     }
     avisar(100, 'analise');
   }
-  postMessage({ tipo: 'pronto', id: item.id, resultado: { id: item.id, pulados, fazendas } }, fazendas.map((f) => f.shapefile.buffer));
+  postMessage({ tipo: 'pronto', id: item.id, resultado: { id: item.id, ...listas, fazendas } }, fazendas.map((f) => f.shapefile.buffer));
 }
 
+// Rejeição aqui não dispara o onerror da página: sem o catch, o item ficaria processando e a fila, parada.
 onmessage = (e) => {
-  if (e.data.tipo === 'processar') parProcessar(e.data.item);
+  if (e.data.tipo !== 'processar') return;
+  parProcessar(e.data.item).catch((erro) => {
+    console.error(erro);
+    postMessage({ tipo: 'erro', id: e.data.item.id, msg: 'Não foi possível concluir a análise; tente de novo' });
+  });
 };

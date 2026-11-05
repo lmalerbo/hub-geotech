@@ -176,3 +176,13 @@ def ler_gs3(caminho_fdl: str) -> tuple[list[tuple[float, float]], int]:
     except (OSError, UnicodeDecodeError):
         return [], 0
     return pontos_plantio(sessao, antena="5140"), len(sessao["registros"])
+
+
+def gs3_completo(caminho_fdl: str) -> bool:
+    """Todo bloco citado no .fdl comeca dentro do .fdd? Corte dentro do ultimo
+    bloco nao aparece aqui: o .fdl so traz onde cada bloco comeca."""
+    try:
+        posicoes = [int(v) for v in re.findall(r'filePosition="(\d+)"', open(caminho_fdl, encoding="latin-1").read())]
+        return bool(posicoes) and max(posicoes) < os.path.getsize(caminho_fdl[:-4] + ".fdd")
+    except (OSError, UnicodeDecodeError):
+        return False

@@ -109,7 +109,7 @@ window.parTeste = {
     });
     const t = (performance.now() - inicio) / 1000;
     const fazendas = (fim.resultado ? fim.resultado.fazendas : []).map((f) => ({ ...f, shapefile: btoa(String.fromCharCode(...f.shapefile)) }));
-    return { id, copia, plano, progresso, estado: fim.estado, erro: fim.erro, segundos: t, copiaS, pulados: fim.resultado && fim.resultado.pulados, fazendas };
+    return { id, copia, plano, progresso, estado: fim.estado, erro: fim.erro, segundos: t, copiaS, pulados: fim.resultado && fim.resultado.pulados, parciais: fim.resultado && fim.resultado.parciais, fazendas };
   },
 };
 """
@@ -403,6 +403,59 @@ def cenario_dois_itens(ctx, url):
     pag.close()
 
 
+# ── O que não pode mudar número sem avisar ────────────────────────────────
+def cenario_falhas(ctx, url):
+    print('\n— Arquivo cortado, sem data, cópia que sumiu do OPFS e mensagem inválida')
+    with tempfile.TemporaryDirectory() as tmp:
+        log = Path(tmp) / 'pen' / 'log' / '2026_U_99997Rev0'
+        log.mkdir(parents=True)
+        # Nome sem o prefixo AAAA_MM_DD: a data vem nula, e o null do JS passa pela ponte do Pyodide.
+        for i in range(3):
+            (log / f'p{i}.jdl').write_bytes(passada_jdl(i))
+        # Dois registros, com o corte no segundo: o primeiro continua valendo. Num registro só, nada sobra (e é ilegível).
+        (log / 'p3_cortado.jdl').write_bytes(passada_jdl(3) + passada_jdl(3, ticks=50)[:-1])
+        lotes = [ler_jdl(str(log / nome))[0] for nome in ('p0.jdl', 'p1.jdl', 'p2.jdl', 'p3_cortado.jdl')]
+        linhas = nativo(lotes, '90001', None)
+        nat = json.loads(json.dumps(analisar_fazenda(linhas, {})))
+        pag = _pagina(ctx, url)
+        pag.set_input_files('#pasta', str(Path(tmp) / 'pen'))
+        r = pag.evaluate("""async (base) => parTeste.rodar(document.getElementById('pasta').files, () => ['90001', 'torta'], { '*': base })""", BASE_VAZIA)
+    confere(r['estado'] == 'pronto', f'cortado e sem data: processou; erro: {r["erro"]}')
+    confere(r['parciais'] == [{'caminho': 'pen/log/2026_U_99997Rev0/p3_cortado.jdl'}] and r['pulados'] == [], f'cortado: listado como parcial ({r["parciais"]}, {r["pulados"]})')
+    if r['fazendas']:
+        f = r['fazendas'][0]
+        compara_linhas('sem data', f['linhas_novas'], linhas)
+        compara_analise('sem data', f['analise'], nat)
+        confere(all(l['data'] is None for l in f['linhas_novas']) and f['analise']['mes'] is None, 'sem data: linhas com data nula e sem mês')
+    pag.evaluate('id => parOpfsDescartar(id)', r['id'])
+
+    r = pag.evaluate("""async (base) => {
+        const id = crypto.randomUUID();
+        const f = new File([new Uint8Array(10)], 'a.jdl');
+        const { arquivos } = await parOpfsCopiar(id, [f]);
+        const plano = { pulados: [], fazendas: [{ operacao: 'torta', cod_faz: 99999, grupos: [{ frota: '90001', arquivos: [
+          { tipo: 'jdl', caminho: 'a.jdl', opfs: arquivos[0].opfs, opfs_fdd: null, data: null, bytes: 10 }] }] }] };
+        await parOpfsDescartar(id);  // o navegador pode evacuar o OPFS: não pode virar "pronto" com número menor
+        return new Promise((pronto) => {
+          parCriarFila({
+            criarWorker: () => new Worker('paralelismo-worker.js'),
+            buscarBase: async () => base,
+            aoMudar: (itens) => { if (['pronto', 'erro'].includes(itens[0].estado)) pronto(itens[0]); },
+          }).adicionar({ id, plano });
+        }).then((i) => [i.estado, i.erro]);
+    }""", BASE_VAZIA)
+    confere(r == ['erro', 'Não foi possível analisar a fazenda 99999; tente de novo'], f'cópia sumiu do OPFS: erro do item, que pode ser refeito ({r})')
+
+    r = pag.evaluate("""() => new Promise((pronto) => {
+        const w = new Worker('paralelismo-worker.js');
+        w.onmessage = (e) => { if (e.data.tipo === 'erro') { w.terminate(); pronto(e.data.id); } };
+        w.postMessage({ tipo: 'processar', item: { id: 'x' } });
+        setTimeout(() => pronto('travou'), 120000);
+    })""")
+    confere(r == 'x', f'mensagem inválida: o Worker responde erro em vez de travar a fila ({r})')
+    pag.close()
+
+
 def ler_jdl_bytes(dados):
     with tempfile.TemporaryDirectory() as tmp:
         f = Path(tmp) / 'a.jdl'
@@ -425,6 +478,7 @@ def main():
             else:
                 print('\n— Amostras reais ausentes: comparação pulada (ver tests/dados/paralelismo/LEIAME.md)')
             cenario_dois_itens(ctx, url)
+            cenario_falhas(ctx, url)
             cenario_sobras(ctx, url)
             cenario_corretivos(ctx, url)
             cenario_sem_pyodide(navegador, url)

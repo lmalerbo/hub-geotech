@@ -139,6 +139,29 @@ test('copiar: avisa o progresso por arquivo copiado, em bytes', async () => {
   igual(visto, [{ feitos: 3, total: 7, caminho: 'p/a.jdl' }, { feitos: 7, total: 7, caminho: 'p/b.jdl' }]);
 });
 
+test('copiar: a segunda cópia com o mesmo id é recusada e não sobrescreve a primeira', async () => {
+  const { ctx } = ambiente();
+  await ctx.parOpfsCopiar('i1', [origem('p/a.jdl', 'primeiro')]);
+  await assert.rejects(ctx.parOpfsCopiar('i1', [origem('p/c.jdl', 'outro')]));
+  assert.deepStrictEqual([...await ctx.parOpfsLer('i1', 'f000001.jdl')], [...bytesDe('primeiro')]);
+});
+
+test('copiar: duas cópias simultâneas com o mesmo id: a segunda é recusada na hora', async () => {
+  const { ctx } = ambiente();
+  const primeira = ctx.parOpfsCopiar('i1', [origem('p/a.jdl', 'primeiro')]);
+  await assert.rejects(ctx.parOpfsCopiar('i1', [origem('p/c.jdl', 'outro')]));
+  await primeira;
+  assert.deepStrictEqual([...await ctx.parOpfsLer('i1', 'f000001.jdl')], [...bytesDe('primeiro')]);
+});
+
+test('copiar: depois de descartar, o id pode ser usado de novo', async () => {
+  const { ctx } = ambiente();
+  await ctx.parOpfsCopiar('i1', [origem('p/a.jdl', 'primeiro')]);
+  await ctx.parOpfsDescartar('i1');
+  await ctx.parOpfsCopiar('i1', [origem('p/c.jdl', 'outro')]);
+  assert.deepStrictEqual([...await ctx.parOpfsLer('i1', 'f000001.jdl')], [...bytesDe('outro')]);
+});
+
 // ── sobras ─────────────────────────────────────────────────────────────
 test('sobras: sem nada no OPFS, lista vazia', async () => {
   const { ctx, raiz } = ambiente();
@@ -222,6 +245,12 @@ test('plano: sem frota, sem fazenda e sem .fdd vão para os pulados', () => {
     grupo([JDL('b.jdl', null), JDL('c.fdl', 99999)]),
   ], []);
   igual(r, { fazendas: [], pulados: [{ caminho: 'a.jdl', motivo: 'sem_frota' }, { caminho: 'b.jdl', motivo: 'sem_fazenda' }, { caminho: 'c.fdl', motivo: 'sem_fdd' }] });
+});
+
+test('plano: a ordem compara pasta por pasta, como o sorted do Python na regressão', () => {
+  const { ctx } = ambiente();
+  const r = ctx.parPlanoDoItem([grupo([JDL('x-y/1.jdl', 99999), JDL('x/1.jdl', 99999)])], []);
+  igual(r.fazendas[0].grupos[0].arquivos.map((a) => a.caminho), ['x/1.jdl', 'x-y/1.jdl']);
 });
 
 // ── parCriarFila ───────────────────────────────────────────────────────
@@ -367,4 +396,22 @@ test('fila: avisa cada mudança', async () => {
   await espera();
   assert.ok(mudancas.length >= 1);
   assert.strictEqual(mudancas.at(-1)[0].estado, 'processando');
+});
+
+test('fila: item sem nenhuma fazenda termina pronto, sem subir o Pyodide', async () => {
+  const { f } = fila();
+  f.adicionar({ id: 'a', plano: { pulados: [{ caminho: 'x', motivo: 'sem_frota' }], fazendas: [] } });
+  await espera();
+  assert.strictEqual(WorkerFalso.criados.length, 0);
+  igual(estados(f), [['a', 'pronto']]);
+  igual(f.itens()[0].resultado, { id: 'a', pulados: [{ caminho: 'x', motivo: 'sem_frota' }], parciais: [], fazendas: [] });
+});
+
+test('fila: mensagem que não chega ao destino vira erro do item', async () => {
+  const { f } = fila();
+  f.adicionar({ id: 'a', plano: PLANO });
+  await espera();
+  WorkerFalso.criados[0].onmessageerror({});
+  await espera();
+  igual(estados(f), [['a', 'erro']]);
 });

@@ -18,7 +18,6 @@ async function parOpfsRaiz(criar) {
 
 // O lock vive enquanto a aba vive: cópia sem lock é sobra de uma sessão fechada, e outra aba não oferece apagar a cópia em uso.
 function parOpfsTravar(id) {
-  if (PAR_TRAVAS.has(id)) return Promise.resolve();
   return new Promise((pronto) => {
     navigator.locks.request(`par-opfs-${id}`, () => new Promise((soltar) => {
       PAR_TRAVAS.set(id, soltar);
@@ -52,6 +51,10 @@ async function parOpfsGravar(pasta, nome, bytes) {
 // files = FileList do <input webkitdirectory>. Um arquivo de cada vez na memória. Só .jdl/.fdl/.fdd vão para o banco
 // e por isso são copiados; .pth/.pvf entram pelo nome, para o aviso de pasta GS3 sem documentação.
 async function parOpfsCopiar(id, files, { aoProgresso } = {}) {
+  // A numeração recomeçaria e sobrescreveria arquivos, com o SHA-256 antigo valendo para o conteúdo novo.
+  // Copiar de novo (pen-drive recolocado) é com outro id.
+  if (PAR_TRAVAS.has(id)) throw new Error(`cópia ${id} já existe`);
+  PAR_TRAVAS.set(id, null);
   await parOpfsTravar(id);
   const pasta = await (await parOpfsRaiz(true)).getDirectoryHandle(id, { create: true });
   const arquivos = [], mapas = [], falhas = [];
@@ -164,6 +167,7 @@ function parCriarFila({ criarWorker, buscarBase, aoMudar = () => {} }) {
       worker = criarWorker();
       worker.onmessage = (e) => aoMensagem(e.data);
       worker.onerror = () => { if (atual) falhar(atual, PAR_ERRO_PREPARO); };
+      worker.onmessageerror = worker.onerror;
     }
     return worker;
   }
@@ -175,6 +179,11 @@ function parCriarFila({ criarWorker, buscarBase, aoMudar = () => {} }) {
     atual = item;
     Object.assign(item, { estado: 'processando', pct: 0, pct_item: 0, fase: 'preparando', fazenda: null, erro: null });
     mudou();
+    if (atual !== item) return;
+    if (!item.plano.fazendas.length) {
+      terminar(item, 'pronto', { resultado: { id: item.id, pulados: item.plano.pulados, parciais: [], fazendas: [] }, pct: 100, pct_item: 100 });
+      return;
+    }
     const fazendas = [];
     for (const f of item.plano.fazendas) {
       try {

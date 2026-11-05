@@ -25,7 +25,10 @@ As do plano geral, em especial: parâmetros fixos; dado real nunca no git nem em
 4. **Sobras só se descartam, não se retomam** (o plano geral diz "oferecer descartar"), então não há arquivo de metadados.
 5. **Duração do GS3 no aviso de frota sem trabalho: 1 s por registro** (o `.jdl` é 0,2 s). Nada no código diz a frequência do GS3; fica como constante, e a conferência vai para as pendências.
 6. **Mensagens do Worker** seguem o plano geral (`progresso`, `pronto`, `erro`), com `id` do item, `fase` e `pct_item` a mais, para a faixa de fases da S3.
-7. **O recálculo da P4** é um item sem grupos: `fazendas[i].vigentes` já mesclado e `grupos: []`. Não precisa de mensagem nova.
+7. **O recálculo da P4** é um item sem grupos (`grupos: []`), numa fila cujo `buscarBase` chama `paralelismo_linhas_vigentes(operacao, cod_faz, rodada_id)`, que já traz vigentes + linhas da rodada. Não precisa de mensagem nova.
+11. **Arquivo cortado (decisão da revisão):** os pontos são aproveitados e o arquivo vai para `resultado.parciais`, não para `pulados`. A spec §10 diz "pulado", mas a regressão validada conta o que os leitores conseguem ler. Fica como pergunta ao usuário.
+12. **Cópia que sumiu do OPFS e falta de memória dão `erro` do item**, que pode ser refeito; só problema de formato do arquivo vira `ilegivel`.
+13. **Copiar de novo o mesmo pen-drive usa outro id;** repetir o id é recusado.
 8. **Depois de `erro` a fila encerra o Worker** e cria outro no item seguinte, porque o Pyodide pode ter ficado inconsistente.
 9. **Data das linhas:** a data com mais pontos no grupo, como no `_linhas` da regressão. Se nenhum arquivo tem data, `null`.
 10. **Manifesto:** ganha `modulos: {corretivos: [...], paralelismo: [...]}`; `arquivos` (a união) continua por um tempo, para a página do Corretivos ainda em cache.

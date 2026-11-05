@@ -257,3 +257,29 @@ def ler_jdl(caminho: str) -> tuple[list[tuple[float, float]], int]:
     except (OSError, ValueError):
         return [], 0
     return _filtrar_por_estado(trilha, eventos), len(trilha)
+
+
+def jdl_completo(caminho: str) -> bool:
+    """O ultimo registro termina no fim do arquivo? Os leitores acima devolvem o
+    que deu pra ler, sem dizer se o arquivo veio cortado."""
+    try:
+        with open(caminho, "rb") as f:
+            buf = f.read()
+        pos, n = 0, len(buf)
+        while pos < n:
+            tag, pos = read_varint(buf, pos)
+            wire_type = tag & 0x7
+            if wire_type == 0:
+                _, pos = read_varint(buf, pos)
+            elif wire_type == 1:
+                pos += 8
+            elif wire_type == 5:
+                pos += 4
+            elif wire_type == 2:
+                length, pos = read_varint(buf, pos)
+                pos += length
+            else:
+                return False
+        return pos == n
+    except (OSError, IndexError):
+        return False

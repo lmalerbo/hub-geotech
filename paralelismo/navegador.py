@@ -3,11 +3,12 @@ numa fazenda os pontos viram linhas e são descartados; só as linhas ficam."""
 import collections
 import json
 import os
+import traceback
 
 from paralelismo.analise import (analisar_fazenda, exportar_shapefiles, linhas_do_grupo, para_utm, sem_trabalho,
                                  talhoes_de_geojson)
-from paralelismo.gs3 import ler_gs3
-from paralelismo.jdl import ler_jdl
+from paralelismo.gs3 import gs3_completo, ler_gs3
+from paralelismo.jdl import jdl_completo, ler_jdl
 
 # .jdl: um tick a cada 0,2 s (spec §3). GS3: o arquivo não diz a frequência; 1 s por registro é suposição, usada só
 # no aviso de frota sem trabalho (a fração não depende dela, o mínimo de 1 h de trilha depende).
@@ -32,8 +33,12 @@ class Grupo:
             raise ValueError(f'tipo desconhecido: {tipo}')
         try:
             pontos, registros = (ler_jdl if tipo == 'jdl' else ler_gs3)(caminho)
-        except Exception:  # inclui MemoryError: o arquivo é pulado e listado, e o resto da rodada segue (spec §10)
-            pontos, registros = [], 0
+            completo = registros > 0 and (jdl_completo if tipo == 'jdl' else gs3_completo)(caminho)
+        except MemoryError:  # falha do ambiente, não do arquivo: o item dá erro e pode ser refeito
+            raise
+        except Exception:  # o arquivo é pulado e listado, e o resto da rodada segue (spec §10)
+            traceback.print_exc()
+            pontos, registros, completo = [], 0, False
         finally:
             _apagar(caminho)
             if tipo == 'gs3':
@@ -44,7 +49,7 @@ class Grupo:
         segundos = SEGUNDOS_POR_REGISTRO[tipo]
         self._total_s += registros * segundos
         self._trabalho_s += len(pontos) * segundos
-        return {'pontos': len(pontos), 'registros': registros, 'legivel': registros > 0}
+        return {'pontos': len(pontos), 'registros': registros, 'legivel': registros > 0, 'completo': completo}
 
     def fechar(self):
         if self.pontos is None:
