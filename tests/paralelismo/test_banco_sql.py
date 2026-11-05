@@ -346,3 +346,16 @@ def test_script_de_volta_desfaz_com_dados(banco_descartavel):
     assert b.execute("select count(*) from hub.modulos where id = 'paralelismo'").fetchone() == (0,)
     assert b.execute("select niveis, modulos from hub.acessos where email = 'v@x.com'").fetchone() == ({'plantio': 'leitura'}, ['plantio'])
     assert b.execute("select modulo_id from hub.log_auditoria where campo = 'rodada_paralelismo_excluida'").fetchone() == (None,)
+
+
+def test_cartao_em_ferramentas_entra_uma_vez_e_preserva_os_outros(banco):
+    import json
+    from tests.paralelismo.conftest import RAIZ
+    lista = json.loads(banco.execute("select valor from hub.parametros where chave = 'ferramentas'").fetchone()[0])
+    ids = [f['id'] for f in lista]
+    assert ids.count('paralelismo') == 1 and 'geomap' in ids
+    assert lista[ids.index('paralelismo')]['url'].endswith('/paralelismo.html')
+    sql = (RAIZ / 'supabase' / 'migrations' / '20261105090000_paralelismo_cartao.sql').read_text(encoding='utf-8')
+    banco.execute(sql)
+    depois = json.loads(banco.execute("select valor from hub.parametros where chave = 'ferramentas'").fetchone()[0])
+    assert depois == lista

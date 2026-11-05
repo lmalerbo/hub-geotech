@@ -14,7 +14,7 @@ from tests.fluxo.conftest import pg  # noqa: F401  (fixture reaproveitado)
 RAIZ = Path(__file__).resolve().parents[2]
 MIGRACOES = sorted(fluxo.MIGRACOES + ['20261003090000_modulo_colheita.sql', '20261005090000_admin_acessos_ferramentas.sql', '20261012090000_login_unico.sql',
                                       '20261023090000_niveis_por_modulo.sql', '20261029090000_apresentacao_acesso.sql',
-                                      '20261104090000_paralelismo.sql'])
+                                      '20261104090000_paralelismo.sql', '20261105090000_paralelismo_cartao.sql'])
 STUB_POSTGIS = """
 create schema if not exists extensions;
 create function extensions.st_geomfromgeojson(text) returns text language sql immutable as 'select $1';
