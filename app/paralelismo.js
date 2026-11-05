@@ -12,16 +12,14 @@ function parSb() {
 
 const PAR = {
   eu: null, frotas: [], metas: new Map(), enviados: [], sel: null, faz: null, rascunho: null, sobras: [],
-  aba: 'processar', vigentes: {}, geo: {}, fila: null, itens: [], mapa: null,
+  aba: 'painel', vigentes: {}, geo: {}, fila: null, itens: [], mapa: null,
+  painel: { sub: 'resumo', dados: null, carregando: false, erro: null, busca: '', sel: null, geo: {}, ml: null },
   sub: 'historico', frotaForm: null, gestao: { carregando: false, erro: null, rodadas: [], ocupado: null, msg: '' },
 };
 const PAR_FASES = ['preparando', 'lendo', 'linhas', 'analise'];
 const PAR_FASE_TXT = {
   preparando: 'Preparando a análise (na primeira vez leva alguns segundos)', lendo: 'Lendo as trilhas',
   linhas: 'Montando as linhas', analise: 'Medindo o espaçamento',
-};
-const PAR_ABAS = {
-  painel: ['Painel', 'Aderência por fazenda, talhão e mês, só com as análises vigentes.'],
 };
 
 function parEsc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -182,6 +180,7 @@ async function parCarregarEntrada() {
   try { PAR.frotas = await parApi().frotas(); } catch (e) { parToast('Não foi possível carregar as frotas.', true); }
   document.querySelector('.par-aba[data-aba="pendentes"]').hidden = !parPodeProcessar();   // leitura não vê pendentes
   parCarregarGestao();
+  parCarregarPainel();
   parVerSobras();
   setTimeout(parVerSobras, 900);   // logo após recarregar, o lock da sessão anterior ainda pode aparecer
   if (PAR_DEMO && !PAR.metas.size) parExemploDemo();
@@ -424,13 +423,12 @@ function parRenderTudo(auto = false) {
   }
   parRenderFaixa();
   parMapaAtualizar();
+  parPainelPalco();
 }
 function parHtmlOutraAba() {
   if (PAR.aba === 'pendentes') return parHtmlPendentes();
   if (PAR.aba === 'rodadas') return parHtmlRodadas();
-  const [titulo, texto] = PAR_ABAS[PAR.aba];
-  return `<div><div class="par-ey">Paralelismo</div><h2>${titulo}</h2><p>${texto}</p></div>
-    <div class="par-aviso"><span class="ico">schedule</span><div>Esta seção chega na próxima etapa. Por enquanto, use <b>Processar</b> para analisar um pen-drive.</div></div>`;
+  return parHtmlPainel();
 }
 
 function parHtmlProcessar() {
@@ -601,7 +599,7 @@ function parLigarColuna() {
     }[b.dataset.acao];
     // Pendentes, Rodadas e Frotas (paralelismo-abas.js). Publicar passa por parPublicarComRecalculo: se o banco
     // responder recalculo_necessario, a página recalcula as fazendas listadas num Worker próprio e confirma com p_recalculo.
-    if (acao) acao(); else { const g = parAcaoGestao(b); if (g) g(); }
+    if (acao) acao(); else { const g = parAcaoPainel(b) || parAcaoGestao(b); if (g) g(); }
   });
   col.addEventListener('submit', (e) => {
     const ed = e.target.closest('[data-form-frota-ed]');
@@ -770,6 +768,7 @@ async function parIniciar() {
   document.querySelectorAll('[data-sair]').forEach((b) => { b.onclick = parSair; });
   $par('par-demo').classList.toggle('off', !PAR_DEMO);
   parLigarColuna();
+  parLigarPainel();
   window.addEventListener('beforeunload', (e) => {
     if (PAR.itens.length || PAR.rascunho) { e.preventDefault(); e.returnValue = ''; }   // spec §4: a fila só roda com a página aberta
   });

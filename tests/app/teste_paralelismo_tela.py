@@ -83,6 +83,7 @@ with sync_playwright() as p:
     print('\n— Demonstração: prévia')
     pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 20')
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     confere(pg.locator('#par-demo').is_visible(), 'demo: selo "dados fictícios" visível')
     confere(pg.locator('.par-aba').count() == 4, 'demo: quatro abas')
     esperar_pronto(pg)
@@ -129,6 +130,7 @@ with sync_playwright() as p:
         pen = pen_sintetico(Path(tmp))
         pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 20')
         pg.wait_for_selector('#par-app:visible', timeout=20000)
+        pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
         esperar_pronto(pg)
         pg.click('[data-acao="remover"]')
         pg.click('.par-modal .par-btn')
@@ -160,6 +162,7 @@ with sync_playwright() as p:
         # ── Solicitante não cadastra frota ──
         pg = abrir(ctx, DEMO, "window.PAR_DEMO_NIVEL = 'solicitante'; window.PAR_DEMO_PASSO = 20")
         pg.wait_for_selector('#par-app:visible', timeout=20000)
+        pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
         pg.evaluate('parPasta()')
         pg.set_input_files('#par-pasta', str(pen))
         pg.wait_for_selector('.par-trator', timeout=15000)
@@ -171,6 +174,7 @@ with sync_playwright() as p:
     print('\n— Erros e avisos')
     pg = abrir(ctx, DEMO, 'window.PAR_DEMO_FALHA_PREPARO = true; window.PAR_DEMO_PASSO = 5')
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     pg.wait_for_selector('#par-col .par-aviso.erro', timeout=10000)
     confere('Não foi possível preparar a análise; recarregue a página' in pg.inner_text('#par-col'), 'erro: Pyodide não carrega, com o texto da spec')
     confere('Nada foi gravado' in pg.inner_text('#par-col'), 'erro: diz que nada foi gravado')
@@ -179,12 +183,14 @@ with sync_playwright() as p:
 
     pg = abrir(ctx, DEMO, 'window.PAR_DEMO_SEM_TRABALHO = true; window.PAR_DEMO_PASSO = 5')
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     esperar_pronto(pg)
     confere('implemento quase sempre desligado' in pg.inner_text('#par-col'), 'aviso: frota sem trabalho registrado')
     pg.close()
 
     pg = abrir(ctx, DEMO, "window.PAR_DEMO_NIVEL = 'leitura'")
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     confere('nível é de leitura' in pg.inner_text('#par-col') and pg.locator('[data-acao="escolher"]').count() == 0,
             'leitura: não processa pen-drive')
     pg.close()
@@ -193,10 +199,12 @@ with sync_playwright() as p:
     print('\n— Sobras')
     pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 5')
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     pg.evaluate("async () => { const r = await (await navigator.storage.getDirectory()).getDirectoryHandle(PAR_OPFS_PASTA, { create: true }); const d = await r.getDirectoryHandle('csobra', { create: true });"
                 " const f = await d.getFileHandle('f000001.jdl', { create: true }); const w = await f.createWritable(); await w.write(new Uint8Array(10)); await w.close(); }")
     pg.reload()
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     pg.wait_for_function("PAR.sobras.some(s => s.id === 'csobra')", timeout=10000)
     pg.wait_for_selector('[data-acao="descartar-sobras"]', timeout=10000)
     confere('sessão anterior' in pg.inner_text('#par-col'), 'sobras: avisa da cópia da sessão anterior')
@@ -213,6 +221,7 @@ with sync_playwright() as p:
         pen = pen_sintetico(Path(tmp))
         pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 300; window.PAR_DEMO_FALHA_JA = 1')
         pg.wait_for_selector('#par-app:visible', timeout=20000)
+        pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
         pg.evaluate('parPasta()')
         pg.set_input_files('#par-pasta', str(pen))
         pg.wait_for_selector('[data-acao="reconferir"]', timeout=15000)
@@ -240,6 +249,7 @@ with sync_playwright() as p:
 
     pg = abrir(ctx, DEMO, 'window.PAR_DEMO_PASSO = 5; window.PAR_DEMO_JA_ENVIADO = true')
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     esperar_pronto(pg)
     pg.click('[data-acao="enviar"]')
     pg.wait_for_function('PAR.itens.length === 0 && PAR.enviados.length === 1', timeout=10000)
@@ -252,6 +262,7 @@ with sync_playwright() as p:
     mov = nav.new_context(viewport={'width': 390, 'height': 800})
     pg = abrir(mov, DEMO, 'window.PAR_DEMO_PASSO = 5')
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     esperar_pronto(pg)
     larg = pg.evaluate('document.documentElement.scrollWidth')
     confere(larg <= 390, f'celular: sem rolagem horizontal ({larg}px)')
@@ -263,6 +274,7 @@ with sync_playwright() as p:
     print('\n— file://')
     pg = abrir(ctx, (RAIZ / 'app' / 'paralelismo.html').as_uri())
     pg.wait_for_selector('#par-app:visible', timeout=20000)
+    pg.click('.par-aba[data-aba=\"processar\"]')   # a abertura agora é o Painel
     confere(pg.locator('#par-demo').is_visible(), 'file://: abre em demonstração, sem login')
     pg.wait_for_function('PAR.itens.length === 1', timeout=10000)
     confere(not pg.erros, f'file://: sem erro de script ({pg.erros})')

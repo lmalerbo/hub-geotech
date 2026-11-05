@@ -318,7 +318,7 @@ function parManifestoCsv(arquivos) {
 const PAR_FAIXAS = ['até 6%', '6 a 9%', '9 a 12%', 'acima de 12%'];
 const PAR_AMOSTRAS_MIN = 25;
 
-const parPct = (aderentes, amostras) => (amostras ? aderentes * 100 / amostras : null);
+const parPorcento = (aderentes, amostras) => (amostras ? aderentes * 100 / amostras : null);
 
 function parSituacao(pct) {
   if (pct == null) return null;
@@ -337,7 +337,7 @@ function parTalhoesPlanos(analises, base) {
       operacao: a.operacao, cod_faz: a.cod_faz, fazenda: a.fazenda || '', talhao: t.talhao_num, mes: a.mes,
       area: b.area_ha != null ? Number(b.area_ha) : null, dec: b.declividade != null ? Number(b.declividade) : null,
       amostras: t.amostras, aderentes: t.aderentes, acima: t.acima, abaixo: t.abaixo,
-      pct: parPct(t.aderentes, t.amostras), insuficiente: t.amostras < PAR_AMOSTRAS_MIN,
+      pct: parPorcento(t.aderentes, t.amostras), insuficiente: t.amostras < PAR_AMOSTRAS_MIN,
     };
   }));
 }
@@ -345,7 +345,7 @@ function parTalhoesPlanos(analises, base) {
 function parResumo(analises, base) {
   const planos = parTalhoesPlanos(analises, base);
   const amostras = analises.reduce((s, a) => s + a.amostras, 0), aderentes = analises.reduce((s, a) => s + a.aderentes, 0);
-  const pct = parPct(aderentes, amostras);
+  const pct = parPorcento(aderentes, amostras);
   return {
     amostras, aderentes, pct, situacao: parSituacao(pct), fazendas: new Set(analises.map((a) => `${a.operacao}|${a.cod_faz}`)).size,
     talhoes: planos.length, talhoesValidos: planos.filter((p) => !p.insuficiente).length,
@@ -360,7 +360,7 @@ function parPorFaixa(planos) {
     if (p.insuficiente || i == null) continue;
     f[i].n++; f[i].amostras += p.amostras; f[i].aderentes += p.aderentes;
   }
-  for (const x of f) x.pct = parPct(x.aderentes, x.amostras);
+  for (const x of f) x.pct = parPorcento(x.aderentes, x.amostras);
   return f;
 }
 
@@ -372,7 +372,7 @@ function parPorMes(analises) {
     m.set(a.mes, x);
   }
   return [...m.values()].sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0))
-    .map((x) => ({ ...x, pct: parPct(x.aderentes, x.amostras) }));
+    .map((x) => ({ ...x, pct: parPorcento(x.aderentes, x.amostras) }));
 }
 
 // pct da fazenda = o da análise (comparável com o PLL); nulo quando todos os talhões têm amostra insuficiente.
@@ -381,7 +381,7 @@ function parTabelaFazendas(analises, base) {
     const ps = parTalhoesPlanos([a], base);
     const comDec = ps.filter((p) => p.dec != null && p.area);
     const peso = comDec.reduce((s, p) => s + p.area, 0);
-    const pct = ps.some((p) => !p.insuficiente) ? parPct(a.aderentes, a.amostras) : null;
+    const pct = ps.some((p) => !p.insuficiente) ? parPorcento(a.aderentes, a.amostras) : null;
     return {
       operacao: a.operacao, cod_faz: a.cod_faz, fazenda: a.fazenda || '', mes: a.mes, talhoes: ps.length,
       area: ps.reduce((s, p) => s + (p.area || 0), 0), decMedia: peso ? comDec.reduce((s, p) => s + p.dec * p.area, 0) / peso : null,

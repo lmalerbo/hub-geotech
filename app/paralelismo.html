@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <link rel="stylesheet" href="paralelismo.css">
 </head>
 <body>
@@ -43,8 +44,8 @@
     <a class="par-voltar" href="index.html" aria-label="Voltar ao Hub"><span class="ico">arrow_back</span></a>
     <div class="par-marca"><span class="par-selo"><span class="ico">straighten</span></span><span>Paralelismo</span></div>
     <nav class="par-abas" role="tablist" aria-label="Seções">
-      <button class="par-aba" role="tab" data-aba="painel" aria-selected="false">Painel</button>
-      <button class="par-aba" role="tab" data-aba="processar" aria-selected="true">Processar</button>
+      <button class="par-aba" role="tab" data-aba="painel" aria-selected="true">Painel</button>
+      <button class="par-aba" role="tab" data-aba="processar" aria-selected="false">Processar</button>
       <button class="par-aba" role="tab" data-aba="pendentes" aria-selected="false">Pendentes<span class="par-cont off" id="par-cont" aria-label="rodadas pendentes"></span></button>
       <button class="par-aba" role="tab" data-aba="rodadas" aria-selected="false">Rodadas</button>
     </nav>
@@ -57,6 +58,7 @@
   <div class="par-palco">
     <section class="par-mapa" aria-label="Mapa dos talhões">
       <canvas id="par-canvas" role="img" aria-label="Talhões da fazenda, pintados pela aderência"></canvas>
+      <div id="par-maplibre" class="par-ml off" role="img" aria-label="Talhões da fazenda escolhida, pintados pela aderência"></div>
       <div class="par-vazio" id="par-mapa-vazio">Escolha um pen-drive para ver os talhões aqui.</div>
       <div class="par-trilha" id="par-trilha"></div>
       <div class="par-zoom"><button type="button" id="par-mais" aria-label="Aproximar"><span class="ico">add</span></button><button type="button" id="par-menos" aria-label="Afastar"><span class="ico">remove</span></button></div>
@@ -65,6 +67,12 @@
         <span class="par-sw"><i style="background:var(--r2)"></i>50–70%</span>
         <span class="par-sw"><i style="background:var(--r3)"></i>70–85%</span>
         <span class="par-sw"><i style="background:var(--r4)"></i>≥ 85%</span>
+      </div>
+      <div class="par-legenda off" id="par-legenda-painel" aria-label="Legenda da situação">
+        <span class="par-sw"><i style="background:var(--r1)"></i>Crítico &lt; 70%</span>
+        <span class="par-sw"><i style="background:var(--r2)"></i>Atenção 70–85%</span>
+        <span class="par-sw"><i style="background:var(--r4)"></i>Bom ≥ 85%</span>
+        <span class="par-sw"><i style="background:#c5ced6"></i>Amostra insuficiente</span>
       </div>
       <div class="par-faixa off" id="par-faixa" role="status" aria-live="polite"></div>
       <div class="par-dica" id="par-dica"></div>
@@ -77,6 +85,7 @@
 <div class="par-toast" id="par-toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script src="paralelismo-puro.js"></script>
 <script src="paralelismo-fila.js"></script>
@@ -84,6 +93,7 @@
 <script src="paralelismo-gestao.js"></script>
 <script src="paralelismo-demo.js"></script>
 <script src="paralelismo-abas.js"></script>
+<script src="paralelismo-painel.js"></script>
 <script src="paralelismo.js"></script>
 </body>
 </html>
