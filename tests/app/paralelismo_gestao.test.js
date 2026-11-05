@@ -18,7 +18,7 @@ test('parUrlSegura aceita só https do github.com', () => {
 });
 test('parUrlSegura recusa esquema perigoso, http, host de terceiro, credenciais e lixo', () => {
   for (const ruim of ['javascript:alert(1)', 'data:text/html,<script>', 'http://github.com/x', 'https://evil.example/x', 'https://github.com.evil.example/x',
-    'https://u:p@github.com/x', 'https://github.com/a b', 'https://github.com/x"onmouseover="y', '', null, undefined, 42, 'github.com/x']) {
+    'https://u:p@github.com/x', 'https://github.com/atacante/repo/releases/download/paralelismo-r7/p7-01.zip', 'https://github.com/lmalerbo/hub-geotech-arquivos/raw/main/x.zip', 'https://github.com:8443/lmalerbo/hub-geotech-arquivos/releases/download/paralelismo-r7/p7-01.zip', 'https://github.com/a b', 'https://github.com/x"onmouseover="y', '', null, undefined, 42, 'github.com/x']) {
     assert.strictEqual(ctx.parUrlSegura(ruim), null, String(ruim));
   }
 });

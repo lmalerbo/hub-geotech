@@ -161,7 +161,11 @@ with sync_playwright() as p:
     pg.fill('form[data-form-frota-ed] [name="observacao"]', 'revisada')
     pg.click('form[data-form-frota-ed] button[type="submit"]')
     pg.wait_for_function("document.querySelector('.par-frota[data-serie=\"BM0000X000001\"]').innerText.includes('revisada')", timeout=5000)
-    confere(True, 'frotas: edição salva')
+    pg.evaluate("PAR.frotas.push({serie: 'BM0000X000NUL', frota: '1', operacao: null, tipo: null}); parRenderTudo()")
+    pg.click('.par-frota[data-serie="BM0000X000NUL"] [data-acao="editar-frota"]')
+    confere(pg.input_value('form[data-form-frota-ed] [name="operacao"]') == '' and pg.input_value('form[data-form-frota-ed] [name="tipo"]') == '', 'frotas: operação e tipo nulos não viram cana/própria sozinhos')
+    pg.click('form[data-form-frota-ed] button[type="submit"]')
+    confere('operação' in pg.inner_text('form[data-form-frota-ed]').lower(), 'frotas: salvar sem escolher a operação é recusado')
     confere(not pg.erros, f'frotas: sem erro de script {pg.erros}')
     pg.close()
 

@@ -9,7 +9,7 @@ const parApiGestaoReal = {
     const ana = `paralelismo_analises(id,operacao,cod_faz,mes,amostras,aderentes,acima,abaixo,fora_talhao,pll_total,pll_aderentes,vigente,base_analise_id,amostras_url,${talh})`;
     const { data, error } = await parSb().from('paralelismo_rodadas')
       .select(`id,descricao,release_tag,partes,status,criado_por,criado_em,validado_por,validado_em,motivo_recusa,${ana}`)
-      .order('id', { ascending: false }).limit(50);
+      .order('id', { ascending: false }).limit(200);
     if (error) throw error;
     const ids = [...new Set(data.flatMap((r) => [r.criado_por, r.validado_por]).filter(Boolean))];
     const nomes = {};
@@ -56,20 +56,24 @@ const parApiGestaoReal = {
 function parApiG() { return PAR_DEMO ? PAR_API_DEMO_G : parApiGestaoReal; }
 
 // ── Dados (estado em PAR.gestao, PAR.sub e PAR.frotaForm, declarados em paralelismo.js) ──
+let parSeqGestao = 0;
 async function parCarregarGestao() {
-  const G = PAR.gestao;
+  const G = PAR.gestao, seq = ++parSeqGestao;   // resposta mais antiga que a última carga é ignorada
   G.carregando = true;
   G.erro = null;
   parRenderTudo(true);
   try {
     const { rodadas, nomes, vigentes } = await parApiG().rodadas();
+    if (seq !== parSeqGestao) return;
     G.rodadas = rodadas.map((r) => parRodadaDoBanco(r, nomes, vigentes));
     parContador(G.rodadas.filter((r) => r.status === 'pendente').length);
   } catch (e) {
-    G.erro = 'Não foi possível carregar as rodadas. Tente de novo.';
+    if (seq === parSeqGestao) G.erro = 'Não foi possível carregar as rodadas. Tente de novo.';
   } finally {
-    G.carregando = false;
-    parRenderTudo(true);
+    if (seq === parSeqGestao) {
+      G.carregando = false;
+      parRenderTudo(true);
+    }
   }
 }
 
@@ -128,9 +132,9 @@ function parHtmlPendentes() {
 
 function parHtmlRodadas() {
   const G = PAR.gestao;
-  const sub = `<div class="par-sub-abas" role="tablist">
-    <button type="button" class="par-btn2" role="tab" data-acao="sub" data-sub="historico" aria-selected="${PAR.sub !== 'frotas'}">Rodadas</button>
-    <button type="button" class="par-btn2" role="tab" data-acao="sub" data-sub="frotas" aria-selected="${PAR.sub === 'frotas'}">Frotas</button></div>`;
+  const sub = `<div class="par-sub-abas">
+    <button type="button" class="par-btn2" data-acao="sub" data-sub="historico" aria-pressed="${PAR.sub !== 'frotas'}">Rodadas</button>
+    <button type="button" class="par-btn2" data-acao="sub" data-sub="frotas" aria-pressed="${PAR.sub === 'frotas'}">Frotas</button></div>`;
   const cab = `<div><div class="par-ey">Paralelismo</div><h2>${PAR.sub === 'frotas' ? 'Frotas' : 'Rodadas'}</h2></div>${sub}`;
   if (PAR.sub === 'frotas') return `<div data-tela="frotas">${cab}${parHtmlFrotas()}</div>`;
   if (G.erro) return `<div data-tela="rodadas">${cab}${parHtmlErroGestao()}</div>`;
@@ -152,7 +156,7 @@ function parHtmlFrotas() {
   const ed = parEhEditor();
   const form = PAR.frotaForm;
   const campo = (nome, rot, v, extra = '') => `<label>${rot}<input name="${nome}" value="${parEsc(v ?? '')}" ${extra}></label>`;
-  const opc = (lista, v) => lista.map(([k, t]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${t}</option>`).join('');
+  const opc = (lista, v) => [['', '—'], ...lista].map(([k, t]) => `<option value="${k}" ${k === (v || '') ? 'selected' : ''}>${t}</option>`).join('');
   const formulario = form ? `<form class="par-form-frota" data-form-frota-ed novalidate>
       ${campo('serie', 'Série', form.serie, form.novo ? '' : 'disabled')}${campo('frota', 'Frota', form.frota)}
       <label>Operação<select name="operacao">${opc([['cana', 'Cana'], ['torta', 'Torta']], form.operacao)}</select></label>
@@ -184,6 +188,7 @@ function parPedirMotivo(id) {
       if (!m) { $par('par-motivo-erro').textContent = 'Informe o motivo da recusa.'; return; }
       fechar(m);
     };
+    fundo.onkeydown = (e) => { if (e.key === 'Escape') fechar(null); };
     fundo.classList.remove('off');
     $par('par-motivo').focus();
   });
@@ -194,7 +199,8 @@ function parRecalcularNoWorker(entrada) {
   return new Promise((resolver, rejeitar) => {
     const w = PAR_DEMO ? new ParWorkerDemo() : new Worker('paralelismo-worker.js');
     const id = `rec${Date.now()}`;
-    const fim = (fn, v) => { w.terminate(); fn(v); };
+    const limite = setTimeout(() => fim(rejeitar, new Error(PAR_ERRO_PREPARO)), 5 * 60 * 1000);   // Pyodide travado não deixa a tela esperando para sempre
+    const fim = (fn, v) => { clearTimeout(limite); w.terminate(); fn(v); };
     w.onmessage = (e) => {
       const m = e.data;
       if (m.id !== id) return;
@@ -221,9 +227,9 @@ async function parPublicar(id) {
   if (!r || G.ocupado) return;
   G.ocupado = id;
   G.msg = 'Publicando…';
-  parRenderTudo();
   const api = parApiG();
   try {
+    parRenderTudo();
     const res = await parPublicarComRecalculo(id, {
       publicar: (rid, rec) => api.publicar(rid, rec),
       buscarBase: (op, cod, rid) => api.buscarBaseRodada(op, cod, rid),
@@ -267,8 +273,8 @@ async function parExcluir(id) {
     [{ rotulo: 'Cancelar', classe: 'par-btn2', valor: false }, { rotulo: 'Excluir rodada', classe: 'par-btn', valor: true }]);
   if (!ok) return;
   G.ocupado = id;
-  parRenderTudo();
   try {
+    parRenderTudo();
     const tag = await parApiG().excluir(id);
     try {
       await parApiG().marcarExcluida(tag);

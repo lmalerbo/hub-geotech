@@ -164,7 +164,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .par-link{color:var(--plantio);text-decoration:underline}
 .par-link-ruim{color:var(--erro)}
 .par-sub-abas{display:flex;gap:6px}
-.par-sub-abas [aria-selected="true"]{background:var(--s2);color:var(--t1);font-weight:600}
+.par-sub-abas [aria-pressed="true"]{background:var(--s2);color:var(--t1);font-weight:600}
 .par-frota{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--bd);min-width:0}
 .par-frota>div{min-width:0}
 .par-modal textarea{width:100%;border:1px solid var(--bd2);border-radius:8px;padding:8px;resize:vertical;margin-bottom:6px}

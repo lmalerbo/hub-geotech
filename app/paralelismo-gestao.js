@@ -2,15 +2,17 @@
 // Usa parFormatarPct (paralelismo-puro.js) e PAR_FORA_TALHAO_MAX (paralelismo-previa.js).
 
 const PAR_AMOSTRA_MIN = 25;
+const PAR_RELEASES_PREFIXO = '/lmalerbo/hub-geotech-arquivos/releases/download/';   // repositório dos brutos (GH_REPO do Worker)
 const PAR_RECALCULOS_MAX = 2;
 
 // partes[].url e amostras_url vêm do banco, gravados por quem envia: são dado não confiável. Só vira link o que é
-// https do GitHub, sem credenciais, espaço, aspas ou sinais de marcação; o resto aparece como texto.
+// https do repositório de arquivos do GitHub, sem credenciais, espaço, aspas ou sinais de marcação; o resto aparece como texto.
 function parUrlSegura(url) {
   if (typeof url !== 'string' || !url || /[\s"'<>`\\]/.test(url)) return null;
   let u;
   try { u = new URL(url); } catch (e) { return null; }
-  if (u.protocol !== 'https:' || u.hostname !== 'github.com' || u.username || u.password) return null;
+  if (u.protocol !== 'https:' || u.hostname !== 'github.com' || u.port || u.username || u.password) return null;
+  if (!u.pathname.startsWith(PAR_RELEASES_PREFIXO)) return null;
   return url;
 }
 
