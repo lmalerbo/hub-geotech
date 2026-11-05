@@ -20,9 +20,9 @@
 
 ## Tarefas
 
-- [ ] **T1 Migration do cartão** + teste que lê o SQL e o aplica em Postgres local quando houver (idempotência).
-- [ ] **T2 `paralelismo-previa.js` + testes node** (TDD): `parRegistrosAceitos`, `parPrevia`, `parAvisosItem`, `parPayloadEnvio`, `parNomeParte`, `parTextoErro`.
-- [ ] **T3 Zip e envio** (`parEnviarItem` com `fetch`/RPC/zip injetáveis) + testes node (falha no meio, mesmo id, nada de `enviar`).
-- [ ] **T4 HTML/CSS/JS da tela** com API real e de demonstração.
-- [ ] **T5 `tests/app/teste_paralelismo_tela.py`** (Playwright + Edge, demonstração, dados sintéticos): login ausente, abas, conferência, fila, prévia, envio simulado, 390 px, erro do Pyodide.
-- [ ] **T6 Revisão de código, verificação, relatório.**
+- [x] **T1 Migration do cartão** + teste que lê o SQL e o aplica em Postgres local quando houver (idempotência).
+- [x] **T2 `paralelismo-previa.js` + testes node** (TDD): `parRegistrosAceitos`, `parPrevia`, `parAvisosItem`, `parPayloadEnvio`, `parNomeParte`, `parTextoErro`.
+- [x] **T3 Zip e envio** (`parEnviarItem` com `fetch`/RPC/zip injetáveis) + testes node (falha no meio, mesmo id, nada de `enviar`).
+- [x] **T4 HTML/CSS/JS da tela** com API real e de demonstração.
+- [x] **T5 `tests/app/teste_paralelismo_tela.py`** (Playwright + Edge, demonstração, dados sintéticos): login ausente, abas, conferência, fila, prévia, envio simulado, 390 px, erro do Pyodide.
+- [x] **T6 Revisão de código, verificação, relatório.**
