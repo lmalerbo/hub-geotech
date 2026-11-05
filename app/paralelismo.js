@@ -13,6 +13,7 @@ function parSb() {
 const PAR = {
   eu: null, frotas: [], metas: new Map(), enviados: [], sel: null, faz: null, rascunho: null, sobras: [],
   aba: 'processar', vigentes: {}, geo: {}, fila: null, itens: [], mapa: null,
+  sub: 'historico', frotaForm: null, gestao: { carregando: false, erro: null, rodadas: [], ocupado: null, msg: '' },
 };
 const PAR_FASES = ['preparando', 'lendo', 'linhas', 'analise'];
 const PAR_FASE_TXT = {
@@ -21,8 +22,6 @@ const PAR_FASE_TXT = {
 };
 const PAR_ABAS = {
   painel: ['Painel', 'Aderência por fazenda, talhão e mês, só com as análises vigentes.'],
-  pendentes: ['Pendentes', 'Rodadas esperando validação de um editor.'],
-  rodadas: ['Rodadas', 'Histórico de rodadas, com quem processou e o link dos brutos.'],
 };
 
 function parEsc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -181,7 +180,8 @@ async function parCarregarEntrada() {
   parRenderTudo();
   parIniciarMapa();
   try { PAR.frotas = await parApi().frotas(); } catch (e) { parToast('Não foi possível carregar as frotas.', true); }
-  if (parEhEditor()) parApi().pendentes().then((n) => parContador(n)).catch(() => {});
+  document.querySelector('.par-aba[data-aba="pendentes"]').hidden = !parPodeProcessar();   // leitura não vê pendentes
+  parCarregarGestao();
   parVerSobras();
   setTimeout(parVerSobras, 900);   // logo após recarregar, o lock da sessão anterior ainda pode aparecer
   if (PAR_DEMO && !PAR.metas.size) parExemploDemo();
@@ -362,7 +362,7 @@ async function parEnviar(id) {
     PAR.faz = null;
     await PAR.fila.remover(id).catch(() => {});
     parToast(`Enviado para validação (rodada ${r.rodadaId}).`);
-    if (parEhEditor()) api.pendentes().then(parContador).catch(() => {});
+    parCarregarGestao();
   } catch (e) {
     const causa = (e.causa && e.causa.message) || '';
     if (/rodada_ja_enviada/.test(causa)) {   // gravou, mas a resposta se perdeu: já está enviado
@@ -403,7 +403,13 @@ function parExemploDemo() {
 
 // ===== Desenho da coluna =====
 function parDesenharAbas() {
-  document.querySelectorAll('.par-aba').forEach((b) => { b.onclick = () => { PAR.aba = b.dataset.aba; PAR.faz = null; parRenderTudo(); }; });
+  document.querySelectorAll('.par-aba').forEach((b) => { b.onclick = () => {
+    PAR.aba = b.dataset.aba;
+    PAR.faz = null;
+    parRenderTudo();
+    if (PAR.aba === 'pendentes' || PAR.aba === 'rodadas') parCarregarGestao();
+  };
+  });
 }
 // auto = disparado pela fila ou pela cópia, não pelo usuário: se ele está digitando na coluna (cadastro de frota,
 // frota do GS3), a coluna não é refeita, para não apagar o texto, o foco nem engolir o clique.
@@ -420,6 +426,8 @@ function parRenderTudo(auto = false) {
   parMapaAtualizar();
 }
 function parHtmlOutraAba() {
+  if (PAR.aba === 'pendentes') return parHtmlPendentes();
+  if (PAR.aba === 'rodadas') return parHtmlRodadas();
   const [titulo, texto] = PAR_ABAS[PAR.aba];
   return `<div><div class="par-ey">Paralelismo</div><h2>${titulo}</h2><p>${texto}</p></div>
     <div class="par-aviso"><span class="ico">schedule</span><div>Esta seção chega na próxima etapa. Por enquanto, use <b>Processar</b> para analisar um pen-drive.</div></div>`;
@@ -591,9 +599,11 @@ function parLigarColuna() {
       remover: () => parRemover(id),
       enviar: () => parEnviar(id),
     }[b.dataset.acao];
-    if (acao) acao();
+    if (acao) acao(); else { const g = parAcaoGestao(b); if (g) g(); }
   });
   col.addEventListener('submit', (e) => {
+    const ed = e.target.closest('[data-form-frota-ed]');
+    if (ed) { e.preventDefault(); parSalvarFrotaEd(ed); return; }
     const f = e.target.closest('[data-form-frota]');
     if (!f) return;
     e.preventDefault();
@@ -635,6 +645,7 @@ function parMapaAtualizar() {
   const M = PAR_MAPA;
   M.dados = g;
   $par('par-mapa-vazio').classList.toggle('off', !!g);
+  $par('par-mapa-vazio').textContent = PAR.aba === 'processar' ? 'Escolha um pen-drive para ver os talhões aqui.' : 'O mapa aparece em Processar, com os talhões do pen-drive escolhido.';
   $par('par-legenda').classList.toggle('off', !g || !g.item || g.item.estado !== 'pronto');
   const meta = PAR.metas.get(PAR.sel);
   $par('par-trilha').innerHTML = g && meta ? `Processar › <b>${parEsc(meta.nome)}</b> › fazenda <b>${g.cod}</b>` : '';

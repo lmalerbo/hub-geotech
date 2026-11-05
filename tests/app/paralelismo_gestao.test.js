@@ -61,11 +61,11 @@ test('parRodadaDoBanco normaliza, troca ids por nomes e descarta link inseguro',
   const r = ctx.parRodadaDoBanco({
     id: 7, descricao: 'Pen-drive A', release_tag: 'paralelismo-r7', status: 'pendente', criado_por: 'u1', criado_em: '2026-11-04T12:00:00Z', validado_por: null, validado_em: null, motivo_recusa: null,
     partes: [{ nome: 'p7-01.zip', url: BOM, bytes: 1048576 }, { nome: 'p7-02.zip', url: 'javascript:alert(1)', bytes: 10 }],
-    paralelismo_analises: [analiseDb()], paralelismo_arquivos: [{ serie: 'BM0000X000001', frota: '90001' }, { serie: 'BM0000X000001', frota: '90001' }, { serie: 'BM0000X000002', frota: '90002' }],
+    paralelismo_analises: [analiseDb({ paralelismo_talhoes: [talhao(1, 60, 45), { ...talhao(2, 30, 18), frotas: ['90001', '90002'] }] })],
   }, { u1: 'Ana' }, { 'cana|10001': { amostras: 300, aderentes: 195 } });
   assert.strictEqual(r.criadoPor, 'Ana');
   assert.strictEqual(r.validadoPor, '—');
-  assert.strictEqual(r.tratores, 2);
+  igual(r.frotas, ['90001', '90002']);
   assert.strictEqual(r.partes[0].url, BOM);
   assert.strictEqual(r.partes[1].url, null);
   assert.strictEqual(r.partes[1].urlInvalida, true);

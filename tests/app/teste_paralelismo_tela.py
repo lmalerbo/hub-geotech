@@ -99,7 +99,8 @@ with sync_playwright() as p:
     confere('Talhões da 10001' in pg.inner_text('#par-col'), 'prévia: toque na fazenda lista os talhões')
     confere('insuficiente' in pg.inner_text('#par-col'), 'prévia: talhão com menos de 25 amostras marcado como insuficiente')
     pg.click('.par-aba[data-aba="pendentes"]')
-    confere('próxima etapa' in pg.inner_text('#par-col'), 'abas: Pendentes avisa que chega na próxima etapa')
+    pg.wait_for_selector('#par-col [data-tela="pendentes"]', timeout=5000)
+    confere('Rodadas esperando validação' in pg.inner_text('#par-col'), 'abas: Pendentes abre a lista de rodadas (P4)')
     pg.click('.par-aba[data-aba="processar"]')
 
     # ── Envio com falha no meio: nada gravado, tenta de novo com o mesmo id ──

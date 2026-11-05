@@ -56,7 +56,7 @@ function parPreviaDoBanco(analises, vigentes) {
   return { fazendas, total: { amostras, aderentes, pctTxt: parFormatarPct(aderentes, amostras) } };
 }
 
-// linha = rodada do PostgREST com paralelismo_analises(paralelismo_talhoes) e paralelismo_arquivos; nomes = {id: nome}.
+// linha = rodada do PostgREST com paralelismo_analises(paralelismo_talhoes) ; nomes = {id: nome}.
 function parRodadaDoBanco(linha, nomes, vigentes) {
   const nome = (id) => (id && nomes[id]) || '—';
   const analises = (linha.paralelismo_analises || []).slice().sort((a, b) => a.operacao.localeCompare(b.operacao) || a.cod_faz - b.cod_faz);
@@ -70,7 +70,7 @@ function parRodadaDoBanco(linha, nomes, vigentes) {
       return { nome: String(p.nome ?? ''), bytes: Number(p.bytes) || 0, url, urlInvalida: !url };
     }),
     fazendas: previa.fazendas.map((f) => ({ operacao: f.operacao, cod_faz: f.cod_faz, amostrasUrl: f.amostrasUrl })),
-    tratores: new Set((linha.paralelismo_arquivos || []).map((a) => a.serie).filter(Boolean)).size,
+    frotas: [...new Set(previa.fazendas.flatMap((f) => f.frotas))].sort(),
     previa,
   };
 }
