@@ -312,3 +312,88 @@ function parManifestoCsv(arquivos) {
   const linhas = arquivos.map((a) => [a.caminho, a.bytes, a.sha256, a.frota, a.cod_faz].map(parCampoCsv).join(';'));
   return ['caminho;bytes;sha256;frota;fazenda', ...linhas].join('\n') + '\n';
 }
+
+// ===== Painel: agregações sobre as análises vigentes =====
+// analises = linhas de paralelismo_analises (com paralelismo_talhoes e o nome da fazenda); base = { 'cod|talhão': {area_ha, declividade} }.
+const PAR_FAIXAS = ['até 6%', '6 a 9%', '9 a 12%', 'acima de 12%'];
+const PAR_AMOSTRAS_MIN = 25;
+
+const parPct = (aderentes, amostras) => (amostras ? aderentes * 100 / amostras : null);
+
+function parSituacao(pct) {
+  if (pct == null) return null;
+  return pct >= 85 ? 'bom' : pct >= 70 ? 'atencao' : 'critico';
+}
+
+function parFaixaDeclividade(d) {
+  if (d == null) return null;
+  return d < 6 ? 0 : d < 9 ? 1 : d < 12 ? 2 : 3;
+}
+
+function parTalhoesPlanos(analises, base) {
+  return analises.flatMap((a) => (a.paralelismo_talhoes || []).map((t) => {
+    const b = (base || {})[`${a.cod_faz}|${t.talhao_num}`] || {};
+    return {
+      operacao: a.operacao, cod_faz: a.cod_faz, fazenda: a.fazenda || '', talhao: t.talhao_num, mes: a.mes,
+      area: b.area_ha != null ? Number(b.area_ha) : null, dec: b.declividade != null ? Number(b.declividade) : null,
+      amostras: t.amostras, aderentes: t.aderentes, acima: t.acima, abaixo: t.abaixo,
+      pct: parPct(t.aderentes, t.amostras), insuficiente: t.amostras < PAR_AMOSTRAS_MIN,
+    };
+  }));
+}
+
+function parResumo(analises, base) {
+  const planos = parTalhoesPlanos(analises, base);
+  const amostras = analises.reduce((s, a) => s + a.amostras, 0), aderentes = analises.reduce((s, a) => s + a.aderentes, 0);
+  const pct = parPct(aderentes, amostras);
+  return {
+    amostras, aderentes, pct, situacao: parSituacao(pct), fazendas: new Set(analises.map((a) => `${a.operacao}|${a.cod_faz}`)).size,
+    talhoes: planos.length, talhoesValidos: planos.filter((p) => !p.insuficiente).length,
+    area: planos.reduce((s, p) => s + (p.area || 0), 0),
+  };
+}
+
+function parPorFaixa(planos) {
+  const f = PAR_FAIXAS.map((rotulo) => ({ rotulo, n: 0, amostras: 0, aderentes: 0, pct: null }));
+  for (const p of planos) {
+    const i = parFaixaDeclividade(p.dec);
+    if (p.insuficiente || i == null) continue;
+    f[i].n++; f[i].amostras += p.amostras; f[i].aderentes += p.aderentes;
+  }
+  for (const x of f) x.pct = parPct(x.aderentes, x.amostras);
+  return f;
+}
+
+function parPorMes(analises) {
+  const m = new Map();
+  for (const a of analises) {
+    const x = m.get(a.mes) || { mes: a.mes, amostras: 0, aderentes: 0 };
+    x.amostras += a.amostras; x.aderentes += a.aderentes;
+    m.set(a.mes, x);
+  }
+  return [...m.values()].sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0))
+    .map((x) => ({ ...x, pct: parPct(x.aderentes, x.amostras) }));
+}
+
+// pct da fazenda = o da análise (comparável com o PLL); nulo quando todos os talhões têm amostra insuficiente.
+function parTabelaFazendas(analises, base) {
+  const linhas = analises.map((a) => {
+    const ps = parTalhoesPlanos([a], base);
+    const comDec = ps.filter((p) => p.dec != null && p.area);
+    const peso = comDec.reduce((s, p) => s + p.area, 0);
+    const pct = ps.some((p) => !p.insuficiente) ? parPct(a.aderentes, a.amostras) : null;
+    return {
+      operacao: a.operacao, cod_faz: a.cod_faz, fazenda: a.fazenda || '', mes: a.mes, talhoes: ps.length,
+      area: ps.reduce((s, p) => s + (p.area || 0), 0), decMedia: peso ? comDec.reduce((s, p) => s + p.dec * p.area, 0) / peso : null,
+      pct, situacao: parSituacao(pct),
+    };
+  });
+  return linhas.sort((a, b) => (a.pct == null) - (b.pct == null) || (a.pct ?? 0) - (b.pct ?? 0));
+}
+
+const parSemAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function parFiltrarTalhoes(planos, busca) {
+  const q = parSemAcento(busca).trim();
+  if (!q) return planos;
+  return planos.filter((p) => parSemAcento(`${p.fazenda} ${p.cod_faz} ${p.talhao}`).includes(q));
+}
