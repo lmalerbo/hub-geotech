@@ -162,6 +162,30 @@ test('copiar: depois de descartar, o id pode ser usado de novo', async () => {
   assert.deepStrictEqual([...await ctx.parOpfsLer('i1', 'f000001.jdl')], [...bytesDe('outro')]);
 });
 
+test('copiar: falha ao abrir o OPFS não prende o id, e a nova tentativa funciona', async () => {
+  const { ctx, navigator, presas } = ambiente();
+  const original = navigator.storage.getDirectory;
+  navigator.storage.getDirectory = async () => { throw Object.assign(new Error('sem acesso'), { name: 'SecurityError' }); };
+  await assert.rejects(ctx.parOpfsCopiar('i1', [origem('p/a.jdl', '123')]), /sem acesso/);
+  await espera();
+  assert.strictEqual(presas.size, 0);
+  navigator.storage.getDirectory = original;
+  await ctx.parOpfsCopiar('i1', [origem('p/a.jdl', '123')]);
+});
+
+test('copiar: sem espaço já ao criar a pasta dá o aviso de espaço', async () => {
+  const { ctx, navigator } = ambiente();
+  navigator.storage.getDirectory = async () => { throw Object.assign(new Error('cheio'), { name: 'QuotaExceededError' }); };
+  await assert.rejects(ctx.parOpfsCopiar('i1', [origem('p/a.jdl', '123')]), /Não há espaço/);
+});
+
+test('ler: cópia que sumiu dá NotFoundError, mesmo sem a pasta do módulo', async () => {
+  const { ctx } = ambiente();
+  await assert.rejects(ctx.parOpfsLer('i1', 'f000001.jdl'), (e) => e.name === 'NotFoundError');
+  await ctx.parOpfsCopiar('i2', [origem('p/a.jdl', '123')]);
+  await assert.rejects(ctx.parOpfsLer('i2', 'f999999.jdl'), (e) => e.name === 'NotFoundError');
+});
+
 // ── sobras ─────────────────────────────────────────────────────────────
 test('sobras: sem nada no OPFS, lista vazia', async () => {
   const { ctx, raiz } = ambiente();
@@ -414,4 +438,20 @@ test('fila: mensagem que não chega ao destino vira erro do item', async () => {
   WorkerFalso.criados[0].onmessageerror({});
   await espera();
   igual(estados(f), [['a', 'erro']]);
+  assert.strictEqual(f.itens()[0].erro, 'Não foi possível concluir a análise; tente de novo');
+});
+
+test('fila: Worker que não pode ser criado dá erro do item, em vez de parar a fila', async () => {
+  WorkerFalso.criados = [];
+  const { ctx } = ambiente();
+  let n = 0;
+  const f = ctx.parCriarFila({
+    criarWorker: () => { if (!n++) throw new Error('sem Worker'); return new WorkerFalso(); },
+    buscarBase: async () => ({ analise_id: null, linhas: [], talhoes: {} }),
+  });
+  f.adicionar({ id: 'a', plano: PLANO });
+  f.adicionar({ id: 'b', plano: PLANO });
+  await espera(); await espera();
+  igual(estados(f), [['a', 'erro'], ['b', 'processando']]);
+  assert.strictEqual(f.itens()[0].erro, 'Não foi possível preparar a análise; recarregue a página');
 });

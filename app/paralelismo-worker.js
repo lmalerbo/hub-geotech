@@ -111,7 +111,8 @@ async function parProcessar(item) {
       fazendas.push(await parAnalisarFazenda(py, item, faz, avisar, listas));
     } catch (e) {
       console.error(e);
-      postMessage({ tipo: 'erro', id: item.id, msg: `Não foi possível analisar a fazenda ${faz.cod_faz}; tente de novo` });
+      const msg = e.name === 'NotFoundError' ? PAR_ERRO_COPIA : `Não foi possível analisar a fazenda ${faz.cod_faz}; tente de novo`;
+      postMessage({ tipo: 'erro', id: item.id, msg });
       return;
     }
     avisar(100, 'analise');
@@ -124,6 +125,6 @@ onmessage = (e) => {
   if (e.data.tipo !== 'processar') return;
   parProcessar(e.data.item).catch((erro) => {
     console.error(erro);
-    postMessage({ tipo: 'erro', id: e.data.item.id, msg: 'Não foi possível concluir a análise; tente de novo' });
+    postMessage({ tipo: 'erro', id: e.data.item.id, msg: PAR_ERRO_CONCLUIR });
   });
 };

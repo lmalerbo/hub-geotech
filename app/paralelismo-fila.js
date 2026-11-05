@@ -3,7 +3,9 @@
 
 const PAR_OPFS_PASTA = 'paralelismo';
 const PAR_ERRO_PREPARO = 'Não foi possível preparar a análise; recarregue a página';
-const PAR_ERRO_ESPACO = 'Não há espaço no navegador para copiar o pen-drive; descarte cópias antigas ou libere espaço no disco';
+const PAR_ERRO_CONCLUIR = 'Não foi possível concluir a análise; tente de novo';
+const PAR_ERRO_COPIA = 'A cópia do pen-drive não está mais no navegador; escolha a pasta de novo';
+const PAR_ERRO_ESPACO ='Não há espaço no navegador para copiar o pen-drive; descarte cópias antigas ou libere espaço no disco';
 const PAR_TRAVAS = new Map();
 
 async function parOpfsRaiz(criar) {
@@ -55,8 +57,14 @@ async function parOpfsCopiar(id, files, { aoProgresso } = {}) {
   // Copiar de novo (pen-drive recolocado) é com outro id.
   if (PAR_TRAVAS.has(id)) throw new Error(`cópia ${id} já existe`);
   PAR_TRAVAS.set(id, null);
-  await parOpfsTravar(id);
-  const pasta = await (await parOpfsRaiz(true)).getDirectoryHandle(id, { create: true });
+  let pasta;
+  try {
+    await parOpfsTravar(id);
+    pasta = await (await parOpfsRaiz(true)).getDirectoryHandle(id, { create: true });
+  } catch (e) {
+    await parOpfsDescartar(id).catch(() => {});
+    throw e.name === 'QuotaExceededError' ? new Error(PAR_ERRO_ESPACO) : e;
+  }
   const arquivos = [], mapas = [], falhas = [];
   const lista = [...files].map((f) => {
     const caminho = parNormalizar(f.webkitRelativePath || f.name);
@@ -88,7 +96,9 @@ async function parOpfsCopiar(id, files, { aoProgresso } = {}) {
 }
 
 async function parOpfsLer(id, nome) {
-  const pasta = await (await parOpfsRaiz(false)).getDirectoryHandle(id);
+  const raiz = await parOpfsRaiz(false);
+  if (!raiz) throw Object.assign(new Error(`cópia ${id} não existe`), { name: 'NotFoundError' });
+  const pasta = await raiz.getDirectoryHandle(id);
   return new Uint8Array(await (await (await pasta.getFileHandle(nome)).getFile()).arrayBuffer());
 }
 
@@ -167,7 +177,8 @@ function parCriarFila({ criarWorker, buscarBase, aoMudar = () => {} }) {
       worker = criarWorker();
       worker.onmessage = (e) => aoMensagem(e.data);
       worker.onerror = () => { if (atual) falhar(atual, PAR_ERRO_PREPARO); };
-      worker.onmessageerror = worker.onerror;
+      // Em geral é o `pronto` que não chegou: a análise rodou, e tentar de novo resolve sem perder a fila.
+      worker.onmessageerror = () => { if (atual) falhar(atual, PAR_ERRO_CONCLUIR); };
     }
     return worker;
   }
@@ -195,7 +206,11 @@ function parCriarFila({ criarWorker, buscarBase, aoMudar = () => {} }) {
       }
       if (atual !== item) return;
     }
-    obterWorker().postMessage({ tipo: 'processar', item: { id: item.id, pulados: item.plano.pulados, fazendas } });
+    try {
+      obterWorker().postMessage({ tipo: 'processar', item: { id: item.id, pulados: item.plano.pulados, fazendas } });
+    } catch (e) {
+      falhar(item, PAR_ERRO_PREPARO);
+    }
   }
 
   function adicionar(item) {

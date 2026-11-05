@@ -274,6 +274,7 @@ def cenario_amostras(ctx, url):
     }""", {'bases': {'torta|99991': {'analise_id': 7, 'linhas': [], 'talhoes': fc_jdl}, f'cana|{cod_gs3}': {'analise_id': None, 'linhas': [], 'talhoes': fc_gs3}}})
     confere(r['estado'] == 'pronto', f'amostras: processou em {r["segundos"]:.1f} s; cópia {r["copiaS"]:.2f} s; erro: {r["erro"]}')
     confere(r['pulados'] == [], 'amostras: nada pulado')
+    confere(r['parciais'] == [], f'amostras: arquivo íntegro não aparece como cortado ({r["parciais"]})')
     por_op = {f['operacao']: f for f in r['fazendas']}
     if 'torta' in por_op:
         f = por_op['torta']
@@ -444,7 +445,7 @@ def cenario_falhas(ctx, url):
           }).adicionar({ id, plano });
         }).then((i) => [i.estado, i.erro]);
     }""", BASE_VAZIA)
-    confere(r == ['erro', 'Não foi possível analisar a fazenda 99999; tente de novo'], f'cópia sumiu do OPFS: erro do item, que pode ser refeito ({r})')
+    confere(r == ['erro', 'A cópia do pen-drive não está mais no navegador; escolha a pasta de novo'], f'cópia sumiu do OPFS: erro do item, com o texto certo ({r})')
 
     r = pag.evaluate("""() => new Promise((pronto) => {
         const w = new Worker('paralelismo-worker.js');
