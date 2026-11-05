@@ -49,8 +49,8 @@ As do plano geral, em especial: parâmetros fixos; dado real nunca no git nem em
 
 **Produz:** `py/manifest.json` com `{arquivos, modulos: {corretivos, paralelismo}}`; `MODULOS` em `mapas/publicar.py`.
 
-- [ ] Teste: `modulos.paralelismo` tem só `paralelismo/*`, `modulos.corretivos` não tem nada de `paralelismo/`, a união é `arquivos`, e `corretivos-pdf.js` lê `modulos.corretivos`. Ver falhar.
-- [ ] Implementar. Ver passar. Commit.
+- [x] Teste: `modulos.paralelismo` tem só `paralelismo/*`, `modulos.corretivos` não tem nada de `paralelismo/`, a união é `arquivos`, e `corretivos-pdf.js` lê `modulos.corretivos`. Ver falhar.
+- [x] Implementar. Ver passar. Commit.
 
 ### Tarefa 2: `paralelismo/navegador.py`
 
@@ -63,7 +63,7 @@ As do plano geral, em especial: parâmetros fixos; dado real nunca no git nem em
 
 **Testes:** pontos acumulados na ordem de leitura e iguais a `linhas_do_grupo` direto; arquivo apagado depois de ler, também quando o leitor levanta exceção; ilegível dá `legivel: False` e não quebra; data é a mais frequente por ponto; sem data dá `None`; fechar duas vezes dá erro; sem trabalho com JDL de mais de 1 h; `analisar` sem linhas devolve totais zerados e zip válido; zip tem `_Amostras` e `_Linhas`.
 
-- [ ] Testes, ver falhar, implementar, ver passar. Publicar o módulo em `MODULOS['paralelismo']`. Commit.
+- [x] Testes, ver falhar, implementar, ver passar. Publicar o módulo em `MODULOS['paralelismo']`. Commit.
 
 ### Tarefa 3: plano do item, OPFS e fila
 
@@ -79,7 +79,7 @@ As do plano geral, em especial: parâmetros fixos; dado real nunca no git nem em
 
 **Testes (OPFS falso em memória; o real é provado na Tarefa 4):** cópia com SHA-256 conhecido; identificação ligada aos arquivos; `.pth` sem cópia; outros ignorados; falha de leitura vai para `falhas`; cota esgotada apaga a pasta e levanta `PAR_ERRO_ESPACO`; sobras sem as travadas; descartar solta a trava. Fila: um por vez em ordem; base buscada antes de postar; erro não para os seguintes e troca o Worker; `onerror` do Worker vira erro com o texto da spec §10; `tentarDeNovo` reaproveita; remover cancela o que está rodando; progresso de item antigo é ignorado.
 
-- [ ] Testes, ver falhar, implementar, ver passar. Commit.
+- [x] Testes, ver falhar, implementar, ver passar. Commit.
 
 ### Tarefa 4: Web Worker e prova no Edge
 
@@ -97,8 +97,8 @@ As do plano geral, em especial: parâmetros fixos; dado real nunca no git nem em
 5. Só `py/paralelismo/*` baixado pelo Worker; só `mapas/...` pelo Corretivos.
 6. Pyodide inacessível: texto da spec §10.
 
-- [ ] Teste de versão, ver falhar, escrever o Worker, rodar a prova no Edge, corrigir. Commit.
+- [x] Teste de versão, ver falhar, escrever o Worker, rodar a prova no Edge, corrigir. Commit.
 
 ### Tarefa 5: fechamento
 
-- [ ] `requesting-code-review`, corrigir críticos e importantes, `verification-before-completion`, `orquestra/relatorios/S2.md`, commit.
+- [x] `requesting-code-review`, corrigir críticos e importantes, `verification-before-completion`, `orquestra/relatorios/S2.md`, commit.

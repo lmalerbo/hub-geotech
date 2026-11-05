@@ -5,7 +5,7 @@ const PAR_OPFS_PASTA = 'paralelismo';
 const PAR_ERRO_PREPARO = 'Não foi possível preparar a análise; recarregue a página';
 const PAR_ERRO_CONCLUIR = 'Não foi possível concluir a análise; tente de novo';
 const PAR_ERRO_COPIA = 'A cópia do pen-drive não está mais no navegador; escolha a pasta de novo';
-const PAR_ERRO_ESPACO ='Não há espaço no navegador para copiar o pen-drive; descarte cópias antigas ou libere espaço no disco';
+const PAR_ERRO_ESPACO = 'Não há espaço no navegador para copiar o pen-drive; descarte cópias antigas ou libere espaço no disco';
 const PAR_TRAVAS = new Map();
 
 async function parOpfsRaiz(criar) {
