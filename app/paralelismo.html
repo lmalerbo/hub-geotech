@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paralelismo · Hub Geotech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,500,0,0" rel="stylesheet">
+<link rel="stylesheet" href="paralelismo.css">
+</head>
+<body>
+
+<div id="par-carregando" class="par-tela par-centro">
+  <div class="par-cartao"><span class="par-campo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><p role="status">Carregando…</p></div>
+</div>
+
+<div id="par-login" class="par-tela par-centro off">
+  <form class="par-cartao" id="par-form" novalidate>
+    <div class="par-marca"><span class="par-selo"><span class="ico">straighten</span></span><span>Hub Geotech</span></div>
+    <h1>Paralelismo</h1>
+    <p class="par-sub">Entre com a mesma conta do Hub.</p>
+    <label for="par-email">E-mail</label>
+    <input id="par-email" type="email" autocomplete="username" placeholder="nome@empresa.com">
+    <label for="par-senha">Senha</label>
+    <input id="par-senha" type="password" autocomplete="current-password">
+    <p class="par-erro" id="par-login-erro" role="alert"></p>
+    <button class="par-btn par-bloco" id="par-entrar" type="submit">Entrar</button>
+  </form>
+</div>
+
+<div id="par-sem-acesso" class="par-tela par-centro off">
+  <div class="par-cartao">
+    <div class="par-marca"><span class="par-selo"><span class="ico">straighten</span></span><span>Paralelismo</span></div>
+    <p role="status">Sua conta não tem acesso ao Paralelismo. Peça ao administrador.</p>
+    <button class="par-btn par-bloco" type="button" data-sair>Sair</button>
+  </div>
+</div>
+
+<div id="par-app" class="par-tela off">
+  <header class="par-topo">
+    <a class="par-voltar" href="index.html" aria-label="Voltar ao Hub"><span class="ico">arrow_back</span></a>
+    <div class="par-marca"><span class="par-selo"><span class="ico">straighten</span></span><span>Paralelismo</span></div>
+    <nav class="par-abas" role="tablist" aria-label="Seções">
+      <button class="par-aba" role="tab" data-aba="painel" aria-selected="false">Painel</button>
+      <button class="par-aba" role="tab" data-aba="processar" aria-selected="true">Processar</button>
+      <button class="par-aba" role="tab" data-aba="pendentes" aria-selected="false">Pendentes<span class="par-cont off" id="par-cont" aria-label="rodadas pendentes"></span></button>
+      <button class="par-aba" role="tab" data-aba="rodadas" aria-selected="false">Rodadas</button>
+    </nav>
+    <span class="par-espaco"></span>
+    <span class="par-demo off" id="par-demo">Demonstração — dados fictícios</span>
+    <span class="par-nome" id="par-nome"></span>
+    <button class="par-btn2" type="button" data-sair><span class="ico">logout</span><span class="par-so-largo">Sair</span></button>
+  </header>
+
+  <div class="par-palco">
+    <section class="par-mapa" aria-label="Mapa dos talhões">
+      <canvas id="par-canvas" role="img" aria-label="Talhões da fazenda, pintados pela aderência"></canvas>
+      <div class="par-vazio" id="par-mapa-vazio">Escolha um pen-drive para ver os talhões aqui.</div>
+      <div class="par-trilha" id="par-trilha"></div>
+      <div class="par-zoom"><button type="button" id="par-mais" aria-label="Aproximar"><span class="ico">add</span></button><button type="button" id="par-menos" aria-label="Afastar"><span class="ico">remove</span></button></div>
+      <div class="par-legenda" id="par-legenda" aria-label="Legenda da aderência">
+        <span class="par-sw"><i style="background:var(--r1)"></i>&lt; 50%</span>
+        <span class="par-sw"><i style="background:var(--r2)"></i>50–70%</span>
+        <span class="par-sw"><i style="background:var(--r3)"></i>70–85%</span>
+        <span class="par-sw"><i style="background:var(--r4)"></i>≥ 85%</span>
+      </div>
+      <div class="par-faixa off" id="par-faixa" role="status" aria-live="polite"></div>
+      <div class="par-dica" id="par-dica"></div>
+    </section>
+    <aside class="par-col" id="par-col" aria-label="Resumo"></aside>
+  </div>
+</div>
+
+<div class="par-fundo off" id="par-fundo"></div>
+<div class="par-toast" id="par-toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script src="paralelismo-puro.js"></script>
+<script src="paralelismo-fila.js"></script>
+<script src="paralelismo-previa.js"></script>
+<script src="paralelismo-demo.js"></script>
+<script src="paralelismo.js"></script>
+</body>
+</html>
