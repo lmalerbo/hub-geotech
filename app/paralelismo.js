@@ -599,6 +599,8 @@ function parLigarColuna() {
       remover: () => parRemover(id),
       enviar: () => parEnviar(id),
     }[b.dataset.acao];
+    // Pendentes, Rodadas e Frotas (paralelismo-abas.js). Publicar passa por parPublicarComRecalculo: se o banco
+    // responder recalculo_necessario, a página recalcula as fazendas listadas num Worker próprio e confirma com p_recalculo.
     if (acao) acao(); else { const g = parAcaoGestao(b); if (g) g(); }
   });
   col.addEventListener('submit', (e) => {
