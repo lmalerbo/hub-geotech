@@ -13,6 +13,7 @@ dbfread==2.0.7
 pymupdf==1.28.2
 python-pptx==1.0.2
 psycopg[binary]==3.3.6
+pg8000==1.31.5
 requests==2.34.2
 truststore==0.10.4
 pytest==9.1.1
