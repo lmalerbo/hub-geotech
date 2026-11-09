@@ -10,6 +10,7 @@ function droJSZip(){
   if(!DRO_JSZIP)DRO_JSZIP=new Promise((res,rej)=>{
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.integrity='sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG';s.crossOrigin='anonymous';
     s.onload=()=>res(window.JSZip);
     s.onerror=()=>{DRO_JSZIP=null;s.remove();rej(new Error('não consegui carregar o leitor de .zip; confira a internet'));};
     document.head.appendChild(s);

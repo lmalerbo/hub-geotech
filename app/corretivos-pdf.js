@@ -7,9 +7,12 @@ var crGerador = (() => {
   const mudar = (estado, erro = null) => { g.estado = estado; g.erro = erro; g.aoMudar(estado); };
   // passo de 0 a 4 durante a preparação, para a tela mostrar o progresso
   const passo = (n, txt) => { g.passo = n; g.passoTxt = txt; g.aoMudar(g.estado); };
-  function script(src) {
+  // O hash vale só para a VERSAO acima: ao trocar a versão, recalcule o integrity.
+  const PYODIDE_SRI = 'sha384-90so5tCKvl0xs9agU29IMKlAVzhfzFX7QO//YxQkRhJG58bBZrFN+2ZTRB026X5X';
+  function script(src, integrity) {
     return new Promise((ok, falha) => {
-      const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => falha(new Error('não carregou ' + src));
+      const s = document.createElement('script'); s.src = src;
+      if (integrity) { s.integrity = integrity; s.crossOrigin = 'anonymous'; } s.onload = ok; s.onerror = () => falha(new Error('não carregou ' + src));
       document.head.appendChild(s);
     });
   }
@@ -18,7 +21,7 @@ var crGerador = (() => {
     mudar('preparando');
     promessa = (async () => {
       passo(0, 'Baixando o Python…');
-      await script(`https://cdn.jsdelivr.net/pyodide/v${VERSAO}/full/pyodide.js`);
+      await script(`https://cdn.jsdelivr.net/pyodide/v${VERSAO}/full/pyodide.js`, PYODIDE_SRI);
       passo(1, 'Iniciando o Python…');
       py = await loadPyodide();
       passo(2, 'Baixando bibliotecas de mapa…');

@@ -5,7 +5,7 @@ name: Publicar app no GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['app/**', 'mapas/**', 'paralelismo/**', 'drone/assets/**', '.github/workflows/pages.yml']
+    paths: ['app/**', 'mapas/**', 'paralelismo/**', 'drone/assets/**', '.github/workflows/pages.yml', '.github/workflows/testes.yml']
   workflow_dispatch: {}
 
 permissions:
@@ -18,7 +18,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Teste vermelho = não publica (plano pilares CON1).
+  testes:
+    uses: ./.github/workflows/testes.yml
+
   publicar:
+    needs: testes
     runs-on: ubuntu-latest
     environment:
       name: github-pages
