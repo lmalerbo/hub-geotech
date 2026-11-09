@@ -1,0 +1,56 @@
+# Roda a suíte do Hub (node --test + pytest com Postgres local temporário).
+# - Sozinho: em todo push fora da main (confere o branch antes do merge).
+# - Chamado pelo pages.yml antes de publicar: teste vermelho = não publica.
+name: Testes
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_call: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Os testes de data ("hoje", "ontem") assumem o fuso dos usuários; o runner vem em UTC.
+    env:
+      TZ: America/Sao_Paulo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Testes JS (node --test)
+        run: node --test $(find tests -name "*.test.js")
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+
+      - name: Dependências Python
+        run: pip install -r tests/requirements.txt
+
+      # Os testes de banco sobem um Postgres temporário com initdb/pg_ctl (o runner já traz o Postgres;
+      # o PostGIS é simulado pelo stub dos testes).
+      # O initdb/pg_ctl dos testes roda com o usuário do runner, que não escreve na pasta
+      # padrão do socket (/var/run/postgresql).
+      - name: Postgres no PATH
+        run: |
+          echo "$(pg_config --bindir)" >> "$GITHUB_PATH"
+          sudo mkdir -p /var/run/postgresql && sudo chmod a+rwx /var/run/postgresql
+
+      # Os PDFs usam Segoe UI (Windows) ou Selawik (a do Pyodide, em produção). Sem uma
+      # delas o matplotlib cai na DejaVu, mais larga, e os testes de layout erram.
+      - name: Fonte Selawik
+        run: mkdir -p ~/.local/share/fonts && cp mapas/fontes/*.ttf ~/.local/share/fonts/ && fc-cache -f
+
+      - name: Testes Python (pytest, sem banco real nem dados reais)
+        run: python -m pytest -q -p no:cacheprovider

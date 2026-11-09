@@ -12,6 +12,7 @@ function drPdfjs(){
   if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
   if(!DRP.pdfjs)DRP.pdfjs=new Promise((ok,falha)=>{
     const s=document.createElement('script');s.src=DRP_PDFJS+'pdf.min.js';
+    s.integrity='sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';s.crossOrigin='anonymous';
     s.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc=DRP_PDFJS+'pdf.worker.min.js';ok(pdfjsLib);};
     s.onerror=()=>{DRP.pdfjs=null;falha(new Error('Não deu para carregar o leitor de PDF.'));};
     document.head.appendChild(s);
