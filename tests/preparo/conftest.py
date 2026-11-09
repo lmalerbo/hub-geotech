@@ -7,7 +7,8 @@ from tests.fluxo.conftest import pg, fazenda, pessoa, como  # noqa: F401  (fixtu
 
 MIGRACOES = sorted(fluxo.MIGRACOES + ['20261003090000_modulo_colheita.sql',
                                       '20261028090000_preparo_datas_campo.sql',
-                                      '20261029090000_preparo_voo.sql'])
+                                      '20261029090000_preparo_voo.sql',
+                                      '20261109090000_preparo_voos_execucao.sql'])
 
 
 @pytest.fixture(scope='session')

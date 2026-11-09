@@ -5,6 +5,9 @@ o espelho em hub.voo_dronemgmt. A situação por talhão sai da view hub.preparo
 Só leitura no Drone MGMT. Precisa, no hub-geotech-supabase.env: GEOMAP_API_URL e
 HUB_INTEGRACAO_TOKEN (os mesmos do voos_linhas_colheita.py).
 
+Cada rodada fica em hub.execucoes_ingestao (fonte 'voos_preparo'), para o card
+"Dados atualizados" acusar quando ela parar. O --simular não registra nada.
+
 Uso:  python ingestao/voos_preparo.py [--simular]
 """
 
@@ -15,7 +18,7 @@ import sys
 import requests
 import truststore
 
-from comum import Hub, carregar_env
+from comum import Execucao, Hub, carregar_env
 
 truststore.inject_into_ssl()   # o firewall da empresa inspeciona TLS (certificado só no Windows)
 
@@ -43,26 +46,39 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8')
     env, hub = carregar_env(), Hub()
 
+    if args.simular:
+        ler(env, hub, simular=True)
+        return
+    with Execucao(hub, 'voos_preparo') as execucao:
+        lidos, erros, n_fazendas = ler(env, hub)
+        sit = collections.Counter(x['situacao'] for x in hub.selecionar('preparo_voo_talhao', 'situacao'))
+        print('Situação dos talhões em Identificação:', dict(sit))
+        execucao.linhas_lidas = execucao.linhas_gravadas = lidos
+        execucao.detalhes = {'fazendas': n_fazendas, 'fazendas_com_erro': erros, 'situacao': dict(sit)}
+
+
+def ler(env, hub, simular=False):
+    """Lê os voos no GeoMap e grava. Devolve (registros gravados, fazendas com erro, fazendas consultadas)."""
     em_ident = hub.selecionar('talhao_preparo', 'layer', {'etapa': 'eq.Identificação'})
     fazendas = sorted({str(r['layer'] // 1000) for r in em_ident})
     print(f'{len(em_ident)} talhões em Identificação, {len(fazendas)} fazendas')
 
+    lidos, erros = 0, []
     for lote in lotes(fazendas, 50):
         r = requests.post(env['GEOMAP_API_URL'].rstrip('/') + '/integracao/dronemgmt/preparo/voos',
                           json={'secoes': lote}, timeout=300, headers={'x-hub-token': env['HUB_INTEGRACAO_TOKEN']})
         if not r.ok:
             raise RuntimeError(f'GeoMap: HTTP {r.status_code} {r.text[:200]}')
-        secoes, registros = separar(r.json()['resultados'])
+        resultados = r.json()['resultados']
+        erros += [str(x['section']) for x in resultados if x.get('erro')]
+        secoes, registros = separar(resultados)
         print(f'  lote: {len(secoes)} fazendas lidas, {len(registros)} registros')
-        if args.simular:
+        if simular:
             print('   ', collections.Counter((x['projeto'], x['controlStatus']) for x in registros))
             continue
         hub.rpc('preparo_voos_gravar', {'p_secoes': secoes, 'p_registros': registros})
-
-    if not args.simular:
-        sit = collections.Counter(x['situacao'] for x in hub.selecionar('preparo_voo_talhao', 'situacao'))
-        print('Situação dos talhões em Identificação:', dict(sit))
-
+        lidos += len(registros)
+    return lidos, erros, len(fazendas)
 
 if __name__ == '__main__':
     main()

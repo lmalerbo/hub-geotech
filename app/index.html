@@ -2140,7 +2140,8 @@ async function salvarCfgGeral(btn){
 const FONTE_INFO={base_fazendas:['Base Fazendas','Talhões, área, estágio e data de corte (exportação FME diária)'],
   planagri:['PLANAGRI','Demanda de Plantio e Preparo (talhões liberados)'],
   conservacao:['Controle de Conservação','Sistema de conservação por talhão'],
-  icol:['ICOL','Demanda da Colheita (frente, período, cortado)']};
+  icol:['ICOL','Demanda da Colheita (frente, período, cortado)'],
+  voos_preparo:['Voos do Preparo','Voos de Sistematização/Expansão no Drone MGMT (talhões em Identificação)']};
 async function rCfgFontes(){
   const el=document.getElementById('cfg-fontes');
   el.innerHTML='<div class="cfg-card" style="min-height:160px"></div>';Mo.carregando(el.firstChild);
@@ -2538,7 +2539,7 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY,{db:{schema:'hub'}});
 let EU=null;
 let DRONE_RESUMO=[];   // hub.drone_resumo(): uma linha por fazenda (dashboard e Consultas)
 // Frescor dos dados: a importação mais antiga entre as fontes diárias.
-const FONTES_DIARIAS=['base_fazendas','planagri','conservacao','icol'];
+const FONTES_DIARIAS=['base_fazendas','planagri','conservacao','icol','voos_preparo'];
 let ATUALIZADO={txt:'—',lbl:'Dados atualizados',atrasado:false};
 
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];

@@ -89,16 +89,11 @@ def test_gravar_so_service_role(banco, pessoa, como, fazenda):
     assert r[0] == 'ERRO'
 
 
-def test_aviso_sem_voo_fica_no_log(banco, pessoa, como, fazenda):
-    uid, cod = pessoa(), fazenda(3)
-    assert como(uid, 'select hub.preparo_aviso_sem_voo(%s, %s)', (cod, [1, 3])) == [(2,)]
-    linhas = banco.execute("select entidade_id %% 1000, usuario_id, valor_novo from hub.log_auditoria "
-                           "where campo = 'voo_aviso' and entidade_id / 1000 = %s order by 1", (cod,)).fetchall()
-    assert linhas == [(1, uid, 'avancou_sem_voo'), (3, uid, 'avancou_sem_voo')]
+def test_aviso_sem_voo_foi_removido(banco):
+    # sem uso desde 04/11 (etapa Voo calculada na tela); removido em 20261109090000
+    assert banco.execute("select count(*) from pg_proc where proname = 'preparo_aviso_sem_voo'").fetchone()[0] == 0
 
 
-def test_aviso_sem_voo_exige_editar_preparo(banco, pessoa, como, fazenda):
-    cod = fazenda(1)
-    for uid in (pessoa(papel='leitura'), pessoa(modulos=('plantio',))):
-        r = como(uid, 'select hub.preparo_aviso_sem_voo(%s, %s)', (cod, [1]))
-        assert r[0] == 'ERRO'
+def test_execucoes_aceitam_voos_preparo(banco):
+    id_ = banco.execute("insert into hub.execucoes_ingestao (fonte) values ('voos_preparo') returning id").fetchone()[0]
+    banco.execute("delete from hub.execucoes_ingestao where id = %s", (id_,))
