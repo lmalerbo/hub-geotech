@@ -62,19 +62,7 @@ def test_total_grande_cabe_na_coluna(tmp_path):
     raise AssertionError('total 104.000,00 L não encontrado')
 
 
-def test_legenda_vai_para_o_canto_direito_que_cobre_menos_a_fazenda(tmp_path):
-    from tests.mapas.test_corretivo_layout import _aereo, _ins
-    from mapas import corretivo_pdf
-    d = _aereo(20, [_ins(i, i + 1, list(range(1, 21)), 0.1) for i in range(8)])
-    usados = []
-    original = corretivo_pdf._canto_legenda
-    corretivo_pdf._canto_legenda = lambda *a: usados.append(original(*a)) or usados[-1]
-    try:
-        gerar_pdf(d, tmp_path / 'l.pdf')
-    finally:
-        corretivo_pdf._canto_legenda = original
-    assert usados == ['cima']                 # fazenda deitada no meio: embaixo a legenda alta cobriria talhões
-
+# A posição da legenda (antes só os dois cantos direitos) é testada em test_legenda_posicao.py.
 
 def _spans(destino):
     doc = pymupdf.open(destino)
