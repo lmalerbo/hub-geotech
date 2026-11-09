@@ -21,7 +21,10 @@ import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.patches import FancyBboxPatch
+import numpy as np
+import shapely
 from shapely import make_valid
+from shapely.affinity import affine_transform
 from shapely.geometry import box
 from shapely.ops import unary_union
 
@@ -189,10 +192,15 @@ def _subtitulo(pg: Pagina, lista, max_mm: float, dados):
 
 # ---------- mapa ----------
 
-# Reservas (topo, base, lado) em mm, da mais justa à de sempre: a fazenda chega o mais perto possível da moldura,
+# Reservas (topo, base, lado) em mm, da mais justa à mais folgada: a fazenda chega o mais perto possível da moldura,
 # desde que não fique embaixo do logo (canto sup. esquerdo), da escala (canto inf. esquerdo) nem da legenda.
-RESERVAS = [(5, 5, 5), (12, 9, 6), (22, 14, 8)]
+# Da terceira em diante logo e escala estão sempre livres; as duas últimas só afastam a fazenda para abrir espaço
+# para a legenda (09/11). Se nem a última tiver espaço, a legenda cobre o mínimo, sem tampar número de talhão.
+RESERVAS = [(5, 5, 5), (12, 9, 6), (22, 14, 8), (30, 20, 16), (40, 26, 26)]
 LOGO_MM, ESCALA_MM = (40, 19), (50, 12)            # cantos ocupados (largura, altura) a partir da moldura
+# Onde a fazenda fica dentro da folga que sobra na direção que não limita o zoom: centrada (como sempre foi) e,
+# se a legenda não couber, encostada em cima, embaixo, à direita ou à esquerda, antes de afastar mais o zoom.
+ALINHAMENTOS = [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]
 
 
 def _uniao(gdf):
@@ -204,20 +212,47 @@ def _caixa_dados(s, x0, y0, x, y, h, X0, Y0, X1, Y1):
     return box(x0 + (X0 - x) / s, y0 + (y + h - Y1) / s, x0 + (X1 - x) / s, y0 + (y + h - Y0) / s)
 
 
+def _para_mm(geom, s, x0, y0, x, y, h):
+    """Geometria do mapa (metros) em mm da página (y cresce para baixo, como no resto do layout)."""
+    return affine_transform(geom, [s, 0, 0, -s, x - x0 * s, y + h + y0 * s])
+
+
+def _obstaculos_mm(gdf, s, x0, y0, x, y, w, h):
+    """(fazenda, números dos talhões, caixas proibidas) em mm da página, para posicionar a legenda."""
+    fazenda = _para_mm(_uniao(gdf), s, x0, y0, x, y, h)
+    rotulos = [_para_mm(g.representative_point(), s, x0, y0, x, y, h) for g in gdf.geometry]
+    proibidos = [box(x, y, x + LOGO_MM[0], y + LOGO_MM[1]), box(x, y + h - ESCALA_MM[1], x + ESCALA_MM[0], y + h)]
+    return fazenda, rotulos, proibidos
+
+
 def _enquadrar(pg: Pagina, gdf, x, y, w, h, leg):
     """(ax, s, x0, y0, reserva): o enquadramento mais justo em que nada cobre a fazenda. leg = (bw, bh) da legenda
-    ou None; ela precisa caber num dos cantos direitos sem tocar a fazenda."""
+    ou None; ela precisa caber em alguma posição encostada na moldura sem tocar a fazenda (_posicao_legenda)."""
     uniao = _uniao(gdf)
+    minx, miny, maxx, maxy = gdf.total_bounds
+
+    def cabe_tudo(s, x0, y0):
+        livre = lambda X0, Y0, X1, Y1: _caixa_dados(s, x0, y0, x, y, h, X0, Y0, X1, Y1).intersection(uniao).area == 0
+        if not (livre(x, y, x + LOGO_MM[0], y + LOGO_MM[1]) and livre(x, y + h - ESCALA_MM[1], x + ESCALA_MM[0], y + h)):
+            return False
+        if not leg:
+            return True
+        fazenda, rotulos, proibidos = _obstaculos_mm(gdf, s, x0, y0, x, y, w, h)
+        _, _, cobre, tampa = _posicao_legenda(fazenda, rotulos, proibidos, x, y, w, h, *leg)
+        return cobre == 0 and tampa == 0
+
     for reserva in RESERVAS:
         ax, s, x0, y0 = eixo_mapa(pg, gdf, x, y, w, h, reserva=reserva)
+        topo, base, lado = reserva
+        sobra_x = (w - 2 * lado) / s - (maxx - minx)          # folga (metros) na direção que não limita o zoom
+        sobra_y = (h - topo - base) / s - (maxy - miny)
+        for ax_, ay_ in ALINHAMENTOS:
+            X0, Y0 = x0 - ax_ * sobra_x / 2, y0 - ay_ * sobra_y / 2
+            if cabe_tudo(s, X0, Y0):
+                ax.set_xlim(X0, X0 + w / s)
+                ax.set_ylim(Y0, Y0 + h / s)
+                return ax, s, X0, Y0, reserva
         if reserva == RESERVAS[-1]:
-            return ax, s, x0, y0, reserva
-        livre = lambda X0, Y0, X1, Y1: _caixa_dados(s, x0, y0, x, y, h, X0, Y0, X1, Y1).intersection(uniao).area == 0
-        ok = livre(x, y, x + LOGO_MM[0], y + LOGO_MM[1]) and livre(x, y + h - ESCALA_MM[1], x + ESCALA_MM[0], y + h)
-        if ok and leg:
-            bw, bh = leg
-            ok = livre(x + w - bw - 2.5, y + 2.5, x + w - 2.5, y + 2.5 + bh) or                 livre(x + w - bw - 2.5, y + h - bh - 2.5, x + w - 2.5, y + h - 2.5)
-        if ok:
             return ax, s, x0, y0, reserva
         ax.remove()
 
@@ -225,6 +260,7 @@ def _enquadrar(pg: Pagina, gdf, x, y, w, h, leg):
 def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
     itens = _itens_legenda(dados)
     ax, s, x0, y0, _ = _enquadrar(pg, gdf, x, y, w, h, _tamanho_legenda(pg, itens) if itens else None)
+    obstaculos = _obstaculos_mm(gdf, s, x0, y0, x, y, w, h)
     por_talhao = _aplicacoes_por_talhao(dados)
     cores = cores_do_mapa(dados)
     no_mapa = {int(k) for k in dados['areas']}
@@ -257,23 +293,52 @@ def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
                 va='center', path_effects=[pe.withStroke(linewidth=2.5, foreground='white')])
     escala_grafica(ax, s, x0, y0)
     moldura_logo(pg, x, y, w, h, LOGO)
-    _legenda_mapa(pg, itens, x, y, w, h, ax, gdf)
+    _legenda_mapa(pg, itens, x, y, w, h, obstaculos)
     return escala_numerica(s)
 
 
-def _canto_legenda(pg: Pagina, ax, gdf, x, y, w, h, bw, bh) -> str:
-    """'baixo' ou 'cima' (lado direito; à esquerda ficam o logo e a escala): o canto em que a legenda cobre
-    menos a fazenda. Empate fica embaixo, como sempre foi."""
-    uniao = _uniao(gdf)
-    para_dados = ax.transData.inverted()
+# Posição da legenda, à moda dos rótulos do QGIS (motor PAL): gera muitas posições candidatas, descarta as que
+# tocam obstáculos proibidos (logo, escala) e escolhe a de menor custo. Candidatas = a caixa encostada na moldura
+# (MARGEM_LEG), deslizando de PASSO_CAND em PASSO_CAND mm pelas quatro bordas. Custo, nesta ordem: números de talhão
+# tampados, área da fazenda coberta, distância até o canto mais próximo e, por fim, os cantos direitos (baixo, cima),
+# que eram as duas únicas posições até 09/11.
+MARGEM_LEG, PASSO_CAND, FOLGA_FAZENDA, RAIO_ROTULO = 2.5, 2.0, 1.5, 3.0
 
-    def coberto(by):
-        cantos = [para_dados.transform(pg.fig.transFigure.transform((X / pg.W, 1 - Y / pg.H)))
-                  for X, Y in ((x + w - bw - 2.5, by), (x + w - 2.5, by + bh))]
-        (x0, y0), (x1, y1) = cantos
-        return box(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)).intersection(uniao).area
 
-    return 'cima' if coberto(y + 2.5) < coberto(y + h - bh - 2.5) else 'baixo'
+def _passos(a, b) -> list:
+    if b < a:
+        return []
+    n = int((b - a) // PASSO_CAND)
+    return [a + i * PASSO_CAND for i in range(n + 1)] + ([b] if a + n * PASSO_CAND < b else [])
+
+
+def _posicao_legenda(fazenda, rotulos, proibidos, x, y, w, h, bw, bh) -> tuple:
+    """(bx, by, área coberta, números tampados): canto sup. esquerdo da legenda (mm da página) na melhor posição.
+    fazenda, rotulos (pontos) e proibidos (caixas) em mm da página."""
+    esq, dir_, cima, baixo = x + MARGEM_LEG, x + w - bw - MARGEM_LEG, y + MARGEM_LEG, y + h - bh - MARGEM_LEG
+    cand = list(dict.fromkeys([(bx, by) for bx in _passos(esq, dir_) for by in (baixo, cima)] +
+                              [(bx, by) for by in _passos(cima, baixo) for bx in (dir_, esq)]))
+    if cand:
+        caixas = shapely.box(*np.array([[bx, by, bx + bw, by + bh] for bx, by in cand]).T)
+        bloqueada = np.zeros(len(caixas), bool)
+        for p in proibidos:
+            bloqueada |= shapely.intersects(caixas, p)
+        cand, caixas = [c for c, b in zip(cand, bloqueada) if not b], caixas[~bloqueada]
+    if not cand:                                    # moldura pequena demais: fica no canto de sempre
+        cand, caixas = [(dir_, baixo)], np.array([box(dir_, baixo, dir_ + bw, baixo + bh)])
+    perto = fazenda.buffer(FOLGA_FAZENDA) if not fazenda.is_empty else fazenda
+    shapely.prepare(perto)
+    area = np.where(shapely.intersects(perto, caixas), shapely.area(shapely.intersection(caixas, perto)), 0.0)
+    tampa = (np.array([shapely.intersects(caixas, r.buffer(RAIO_ROTULO)) for r in rotulos]).sum(axis=0)
+             if rotulos else np.zeros(len(cand), int))
+
+    def custo(i):
+        bx, by = cand[i]
+        canto = min(bx - esq, dir_ - bx) + min(by - cima, baixo - by)
+        return tampa[i], round(area[i], 2), round(canto, 3), {(dir_, baixo): 0, (dir_, cima): 1}.get(cand[i], 2)
+
+    i = min(range(len(cand)), key=custo)
+    return cand[i][0], cand[i][1], float(area[i]), int(tampa[i])
 
 
 PASSO_LEG, PAD_LEG, SW_LEG = 6.2, 2.5, 5.0
@@ -300,14 +365,13 @@ def _tamanho_legenda(pg: Pagina, itens) -> tuple:
     return larg + 2 * PAD_LEG, PASSO_LEG * len(itens) + 2 * PAD_LEG - 1.2
 
 
-def _legenda_mapa(pg: Pagina, itens, x, y, w, h, ax, gdf):
-    """Caixa branca (alpha 0,9) num canto direito do mapa (o que cobre menos a fazenda)."""
+def _legenda_mapa(pg: Pagina, itens, x, y, w, h, obstaculos):
+    """Caixa branca (alpha 0,9) encostada na moldura, na posição escolhida por _posicao_legenda."""
     if not itens:
         return
     passo, pad, sw = PASSO_LEG, PAD_LEG, SW_LEG
     bw, bh = _tamanho_legenda(pg, itens)
-    bx = x + w - bw - 2.5
-    by = y + 2.5 if _canto_legenda(pg, ax, gdf, x, y, w, h, bw, bh) == 'cima' else y + h - bh - 2.5
+    bx, by, _, _ = _posicao_legenda(*obstaculos, x, y, w, h, bw, bh)
     pg.fig.patches.append(FancyBboxPatch(
         (bx / pg.W, 1 - (by + bh) / pg.H), bw / pg.W, bh / pg.H, boxstyle='round,pad=0,rounding_size=0.0',
         transform=pg.fig.transFigure, facecolor='white', edgecolor=LINHA, linewidth=0.5, alpha=0.9))
