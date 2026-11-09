@@ -57,6 +57,18 @@ def test_sem_espaco_livre_cobre_o_minimo_sem_tampar_numero_de_talhao():
     assert r[3] == 0 and not any(_caixa(r).intersects(p.buffer(3)) for p in rotulos)
 
 
+def test_legenda_maior_que_a_moldura_fica_no_canto_inferior_direito():
+    r = _posicao_legenda(VAZIO, [], PROIBIDOS, X, Y, 60, 40, BW, BH)
+    assert (r[0], r[1]) == (X + 60 - BW - 2.5, Y + 40 - BH - 2.5)
+
+
+def test_metros_para_mm_da_pagina():
+    from mapas.corretivo_pdf import _para_mm
+    s, x0, y0 = 0.1, 1000.0, 5000.0                     # 0,1 mm por metro; (x0, y0) = canto inf. esquerdo do mapa
+    assert _para_mm(Point(x0, y0), s, x0, y0, X, Y, H).coords[0] == (X, Y + H)
+    assert _para_mm(Point(x0 + 100, y0 + 200), s, x0, y0, X, Y, H).coords[0] == (X + 10, Y + H - 20)
+
+
 # ---------- ponta a ponta, no PDF ----------
 
 PARA_4326 = Transformer.from_crs(31983, 4326, always_xy=True).transform
@@ -93,3 +105,22 @@ def test_pdf_fazenda_deitada_com_legenda_alta_nao_cobre_talhao(tmp_path):
     d = _aereo(20, [_ins(i, i + 1, list(range(1, 21)), 0.1) for i in range(8)])
     usadas = _posicoes(d, tmp_path)
     assert usadas and usadas[-1][2] == 0 and usadas[-1][3] == 0
+
+
+def test_fazenda_deitada_sai_do_centro_e_o_mapa_usa_a_origem_devolvida(tmp_path):
+    """Faixa fina centrada não deixa altura para a legenda: a fazenda encosta em cima ou embaixo, e os limites
+    do eixo são os mesmos (x0, y0) que a escala e a legenda usam."""
+    d = _aereo(20, [_ins(i, i + 1, list(range(1, 21)), 0.1) for i in range(8)])
+    feitos = []
+    original = corretivo_pdf._enquadrar
+    corretivo_pdf._enquadrar = lambda *a: (lambda r: feitos.append((r, r[0].get_xlim(), r[0].get_ylim(),
+                                                                    a[1].total_bounds)) or r)(original(*a))
+    try:
+        gerar_pdf(d, tmp_path / 'e.pdf')
+    finally:
+        corretivo_pdf._enquadrar = original
+    (ax, s, x0, y0, reserva), xlim, ylim, (minx, miny, maxx, maxy) = feitos[0]
+    assert xlim[0] == x0 and ylim[0] == y0
+    meio_eixo, meio_fazenda = (ylim[0] + ylim[1]) / 2, (miny + maxy) / 2
+    assert abs(meio_eixo - meio_fazenda) * s > 5          # mais de 5 mm fora do centro vertical
+

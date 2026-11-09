@@ -25,7 +25,7 @@ import numpy as np
 import shapely
 from shapely import make_valid
 from shapely.affinity import affine_transform
-from shapely.geometry import box
+from shapely.geometry import MultiPoint, box
 from shapely.ops import unary_union
 
 from mapas.corretivo_dados import (
@@ -217,41 +217,54 @@ def _para_mm(geom, s, x0, y0, x, y, h):
     return affine_transform(geom, [s, 0, 0, -s, x - x0 * s, y + h + y0 * s])
 
 
-def _obstaculos_mm(gdf, s, x0, y0, x, y, w, h):
-    """(fazenda, números dos talhões, caixas proibidas) em mm da página, para posicionar a legenda."""
-    fazenda = _para_mm(_uniao(gdf), s, x0, y0, x, y, h)
-    rotulos = [_para_mm(g.representative_point(), s, x0, y0, x, y, h) for g in gdf.geometry]
+def _obstaculos_mm(uniao, pontos, s, x0, y0, x, y, w, h):
+    """(fazenda, números dos talhões, caixas proibidas) em mm da página, para posicionar a legenda.
+    uniao e pontos (MultiPoint dos números) em metros, calculados uma vez só por mapa."""
+    fazenda = _para_mm(uniao, s, x0, y0, x, y, h)
+    rotulos = list(_para_mm(pontos, s, x0, y0, x, y, h).geoms)
     proibidos = [box(x, y, x + LOGO_MM[0], y + LOGO_MM[1]), box(x, y + h - ESCALA_MM[1], x + ESCALA_MM[0], y + h)]
     return fazenda, rotulos, proibidos
 
 
+def _pontos_rotulos(gdf):
+    return MultiPoint([g.representative_point() for g in gdf.geometry])
+
+
 def _enquadrar(pg: Pagina, gdf, x, y, w, h, leg):
     """(ax, s, x0, y0, reserva): o enquadramento mais justo em que nada cobre a fazenda. leg = (bw, bh) da legenda
-    ou None; ela precisa caber em alguma posição encostada na moldura sem tocar a fazenda (_posicao_legenda)."""
-    uniao = _uniao(gdf)
+    ou None; ela precisa caber em alguma posição encostada na moldura sem tocar a fazenda (_posicao_legenda).
+    Na última reserva, se nada couber, fica o alinhamento em que a legenda tampa menos números e cobre menos."""
+    uniao, pontos = _uniao(gdf), _pontos_rotulos(gdf)
     minx, miny, maxx, maxy = gdf.total_bounds
 
-    def cabe_tudo(s, x0, y0):
+    def custo(s, x0, y0):
+        """None se a fazenda fica sob o logo ou a escala; senão (números tampados, área coberta) pela legenda."""
         livre = lambda X0, Y0, X1, Y1: _caixa_dados(s, x0, y0, x, y, h, X0, Y0, X1, Y1).intersection(uniao).area == 0
         if not (livre(x, y, x + LOGO_MM[0], y + LOGO_MM[1]) and livre(x, y + h - ESCALA_MM[1], x + ESCALA_MM[0], y + h)):
-            return False
+            return None
         if not leg:
-            return True
-        fazenda, rotulos, proibidos = _obstaculos_mm(gdf, s, x0, y0, x, y, w, h)
-        _, _, cobre, tampa = _posicao_legenda(fazenda, rotulos, proibidos, x, y, w, h, *leg)
-        return cobre == 0 and tampa == 0
+            return 0, 0.0
+        _, _, cobre, tampa = _posicao_legenda(*_obstaculos_mm(uniao, pontos, s, x0, y0, x, y, w, h), x, y, w, h, *leg)
+        return tampa, cobre
 
     for reserva in RESERVAS:
         ax, s, x0, y0 = eixo_mapa(pg, gdf, x, y, w, h, reserva=reserva)
         topo, base, lado = reserva
         sobra_x = (w - 2 * lado) / s - (maxx - minx)          # folga (metros) na direção que não limita o zoom
         sobra_y = (h - topo - base) / s - (maxy - miny)
+        opcoes = []
         for ax_, ay_ in ALINHAMENTOS:
             X0, Y0 = x0 - ax_ * sobra_x / 2, y0 - ay_ * sobra_y / 2
-            if cabe_tudo(s, X0, Y0):
-                ax.set_xlim(X0, X0 + w / s)
-                ax.set_ylim(Y0, Y0 + h / s)
-                return ax, s, X0, Y0, reserva
+            c = custo(s, X0, Y0)
+            if c == (0, 0.0) or (c is not None and reserva == RESERVAS[-1]):
+                opcoes.append((c, X0, Y0))
+            if c == (0, 0.0):
+                break
+        if opcoes and (opcoes[-1][0] == (0, 0.0) or reserva == RESERVAS[-1]):
+            _, X0, Y0 = min(opcoes, key=lambda o: o[0])
+            ax.set_xlim(X0, X0 + w / s)
+            ax.set_ylim(Y0, Y0 + h / s)
+            return ax, s, X0, Y0, reserva
         if reserva == RESERVAS[-1]:
             return ax, s, x0, y0, reserva
         ax.remove()
@@ -260,7 +273,7 @@ def _enquadrar(pg: Pagina, gdf, x, y, w, h, leg):
 def _mapa(pg: Pagina, dados, gdf, x, y, w, h) -> int:
     itens = _itens_legenda(dados)
     ax, s, x0, y0, _ = _enquadrar(pg, gdf, x, y, w, h, _tamanho_legenda(pg, itens) if itens else None)
-    obstaculos = _obstaculos_mm(gdf, s, x0, y0, x, y, w, h)
+    obstaculos = _obstaculos_mm(_uniao(gdf), _pontos_rotulos(gdf), s, x0, y0, x, y, w, h)
     por_talhao = _aplicacoes_por_talhao(dados)
     cores = cores_do_mapa(dados)
     no_mapa = {int(k) for k in dados['areas']}
@@ -309,7 +322,10 @@ def _passos(a, b) -> list:
     if b < a:
         return []
     n = int((b - a) // PASSO_CAND)
-    return [a + i * PASSO_CAND for i in range(n + 1)] + ([b] if a + n * PASSO_CAND < b else [])
+    passos = [a + i * PASSO_CAND for i in range(n + 1)]
+    if math.isclose(passos[-1], b, abs_tol=1e-6):
+        passos[-1] = b                              # o último é exatamente b: é a chave do canto direito no custo
+    return passos + ([b] if passos[-1] < b else [])
 
 
 def _posicao_legenda(fazenda, rotulos, proibidos, x, y, w, h, bw, bh) -> tuple:
