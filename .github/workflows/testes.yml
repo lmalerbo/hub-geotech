@@ -16,6 +16,9 @@ jobs:
   testes:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Os testes de data ("hoje", "ontem") assumem o fuso dos usuários; o runner vem em UTC.
+    env:
+      TZ: America/Sao_Paulo
     steps:
       - uses: actions/checkout@v4
 
