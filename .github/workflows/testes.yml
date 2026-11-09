@@ -40,8 +40,17 @@ jobs:
 
       # Os testes de banco sobem um Postgres temporário com initdb/pg_ctl (o runner já traz o Postgres;
       # o PostGIS é simulado pelo stub dos testes).
+      # O initdb/pg_ctl dos testes roda com o usuário do runner, que não escreve na pasta
+      # padrão do socket (/var/run/postgresql).
       - name: Postgres no PATH
-        run: echo "$(pg_config --bindir)" >> "$GITHUB_PATH"
+        run: |
+          echo "$(pg_config --bindir)" >> "$GITHUB_PATH"
+          sudo mkdir -p /var/run/postgresql && sudo chmod a+rwx /var/run/postgresql
+
+      # Os PDFs usam Segoe UI (Windows) ou Selawik (a do Pyodide, em produção). Sem uma
+      # delas o matplotlib cai na DejaVu, mais larga, e os testes de layout erram.
+      - name: Fonte Selawik
+        run: mkdir -p ~/.local/share/fonts && cp mapas/fontes/*.ttf ~/.local/share/fonts/ && fc-cache -f
 
       - name: Testes Python (pytest, sem banco real nem dados reais)
         run: python -m pytest -q -p no:cacheprovider

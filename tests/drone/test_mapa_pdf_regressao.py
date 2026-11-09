@@ -11,6 +11,10 @@ from drone.geometria import recortar, uniao_buffers
 from drone.mapa_pdf import DadosMapa, gerar_pdf
 
 pymupdf = pytest.importorskip('pymupdf')
+# As referências são PNGs gerados no Windows com Segoe UI e comparados byte a byte: em outra
+# máquina (ex.: o CI no Linux) a fonte muda e o teste não diz nada sobre o código.
+from matplotlib import font_manager  # noqa: E402
+_TEM_SEGOE = any(f.name == 'Segoe UI' for f in font_manager.fontManager.ttflist)
 REF = Path(__file__).parent / 'referencia'
 DIA = datetime.date(2026, 10, 15)
 
@@ -32,6 +36,7 @@ CASOS = {
 }
 
 
+@pytest.mark.skipif(not _TEM_SEGOE, reason='referências geradas com Segoe UI (Windows)')
 @pytest.mark.parametrize('nome', CASOS)
 def test_pdf_drone_igual_a_referencia(nome, tmp_path):
     destino = tmp_path / f'{nome}.pdf'
