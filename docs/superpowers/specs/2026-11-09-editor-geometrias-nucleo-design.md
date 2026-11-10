@@ -220,3 +220,10 @@ Cada etapa termina usável no laboratório e com seus testes passando.
 - Persistência no banco, permissões e edição por várias pessoas ao mesmo tempo.
 - Geração de PDF.
 - Leitura de DWG/DXF.
+
+## 14. Melhorias anotadas para depois
+
+Ficam para a fase em que os projetos de preparo e plantio forem feitos dentro do Hub (cada uma com spec própria):
+- **Importar DXF/DWG:** entra como um formato novo pelo `registrarFormato`, sem mexer no núcleo.
+- **Ferramentas específicas de projeto de preparo e plantio:** entram como ferramentas novas pelo contrato da seção 5.
+- **Versionamento parecido com o Git** (commits com mensagem, histórico, enviar/publicar, comparar versões, voltar atrás). A base já existe nesta spec: os comandos são serializáveis e reversíveis (seção 4.2), então um "commit" pode ser um grupo de comandos com mensagem e autor, e o histórico é a sequência deles. Por isso os comandos precisam continuar serializáveis e determinísticos.
