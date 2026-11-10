@@ -369,7 +369,7 @@ function crToast(msg, erro = false) {
 // e registra a função que o Esc chama (a mesma do botão de fechar). Um único listener (UX2).
 var crModalFoco = null, crModalEsc = null;
 function crModalAbriu(fundo, fechar) {
-  if (fundo.classList.contains('off')) crModalFoco = document.activeElement;
+  if (fundo.classList.contains('off') && !crModalFoco) crModalFoco = document.activeElement;
   crModalEsc = fechar;
 }
 function crModalFechou(devolverFoco = true) {

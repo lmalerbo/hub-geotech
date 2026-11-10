@@ -2813,7 +2813,7 @@ function modalAbrir(id){
   if(m.classList.contains('off'))m._foco=document.activeElement;
   m.classList.remove('off');
   const campos=[...m.querySelectorAll('input:not([type=hidden]):not(:disabled),select:not(:disabled),textarea:not(:disabled)')];
-  const alvo=campos.find(c=>c.offsetParent!==null)||m.querySelector('.btn-acao');
+  const alvo=campos.find(c=>c.offsetParent!==null)||m.querySelector('.btn-acao')||[...m.querySelectorAll('button')].find(b=>b.offsetParent!==null);
   if(alvo)alvo.focus();
 }
 function modalFechar(id){
