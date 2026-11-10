@@ -365,6 +365,23 @@ function crToast(msg, erro = false) {
   clearTimeout(crToast.timer);
   crToast.timer = setTimeout(() => t.classList.remove('show'), 2800);
 }
+// Janela sobre #cr-modal-fundo: guarda quem tinha o foco, devolve ao fechar (se ainda existe)
+// e registra a função que o Esc chama (a mesma do botão de fechar). Um único listener (UX2).
+var crModalFoco = null, crModalEsc = null;
+function crModalAbriu(fundo, fechar) {
+  if (fundo.classList.contains('off')) crModalFoco = document.activeElement;
+  crModalEsc = fechar;
+}
+function crModalFechou(devolverFoco = true) {
+  crModalEsc = null;
+  const f = crModalFoco;
+  if (!devolverFoco) return;
+  crModalFoco = null;
+  if (f && f.isConnected && f.focus) f.focus();
+}
+if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && crModalEsc && !crMenu.aberto) { e.preventDefault(); crModalEsc(); }
+});
 // Diálogo simples: devolve o valor do botão escolhido (ou null ao fechar pelo fundo).
 function crDialogo(titulo, texto, botoes) {
   return new Promise(resolver => {
@@ -374,9 +391,11 @@ function crDialogo(titulo, texto, botoes) {
       <h3 id="cr-md-tit">${crEsc(titulo)}</h3><p>${crEsc(texto)}</p>
       <div class="cr-md-acoes">${botoes.map((b, i) => `<button class="${b.classe}" type="button" data-i="${i}">${crEsc(b.rotulo)}</button>`).join('')}</div>
     </div>`;
-    const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; resolver(valor); };
+    const sobre = !fundo.classList.contains('off');  // aberto por cima de outra janela (ex.: Insumos): o foco volta só no fim dela
+    const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; crModalFechou(!sobre); resolver(valor); };
     fundo.onclick = e => { if (e.target === fundo) fechar(null); };
     fundo.querySelectorAll('button').forEach(b => { b.onclick = () => fechar(botoes[Number(b.dataset.i)].valor); });
+    crModalAbriu(fundo, () => fechar(null));
     fundo.classList.remove('off');
     fundo.querySelector('button').focus();
   });
@@ -578,7 +597,7 @@ function crEscolherNovoMapa() {
     const fundo = document.getElementById('cr-modal-fundo');
     const est = { grupo: 'corretivo', op: 'subsolagem' };
     const ops = [['subsolagem', 'SubSolagem'], ['supergrade', 'SuperGrade'], ['arado', 'Arado'], ['experimento', 'Experimento']];
-    const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; resolver(valor); };
+    const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; crModalFechou(); resolver(valor); };
     const desenhar = () => {
       const aerea = est.grupo === 'aerea';
       // esc-ok
@@ -618,6 +637,7 @@ function crEscolherNovoMapa() {
     };
     fundo.onclick = e => { if (e.target === fundo) fechar(null); };
     desenhar();
+    crModalAbriu(fundo, () => fechar(null));
     fundo.classList.remove('off');
     fundo.querySelector('[data-grupo]').focus();
   });
@@ -1101,7 +1121,7 @@ async function crEditarAplicacao(id) {
   const blend = a.tipo === 'blend';
   const todos = [...new Set([...CR_ST.geo.features.map(f => f.properties.talhao), ...a.talhoes])].sort((x, y) => x - y);
   const fundo = document.getElementById('cr-modal-fundo');
-  const fechar = () => { fundo.classList.add('off'); fundo.innerHTML = ''; };
+  const fechar = () => { fundo.classList.add('off'); fundo.innerHTML = ''; crModalFechou(); };
   // esc-ok
   fundo.innerHTML = `<form class="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-ed-tit">
     <h3 id="cr-ed-tit">Editar ${crEsc(crRotulo(a))}</h3>
@@ -1122,6 +1142,7 @@ async function crEditarAplicacao(id) {
       <button class="cr-btn" type="submit">Salvar</button>
     </div>
   </form>`;
+  crModalAbriu(fundo, fechar);
   fundo.classList.remove('off');
   const form = fundo.querySelector('form');
   const erroEl = document.getElementById('cr-ed-erro');
@@ -1459,6 +1480,7 @@ function crFecharInsumos() {
   fundo.classList.add('off');
   fundo.innerHTML = '';
   fundo.onclick = null;
+  crModalFechou();
   crRenderPainel();
 }
 // Monta a janela: lista dos insumos ativos e formulário (adicionar ou editar). 'v' repõe o que foi digitado após erro.
@@ -1509,6 +1531,7 @@ function crDesenharInsumos(v = null, erro = '') {
     </form>
     <div class="cr-md-acoes"><button class="cr-btn2" type="button" data-ins-fechar>Fechar</button></div>
   </div>`;
+  crModalAbriu(fundo, crFecharInsumos);
   fundo.classList.remove('off');
   fundo.onclick = e => {
     if (e.target === fundo) return crFecharInsumos();

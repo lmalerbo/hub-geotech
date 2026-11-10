@@ -695,7 +695,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 </div>
 
 <div class="modal-fundo off" id="modal-envio">
-  <div class="modal-caixa">
+  <div class="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="envio-titulo">
     <div class="modal-t" id="envio-titulo"></div>
     <label class="envio-drop" id="envio-drop">
       <span class="ico">upload_file</span>
@@ -714,8 +714,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 </div>
 
 <div class="modal-fundo off" id="modal-voo">
-  <div class="modal-caixa">
-    <div class="modal-t">Pedir voo de Linhas de Colheita</div>
+  <div class="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="voo-t">
+    <div class="modal-t" id="voo-t">Pedir voo de Linhas de Colheita</div>
     <div id="voo-resumo" style="font-size:12.5px;color:var(--t2);margin-bottom:10px"></div>
     <div class="voo-opcoes">
       <label class="voo-opcao"><input type="radio" name="voo-tipo" value="voar" onchange="vooTipoMudou()"><strong>Voar</strong><small>Talhão Sem Linhas, a partir do 4º corte</small></label>
@@ -735,15 +735,15 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 </div>
 
 <div class="modal-fundo off" id="modal-fila">
-  <div class="modal-caixa" style="width:min(920px,94vw)">
-    <div class="modal-t">Fila de voos — Linhas de Colheita</div>
+  <div class="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="fila-t" style="width:min(920px,94vw)">
+    <div class="modal-t" id="fila-t">Fila de voos — Linhas de Colheita</div>
     <div class="fila-scroll" id="fila-corpo"></div>
-    <div class="modal-botoes"><button class="btn-retro" onclick="document.getElementById('modal-fila').classList.add('off')">Fechar</button></div>
+    <div class="modal-botoes"><button class="btn-retro" onclick="fecharFila()">Fechar</button></div>
   </div>
 </div>
 
 <div class="modal-fundo off" id="modal-confirma">
-  <div class="modal-caixa" style="width:min(420px,92vw)">
+  <div class="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="confirma-t" style="width:min(420px,92vw)">
     <div class="modal-t" id="confirma-t">Confirmar</div>
     <div class="confirma-txt" id="confirma-txt"></div>
     <div class="modal-botoes">
@@ -1597,13 +1597,13 @@ function abrirVoo(){
   document.getElementById('voo-erro').textContent='';
   const ok=document.getElementById('voo-ok');ok.disabled=false;ok.textContent='Pedir voo';
   vooTipoMudou();
-  document.getElementById('modal-voo').classList.remove('off');
+  modalAbrir('modal-voo');
 }
 function vooTipoMudou(){
   const tipo=document.querySelector('input[name="voo-tipo"]:checked')?.value;
   document.getElementById('voo-problema-w').style.display=tipo==='revoar'?'':'none';
 }
-function fecharVoo(){document.getElementById('modal-voo').classList.add('off');}
+function fecharVoo(){modalFechar('modal-voo');}
 async function confirmarVoo(){
   const tipo=document.querySelector('input[name="voo-tipo"]:checked')?.value;
   const problema=document.getElementById('voo-problema').value.trim();
@@ -1643,8 +1643,9 @@ function abrirFila(){
         <td>${v.data_corte?dataCurta(v.data_corte):'—'} → ${v.liberar_em?dataCurta(v.liberar_em):'—'}</td>
         <td>${esc(v.pedido_por||'')}<div style="color:var(--t3);font-size:11px">${esc(nomeU[v.apontado_por]||'')} · ${fmtDataHora(v.apontado_em)}</div></td></tr>`;}).join('')}</tbody></table>`
     :'<div class="sino-vazio">Nenhum pedido de voo ativo.</div>';
-  document.getElementById('modal-fila').classList.remove('off');
+  modalAbrir('modal-fila');
 }
+function fecharFila(){modalFechar('modal-fila');}
 
 async function marcarTipoC(btn,tipo){
   if(ativaC===null||!selTals.length)return;
@@ -2733,7 +2734,7 @@ function abrirEnvio(cfg){
     prepararSlots();
     document.getElementById('envio-erro').textContent='';
     const okC=document.getElementById('envio-ok');okC.disabled=false;okC.textContent='Enviar';
-    document.getElementById('modal-envio').classList.remove('off');
+    modalAbrir('modal-envio');
     return;
   }
   const itens=cfg.itens.map(it=>{
@@ -2755,7 +2756,7 @@ function abrirEnvio(cfg){
   prepararSlots();
   document.getElementById('envio-erro').textContent='';
   const ok=document.getElementById('envio-ok');ok.disabled=false;ok.textContent='Enviar';
-  document.getElementById('modal-envio').classList.remove('off');
+  modalAbrir('modal-envio');
 }
 // Arrastar vários arquivos de uma vez (como no Expo_safra): cada arquivo vai
 // para o campo certo pela extensão e, quando há dois campos com a mesma
@@ -2805,6 +2806,32 @@ function prepararSlots(){
     });
   });
 }
+// Modais do Hub (UX2). Ao abrir: guarda quem tinha o foco e põe o foco no primeiro campo visível
+// (ou no botão principal). Ao fechar: devolve o foco, se o elemento ainda existe. Sem armadilha de foco.
+function modalAbrir(id){
+  const m=document.getElementById(id);
+  if(m.classList.contains('off'))m._foco=document.activeElement;
+  m.classList.remove('off');
+  const campos=[...m.querySelectorAll('input:not([type=hidden]):not(:disabled),select:not(:disabled),textarea:not(:disabled)')];
+  const alvo=campos.find(c=>c.offsetParent!==null)||m.querySelector('.btn-acao');
+  if(alvo)alvo.focus();
+}
+function modalFechar(id){
+  const m=document.getElementById(id);
+  m.classList.add('off');
+  const f=m._foco;m._foco=null;
+  if(f&&f.isConnected&&f.focus)f.focus();
+}
+// Esc fecha só o modal de cima, pela mesma função do botão (o "confirmar" conta como Cancelar).
+// stopImmediatePropagation: os listeners de Esc do Drone vêm depois e não devem fechar a janela de baixo.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const aberto=id=>!document.getElementById(id).classList.contains('off');
+  const topo=[['modal-confirma',()=>document.getElementById('confirma-nao').click()],
+    ['modal-envio',fecharEnvio],['modal-voo',fecharVoo],['modal-fila',fecharFila]].find(([id])=>aberto(id));
+  if(!topo)return;
+  e.preventDefault();e.stopImmediatePropagation();topo[1]();
+});
 // Confirmação no visual do Hub (no lugar do confirm() do navegador).
 function confirmar(texto,{titulo='Confirmar',ok='Confirmar',perigo=false,html=false}={}){
   return new Promise(resolve=>{
@@ -2814,9 +2841,9 @@ function confirmar(texto,{titulo='Confirmar',ok='Confirmar',perigo=false,html=fa
     else document.getElementById('confirma-txt').textContent=texto;
     const sim=document.getElementById('confirma-sim'),nao=document.getElementById('confirma-nao');
     sim.textContent=ok;sim.style.background=perigo?'#c23b3b':'var(--t1)';
-    const fim=v=>{m.classList.add('off');sim.onclick=nao.onclick=null;resolve(v);};
+    const fim=v=>{modalFechar('modal-confirma');sim.onclick=nao.onclick=null;resolve(v);};
     sim.onclick=()=>fim(true);nao.onclick=()=>fim(false);
-    m.classList.remove('off');sim.focus();
+    modalAbrir('modal-confirma');
   });
 }
 
@@ -2858,7 +2885,7 @@ function enviarComProgresso(url,token,fd,aoProgredir){
     x.send(fd);
   });
 }
-function fecharEnvio(){document.getElementById('modal-envio').classList.add('off');document.getElementById('envio-prog').innerHTML='';ENVIO=null;}
+function fecharEnvio(){modalFechar('modal-envio');document.getElementById('envio-prog').innerHTML='';ENVIO=null;}
 
 async function confirmarEnvio(){
   const erro=document.getElementById('envio-erro'),ok=document.getElementById('envio-ok');

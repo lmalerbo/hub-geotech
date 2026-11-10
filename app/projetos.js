@@ -268,7 +268,7 @@ function pjAbrirObs(c,idx,nums){
   const ta=m.querySelector('[data-pj-obs]');
   ta.value=c.fz.obs||'';
   m.querySelector('[data-pj-obs-erro]').textContent='';
-  m.classList.remove('off');
+  pjMostrar(m);
   setTimeout(()=>ta.focus(),50);
 }
 async function pjConfirmarObs(btn,m){
@@ -280,7 +280,7 @@ async function pjConfirmarObs(btn,m){
   try{
     const d=await pjChamar(btn,'projeto_avancar',{p_modulo:c.mod,p_cod_faz:c.cod,p_acao:'observacoes',p_talhoes:V.nums,p_observacao:obs||null},{silencioso:true});
     m._busy=false;
-    m.classList.add('off');
+    pjOcultar(m);
     delete PJ.tl[c.key];
     showToast(`${pjNTal(Number(pjVal(d))||V.nums.length)} avançaram`);
     await recarregar(pjAlvo(c));
@@ -335,7 +335,7 @@ function pjAbrirVolta(c,idx,nums){
   const ta=m.querySelector('[data-pj-just]');
   ta.value='';
   m.querySelector('[data-pj-volta-erro]').textContent='';
-  m.classList.remove('off');
+  pjMostrar(m);
   setTimeout(()=>ta.focus(),50);
 }
 async function pjConfirmarVolta(btn,m){
@@ -352,7 +352,7 @@ async function pjConfirmarVolta(btn,m){
     const d=await pjChamar(btn,'projeto_retroceder',{p_modulo:c.mod,p_cod_faz:c.cod,p_para:alvo.p,p_justificativa:just,p_talhoes:V.nums},{silencioso:true});
     lote=pjVal(d,'lote_id');
     m._busy=false;
-    m.classList.add('off');
+    pjOcultar(m);
   }catch(e){
     m._busy=false;
     err.textContent=e.message||'Não foi possível retroceder.';
@@ -374,9 +374,19 @@ async function pjConfirmarVolta(btn,m){
 }
 
 // ── Modal Nova revisão (D3, pj-modal-rev) ─────────────────────
+// Foco: ao abrir guarda quem tinha o foco; ao fechar devolve, se o elemento ainda existe (UX2).
+function pjMostrar(m){
+  if(m.classList.contains('off'))m._foco=document.activeElement;
+  m.classList.remove('off');
+}
+function pjOcultar(m){
+  m.classList.add('off');
+  const f=m._foco;m._foco=null;
+  if(f&&f.isConnected&&f.focus)f.focus();
+}
 function pjFecharModal(m){
   if(m._busy)return;
-  m.classList.add('off');
+  pjOcultar(m);
 }
 function pjModalRev(){
   let m=document.getElementById('pj-modal-rev');
@@ -472,7 +482,9 @@ async function pjAbrirRev(acaoIdx){
   m._M=M;
   m._busy=false;
   pjRenderRev(m);
-  m.classList.remove('off');
+  pjMostrar(m);
+  const prim=m.querySelector('input:not([type=hidden]):not(:disabled),select:not(:disabled),textarea:not(:disabled)')||m.querySelector('[data-pj-rev-ok]');
+  if(prim)prim.focus();
 }
 function pjSlotHtml(cp,f){
   const nome=f?`${pjH(f.name)} · ${(f.size/1048576).toFixed(1)} MB`:'Nenhum arquivo · arraste aqui ou clique';
@@ -635,7 +647,7 @@ async function pjConfirmarRev(btn){
   }
   if(!sucesso)return;
   M.enviando=false;m._busy=false;
-  m.classList.add('off');
+  pjOcultar(m);
   delete PJ.tl[M.key];
   showToast(comp?`Arquivos enviados à Rev${M.revNumero}`:`Rev${M.revNumero} aberta com os arquivos`);
   await recarregar({modulo:M.mod,cod:String(M.cod)});
