@@ -62,7 +62,7 @@ function driCartaoHtml(sol,opts){
   const g=sol.geracao||null;
   const col=driColuna(sol), sit=driSituacao(sol);
   const tipo=sol.tipo==='catacao'?'catacao':'normal';
-  const cod=esc(sol.cod_faz);
+  const cod=Number(sol.cod_faz);
   const emCurso=!!g&&(g.status==='fila'||g.status==='processando');
   let pe='';
   if(col==='solicitacoes'){
@@ -300,7 +300,7 @@ async function drBuscar(txt){
   const q=/^\d+$/.test(txt)?sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',Number(txt))
     :sb.from('fazendas').select('cod_faz,nome').ilike('nome',`%${txt}%`).limit(12);
   const {data}=await q;
-  alvo.innerHTML=`<div class="dr-grp">${(data||[]).map(f=>`<div class="dr-it" onclick="driAbrirFazenda(${f.cod_faz})"><span class="dr-cod">${f.cod_faz}</span><div>${esc(f.nome)}</div></div>`).join('')||'<div class="dr-msg">nenhuma fazenda</div>'}</div>`;
+  alvo.innerHTML=`<div class="dr-grp">${(data||[]).map(f=>`<div class="dr-it" onclick="driAbrirFazenda(${Number(f.cod_faz)})"><span class="dr-cod">${esc(f.cod_faz)}</span><div>${esc(f.nome)}</div></div>`).join('')||'<div class="dr-msg">nenhuma fazenda</div>'}</div>`;
 }
 
 async function drCancelar(id){

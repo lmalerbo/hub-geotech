@@ -264,7 +264,7 @@ function render(){
   if(!q){
     const recentes=[...lista].sort((a,b)=>b.atualizado.localeCompare(a.atualizado)).slice(0,6);
     html+=`<div class="rot">Atualizados recentemente</div><div class="recentes">${recentes.map(f=>
-      `<button class="pill" onclick="buscar('${f.cod}')">${esc(f.nome)}</button>`).join('')}</div>
+      `<button class="pill" onclick="buscar('${escJs(f.cod)}')">${esc(f.nome)}</button>`).join('')}</div>
       <div class="rot">Todas as fazendas</div>`;
   }
   if(!achadas.length){
@@ -282,9 +282,9 @@ function render(){
 
 function cartao(f,aberta){
   const arqs=visiveis(f);
-  return`<div class="faz${aberta?' aberta':''}" data-cod="${f.cod}">
-    <button class="faz-cab" onclick="alternar(${f.cod})" aria-expanded="${aberta}">
-      <span class="faz-cod">${f.cod}</span>
+  return`<div class="faz${aberta?' aberta':''}" data-cod="${esc(f.cod)}">
+    <button class="faz-cab" onclick="alternar(${Number(f.cod)})" aria-expanded="${aberta}">
+      <span class="faz-cod">${esc(f.cod)}</span>
       <span class="faz-txt"><span class="faz-nome" style="display:block">${esc(f.nome)}</span>
         <span class="faz-meta">${arqs.length} arquivo${arqs.length!==1?'s':''} · ${data(f.atualizado)}</span></span>
       <span class="ico faz-seta">expand_more</span>

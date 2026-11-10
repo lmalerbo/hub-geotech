@@ -1096,7 +1096,7 @@ function rDash(){
   const ciclo=getCiclo();
   const me=EU||{nome:''};
   document.getElementById('dash-greeting').innerHTML=`
-    <div class="dash-greeting-name">${gr}, ${me.nome.split(' ')[0]}</div>
+    <div class="dash-greeting-name">${gr}, ${esc(me.nome.split(' ')[0])}</div>
     <div class="dash-greeting-sub">Safra ${ciclo}&nbsp;·&nbsp;${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
 
   const concFazP=FZ.filter(f=>f.e===4).length;
@@ -1232,8 +1232,8 @@ function rFaz(){
     return`<div class="fcard${ativa===gi?' on':''}" onclick="selF(${gi})" style="color:${e.c}">
       <div class="fcard-bar" style="background:${e.c}"></div>
       <div class="finfo">
-        <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span> · ${f.t} talhões · ${f.tals.filter(t=>t.e===4).length} Ok</div>
+        <div class="fnome">${esc(f.n)}</div>
+        <div class="fsub"><span class="fcod">${esc(f.cod)}</span> · ${f.t} talhões · ${f.tals.filter(t=>t.e===4).length} Ok</div>
         ${window.Proj?Proj.distribuicaoHtml('plantio',f):''}
       </div>
       <div class="ebadge" style="background:${e.c}1a;color:${e.c}">${e.l}</div>
@@ -1269,16 +1269,16 @@ function rDet(){
     return`<tr>
       <td><strong>${t.num}</strong></td>
       <td>${fmtNum(t.ha)} ha</td>
-      <td>${t.sist_conser||'—'}</td>
-      <td>${t.mes||'—'}</td>
-      <td>${t.mapeamento}</td>
+      <td>${esc(t.sist_conser)||'—'}</td>
+      <td>${esc(t.mes)||'—'}</td>
+      <td>${esc(t.mapeamento)}</td>
       <td><span class="ebadge" style="background:${te.c}1a;color:${te.c}">${te.l}</span></td>
     </tr>`;
   }).join('');
   document.getElementById('dpanel').innerHTML=`
     <div class="dhead">
-      <div class="dhead-l"><div class="dnome">${f.n}</div><div class="dsub">${f.t} talhões · ${fmtNum(f.ha)} ha · Safra ${getCiclo()}</div></div>
-      <span class="dhead-cod">${f.cod}</span>
+      <div class="dhead-l"><div class="dnome">${esc(f.n)}</div><div class="dsub">${f.t} talhões · ${fmtNum(f.ha)} ha · Safra ${getCiclo()}</div></div>
+      <span class="dhead-cod">${esc(f.cod)}</span>
       <div class="ebadge" style="background:${e.c}1a;color:${e.c};font-size:11px;padding:4px 10px">${e.l}</div>
     </div>
     <div class="stp-w"><div class="stp-out">
@@ -1317,9 +1317,9 @@ function acaoPlantio(f){
   // Revisões: não mudam a etapa, só versionam os arquivos (com motivo).
   if(f.e>=3)
     html+=`<div class="retro">↻ Nova revisão:
-      <button class="btn-retro" onclick='abrirEnvio(${JSON.stringify({modulo:'plantio',cod,itens:ENVIO_PLANTIO_PROJETO,forcarNova:true})})'>Exportação + projeto</button>
+      <button class="btn-retro" onclick="abrirEnvio(${esc(JSON.stringify({modulo:'plantio',cod,itens:ENVIO_PLANTIO_PROJETO,forcarNova:true}))})">Exportação + projeto</button>
       ${f.e===4&&!temArquivoVigente('plantio',cod,'projeto','pdf')
-        ?`<button class="btn-retro" onclick='abrirEnvio(${JSON.stringify({modulo:'plantio',cod,itens:ENVIO_PLANTIO_MAPA})})'>Mapa da revisão vigente</button>`:''}
+        ?`<button class="btn-retro" onclick="abrirEnvio(${esc(JSON.stringify({modulo:'plantio',cod,itens:ENVIO_PLANTIO_MAPA}))})">Mapa da revisão vigente</button>`:''}
     </div>`;
   const maisAvancada=Math.max(...f.tals.map(t=>t.e));
   if(maisAvancada>0)
@@ -1356,8 +1356,8 @@ function rFazP(){
     return`<div class="fcard${ativaP===i?' on':''}" onclick="selFP(${i})" style="color:${bc}">
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
-        <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span> · ${f.ha} ha</div>
+        <div class="fnome">${esc(f.n)}</div>
+        <div class="fsub"><span class="fcod">${esc(f.cod)}</span> · ${f.ha} ha</div>
         ${window.Proj&&f.tals?Proj.distribuicaoHtml('preparo',f):''}
       </div>
       <div class="ebadge" style="background:${bc}1a;color:${bc}">${done?'Concluído':cur>0?cur+'/4':'Aguardando'}</div>
@@ -1393,15 +1393,15 @@ function rDetP(){
   }).join('');
   const acao=acaoPreparo(f,curStage,done4);
   const audit=ET_P.map((s,i)=>f.ok[i]?`<div class="prep-audit-row">
-    <div class="pad" style="background:var(--plantio)"></div>${s.l} — <strong>${f.usr[i]}</strong> — ${f.dt[i]}
+    <div class="pad" style="background:var(--plantio)"></div>${s.l} — <strong>${esc(f.usr[i])}</strong> — ${f.dt[i]}
   </div>`:'').filter(Boolean).join('');
   document.getElementById('dpanel-p').innerHTML=`
     <div class="dhead">
       <div class="dhead-l">
-        <div class="dnome">${f.n}</div>
+        <div class="dnome">${esc(f.n)}</div>
         <div class="dsub">${f.ha} ha</div>
       </div>
-      <span class="dhead-cod">${f.cod}</span>
+      <span class="dhead-cod">${esc(f.cod)}</span>
       ${done4?`<div class="ebadge" style="background:rgba(22,167,107,.1);color:var(--plantio)">Concluído</div>`:''}
     </div>
     <div class="stp-w"><div class="stp-out">
@@ -1442,7 +1442,7 @@ function acaoPreparo(f,cur,done4){
   const revisaveis=Object.entries(ENVIO_PREPARO).filter(([doc,it])=>temArquivoVigente('preparo',cod,doc,it.ext));
   if(revisaveis.length)
     html+=`<div class="retro">↻ Nova revisão:${revisaveis.map(([doc,it])=>
-      `<button class="btn-retro" onclick='abrirEnvio(${JSON.stringify({modulo:'preparo',cod,itens:[it],forcarNova:true})})'>${it.nomeCurto}</button>`).join('')}</div>`;
+      `<button class="btn-retro" onclick="abrirEnvio(${esc(JSON.stringify({modulo:'preparo',cod,itens:[it],forcarNova:true}))})">${it.nomeCurto}</button>`).join('')}</div>`;
   const feitas=ET_P.map((s,i)=>f.ok[i]?i:-1).filter(i=>i>=0);
   if(feitas.length)
     html+=`<div class="retro">↩ Reabrir:${feitas.map(i=>
@@ -1486,8 +1486,8 @@ function rFazC(){
     return`<div class="fcard${ativaC===gi?' on':''}" onclick="selFC(${gi})" style="color:${bc}">
       <div class="fcard-bar" style="background:${bc}"></div>
       <div class="finfo">
-        <div class="fnome">${f.n}</div>
-        <div class="fsub"><span class="fcod">${f.cod}</span> · Frente ${esc(f.fr)} · ${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas" style="${f.porte>=DIAS_PORTE?'color:#9a6200;font-weight:700':''}">${f.porte}d</span>`:''}</div>
+        <div class="fnome">${esc(f.n)}</div>
+        <div class="fsub"><span class="fcod">${esc(f.cod)}</span> · Frente ${esc(f.fr)} · ${tot} talhões${semL?` · <span style="color:var(--t2)">${semL} sem linhas</span>`:''}${f.desat?' · <span style="color:#e05252">⚠ replantado</span>':''}${f.porte>=0?` · <span title="maior tempo desde o corte num talhão Sem Linhas" style="${f.porte>=DIAS_PORTE?'color:#9a6200;font-weight:700':''}">${f.porte}d</span>`:''}</div>
       </div>
       <div style="font-size:11px;font-weight:700;color:${bc};white-space:nowrap">${pct}%</div>
     </div>`;
@@ -1547,7 +1547,7 @@ function rDetC(){
   document.getElementById('dpanel-c').innerHTML=`
     <div class="dhead">
       <div class="dhead-l"><div class="dnome">${esc(f.n)}</div><div class="dsub">Frente ${esc(f.fr)}${f.per?` · Período ${esc(f.per)}`:''} · ${f.tals.length} talhões</div></div>
-      <span class="dhead-cod">${f.cod}</span>
+      <span class="dhead-cod">${esc(f.cod)}</span>
     </div>
     <div style="padding:14px 20px">
       ${aviso}
@@ -2309,21 +2309,21 @@ function rCons(pg){
       let cells='';
       const expIco=`<span class="cons-exp-ico${exp?' open':''}">▶</span>`;
       if(cMod==='plantio'){
-        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
+        cells=`<td>${expIco}<strong>${esc(r.n)}</strong></td><td style="font-family:monospace;font-size:11.5px">${esc(r.cod)}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${esc(r.ciclo)}</span></td><td>${esc(r.mes)}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
       } else if(cMod==='colheita'){
         const concC=r._talsFilter.filter(t=>t.st==='CONCLUIDO').length;
-        cells=`<td>${expIco}<strong>${r.n}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td style="font-variant-numeric:tabular-nums">${concC}/${r._talsFilter.length}</td><td style="font-variant-numeric:tabular-nums">${r.ha.toFixed(1)} ha</td>`;
+        cells=`<td>${expIco}<strong>${esc(r.n)}</strong></td><td style="font-family:monospace;font-size:11.5px">${esc(r.cod)}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${esc(r.ciclo)}</span></td><td style="font-variant-numeric:tabular-nums">${concC}/${r._talsFilter.length}</td><td style="font-variant-numeric:tabular-nums">${r.ha.toFixed(1)} ha</td>`;
       } else if(cMod==='drone'){
         const cor=r.normal==='completa'?'var(--plantio)':r.normal==='incompleta'?'#d4890a':'var(--t3)';
         const corO=r.obst==='ok'?'var(--plantio)':r.obst==='antigos'?'#d4890a':'var(--t3)';
-        cells=`<td>${expIco}<strong>${esc(r.n)}</strong></td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td>
+        cells=`<td>${expIco}<strong>${esc(r.n)}</strong></td><td style="font-family:monospace;font-size:11.5px">${esc(r.cod)}</td>
           <td>${r.normal_rev==null?'—':'Rev'+r.normal_rev}</td>
           <td><span class="cons-badge" style="background:${cor}18;color:${cor}">${r.pct==null?'—':Math.floor(r.pct)+'%'}</span></td>
           <td>${r.catacao_rev==null?'—':'Rev'+r.catacao_rev+' · '+fmtNum(r.catacao_ha)+' ha'}</td>
           <td><span class="cons-badge" style="background:${corO}18;color:${corO}">${r.obst==='ok'?'em dia':r.obst==='antigos'?'+24 meses':'sem'}</span></td>
           <td>${esc(r.r.solicitacao||'—')}</td>`;
       } else {
-        cells=`<td>${expIco}<strong>${r.n}</strong>${r._ciclo25?' <span class="cons-badge" style="background:var(--s2);color:var(--t2)">ciclo 25-26 · PLANAGRI</span>':''}</td><td style="font-family:monospace;font-size:11.5px">${r.cod}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${r.ciclo}</span></td><td>${r.mes}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
+        cells=`<td>${expIco}<strong>${esc(r.n)}</strong>${r._ciclo25?' <span class="cons-badge" style="background:var(--s2);color:var(--t2)">ciclo 25-26 · PLANAGRI</span>':''}</td><td style="font-family:monospace;font-size:11.5px">${esc(r.cod)}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${esc(r.ciclo)}</span></td><td>${esc(r.mes)}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
       }
       tbHtml+=`<tr class="cons-faz-row${sel?' sel':''}${exp?' exp':''}" onclick="consExpand('${r._key}',event)">
         <td onclick="event.stopPropagation()"><input type="checkbox" class="cons-cb" ${sel?'checked':''} onchange="consSel('${r._key}',this)"></td>
@@ -2357,7 +2357,7 @@ function consDetail(r){
   if(cMod==='drone'){
     return`<p style="font-size:12px;color:var(--t3);padding:6px 0">Obstáculos — 15 m: <strong style="color:var(--t1)">${drConsData(r.r.obst_15)}</strong>
       · 25 m: <strong style="color:var(--t1)">${drConsData(r.r.obst_25)}</strong> · 50 m: <strong style="color:var(--t1)">${drConsData(r.r.obst_50)}</strong>
-      &nbsp;·&nbsp; <a href="#" onclick="event.preventDefault();drIrFazenda(${r.cod})">Abrir na tela do Drone</a></p>`;
+      &nbsp;·&nbsp; <a href="#" onclick="event.preventDefault();drIrFazenda(${Number(r.cod)})">Abrir na tela do Drone</a></p>`;
   }
   if(cMod==='plantio'){
     // show etapa info (in real system would show talhões)
@@ -2367,12 +2367,12 @@ function consDetail(r){
     const tals=r._talsFilter.length?r._talsFilter:r.tals;
     return`<table class="cons-detail-table"><thead><tr><th>Talhão</th><th>Estágio</th><th>Ha</th><th>Mês</th><th>Status</th></tr></thead><tbody>`+
       tals.map(t=>{const sc=COL_ST[t.st]||{c:'var(--t3)',bg:'var(--s2)'};
-        return`<tr><td style="font-weight:700">T${t.id}</td><td>${t.est}</td><td style="font-variant-numeric:tabular-nums">${t.ha.toFixed(1)}</td><td>${t.mes}</td><td><span class="cons-badge" style="background:${sc.c}18;color:${sc.c}">${t.st.replace('_',' ')}</span></td></tr>`;
+        return`<tr><td style="font-weight:700">T${esc(t.id)}</td><td>${esc(t.est)}</td><td style="font-variant-numeric:tabular-nums">${t.ha.toFixed(1)}</td><td>${esc(t.mes)}</td><td><span class="cons-badge" style="background:${sc.c}18;color:${sc.c}">${t.st.replace('_',' ')}</span></td></tr>`;
       }).join('')+`</tbody></table>`;
   }
   if(cMod==='preparo'){
     return`<table class="cons-detail-table"><thead><tr><th>Etapa</th><th>Status</th><th>Responsável</th><th>Data</th></tr></thead><tbody>`+
-      r.steps.map((s,i)=>`<tr><td>${s.l}</td><td><span class="cons-badge" style="background:${s.ok?'rgba(22,167,107,.12)':'var(--s2)'};color:${s.ok?'var(--plantio)':'var(--t3)'}">${s.ok?'Concluído':'Pendente'}</span></td><td>${s.usr||'—'}</td><td style="font-family:monospace;font-size:11px">${s.dt||'—'}</td></tr>`).join('')+
+      r.steps.map((s,i)=>`<tr><td>${s.l}</td><td><span class="cons-badge" style="background:${s.ok?'rgba(22,167,107,.12)':'var(--s2)'};color:${s.ok?'var(--plantio)':'var(--t3)'}">${s.ok?'Concluído':'Pendente'}</span></td><td>${esc(s.usr)||'—'}</td><td style="font-family:monospace;font-size:11px">${esc(s.dt)||'—'}</td></tr>`).join('')+
       `</tbody></table>`;
   }
   return'';
@@ -2403,15 +2403,15 @@ function rConsFilters(){
     html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option>${ET.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}</select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todos os meses</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+      <option value="">Todos os meses</option>${meses.map(m=>`<option>${esc(m)}</option>`).join('')}</select>`;
   } else if(cMod==='colheita'){
     const meses=[...new Set(FZ_C.flatMap(f=>f.tals.map(t=>t.mes)))];
     html+=`<select class="cons-sel" onchange="cFilters.status=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todos os status</option><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option><option>REVOO</option></select>`;
     html+=`<select class="cons-sel" onchange="cFilters.faz=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${f.n}</option>`).join('')}</select>`;
+      <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${esc(f.n)}</option>`).join('')}</select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Todos os períodos</option>${meses.filter(Boolean).sort((a,b)=>parseInt(a.slice(8))-parseInt(b.slice(8))).map(m=>`<option>${m}</option>`).join('')}</select>`;
+      <option value="">Todos os períodos</option>${meses.filter(Boolean).sort((a,b)=>parseInt(a.slice(8))-parseInt(b.slice(8))).map(m=>`<option>${esc(m)}</option>`).join('')}</select>`;
   } else if(cMod==='drone'){
     html+=`<select class="cons-sel" onchange="cFilters.normal=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Normal: todas</option><option value="completa">Completa</option><option value="incompleta">Incompleta</option><option value="sem">Sem Normal</option></select>`;
@@ -2425,7 +2425,7 @@ function rConsFilters(){
     html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option><option value="voo">Voo</option>${ET_P.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}<option value="-1">Entregue</option></select>`;
     html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
-      <option value="">Entregue em: todos</option>${meses.map(m=>`<option>${m}</option>`).join('')}</select>`;
+      <option value="">Entregue em: todos</option>${meses.map(m=>`<option>${esc(m)}</option>`).join('')}</select>`;
   }
   html+=`<button class="cons-sel" style="cursor:pointer;color:var(--t3)" onclick="limparCons()">Limpar</button>`;
   html+=`<input class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
@@ -2698,7 +2698,7 @@ function arquivosHtml(modulo,cod){
 
 function botaoEnvio(cor,ico,txt,cfg){
   return`<button class="btn-acao" style="background:${cor};box-shadow:0 6px 20px rgba(0,0,0,.12)"
-    onclick='abrirEnvio(${JSON.stringify(cfg)})'><span class="ico">${ico}</span>${txt}</button>`;
+    onclick="abrirEnvio(${esc(JSON.stringify(cfg))})"><span class="ico">${ico}</span>${txt}</button>`;
 }
 
 let ENVIO=null;
@@ -2758,14 +2758,14 @@ function campoDoArquivo(nome){
 }
 function slotHtml(it,i,selo){
   return`<div class="arq-slot" id="envio-slot-${i}" onclick="if(!event.target.closest('.arq-slot-x'))document.getElementById('envio-arq-${i}').click()">
-    <div class="arq-tipo ${it.ext}">${it.ext.toUpperCase()}</div>
+    <div class="arq-tipo ${esc(it.ext)}">${esc(it.ext.toUpperCase())}</div>
     <div class="arq-slot-txt">
       <div class="arq-slot-rot">${esc(it.rotulo.replace(/\s*\(\.\w+\)$/,''))}${selo||''}</div>
       <div class="arq-slot-nome" id="envio-nome-${i}">Nenhum arquivo · arraste aqui ou clique</div>
     </div>
     <button type="button" class="arq-slot-x" title="Remover" onclick="limparSlot(${i})"><span class="ico" style="font-size:18px">close</span></button>
     <span class="arq-slot-btn">Escolher</span>
-    <input type="file" id="envio-arq-${i}" accept=".${it.ext}" onchange="atualizarSlot(${i})" onclick="event.stopPropagation()">
+    <input type="file" id="envio-arq-${i}" accept=".${esc(it.ext)}" onchange="atualizarSlot(${i})" onclick="event.stopPropagation()">
   </div>`;
 }
 function atualizarSlot(i){
@@ -2916,7 +2916,7 @@ function rSino(){
 function listaSinoHtml(){
   const vs=avisosVisiveis();
   return`<div class="sino-cab"><span>Avisos</span>${vs.some(a=>!a.lido)?'<button onclick="lerTodosAvisos(event)">Marcar todos como lidos</button>':''}</div>`
-    +(vs.length?vs.map(a=>`<div class="aviso-it${a.lido?'':' novo'}" onclick="abrirAviso(${a.id})">
+    +(vs.length?vs.map(a=>`<div class="aviso-it${a.lido?'':' novo'}" onclick="abrirAviso(${Number(a.id)})">
         <div class="aviso-ico"><span class="ico">${a.modulo_id==='colheita'?'agriculture':'notifications'}</span></div>
         <div><div class="aviso-tit">${esc(a.titulo)}</div><div class="aviso-txt">${esc(a.texto||'')}</div>
         <div class="aviso-dt">${fmtDataHora(a.atualizado_em)}</div></div></div>`).join('')

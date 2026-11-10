@@ -316,7 +316,7 @@ function drMenuAbrir(){
   m.id='dr-menu';m.className='dr-menu';m.setAttribute('role','menu');
   m.style.top=r.bottom+6+'px';m.style.right=innerWidth-r.right+'px';
   m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span aria-hidden="true" class="ico">history</span>Revisões</button>`
-    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${sol.id});drMenuFechar()"><span aria-hidden="true" class="ico">cancel</span>Cancelar solicitação</button>`:'')
+    +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${Number(sol.id)});drMenuFechar()"><span aria-hidden="true" class="ico">cancel</span>Cancelar solicitação</button>`:'')
     +(drPodeEncerrar(DR.geo,podeEditar('drone'))?`<button role="menuitem" class="perigo" onclick="drMenuFechar();drEncerrar()"><span aria-hidden="true" class="ico">inventory_2</span>Encerrar projeto</button>`:'');
   document.body.appendChild(m);
   btn.setAttribute('aria-expanded','true');
@@ -426,20 +426,20 @@ function drPasso(k,atual,titulo,corpo){
   const cls=k<atual?'feito':k===atual?'agora':'';
   return`<li><span class="dr-num ${cls}">${k<atual?'<span aria-hidden="true" class="ico">check</span>':k}</span><div class="dr-passo-c"><b>${titulo}</b>${corpo||''}</div></li>`;
 }
-function drLinhaResumo(a,b){return`<div class="dr-row"><span>${a}</span><span>${b}</span></div>`;}
+function drLinhaResumo(a,b){return`<div class="dr-row"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;}
 
 function drPainel_montando(){
   const inc=[...DR.sel].sort((a,b)=>a[0]-b[0]),rem=[...DR.rem].sort((a,b)=>a-b),props=drTalhaoProps();
   const ha=n=>props.get(n)?.area_ha||0,soma=inc.reduce((s,[n])=>s+ha(n),0);
   const shape=inc.filter(([,f])=>f==='shape').map(([n])=>n);
   const ev=DR.ajusteId?(DR.info.envios.find(e=>e.id===DR.ajusteId)||{status:'fila'}):null;
-  const linhas=inc.map(([n,f])=>`<div class="dr-linha"><span class="dr-chip">${n}</span>
+  const linhas=inc.map(([n,f])=>`<div class="dr-linha"><span class="dr-chip">${esc(n)}</span>
       <span class="dr-linha-t">${esc(drSituacaoTalhao(props.get(n)||{}))} · ${fmtNum(ha(n))} ha</span>
-      <span class="dr-seg" role="group" aria-label="Fonte do talhão ${n}">
-        <button type="button" aria-pressed="${f==='sistema'}" class="${f==='sistema'?'on':''}" data-foco="f${n}s" onclick="drFonteTalhao(${n},'sistema')">Sistema</button>
-        <button type="button" aria-pressed="${f==='shape'}" class="${f==='shape'?'on':''}" data-foco="f${n}h" onclick="drFonteTalhao(${n},'shape')">Shape</button></span></div>`).join('');
+      <span class="dr-seg" role="group" aria-label="Fonte do talhão ${esc(n)}">
+        <button type="button" aria-pressed="${f==='sistema'}" class="${f==='sistema'?'on':''}" data-foco="f${Number(n)}s" onclick="drFonteTalhao(${Number(n)},'sistema')">Sistema</button>
+        <button type="button" aria-pressed="${f==='shape'}" class="${f==='shape'?'on':''}" data-foco="f${Number(n)}h" onclick="drFonteTalhao(${Number(n)},'shape')">Shape</button></span></div>`).join('');
   const solta=shape.length?`<button type="button" class="dr-solta" data-foco="solta" onclick="drEnviar('ajuste')" ondragover="event.preventDefault()" ondrop="drSoltar(event,'ajuste')">
-      <span aria-hidden="true" class="ico">upload_file</span><span>Arraste o shape de ajuste ${shape.length===1?'do talhão':'dos talhões'} ${shape.join(', ')}</span>
+      <span aria-hidden="true" class="ico">upload_file</span><span>Arraste o shape de ajuste ${shape.length===1?'do talhão':'dos talhões'} ${esc(shape.join(', '))}</span>
       <small>.shp + .shx + .dbf + .prj, ou .zip</small><small>${esc(drRotuloShape(ev))}</small>${ev&&ev.status==='erro'?`<span class="dr-err">${esc(ev.erro)}</span>`:''}</button>`:'';
   const n=inc.length+rem.length;
   return{sobre:'Nova revisão',titulo:`Normal · Rev${drRevProx('normal')}`,
@@ -447,7 +447,7 @@ function drPainel_montando(){
       ${linhas||'<p class="dr-msg-l">Nenhum talhão. Clique no mapa.</p>'}
       ${solta}
       <div class="dr-cab-ln"><h3>Remover <span>· ${rem.length?drPlural(rem.length,'talhão','talhões'):'nenhum'}</span></h3></div>
-      ${rem.length?`<div class="dr-chips">${rem.map(t=>`<button type="button" class="dr-chip r dr-chip-bt" aria-label="Manter o talhão ${t} no projeto" onclick="drManterTalhao(${t})">${t}</button>`).join('')}</div>`:'<p class="dr-msg-l">Use a ferramenta Remover no mapa.</p>'}
+      ${rem.length?`<div class="dr-chips">${rem.map(t=>`<button type="button" class="dr-chip r dr-chip-bt" aria-label="Manter o talhão ${esc(t)} no projeto" onclick="drManterTalhao(${Number(t)})">${esc(t)}</button>`).join('')}</div>`:'<p class="dr-msg-l">Use a ferramenta Remover no mapa.</p>'}
       ${rem.some(t=>props.get(t)?.status==='fora_da_base')?'<div class="dr-nota"><span aria-hidden="true" class="ico">wrong_location</span><span>Talhões fora da Base já vêm marcados para sair. Clique no número para manter.</span></div>':''}
       <div class="dr-nota"><span aria-hidden="true" class="ico">info</span><span>A prévia mostra a fazenda inteira: os talhões de antes e os novos. Você confere antes de publicar.</span></div>`,
     rodape:`<button class="dr-btn" ${n?'':'disabled'} onclick="drGerarNormal()"><span aria-hidden="true" class="ico">play_arrow</span> Gerar prévia</button>`};
@@ -512,9 +512,9 @@ function drPainel_previa(){
     corpo:`<button type="button" class="drp-capa" id="dr-pdf" onclick="drPrevAbrir()" title="Abrir a prévia" aria-label="Abrir a prévia"></button>`
       +indic+(doc==='normal'&&ger.escopo?drLinhaResumo('Sai do projeto',(ger.escopo.remover||[]).join(', ')||'nenhum'):'')+alertas
       +(ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:'')
-      +`<label class="dr-campo">Motivo da revisão<input class="dr-mot-painel" data-foco="motivo" value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${ger.id}]=this.value"></label>`,
-    rodape:`<div class="dr-rodape-l"><button class="dr-btn2 perigo" onclick="drDescartar(${ger.id})"><span aria-hidden="true" class="ico">undo</span> Descartar</button>
-      <button class="dr-btn" onclick="drPublicar(${ger.id})"><span aria-hidden="true" class="ico">publish</span> Publicar no portal</button></div>`};
+      +`<label class="dr-campo">Motivo da revisão<input class="dr-mot-painel" data-foco="motivo" value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${Number(ger.id)}]=this.value"></label>`,
+    rodape:`<div class="dr-rodape-l"><button class="dr-btn2 perigo" onclick="drDescartar(${Number(ger.id)})"><span aria-hidden="true" class="ico">undo</span> Descartar</button>
+      <button class="dr-btn" onclick="drPublicar(${Number(ger.id)})"><span aria-hidden="true" class="ico">publish</span> Publicar no portal</button></div>`};
 }
 
 function drPainel_publicando(){
@@ -526,7 +526,7 @@ function drPainel_erro(){
   const {ger}=drAtual();
   return{sobre:`${drNomeDoc(DR.doc)} · Rev${drRevProx(DR.doc)}`,titulo:'Erro na geração',
     corpo:`<div class="dr-erro-caixa">${esc(ger.erro)}</div>`,
-    rodape:`<button class="dr-btn2" onclick="drDescartar(${ger.id})"><span aria-hidden="true" class="ico">restart_alt</span> Descartar e montar de novo</button>`};
+    rodape:`<button class="dr-btn2" onclick="drDescartar(${Number(ger.id)})"><span aria-hidden="true" class="ico">restart_alt</span> Descartar e montar de novo</button>`};
 }
 
 function drPainel_consulta(){

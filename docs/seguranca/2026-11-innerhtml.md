@@ -15,6 +15,7 @@ Plano `2026-11-10-seg4-innerhtml`, tarefa 1. Levantamento de 10/11/2026, sem alt
 - `falta esc`: texto do banco, de arquivo enviado ou do usuário interpolado sem `esc`.
 - `handler inline`: o HTML tem `on*=` com dado interpolado (mesmo numérico). Quando também falta escape, aparecem as duas situações.
 - `atribui vazio`: `innerHTML = ''`.
+- `corrigido`: era `falta esc` ou `handler inline` e foi tratado na tarefa 2 (escape, `Number()` ou índice/chave calculada sem dado externo).
 
 Nenhuma das ocorrências é leitura (`x = el.innerHTML`) nem comentário: todas são escritas.
 
@@ -70,24 +71,24 @@ Nenhuma das ocorrências é leitura (`x = el.innerHTML`) nem comentário: todas 
 | `app/drone-fazenda.js:75` | Cabeçalho da fazenda (`drCabecalhoHtml`), troca via outerHTML | nome da fazenda com `esc`; `DR.cod` (código), contagens e área calculados; `onclick` só com constantes de código | ok |
 | `app/drone-fazenda.js:89` | Cabeçalho + esqueleto do painel de fazenda | mesmo cabeçalho da linha 75; resto fixo | ok |
 | `app/drone-fazenda.js:308` | Trilho de etapas (`drEtapasHtml`) ou vazio | nomes de etapa fixos; contexto com `esc` | ok |
-| `app/drone-fazenda.js:318` | Menu ⋯ (Revisões, Cancelar, Encerrar) | `onclick="drCancelar(${sol.id})"` com id numérico do banco; resto fixo | handler inline |
+| `app/drone-fazenda.js:318` | Menu ⋯ (Revisões, Cancelar, Encerrar) | `onclick="drCancelar(${sol.id})"` com id numérico do banco; resto fixo | corrigido: `Number(sol.id)` no handler |
 | `app/drone-fazenda.js:343` | Gaveta de revisões | banco: número da revisão; data e motivo com `esc`; nome do documento fixo | ok |
 | `app/drone-fazenda.js:394` | Barra de ferramentas (`drFerramentasHtml`) ou vazio | código fixo; estados booleanos | ok |
 | `app/drone-fazenda.js:398` | Dica do mapa (`drDicaHtml`) | código fixo | ok |
 | `app/drone-fazenda.js:404` | Botão Camadas + caixa de checkbox | rótulo fixo; booleanos | ok |
 | `app/drone-fazenda.js:408` | Legenda do mapa (`drLegendaHtml`) | cores e textos fixos; número da revisão (banco, numérico) | ok |
 | `app/drone-fazenda.js:550` | Cabeçalho do painel lateral | `p.sobre`/`p.titulo` com `esc` | ok |
-| `app/drone-fazenda.js:552` | Corpo do painel lateral (`drPainel_*().corpo`) | `esc` em situação, erros e camadas; talhões (números do geo/shape) entram sem esc em `drLinhaResumo` e na lista de talhões do shape; `onclick="drFonteTalhao(${n},…)"` e `drManterTalhao(${t})` com número de talhão | handler inline |
-| `app/drone-fazenda.js:554` | Rodapé do painel (`p.rodape`) | `onclick="drDescartar(${ger.id})"` e `drPublicar(${ger.id})` com id numérico do banco | handler inline |
+| `app/drone-fazenda.js:552` | Corpo do painel lateral (`drPainel_*().corpo`) | `esc` em situação, erros e camadas; talhões (números do geo/shape) entram sem esc em `drLinhaResumo` e na lista de talhões do shape; `onclick="drFonteTalhao(${n},…)"` e `drManterTalhao(${t})` com número de talhão | corrigido: `esc` nos números de talhão (`drLinhaResumo`, chips, rótulos); `Number(n)`/`Number(t)` nos handlers |
+| `app/drone-fazenda.js:554` | Rodapé do painel (`p.rodape`) | `onclick="drDescartar(${ger.id})"` e `drPublicar(${ger.id})` com id numérico do banco | corrigido: `Number(ger.id)` nos handlers |
 | `app/drone-fazenda.js:555` | Esvazia o rodapé; insere `<div id="dr-err">` fixo no painel | código fixo | atribui vazio |
-| `app/drone-inicio.js:102` | Cartão do Kanban (`driCartaoHtml`) montado em div temporária | `esc` em fazenda, solicitante, datas, situação; `cod_faz` passa por `esc` mas é usado dentro de `onclick="driAbrirFazenda(${cod},'${tipo}')"` (esc de HTML não protege contexto JS; hoje o valor é numérico) | handler inline |
+| `app/drone-inicio.js:102` | Cartão do Kanban (`driCartaoHtml`) montado em div temporária | `esc` em fazenda, solicitante, datas, situação; `cod_faz` passa por `esc` mas é usado dentro de `onclick="driAbrirFazenda(${cod},'${tipo}')"` (esc de HTML não protege contexto JS; hoje o valor é numérico) | corrigido: `cod` passou a `Number(sol.cod_faz)` (só número entra no JS); `tipo` já era fixo |
 | `app/drone-inicio.js:136` | Mensagem de coluna vazia (`DRI_VAZIO`) | código fixo | ok |
 | `app/drone-inicio.js:181` | Esvazia resultados da busca | — | atribui vazio |
 | `app/drone-inicio.js:188` | Estrutura da tela Início do Drone | código fixo; `onclick="driAtencaoAbrir('${k}')"` com chaves fixas de `DRI_ATENCAO` | ok |
 | `app/drone-inicio.js:247` | Esvazia resultados da busca | — | atribui vazio |
 | `app/drone-inicio.js:270` | Gaveta "Atenção na base" | banco: cod_faz, fazenda, extra com `esc` | ok |
 | `app/drone-inicio.js:299` | Esvazia resultados da busca | — | atribui vazio |
-| `app/drone-inicio.js:303` | Resultados da busca de fazenda | `onclick="driAbrirFazenda(${f.cod_faz})"` com `cod_faz` do banco sem esc; nome com `esc` | handler inline |
+| `app/drone-inicio.js:303` | Resultados da busca de fazenda | `onclick="driAbrirFazenda(${f.cod_faz})"` com `cod_faz` do banco sem esc; nome com `esc` | corrigido: `Number(f.cod_faz)` no handler; `esc` no código exibido |
 | `app/drone-inicio.js:323` | Modal "Nova solicitação" | código fixo | ok |
 | `app/drone-inicio.js:341` | Esvazia resultados da busca no modal | — | atribui vazio |
 | `app/drone-inicio.js:345` | Resultados da busca no modal | `data-cod` e texto com `cod_faz` (numérico, sem esc); nome com `esc` | ok |
@@ -125,20 +126,20 @@ Nenhuma das ocorrências é leitura (`x = el.innerHTML`) nem comentário: todas 
 | `app/projetos.js:520` | Corpo do modal de revisão | `pjH` em rótulos, nome de arquivo, número de talhão, motivo; `data-pj-campo` com chaves fixas | ok |
 | `app/drone-fazenda-demo.html:135` | Esqueleto da tela demo | código fixo | ok |
 | `app/drone-inicio-demo.html:36` | Mensagem demo "Fazenda N" | constante numérica da demo | ok |
-| `app/index.html:1098` | Saudação do painel inicial | nome do usuário (`EU.nome`, banco) sem `esc`: `${me.nome.split(' ')[0]}` | falta esc |
+| `app/index.html:1098` | Saudação do painel inicial | nome do usuário (`EU.nome`, banco) sem `esc`: `${me.nome.split(' ')[0]}` | corrigido: `esc` no primeiro nome |
 | `app/index.html:1119` | Cards de métricas do painel | números calculados, rótulos fixos, `ATUALIZADO` (texto calculado) | ok |
 | `app/index.html:1187` | Cards de módulo do painel | nomes/cores/ícones fixos (array `mods`); números calculados | ok |
 | `app/index.html:1228` | Mensagem "Nenhuma fazenda" | código fixo | ok |
-| `app/index.html:1230` | Lista de fazendas do Plantio | `f.n` (nome da fazenda, banco) e `f.cod` sem esc; `onclick="selF(${gi})"` com índice numérico calculado | falta esc + handler inline |
+| `app/index.html:1230` | Lista de fazendas do Plantio | `f.n` (nome da fazenda, banco) e `f.cod` sem esc; `onclick="selF(${gi})"` com índice numérico calculado | corrigido: `esc` em `f.n` e `f.cod`; `selF(${gi})` índice/chave calculada, sem dado externo |
 | `app/index.html:1255` | Painel de projetos (`Proj.painelHtml`) + arquivos | mesmo caso de projetos.js:202; `arquivosHtml` usa `esc` | ok |
-| `app/index.html:1278` | Detalhe da fazenda (Plantio) | `f.n`, `t.sist_conser`, `t.mes`, `t.mapeamento` e `f.cod` (banco) sem esc; `acaoPlantio` tem `onclick` com `cod` (`Number()`) e nomes fixos de etapa; `arquivosHtml` com `esc` | falta esc + handler inline |
+| `app/index.html:1278` | Detalhe da fazenda (Plantio) | `f.n`, `t.sist_conser`, `t.mes`, `t.mapeamento` e `f.cod` (banco) sem esc; `acaoPlantio` tem `onclick` com `cod` (`Number()`) e nomes fixos de etapa; `arquivosHtml` com `esc` | corrigido: `esc` em `f.n`, `f.cod`, `t.sist_conser`, `t.mes`, `t.mapeamento`; `abrirEnvio` passou a `esc(JSON.stringify(...))` em atributo com aspas duplas; `cod` já era `Number()` |
 | `app/index.html:1350` | Mensagem "Nenhuma fazenda" | código fixo | ok |
-| `app/index.html:1352` | Lista de fazendas do Preparo | `f.n` e `f.cod` (banco) sem esc; `onclick="selFP(${i})"` com índice calculado | falta esc + handler inline |
+| `app/index.html:1352` | Lista de fazendas do Preparo | `f.n` e `f.cod` (banco) sem esc; `onclick="selFP(${i})"` com índice calculado | corrigido: `esc` em `f.n` e `f.cod`; `selFP(${i})` índice/chave calculada, sem dado externo |
 | `app/index.html:1379` | Painel de projetos (`Proj.painelHtml`) + arquivos | mesmo caso da linha 1255 | ok |
-| `app/index.html:1398` | Detalhe da fazenda (Preparo) | `f.n`, `f.cod` e o nome de quem concluiu a etapa (`f.usr[i]`, de `USUARIOS`) sem esc; `f.obs` com `esc`; `acaoPreparo` tem `onclick` com `cod` (`Number()`), índices e nomes fixos de etapa, e `abrirEnvio(JSON)` em atributo com aspas simples | falta esc + handler inline |
+| `app/index.html:1398` | Detalhe da fazenda (Preparo) | `f.n`, `f.cod` e o nome de quem concluiu a etapa (`f.usr[i]`, de `USUARIOS`) sem esc; `f.obs` com `esc`; `acaoPreparo` tem `onclick` com `cod` (`Number()`), índices e nomes fixos de etapa, e `abrirEnvio(JSON)` em atributo com aspas simples | corrigido: `esc` em `f.n`, `f.cod` e `f.usr[i]`; `abrirEnvio` com `esc(JSON.stringify(...))` em atributo com aspas duplas |
 | `app/index.html:1477` | Mensagem "Nenhuma fazenda" | código fixo | ok |
-| `app/index.html:1479` | Lista de fazendas da Colheita | `f.n` e `f.cod` (banco) sem esc (`f.fr` tem `esc`); `onclick="selFC(${gi})"` com índice calculado | falta esc + handler inline |
-| `app/index.html:1547` | Detalhe da fazenda (Colheita) | `esc` em nome, frente, período, estado, tipo e histórico; `f.cod` sem esc (código numérico); `onclick` com `togTal(${i})`, `marcarTipoC('${k}')` (chaves fixas) e `abrirEnvio(JSON)` | handler inline |
+| `app/index.html:1479` | Lista de fazendas da Colheita | `f.n` e `f.cod` (banco) sem esc (`f.fr` tem `esc`); `onclick="selFC(${gi})"` com índice calculado | corrigido: `esc` em `f.n` e `f.cod`; `selFC(${gi})` índice/chave calculada, sem dado externo |
+| `app/index.html:1547` | Detalhe da fazenda (Colheita) | `esc` em nome, frente, período, estado, tipo e histórico; `f.cod` sem esc (código numérico); `onclick` com `togTal(${i})`, `marcarTipoC('${k}')` (chaves fixas) e `abrirEnvio(JSON)` | corrigido: `esc` em `f.cod`; `abrirEnvio` com `esc(JSON.stringify(...))`; `togTal(${i})` e `marcarTipoC('${k}')` índice/chave calculada, sem dado externo |
 | `app/index.html:1632` | Tabela da fila de voos | banco: nomes e erros com `esc`; `v.layer%1000` é número; situação e rótulos fixos | ok |
 | `app/index.html:1669` | Tela do celular (mock do portal) | dados de exemplo fixos em `PORTAL_MODS` (index.html:1047); `onclick="selPMod(${i})"` com índice | ok |
 | `app/index.html:1812` | Cards de ferramentas | banco (`ferramentas`): nome, descrição, ícone, cor e URL com `esc`; a URL é escapada mas o esquema não é validado (`javascript:` passaria) | ok |
@@ -160,29 +161,29 @@ Nenhuma das ocorrências é leitura (`x = el.innerHTML`) nem comentário: todas 
 | `app/index.html:2147` | Esqueleto de carregamento | código fixo | ok |
 | `app/index.html:2149` | Mensagem de erro | `error.message` com `esc` | ok |
 | `app/index.html:2151` | Card da importação diária (fontes) | nomes/descrições fixos; contagens do banco (números); erro com `esc` | ok |
-| `app/index.html:2170` | Cards de edição de ferramentas | `esc` em nome, URL, descrição, ícone, cor; `onclick`/`oninput` com índice `${i}` calculado | handler inline |
+| `app/index.html:2170` | Cards de edição de ferramentas | `esc` em nome, URL, descrição, ícone, cor; `onclick`/`oninput` com índice `${i}` calculado | corrigido: índice/chave calculada, sem dado externo |
 | `app/index.html:2195` | Aba Portal das configurações | URL do portal com `esc` | ok |
 | `app/index.html:2298` | Cabeçalho da tabela de consulta | código fixo | ok |
-| `app/index.html:2338` | Linhas da tabela de consulta (`tbHtml`, `consDetail`) | banco sem esc: `r.n`, `r.cod`, `r.ciclo`, `r.mes`, `t.est`, `s.usr` (nome de usuário), `t.mes`; drone usa `esc`; `onclick="consExpand('${r._key}')"`/`consSel` com chave calculada e `drIrFazenda(${r.cod})` | falta esc + handler inline |
+| `app/index.html:2338` | Linhas da tabela de consulta (`tbHtml`, `consDetail`) | banco sem esc: `r.n`, `r.cod`, `r.ciclo`, `r.mes`, `t.est`, `s.usr` (nome de usuário), `t.mes`; drone usa `esc`; `onclick="consExpand('${r._key}')"`/`consSel` com chave calculada e `drIrFazenda(${r.cod})` | corrigido: `esc` em `r.n`, `r.cod`, `r.ciclo`, `r.mes`, `t.est`, `t.id`, `t.mes`, `s.usr`, `s.dt`; `Number(r.cod)` em `drIrFazenda`; `consExpand`/`consSel` com `_key` = prefixo fixo + índice, sem dado externo |
 | `app/index.html:2341` | Contador de resultados | números calculados | ok |
-| `app/index.html:2353` | Paginação | `onclick="rCons(${cPage±1})"` com número calculado | handler inline |
-| `app/index.html:2432` | Filtros da consulta (selects) | `<option>${f.n}</option>` (nome da fazenda) e `<option>${m}</option>` (mês, banco) sem esc; etapas fixas | falta esc |
+| `app/index.html:2353` | Paginação | `onclick="rCons(${cPage±1})"` com número calculado | corrigido: índice/chave calculada, sem dado externo |
+| `app/index.html:2432` | Filtros da consulta (selects) | `<option>${f.n}</option>` (nome da fazenda) e `<option>${m}</option>` (mês, banco) sem esc; etapas fixas | corrigido: `esc` em `f.n` e nos meses das `<option>` |
 | `app/index.html:2708` | Esvazia o log de arrastar | — | atribui vazio |
-| `app/index.html:2717` | Slots de envio da Colheita (`slotHtml`) | extensão e rótulo do código (`esc`); `onclick="limparSlot(${i})"` com índice calculado | handler inline |
-| `app/index.html:2739` | Slots de envio (`slotHtml`) | mesmo caso da linha 2717 | handler inline |
+| `app/index.html:2717` | Slots de envio da Colheita (`slotHtml`) | extensão e rótulo do código (`esc`); `onclick="limparSlot(${i})"` com índice calculado | corrigido: índice/chave calculada, sem dado externo; `esc` também em `it.ext` |
+| `app/index.html:2739` | Slots de envio (`slotHtml`) | mesmo caso da linha 2717 | corrigido: mesmo caso da linha 2717 |
 | `app/index.html:2791` | Log de arrastar: erro de extensão | `arq.name` (arquivo enviado) com `esc` | ok |
 | `app/index.html:2801` | Texto do modal de confirmação com `html:true` | o chamador escapa (único uso: `mostrarSenhaProvisoria`, e-mail e senha com `esc`) | ok |
 | `app/index.html:2824` | Log de arrastar: arquivos aceitos/recusados | `arq.name` e rótulo com `esc`; código da fazenda extraído do nome com `\d{5}` (só dígitos) | ok |
 | `app/index.html:2849` | Esvazia o progresso do envio | — | atribui vazio |
 | `app/index.html:2912` | Contador do sino | número calculado | ok |
-| `app/index.html:2914` | Lista de avisos (`listaSinoHtml`) | banco: título e texto com `esc`; `onclick="abrirAviso(${a.id})"` com id do banco sem esc | handler inline |
-| `app/index.html:2929` | Painel do sino (`listaSinoHtml`) | mesmo caso da linha 2914 | handler inline |
+| `app/index.html:2914` | Lista de avisos (`listaSinoHtml`) | banco: título e texto com `esc`; `onclick="abrirAviso(${a.id})"` com id do banco sem esc | corrigido: `Number(a.id)` no handler (`hub.avisos.id` é bigint) |
+| `app/index.html:2929` | Painel do sino (`listaSinoHtml`) | mesmo caso da linha 2914 | corrigido: mesmo caso da linha 2914 |
 | `app/motion-demo.html:66` | Campo de partículas (demo) | código fixo (`Mo.campo`) | ok |
 | `app/motion-demo.html:79` | Lista de 6 talhões (demo) | números fixos | ok |
 | `app/portal.html:202` | Mensagem "Carregando projetos" | código fixo | ok |
 | `app/portal.html:223` | Mensagem de erro | `e.message` com `esc` | ok |
 | `app/portal.html:258` | Mensagem "nenhum projeto" | nome do módulo é constante do código | ok |
-| `app/portal.html:280` | Lista de fazendas e arquivos (`cartao`/`arquivo`) | banco: nome, rótulo, marcador, extensão, URL e nome do arquivo com `esc`; porém `onclick="buscar('${f.cod}')"` e `onclick="alternar(${f.cod})"` levam `cod` sem esc, e `abrirVisor('${escJs(url)}',…)` usa `escJs` (escape de JS + HTML, adequado). `href` de `url` com `esc`, sem validar o esquema | handler inline |
+| `app/portal.html:280` | Lista de fazendas e arquivos (`cartao`/`arquivo`) | banco: nome, rótulo, marcador, extensão, URL e nome do arquivo com `esc`; porém `onclick="buscar('${f.cod}')"` e `onclick="alternar(${f.cod})"` levam `cod` sem esc, e `abrirVisor('${escJs(url)}',…)` usa `escJs` (escape de JS + HTML, adequado). `href` de `url` com `esc`, sem validar o esquema | corrigido: `escJs(f.cod)` em `buscar(...)`, `Number(f.cod)` em `alternar(...)`; `esc` em `data-cod` e no código exibido |
 | `app/projetos-demo.html:253` | Lista de fazendas (demo) | dados de exemplo do próprio arquivo, com `esc`; distribuição por `Proj.distribuicaoHtml` | ok |
 | `app/projetos-demo.html:268` | Esvazia o painel | — | atribui vazio |
 | `app/projetos-demo.html:271` | Painel (`Proj.painelHtml`) | mesmo caso de projetos.js:202 | ok |
@@ -194,11 +195,12 @@ A tabela tem **164** linhas e o `grep` devolveu **164** ocorrências: não há d
 | situação | pontos |
 |---|---|
 | `ok` | 122 |
-| `falta esc` | 8 |
-| `handler inline` | 19 |
+| `falta esc` | 0 |
+| `handler inline` | 0 |
 | `atribui vazio` | 21 |
+| `corrigido` | 21 |
 
-6 pontos têm as duas situações `falta esc` + `handler inline` e entram nas duas linhas acima. Pontos distintos: 164.
+Os 21 pontos que estavam como `falta esc` ou `handler inline` (6 deles com as duas) foram corrigidos na tarefa 2 e passaram para `corrigido`. Pontos distintos: 164 (122 + 21 + 21).
 
 ### Por arquivo
 
@@ -225,4 +227,5 @@ A tabela tem **164** linhas e o `grep` devolveu **164** ocorrências: não há d
 - **Números/ids do banco sem `esc`** em pontos `ok` ou `handler inline`: `cod_faz`, `sol.id`, `ger.id`, `a.id` (avisos), `g.id`/`m.id` (GeoMap), números de talhão. Seguros se a coluna for numérica; `m.id` dos mapas do GeoMap não foi confirmado.
 - **`onclick` com dado interpolado**: o padrão seguro já usado no projeto é `this.dataset.x` (usuários, `index.html:1875`). `abrirEnvio(JSON)` entre aspas simples quebraria com `'` no JSON.
 - **URLs do banco** (`ferramentas.url`, `release_url`, `a.url` no portal) passam por `esc`, mas nenhum ponto valida o esquema: `javascript:` seria aceito.
+- **Pendente, fora do escopo (decisão 5):** validar o esquema das URLs do banco (`ferramentas.url`, `release_url`, `a.url`). Não foi mexido.
 - Atribuições `innerHTML = ''` são seguras; podem virar `replaceChildren()` se quiserem uniformidade.
