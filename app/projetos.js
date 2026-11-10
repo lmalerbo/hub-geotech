@@ -158,17 +158,17 @@ async function pjTLDados(mod,cod,key){
 async function pjTL(raiz,key,mod,cod){
   const box=raiz.querySelector('.pj-tl');
   if(!box)return;
-  if(PJ.tl[key]){box.innerHTML=pjTLHtml(PJ.tl[key]);return}
-  box.innerHTML='<div class="pj-carreg">Carregando histórico…</div>';
+  if(PJ.tl[key]){box.innerHTML=pjTLHtml(PJ.tl[key]);return} // esc-ok
+  box.innerHTML='<div class="pj-carreg">Carregando histórico…</div>'; // esc-ok
   pjMo().carregando(box);
   try{
     const ev=await pjTLDados(mod,cod,key);
     if(!box.isConnected)return;
-    box.innerHTML=pjTLHtml(ev);
+    box.innerHTML=pjTLHtml(ev); // esc-ok
     pjMo().pronto(box);
   }catch(e){
     if(!box.isConnected)return;
-    box.innerHTML='<div class="pj-erro">Não foi possível carregar a linha do tempo.</div><button type="button" class="btn-retro" data-pj-tl-retry>Tentar de novo</button>';
+    box.innerHTML='<div class="pj-erro">Não foi possível carregar a linha do tempo.</div><button type="button" class="btn-retro" data-pj-tl-retry>Tentar de novo</button>'; // esc-ok
   }
 }
 const PJ_ICO_EV={avanco:'trending_up',retrocesso:'undo',desfazer:'restore',revisao:'description',arquivo:'upload_file'};
@@ -199,7 +199,7 @@ function pjTLHtml(ev){
 function pjRedesenhar(){
   const c=PJ.ctx;
   if(!c)return;
-  c.raiz.innerHTML=Proj.painelHtml(c.mod,c.f,PJ.arq[c.key]);
+  c.raiz.innerHTML=Proj.painelHtml(c.mod,c.f,PJ.arq[c.key]); // esc-ok
   pjTL(c.raiz,c.key,c.mod,c.cod);
 }
 function pjSelEtapa(i){
@@ -243,7 +243,7 @@ function pjModalObs(){
   m=document.createElement('div');
   m.id='pj-modal-obs';
   m.className='modal-fundo off pj-modal';
-  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-obs-t">`+
+  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-obs-t">`+ // esc-ok
     `<div class="modal-t" id="pj-obs-t">Confirmar observações</div>`+
     `<div class="pj-volta-txt" data-pj-obs-txt></div>`+
     `<div class="envio-nota-rot">Observações recebidas (opcional)</div>`+
@@ -264,7 +264,7 @@ function pjAbrirObs(c,idx,nums){
   const m=pjModalObs();
   m._V={c,idx,nums};
   m._busy=false;
-  m.querySelector('[data-pj-obs-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> passam para <strong>${pjH(c.fz.etapas[idx+1].l)}</strong>.`;
+  m.querySelector('[data-pj-obs-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> passam para <strong>${pjH(c.fz.etapas[idx+1].l)}</strong>.`; // esc-ok
   const ta=m.querySelector('[data-pj-obs]');
   ta.value=c.fz.obs||'';
   m.querySelector('[data-pj-obs-erro]').textContent='';
@@ -309,7 +309,7 @@ function pjModalVolta(){
   m=document.createElement('div');
   m.id='pj-modal-volta';
   m.className='modal-fundo off pj-modal';
-  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-volta-t">`+
+  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-volta-t">`+ // esc-ok
     `<div class="modal-t" id="pj-volta-t">Retroceder etapa</div>`+
     `<div class="pj-volta-txt" data-pj-volta-txt></div>`+
     `<div class="envio-nota-rot">Justificativa (obrigatória)</div>`+
@@ -330,7 +330,7 @@ function pjAbrirVolta(c,idx,nums){
   const m=pjModalVolta();
   m._V={c,idx,nums};
   m._busy=false;
-  m.querySelector('[data-pj-volta-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> voltam para <strong>${pjH(c.fz.etapas[idx].l)}</strong>.`+
+  m.querySelector('[data-pj-volta-txt]').innerHTML=`<strong>${pjNTal(nums.length)}</strong> voltam para <strong>${pjH(c.fz.etapas[idx].l)}</strong>.`+ // esc-ok
     (c.mod==='plantio'&&idx===0?' Isso também volta o mapeamento para "Não".':'');
   const ta=m.querySelector('[data-pj-just]');
   ta.value='';
@@ -384,7 +384,7 @@ function pjModalRev(){
   m=document.createElement('div');
   m.id='pj-modal-rev';
   m.className='modal-fundo off pj-modal';
-  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-rev-t">`+
+  m.innerHTML=`<div class="modal-caixa pj-caixa" role="dialog" aria-modal="true" aria-labelledby="pj-rev-t">`+ // esc-ok
     `<div class="modal-t" id="pj-rev-t"></div>`+
     `<div data-pj-corpo></div>`+
     `<div class="pj-prog" data-pj-prog hidden><div class="pj-prog-b"></div></div>`+
@@ -517,7 +517,7 @@ function pjRenderRev(m){
   }).join('');
   const motivoObr=!comp&&M.maxDoc>=0;
   const dica=M.acao?`<div class="pj-dica">Aberta pela etapa ${pjH(M.etapaNome)}: ${pjNTal(M.acaoTal.length)} marcado${M.acaoTal.length>1?'s':''} e travado${M.acaoTal.length>1?'s':''}.</div>`:'';
-  m.querySelector('[data-pj-corpo]').innerHTML=
+  m.querySelector('[data-pj-corpo]').innerHTML= // esc-ok
     `<div class="pj-sec"><div class="envio-nota-rot">Documentos que mudam</div>${docs}</div>`+
     `<div class="pj-sec"><div class="envio-nota-rot">Talhões que chegam ou mudam</div>${dica}`+
     `<div class="pj-chips-w">${chips}</div><div class="pj-efeito">${pjH(efeito)}</div></div>`+

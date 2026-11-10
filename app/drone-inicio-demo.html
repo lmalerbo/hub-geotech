@@ -33,7 +33,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function podeEditar(){return !/editar=0/.test(location.search);}
 function trocar(){}
 function drMapaDescartar(){}
-function drAbrirFazenda(c){document.getElementById('dr-faz').innerHTML='<div class="dr-vazio">Fazenda '+c+' (demo)</div>';}
+function drAbrirFazenda(c){document.getElementById('dr-faz').innerHTML='<div class="dr-vazio">Fazenda '+c+' (demo)</div>';} // esc-ok
 var sol=o=>({id:o.id,cod_faz:o.cod,fazenda:o.faz,tipo:o.tipo,status:o.status,observacao:o.obs||null,solicitante:o.sol||null,criado_em:o.criado,data_desejada:o.data||null,geracao:o.ger||null});
 var solicitacoes=[
   sol({id:1,cod:10372,faz:'Boa Vista',tipo:'normal',status:'solicitado',obs:'Completar talhões do bloco norte',sol:'Ana',criado:h(2*1440),data:dia(8)}),

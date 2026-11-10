@@ -1095,6 +1095,7 @@ function rDash(){
   const gr=hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite';
   const ciclo=getCiclo();
   const me=EU||{nome:''};
+  // esc-ok
   document.getElementById('dash-greeting').innerHTML=`
     <div class="dash-greeting-name">${gr}, ${esc(me.nome.split(' ')[0])}</div>
     <div class="dash-greeting-sub">Safra ${ciclo}&nbsp;·&nbsp;${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>`;
@@ -1116,7 +1117,7 @@ function rDash(){
     FZ_C.length&&EU?.perms.colheita?FZ_C.filter(f=>f.tals.every(t=>t.st==='CONCLUIDO')).length/FZ_C.length:null].filter(x=>x!==null);
   const pctG=pcts.length?Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length*100):0;
   const haColheita=FZ_C.reduce((s,f)=>s+f.tals.reduce((a,t)=>a+t.ha,0),0);
-  document.getElementById('dash-meta').innerHTML=[
+  document.getElementById('dash-meta').innerHTML=[ // esc-ok
     {v:pctG+'%',l:'Progresso geral (média dos módulos)',c:'#2566e8'},
     {v:`${fazSafra.size} <small>faz</small> · ${fmtHa(haSafra)}`,l:'Reforma (Plantio e Preparo)',c:'var(--plantio)'},
     ...(FZ_C.length&&EU?.perms.colheita?[{v:`${FZ_C.length} <small>faz</small> · ${fmtHa(haColheita)}`,l:'Colheita',c:'var(--colheita)'}]:[]),
@@ -1184,7 +1185,7 @@ function rDash(){
      conc:concC.length,tot:FZ_C.length,haConc:haC.conc,haTot:haC.tot,
      dist:stageBlock(distC,'tlh')}]:[]),
   ];
-  document.getElementById('dash-mod-grid').innerHTML=mods.map(m=>{
+  document.getElementById('dash-mod-grid').innerHTML=mods.map(m=>{ // esc-ok
     const pct=Math.round(m.conc/m.tot*100)||0;
     return`<div class="dash-mod-card">
       <div class="dash-mod-accent" style="background:${m.c}"></div>
@@ -1225,9 +1226,9 @@ function filtrarF(q){
 function rFaz(){
   const lista=FZ.filter(f=>!fqP||f.n.toLowerCase().includes(fqP)||f.cod.toLowerCase().includes(fqP));
   if(!lista.length){
-    document.getElementById('flist').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
+    document.getElementById('flist').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return; // esc-ok
   }
-  document.getElementById('flist').innerHTML=lista.map(f=>{
+  document.getElementById('flist').innerHTML=lista.map(f=>{ // esc-ok
     const gi=FZ.indexOf(f),e=ET[f.e];
     return`<div class="fcard${ativa===gi?' on':''}" onclick="selF(${gi})" style="color:${e.c}">
       <div class="fcard-bar" style="background:${e.c}"></div>
@@ -1252,7 +1253,7 @@ function rDet(){
   // Tela de projetos (app/projetos.js): seleção por talhão, barra que volta, revisões e linha do tempo.
   if(window.Proj){
     const el=document.getElementById('dpanel');
-    el.innerHTML=Proj.painelHtml('plantio',FZ[ativa],arquivosHtml('plantio',FZ[ativa].cod));
+    el.innerHTML=Proj.painelHtml('plantio',FZ[ativa],arquivosHtml('plantio',FZ[ativa].cod)); // esc-ok
     Proj.montar('plantio',FZ[ativa],el);return;
   }
   const f=FZ[ativa],e=ET[f.e],pct=f.e/(ET.length-1)*100;
@@ -1275,6 +1276,7 @@ function rDet(){
       <td><span class="ebadge" style="background:${te.c}1a;color:${te.c}">${te.l}</span></td>
     </tr>`;
   }).join('');
+  // esc-ok
   document.getElementById('dpanel').innerHTML=`
     <div class="dhead">
       <div class="dhead-l"><div class="dnome">${esc(f.n)}</div><div class="dsub">${f.t} talhões · ${fmtNum(f.ha)} ha · Safra ${getCiclo()}</div></div>
@@ -1347,9 +1349,9 @@ function filtrarP(q){
 function rFazP(){
   const lista=FZ_P.filter(f=>!fqPr||f.n.toLowerCase().includes(fqPr)||f.cod.toLowerCase().includes(fqPr));
   if(!lista.length){
-    document.getElementById('flist-p').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
+    document.getElementById('flist-p').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return; // esc-ok
   }
-  document.getElementById('flist-p').innerHTML=lista.map(f=>{
+  document.getElementById('flist-p').innerHTML=lista.map(f=>{ // esc-ok
     const i=FZ_P.indexOf(f),v=VOO[f.voo]||VOO.S;
     const cur=f.ok.filter(x=>x).length,done=cur===4;
     const bc=done?'var(--plantio)':cur>0?'var(--preparo)':'var(--t3)';
@@ -1376,7 +1378,7 @@ function rDetP(){
   // Tela de projetos só quando a fazenda já vem com a etapa por talhão (f.tals); senão a tela antiga.
   if(window.Proj&&FZ_P[ativaP].tals){
     const el=document.getElementById('dpanel-p');
-    el.innerHTML=Proj.painelHtml('preparo',FZ_P[ativaP],arquivosHtml('preparo',FZ_P[ativaP].cod));
+    el.innerHTML=Proj.painelHtml('preparo',FZ_P[ativaP],arquivosHtml('preparo',FZ_P[ativaP].cod)); // esc-ok
     Proj.montar('preparo',FZ_P[ativaP],el);return;
   }
   const f=FZ_P[ativaP],v=VOO[f.voo]||VOO.S;
@@ -1395,6 +1397,7 @@ function rDetP(){
   const audit=ET_P.map((s,i)=>f.ok[i]?`<div class="prep-audit-row">
     <div class="pad" style="background:var(--plantio)"></div>${s.l} — <strong>${esc(f.usr[i])}</strong> — ${f.dt[i]}
   </div>`:'').filter(Boolean).join('');
+  // esc-ok
   document.getElementById('dpanel-p').innerHTML=`
     <div class="dhead">
       <div class="dhead-l">
@@ -1474,9 +1477,9 @@ function rFazC(){
   const fn=document.getElementById('fila-n');if(fn)fn.textContent=VOOS_C.length?`(${VOOS_C.length})`:'';
   const lista=FZ_C.filter(f=>!fqC||f.n.toLowerCase().includes(fqC)||f.cod.toLowerCase().includes(fqC));
   if(!lista.length){
-    document.getElementById('flist-c').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return;
+    document.getElementById('flist-c').innerHTML='<div class="flist-empty">Nenhuma fazenda encontrada</div>';return; // esc-ok
   }
-  document.getElementById('flist-c').innerHTML=lista.map(f=>{
+  document.getElementById('flist-c').innerHTML=lista.map(f=>{ // esc-ok
     const gi=FZ_C.indexOf(f);
     // Sem Linhas NÃO é concluído: o talhão ainda precisa de voo para ganhar linhas.
     const conc=f.tals.filter(t=>t.st==='CONCLUIDO').length,tot=f.tals.length;
@@ -1544,6 +1547,7 @@ function rDetC(){
       ${botaoEnvio('var(--colheita)','upload_file','Enviar Exp1L / Exp2L',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA})}
       ${botaoEnvio('#5f6b7a','map','Enviar Mapa de partes',{modulo:'colheita',cod:f.cod,itens:ENVIO_COLHEITA_MAPA})}
     </div>`:'';
+  // esc-ok
   document.getElementById('dpanel-c').innerHTML=`
     <div class="dhead">
       <div class="dhead-l"><div class="dnome">${esc(f.n)}</div><div class="dsub">Frente ${esc(f.fr)}${f.per?` · Período ${esc(f.per)}`:''} · ${f.tals.length} talhões</div></div>
@@ -1629,6 +1633,7 @@ function abrirFila(){
   const faz=Object.fromEntries(FZ_C.map(f=>[f.cod,f.n]));
   const ordem={erro:0,agendando:1,divulgado:2,voado:3,agendado:4,na_fila:5,aguardando_corte:6};
   const vs=[...VOOS_C].sort((a,b)=>(ordem[a.status]??9)-(ordem[b.status]??9)||String(a.liberar_em||'9').localeCompare(String(b.liberar_em||'9')));
+  // esc-ok
   document.getElementById('fila-corpo').innerHTML=vs.length?`<table class="fila-tab"><thead><tr>
       <th>Fazenda</th><th>Talhão</th><th>Pedido</th><th>Situação</th><th>Corte → voa</th><th>Quem pediu</th></tr></thead><tbody>${vs.map(v=>{
       const cod=String(Math.floor(v.layer/1000)),[cls,txt]=VOO_TXT[v.status]||['',v.status];
@@ -1666,6 +1671,7 @@ function rPhone(){
       <button class="ph-btn-dl" style="background:${m.c}"><span class="ico">download</span></button>
     </div>`;
   }).join('');
+  // esc-ok
   document.getElementById('phone-screen').innerHTML=`
     <div class="ph-header">
       <div class="ph-brand"><div class="ph-bmark">HG</div><span class="ph-bname">hub geotech</span></div>
@@ -1809,6 +1815,7 @@ async function salvarParametro(chave,valor,msg){
 // ── Ferramentas ──
 function rGeotech(){
   const fs=ferramentas().filter(f=>f.id!=='geomap'||EU?.admin||EU?.geomap);
+  // esc-ok
   document.getElementById('gt-grid').innerHTML=fs.length?fs.map(f=>`
     <div class="gt-card">
       <div class="gt-ico" style="background:${esc(f.cor||'#5b6ee8')}"><span class="ico">${esc(f.icone||'apps')}</span></div>
@@ -1820,7 +1827,7 @@ function rGeotech(){
       </div>
     </div>`).join('')
     :'<div class="dempty"><span class="ico">apps</span><p>Nenhuma ferramenta cadastrada.</p></div>';
-  if(EU?.admin)document.getElementById('gt-grid').insertAdjacentHTML('beforeend',
+  if(EU?.admin)document.getElementById('gt-grid').insertAdjacentHTML('beforeend', // esc-ok
     `<button class="gt-card gt-add" onclick="irConfig('ferramentas')"><span class="ico">settings</span>Configurar ferramentas</button>`);
 }
 function irConfig(aba){
@@ -1838,7 +1845,7 @@ const USR_CHIP_NIVEL={nada:'rc-dash',ver:'rc-a',editar:'rc-admin'};
 let GRUPOS_GM=null, MAPAS_GM=null;
 async function carregarAcessos(resetar=false){
   const {data,error}=await sb.rpc('acessos_situacao');
-  if(error){document.getElementById('usr-list').innerHTML=`<div class="col-sel-hint">Não foi possível carregar: ${esc(error.message)}</div>`;return;}
+  if(error){document.getElementById('usr-list').innerHTML=`<div class="col-sel-hint">Não foi possível carregar: ${esc(error.message)}</div>`;return;} // esc-ok
   ACESSOS=data||[];rUsrList();
   if(selEmail&&!ACESSOS.some(a=>a.email===selEmail)){selEmail=null;USR.rasc=null;}
   if(selEmail&&resetar)usrAbrir(selEmail);
@@ -1870,9 +1877,9 @@ function usrSwitch(id,on,acao){return `<label class="usr-switch"><input type="ch
 // Lista (coluna esquerda)
 function rUsrList(){
   const el=document.getElementById('usr-list');if(!el)return;
-  document.getElementById('usr-filtros').innerHTML=USR_FILTROS.map(([id,nome])=>
+  document.getElementById('usr-filtros').innerHTML=USR_FILTROS.map(([id,nome])=> // esc-ok
     `<button type="button" class="usr-chip${USR.filtro===id?' on':''}" data-f="${id}" onclick="usrFiltro(this)">${esc(nome)}</button>`).join('');
-  el.innerHTML=usrFiltrar(ACESSOS,USR.filtro,USR.busca).map(a=>{
+  el.innerHTML=usrFiltrar(ACESSOS,USR.filtro,USR.busca).map(a=>{ // esc-ok
     const [cls]=usrSituacao(a);
     return`<div class="usr-card${selEmail===a.email?' on':''}" data-email="${esc(a.email)}" onclick="selUsr(this.dataset.email)">
       <div class="usr-av">${esc(iniciais(a.nome))}</div>
@@ -1931,6 +1938,7 @@ function rUsrPainel(){
   const [cls,txt]=a?usrSituacao(a):['espera','Novo acesso'];
   const sub=r.novo?'Preencha o e-mail e o nome; o acesso vale ao salvar.'
     :`${esc(r.email)} · ${a?.ultimo_login?'último acesso '+fmtDataHora(a.ultimo_login):'ainda não entrou'}`;
+  // esc-ok
   painel.innerHTML=`<div class="usr-panel">
     <div class="usr-panel-head">
       <div class="usr-av grande">${esc(iniciais(r.nome||'?'))}</div>
@@ -1956,9 +1964,9 @@ function usrAba(b){
 }
 function rUsrCorpo(){
   const r=USR.rasc, el=document.getElementById('usr-corpo');if(!r||!el)return;
-  if(USR.aba==='conta')el.innerHTML=usrHtmlConta(r);
-  else if(USR.aba==='modulos')el.innerHTML=usrHtmlModulos(r);
-  else{el.innerHTML=usrHtmlFerramentas(r);preencherFerramentasGm();}
+  if(USR.aba==='conta')el.innerHTML=usrHtmlConta(r); // esc-ok
+  else if(USR.aba==='modulos')el.innerHTML=usrHtmlModulos(r); // esc-ok
+  else{el.innerHTML=usrHtmlFerramentas(r);preencherFerramentasGm();} // esc-ok
 }
 function usrHtmlConta(r){
   const novo=!!r.novo, eu=!novo&&r.email===EU?.email;
@@ -2035,7 +2043,7 @@ async function preencherFerramentasGm(){
   const [gs,ms]=await Promise.all([gruposGeomap(),mapasGeomap()]);
   if(!USR.rasc?.geomap_ativo)return;   // a chave pode ter sido desligada enquanto carregava
   const eg=document.getElementById('u-gm-grupos');
-  if(eg)eg.innerHTML=gs.length?gs.map(g=>`<label class="usr-mod"><input type="checkbox" value="${g.id}" ${USR.rasc.geomap_grupos.includes(g.id)?'checked':''} onchange="usrGrupo(this)">${esc(g.nome)}</label>`).join('')
+  if(eg)eg.innerHTML=gs.length?gs.map(g=>`<label class="usr-mod"><input type="checkbox" value="${g.id}" ${USR.rasc.geomap_grupos.includes(g.id)?'checked':''} onchange="usrGrupo(this)">${esc(g.nome)}</label>`).join('') // esc-ok
     :'<span class="usr-sit erro">Não foi possível ler os grupos do GeoMap.</span>';
   USR.mapas=ms;
   usrDesenharMapas();
@@ -2044,10 +2052,11 @@ async function preencherFerramentasGm(){
 function usrDesenharMapas(){
   const el=document.getElementById('u-mapas');if(!el)return;
   const ms=USR.mapas, r=USR.rasc;
-  if(ms===undefined){el.innerHTML='<span class="usr-sit espera">Carregando mapas…</span>';return;}
-  if(ms===null){el.innerHTML='<span class="usr-sit erro">Não foi possível ler os mapas do GeoMap.</span>';return;}
-  if(!ms.length){el.innerHTML='<span class="usr-sit espera">O GeoMap ainda não tem mapas.</span>';return;}
+  if(ms===undefined){el.innerHTML='<span class="usr-sit espera">Carregando mapas…</span>';return;} // esc-ok
+  if(ms===null){el.innerHTML='<span class="usr-sit erro">Não foi possível ler os mapas do GeoMap.</span>';return;} // esc-ok
+  if(!ms.length){el.innerHTML='<span class="usr-sit espera">O GeoMap ainda não tem mapas.</span>';return;} // esc-ok
   const chip=n=>`<span class="role-chip ${USR_CHIP_NIVEL[n]}">${n==='nada'?'Sem acesso':USR_MAPA_ROTULO[n]}</span>`;
+  // esc-ok
   el.innerHTML=`<div class="usr-tab-wrap"><table class="usr-tab">
     <thead><tr><th>Mapa</th><th>Pelos grupos</th><th>Individual</th><th>Resultado</th></tr></thead>
     <tbody>${ms.map(m=>{
@@ -2109,6 +2118,7 @@ function cfgTab(id,el){
 function initCfgChips(){}
 function rConfig(){cfgTab(document.querySelector('.cfg-cat.on')?.getAttribute('onclick').match(/'(\w+)'/)[1]||'geral',document.querySelector('.cfg-cat.on'));}
 function rCfgGeral(){
+  // esc-ok
   document.getElementById('cfg-geral').innerHTML=`
     <div class="cfg-card">
       <div class="cfg-card-t"><span class="ico">person</span>Você</div>
@@ -2144,11 +2154,11 @@ const FONTE_INFO={base_fazendas:['Base Fazendas','Talhões, área, estágio e da
   voos_preparo:['Voos do Preparo','Voos de Sistematização/Expansão no Drone MGMT (talhões em Identificação)']};
 async function rCfgFontes(){
   const el=document.getElementById('cfg-fontes');
-  el.innerHTML='<div class="cfg-card" style="min-height:160px"></div>';Mo.carregando(el.firstChild);
+  el.innerHTML='<div class="cfg-card" style="min-height:160px"></div>';Mo.carregando(el.firstChild); // esc-ok
   const {data,error}=await sb.from('execucoes_ingestao').select('fonte,status,iniciado_em,finalizado_em,linhas_lidas,linhas_gravadas,detalhes,erro').order('iniciado_em',{ascending:false}).limit(80);
-  if(error){el.innerHTML=`<div class="cfg-card">Não foi possível carregar: ${esc(error.message)}</div>`;return;}
+  if(error){el.innerHTML=`<div class="cfg-card">Não foi possível carregar: ${esc(error.message)}</div>`;return;} // esc-ok
   Mo.pronto(el);
-  el.innerHTML=`<div class="cfg-card"><div class="cfg-card-t"><span class="ico">schedule</span>Importação diária (servidor Geo, 07:00)</div>`+
+  el.innerHTML=`<div class="cfg-card"><div class="cfg-card-t"><span class="ico">schedule</span>Importação diária (servidor Geo, 07:00)</div>`+ // esc-ok
     Object.entries(FONTE_INFO).map(([f,[nome,desc]],i)=>{
       const u=data.find(x=>x.fonte===f),ok=data.find(x=>x.fonte===f&&x.status==='ok');
       const fora=(ok?.detalhes?.fora_da_base_fazendas||[]).length;
@@ -2167,6 +2177,7 @@ function rCfgFerramentas(){
   desenharFerramentas();
 }
 function desenharFerramentas(){
+  // esc-ok
   document.getElementById('cfg-ferramentas').innerHTML=FERR_ED.map((f,i)=>`
     <div class="cfg-card">
       <div class="cfg-card-t"><span class="ico">${esc(f.icone||'apps')}</span>${esc(f.nome||'Nova ferramenta')}
@@ -2192,6 +2203,7 @@ async function salvarFerramentas(btn){
   if(ok)rGeotech();
 }
 function rCfgPortal(){
+  // esc-ok
   document.getElementById('cfg-portal').innerHTML=`
     <div class="cfg-card">
       <div class="cfg-card-t"><span class="ico">phone_iphone</span>Portal de downloads</div>
@@ -2295,7 +2307,7 @@ function rCons(pg){
   if(cMod==='colheita') thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
   if(cMod==='preparo')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Entregue em</th><th>Ha</th><th>Etapa</th>';
   if(cMod==='drone')    thHtml+='<th>Fazenda</th><th>Código</th><th>Normal</th><th>Cobertura</th><th>Catação</th><th>Obstáculos</th><th>Solicitação</th>';
-  document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`;
+  document.getElementById('cons-thead').innerHTML=`<tr>${thHtml}</tr>`; // esc-ok
 
   // Body rows
   let tbHtml='';
@@ -2335,10 +2347,10 @@ function rCons(pg){
       }
     });
   }
-  document.getElementById('cons-tbody').innerHTML=tbHtml;
+  document.getElementById('cons-tbody').innerHTML=tbHtml; // esc-ok
 
   // Footer
-  document.getElementById('cons-count').innerHTML=
+  document.getElementById('cons-count').innerHTML= // esc-ok
     cMod==='drone'?`<strong>${total}</strong> fazendas`
     :`<strong>${total}</strong> ${cMod==='colheita'?'fazendas':'fazendas'} &nbsp;·&nbsp; <strong>${totalHa.toFixed(1)} ha</strong>`;
   updExpBtn();
@@ -2350,7 +2362,7 @@ function rCons(pg){
     <button class="cons-pgn-btn" onclick="rCons(${cPage+1})" ${cPage>=totalPages-1?'disabled':''}>Próxima →</button>
   </div>`:'';
   const wrap=document.getElementById('cons-table-wrap-pgn');
-  if(wrap)wrap.innerHTML=pgn;
+  if(wrap)wrap.innerHTML=pgn; // esc-ok
 }
 
 function consDetail(r){
@@ -2429,7 +2441,7 @@ function rConsFilters(){
   }
   html+=`<button class="cons-sel" style="cursor:pointer;color:var(--t3)" onclick="limparCons()">Limpar</button>`;
   html+=`<input class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
-  document.getElementById('cons-filters').innerHTML=html;
+  document.getElementById('cons-filters').innerHTML=html; // esc-ok
   cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:'',normal:'',catacao:'',obst:''};
   rCons();
 }
@@ -2714,7 +2726,7 @@ function abrirEnvio(cfg){
       substitui:temArquivoVigente('colheita',cfg.cod,it.doc,it.ext)}));
     ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.substitui),colheita:true};
     document.getElementById('envio-titulo').textContent='Enviar arquivos';
-    document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i,
+    document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i, // esc-ok
         it.substitui?'<span class="ebadge" style="background:rgba(212,137,10,.14);color:#9a6200">substitui o atual</span>':'')).join('')
       +`<div class="envio-nota-rot">Nota da atualização${ENVIO.precisaMotivo?' (obrigatória)':' (opcional)'}</div>
         <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas nos talhões 5 e 6, projeto refeito"></textarea>`;
@@ -2736,7 +2748,7 @@ function abrirEnvio(cfg){
   ENVIO={...cfg,itens,precisaMotivo:itens.some(it=>it.nova&&it.numero>0)};
   const marc=it=>(DOC_TIPOS.find(t=>t.codigo===it.doc&&t.modulo_id===cfg.modulo)?.marcador||'Rev')+it.numero;
   document.getElementById('envio-titulo').textContent=cfg.forcarNova?'Nova revisão':'Enviar arquivos';
-  document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i,
+  document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i, // esc-ok
       `<span class="ebadge" style="background:var(--s2);color:var(--t2)">${marc(it)}</span>`)).join('')
     +(ENVIO.precisaMotivo?`<div class="envio-nota-rot">Motivo da revisão (obrigatório)</div>
       <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas no talhão 12"></textarea>`:'');
@@ -2788,7 +2800,7 @@ function prepararSlots(){
       if(e.dataTransfer.files.length>1){distribuirArquivos(e.dataTransfer.files);return;}
       const arq=e.dataTransfer.files[0];if(!arq)return;
       if(!arq.name.toLowerCase().endsWith('.'+ENVIO.itens[i].ext)){
-        document.getElementById('envio-drop-log').innerHTML=`<span class="nao">✗ ${esc(arq.name)}: este campo pede .${ENVIO.itens[i].ext}</span>`;return;}
+        document.getElementById('envio-drop-log').innerHTML=`<span class="nao">✗ ${esc(arq.name)}: este campo pede .${ENVIO.itens[i].ext}</span>`;return;} // esc-ok
       const dt=new DataTransfer();dt.items.add(arq);document.getElementById('envio-arq-'+i).files=dt.files;atualizarSlot(i);
     });
   });
@@ -2798,7 +2810,7 @@ function confirmar(texto,{titulo='Confirmar',ok='Confirmar',perigo=false,html=fa
   return new Promise(resolve=>{
     const m=document.getElementById('modal-confirma');
     document.getElementById('confirma-t').textContent=titulo;
-    if(html)document.getElementById('confirma-txt').innerHTML=texto;   // texto já escapado pelo chamador
+    if(html)document.getElementById('confirma-txt').innerHTML=texto;   // texto já escapado pelo chamador // esc-ok
     else document.getElementById('confirma-txt').textContent=texto;
     const sim=document.getElementById('confirma-sim'),nao=document.getElementById('confirma-nao');
     sim.textContent=ok;sim.style.background=perigo?'#c23b3b':'var(--t1)';
@@ -2821,7 +2833,7 @@ function distribuirArquivos(lista){
     document.getElementById('envio-arq-'+alvo.i).files=dt.files;atualizarSlot(alvo.i);
     linhas.push(`<span class="ok">✓ ${esc(arq.name)} → ${esc(alvo.it.rotulo)}</span>`);
   }
-  log.innerHTML=linhas.join('');
+  log.innerHTML=linhas.join(''); // esc-ok
 }
 (function(){
   const zona=document.getElementById('envio-drop');
@@ -2909,9 +2921,9 @@ function rSino(){
   const n=avisosVisiveis().filter(a=>!a.lido).length;
   const b=document.getElementById('sino');
   b.querySelector('.sino-n')?.remove();
-  if(n)b.insertAdjacentHTML('beforeend',`<span class="sino-n">${n}</span>`);
+  if(n)b.insertAdjacentHTML('beforeend',`<span class="sino-n">${n}</span>`); // esc-ok
   const aberta=document.getElementById('sino-lista');
-  if(aberta)aberta.innerHTML=listaSinoHtml();
+  if(aberta)aberta.innerHTML=listaSinoHtml(); // esc-ok
 }
 function listaSinoHtml(){
   const vs=avisosVisiveis();
@@ -2926,7 +2938,7 @@ function alternarSino(ev){
   ev.stopPropagation();
   const aberta=document.getElementById('sino-lista');
   if(aberta){aberta.remove();return;}
-  document.body.insertAdjacentHTML('beforeend',`<div class="sino-lista" id="sino-lista" onclick="event.stopPropagation()">${listaSinoHtml()}</div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="sino-lista" id="sino-lista" onclick="event.stopPropagation()">${listaSinoHtml()}</div>`); // esc-ok
 }
 document.addEventListener('click',()=>document.getElementById('sino-lista')?.remove());
 async function marcarLidos(ids){

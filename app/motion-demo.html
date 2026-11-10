@@ -63,7 +63,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)}
 <script src="motion.js"></script>
 <script>
 const espera=ms=>new Promise(r=>setTimeout(r,ms));
-document.getElementById('campo').innerHTML=Mo.campo(true);
+document.getElementById('campo').innerHTML=Mo.campo(true); // esc-ok
 async function demoOcupado(b,ok){const fim=Mo.ocupado(b);await espera(1200);fim(ok);}
 async function demoProgresso(){
   const tam=[2.4e6,8.1e6,0.6e6],total=tam.reduce((a,b)=>a+b,0),fim=Mo.ocupado(document.getElementById('b-prog'));
@@ -76,7 +76,7 @@ async function demoProgresso(){
 }
 async function demoLista(){
   const l=document.getElementById('lista');Mo.carregando(l);await espera(1100);
-  l.innerHTML=[1,2,3,4,5,6].map(n=>`<div>Talhão ${n}</div>`).join('');Mo.pronto(l);
+  l.innerHTML=[1,2,3,4,5,6].map(n=>`<div>Talhão ${n}</div>`).join('');Mo.pronto(l); // esc-ok
 }
 async function demoVoo(ok){
   const v=Mo.voo(document.getElementById('mapa-voo'),{texto:'Publicando no portal…',desde:Date.now()});

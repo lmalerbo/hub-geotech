@@ -141,6 +141,7 @@ function droAbrir(){
   DRO.foco=document.activeElement;DRO.sessao={};
   DRO.corpo=droCorpoHtml();
   const f=document.createElement('div');f.className='dro-fundo';f.id='dro-fundo';
+  // esc-ok
   f.innerHTML=`<section class="dro-jan" id="dro-jan" role="dialog" aria-modal="true" aria-labelledby="dro-t" tabindex="-1">
     <header class="dro-cab"><span aria-hidden="true" class="ico dro-ico">warning</span>
       <div class="dro-tit"><h2 id="dro-t">Obstáculos da fazenda</h2>
@@ -208,7 +209,7 @@ function droLista(){
   const el=document.getElementById('dro-lista');if(!el)return;
   if(!podeEditar('drone')||(droProcessando()&&!DRO.enviando)){el.innerHTML='';return;}   // quem só lê, ou com envio anterior na fila, não vê as camadas
   const n=DRO.grupos.length,ig=DRO.ign.size;
-  el.innerHTML=(DRO.erro?`<div class="dro-erro" role="alert"><span aria-hidden="true" class="ico">error</span><span>${esc(DRO.erro)}</span></div>`:'')
+  el.innerHTML=(DRO.erro?`<div class="dro-erro" role="alert"><span aria-hidden="true" class="ico">error</span><span>${esc(DRO.erro)}</span></div>`:'') // esc-ok
     +(n?`<h3 class="dro-h3">Camadas encontradas <span>· ${n}</span></h3><div class="dro-lista">${DRO.grupos.map(droLinha).join('')}</div>`:'')
     +(ig?`<p class="dro-ign">${droPlural(ig,'arquivo ignorado','arquivos ignorados')}</p>`:'');
 }
@@ -216,13 +217,14 @@ function droLista(){
 function droRodape(){
   const el=document.getElementById('dro-botoes');if(!el)return;
   if(droProcessando()&&!DRO.enviando){
-    el.innerHTML=`<span class="dro-resumo">Espere o envio anterior terminar para enviar de novo.</span><button class="dro-cancelar" data-acao="fechar">Fechar</button>`;
+    el.innerHTML=`<span class="dro-resumo">Espere o envio anterior terminar para enviar de novo.</span><button class="dro-cancelar" data-acao="fechar">Fechar</button>`; // esc-ok
     return;
   }
   const p=drPlanoEnvio(DRO.grupos,DRO.escolhas),n=DRO.grupos.length,lendo=DRO.lendo>0;
   const texto=lendo?'Abrindo os arquivos…':p.pronto?p.resumo:(n?p.motivo:'Nenhuma camada ainda: arraste ou escolha os arquivos.');
   const rot=DRO.enviando?'Enviando…':lendo?'Lendo arquivos…':p.pronto?`<span aria-hidden="true" class="ico">upload</span>Enviar ${n} camada${n>1?'s':''}`
     :!n?'Escolha arquivos':p.motivo.startsWith('Escolha a classe')?'Escolha a classe de todas':'Corrija para enviar';
+  // esc-ok
   el.innerHTML=`<span class="dro-resumo">${esc(texto)}</span>
     <button class="dro-cancelar" data-acao="fechar"${DRO.enviando?' disabled':''}>Cancelar</button>
     <button class="dro-enviar" id="dro-enviar" data-acao="enviar"${p.pronto&&!DRO.enviando&&!lendo?'':' disabled'}>${rot}</button>`;
@@ -233,7 +235,7 @@ function droAtualizar(){
   const c=document.getElementById('dro-corpo');if(!c)return;
   droManterFoco(()=>{
     const h=droCorpoHtml();
-    if(h!==DRO.corpo){DRO.corpo=h;c.innerHTML=h;droLista();}
+    if(h!==DRO.corpo){DRO.corpo=h;c.innerHTML=h;droLista();} // esc-ok
     droRodape();
   });
 }

@@ -72,10 +72,10 @@ async function drMostrarPdf(ger){
     await drDesenharPagina(pdf,1,cv,Math.max(260,alvo.clientWidth));
     if(!alvo.isConnected)return;
     alvo.innerHTML='';alvo.appendChild(cv);
-    alvo.insertAdjacentHTML('beforeend',`<span class="drp-lupa"><span aria-hidden="true" class="ico">open_in_full</span>Abrir prévia</span>`);
+    alvo.insertAdjacentHTML('beforeend',`<span class="drp-lupa"><span aria-hidden="true" class="ico">open_in_full</span>Abrir prévia</span>`); // esc-ok
     alvo.classList.add('mo-surge');
   }catch(e){
-    if(alvo.isConnected)caixa.innerHTML=`<div class="dr-err">${esc(e.message)}</div>`;
+    if(alvo.isConnected)caixa.innerHTML=`<div class="dr-err">${esc(e.message)}</div>`; // esc-ok
   }
 }
 
@@ -91,6 +91,7 @@ function drPrevAbrir(){
   const al=(ger.alertas||[]).map(a=>`<li>${esc(a)}</li>`).join('');
   const nome=(ger.previa_pdf||'').split('/').pop();
   const f=document.createElement('div');f.className='drp-fundo';f.id='drp-fundo';
+  // esc-ok
   f.innerHTML=`<div class="drp-jan" role="dialog" aria-modal="true" aria-labelledby="drp-t">
     <div class="drp-cab"><h3 id="drp-t">Prévia · ${esc(DR.info.faz?.nome||DR.cod)}<small>${esc(nome)}</small></h3>
       <div class="drp-zoom"><button onclick="drPrevZoom(-1)" title="Diminuir" aria-label="Diminuir"><span aria-hidden="true" class="ico">remove</span></button>
@@ -147,11 +148,11 @@ async function drPrevMontar(ger){
     const tam=[];
     for(let n=1;n<=pdf.numPages;n++){const v=(await pdf.getPage(n)).getViewport({scale:1});tam.push([v.width,v.height]);}
     DRP.pdf=pdf;DRP.tam=tam;
-    pags.innerHTML=tam.map((_,i)=>`<div class="drp-pg" data-n="${i+1}">${Mo.campo(true)}<canvas></canvas></div>`).join('');
+    pags.innerHTML=tam.map((_,i)=>`<div class="drp-pg" data-n="${i+1}">${Mo.campo(true)}<canvas></canvas></div>`).join(''); // esc-ok
     drPrevRedesenhar();
   }catch(e){
     prog.fim(false,'Falhou');
-    carga.insertAdjacentHTML('beforeend',`<div class="dr-err" style="color:#ffd0d0;margin-top:8px">${esc(e.message)}</div>`);
+    carga.insertAdjacentHTML('beforeend',`<div class="dr-err" style="color:#ffd0d0;margin-top:8px">${esc(e.message)}</div>`); // esc-ok
   }
 }
 

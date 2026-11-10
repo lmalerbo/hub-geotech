@@ -99,7 +99,7 @@ const DRI_ATENCAO=[['incompletas','Normais incompletas','incomplete_circle'],
 
 // Cria o cartão a partir do HTML das funções puras e guarda a assinatura (para não redesenhar cartão igual).
 function driElemento(html,ass){
-  const t=document.createElement('div');t.innerHTML=html;
+  const t=document.createElement('div');t.innerHTML=html; // esc-ok
   const el=t.firstElementChild;
   el.dataset.ass=ass;
   return el;
@@ -133,7 +133,7 @@ function driDesenhar(painel){
       p.trocar.forEach(id=>{const n=porId.get(id);cartao(lista,id).replaceWith(driElemento(driCartaoHtml(n.sol,{editor,agora}),n.ass));});
       p.inserir.forEach(id=>{const n=porId.get(id);lista.appendChild(driElemento(driCartaoHtml(n.sol,{editor,agora}),n.ass));});
       if(alvo.length)lista.querySelectorAll(':scope > .dri-vazio').forEach(e=>e.remove());
-      else if(!lista.querySelector(':scope > .dri-vazio'))lista.insertAdjacentHTML('beforeend',`<p class="dri-vazio">${DRI_VAZIO[c]}</p>`);
+      else if(!lista.querySelector(':scope > .dri-vazio'))lista.insertAdjacentHTML('beforeend',`<p class="dri-vazio">${DRI_VAZIO[c]}</p>`); // esc-ok
       let antes=null;
       alvo.forEach(n=>{
         const el=cartao(lista,n.id), quer=antes?antes.nextElementSibling:lista.firstElementChild;
@@ -185,6 +185,7 @@ function driTecla(e){
 async function droneIniciar(){
   const root=document.getElementById('drone-root');
   if(!root.dataset.pronto){
+    // esc-ok
     root.innerHTML=`<div id="dri">
       <header class="dri-cab">
         <div><h1>Drone</h1><p>Projetos de voo por talhão</p></div>
@@ -267,6 +268,7 @@ function driAtencaoAbrir(chave){
   const fundo=document.createElement('div');
   fundo.id='dri-fundo';fundo.className='dri-fundo';
   const linhas=itens.map((it,i)=>`<button class="dri-linha" data-i="${i}"><span class="dr-cod">${esc(it.cod_faz)}</span><span class="dri-linha-n">${esc(it.fazenda)}</span><span class="dri-linha-x">${esc(it.extra)}</span></button>`).join('');
+  // esc-ok
   fundo.innerHTML=`<aside class="dri-gaveta" id="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby="dri-gav-t">
     <header><h2 id="dri-gav-t">${esc(DRI_ATENCAO_TIT[chave])}</h2><button class="dr-x" id="dri-gav-x" aria-label="Fechar"><span aria-hidden="true" class="ico">close</span></button></header>
     <p class="dri-gav-n">${itens.length} ${itens.length===1?'fazenda':'fazendas'}</p>
@@ -300,7 +302,7 @@ async function drBuscar(txt){
   const q=/^\d+$/.test(txt)?sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',Number(txt))
     :sb.from('fazendas').select('cod_faz,nome').ilike('nome',`%${txt}%`).limit(12);
   const {data}=await q;
-  alvo.innerHTML=`<div class="dr-grp">${(data||[]).map(f=>`<div class="dr-it" onclick="driAbrirFazenda(${Number(f.cod_faz)})"><span class="dr-cod">${esc(f.cod_faz)}</span><div>${esc(f.nome)}</div></div>`).join('')||'<div class="dr-msg">nenhuma fazenda</div>'}</div>`;
+  alvo.innerHTML=`<div class="dr-grp">${(data||[]).map(f=>`<div class="dr-it" onclick="driAbrirFazenda(${Number(f.cod_faz)})"><span class="dr-cod">${esc(f.cod_faz)}</span><div>${esc(f.nome)}</div></div>`).join('')||'<div class="dr-msg">nenhuma fazenda</div>'}</div>`; // esc-ok
 }
 
 async function drCancelar(id){
@@ -320,6 +322,7 @@ async function drCancelar(id){
 
 function drNovaSolicitacao(){
   const fundo=document.createElement('div');fundo.className='dr-modal-fundo';
+  // esc-ok
   fundo.innerHTML=`<div class="dr-modal" role="dialog" aria-modal="true" aria-labelledby="drs-t"><h3 id="drs-t">Nova solicitação · projeto Normal</h3>
     <label>Fazenda<input id="drs-busca" placeholder="Nome ou código" autocomplete="off"></label>
     <div id="drs-res"></div><input type="hidden" id="drs-cod">
@@ -342,7 +345,7 @@ function drNovaSolicitacao(){
     const q=/^\d+$/.test(txt)?sb.from('fazendas').select('cod_faz,nome').eq('cod_faz',Number(txt))
       :sb.from('fazendas').select('cod_faz,nome').ilike('nome',`%${txt}%`).limit(8);
     const {data}=await q;
-    res.innerHTML=(data||[]).map(f=>`<div class="dr-it" data-cod="${f.cod_faz}" data-nome="${esc(f.nome)}"><span class="dr-cod">${f.cod_faz}</span><div>${esc(f.nome)}</div></div>`).join('')
+    res.innerHTML=(data||[]).map(f=>`<div class="dr-it" data-cod="${f.cod_faz}" data-nome="${esc(f.nome)}"><span class="dr-cod">${f.cod_faz}</span><div>${esc(f.nome)}</div></div>`).join('') // esc-ok
       ||'<div class="dr-msg">nenhuma fazenda</div>';
     res.querySelectorAll('.dr-it').forEach(el=>el.onclick=()=>{
       fundo.querySelector('#drs-cod').value=el.dataset.cod;

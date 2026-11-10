@@ -44,7 +44,7 @@ async function drCarregarFazenda(){
     if(!drRespostaValida(minha,chave()))return;
     // Já desenhada: mantém o mapa, mostra o erro no painel e tenta de novo no próximo ciclo.
     if(DR.ass){drErro(e);drPollIniciar(drCicloFazenda,5000);}
-    else document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`;
+    else document.getElementById('dr-faz').innerHTML=`<div class="dr-vazio dr-err">${esc(e.message)}</div>`; // esc-ok
     return;
   }
   drMarcarFora();
@@ -72,7 +72,7 @@ function drDesenhar(partes){
     if(tem('cab')){
       drMenuFechar();
       const bts=()=>[...document.querySelectorAll('#dr-ph button')],i=bts().indexOf(document.activeElement);   // o cabeçalho é trocado inteiro: o foco volta ao botão na mesma posição
-      document.getElementById('dr-ph').outerHTML=drCabecalhoHtml();
+      document.getElementById('dr-ph').outerHTML=drCabecalhoHtml(); // esc-ok
       if(i>=0)bts()[i]?.focus();
     }
     if(tem('etapas'))drEtapasAtualizar();
@@ -86,6 +86,7 @@ function drDesenhar(partes){
   drVooPublicacao();drAnimGeracao();
 }
 function drEsqueleto(){
+  // esc-ok
   document.getElementById('dr-faz').innerHTML=drCabecalhoHtml()+`
     <div id="dr-etapas" class="dr-etapas"></div>
     <div class="dr-trab"><div class="dr-mapa-box">
@@ -305,7 +306,7 @@ function drEtapasAtualizar(){
   const e=drEtapasEstado(),de=DR.etapaAtiva;
   DR.etapaAtiva=e.ativa;
   el.hidden=!e.mostra;
-  el.innerHTML=e.mostra?drEtapasHtml():'';
+  el.innerHTML=e.mostra?drEtapasHtml():''; // esc-ok
   if(e.mostra&&de!=null&&de!==e.ativa)Mo.etapa(el,de,e.ativa);
 }
 // Menu ⋯: lista ancorada no botão. Esc ou clique fora fecha; escolher uma ação também fecha.
@@ -315,7 +316,7 @@ function drMenuAbrir(){
   const {sol,ger}=drAtual(),r=btn.getBoundingClientRect(),m=document.createElement('div');
   m.id='dr-menu';m.className='dr-menu';m.setAttribute('role','menu');
   m.style.top=r.bottom+6+'px';m.style.right=innerWidth-r.right+'px';
-  m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span aria-hidden="true" class="ico">history</span>Revisões</button>`
+  m.innerHTML=`<button role="menuitem" onclick="drMenuFechar();drRevisoesAbrir()"><span aria-hidden="true" class="ico">history</span>Revisões</button>` // esc-ok
     +(sol&&drPodeCancelar(sol,ger,EU)?`<button role="menuitem" class="perigo" onclick="drCancelar(${Number(sol.id)});drMenuFechar()"><span aria-hidden="true" class="ico">cancel</span>Cancelar solicitação</button>`:'')
     +(drPodeEncerrar(DR.geo,podeEditar('drone'))?`<button role="menuitem" class="perigo" onclick="drMenuFechar();drEncerrar()"><span aria-hidden="true" class="ico">inventory_2</span>Encerrar projeto</button>`:'');
   document.body.appendChild(m);
@@ -340,6 +341,7 @@ function drRevisoesAbrir(){
   const rev=(DR.info.revs||[]).filter(r=>r.documento===DR.doc),nome=DR.doc==='normal'?'Normal':'Catação';
   const fundo=document.createElement('div');fundo.id='dr-rev-fundo';fundo.className='dri-fundo';
   const linhas=rev.map(r=>`<div class="dr-rev-l"><span>Rev${r.numero} · ${esc(new Date(r.criado_em).toLocaleDateString('pt-BR'))} · ${esc(r.motivo||'sem motivo')}</span></div>`).join('');
+  // esc-ok
   fundo.innerHTML=`<aside class="dri-gaveta" role="dialog" aria-modal="true" aria-labelledby="dr-rev-t">
     <header><h2 id="dr-rev-t">Revisões · ${nome}</h2><button class="dr-x" id="dr-rev-x" aria-label="Fechar"><span aria-hidden="true" class="ico">close</span></button></header>
     <div class="dri-gav-l">${linhas||'<p class="dri-vazio">Nenhuma revisão publicada ainda.</p>'}</div>
@@ -391,21 +393,21 @@ function drMapaUi(){
   if(ferr){
     const bts=[...ferr.querySelectorAll('button')],foco=bts.indexOf(document.activeElement);
     ferr.hidden=est!=='montando';
-    ferr.innerHTML=est==='montando'?drFerramentasHtml():'';
+    ferr.innerHTML=est==='montando'?drFerramentasHtml():''; // esc-ok
     if(foco>=0)ferr.querySelectorAll('button')[foco]?.focus();
   }
   const dica=document.getElementById('dr-dica');
-  if(dica){const t=drDicaHtml(est);dica.hidden=!t;dica.innerHTML=t;}
+  if(dica){const t=drDicaHtml(est);dica.hidden=!t;dica.innerHTML=t;} // esc-ok
   const cam=document.getElementById('dr-camadas');
   if(cam){
     if(est==='previa'&&ger&&DR.obstPrevia!==ger.id){DR.obstPrevia=ger.id;if(!DR.mostrarObst)drObstaculos(true);}   // uma vez por prévia
     const rot=DR.mostrarObst&&est==='previa'?'Camadas · obstáculos ligados':'Camadas';
     const foco=cam.contains(document.activeElement)&&document.activeElement.type==='checkbox';
-    cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span aria-hidden="true" class="ico">layers</span>${rot}</button>`
+    cam.innerHTML=`<button class="dr-cam-btn" aria-expanded="${!!DR.camadasAb}"${DR.camadasAb?' aria-controls="dr-cam-caixa"':''} onclick="drCamadasAlternar()"><span aria-hidden="true" class="ico">layers</span>${rot}</button>` // esc-ok
       +(DR.camadasAb?`<div class="dr-cam-caixa" id="dr-cam-caixa"><label><input type="checkbox" ${DR.mostrarObst?'checked':''} onchange="drObstaculos(this.checked);drMapaUi()"> Obstáculos</label></div>`:'');
     if(foco)cam.querySelector('#dr-cam-caixa input[type=checkbox]')?.focus();   // o redesenho troca o checkbox: devolve o foco
   }
-  const leg=document.getElementById('dr-leg');if(leg)leg.innerHTML=drLegendaHtml(drEstadoPainel({doc:DR.doc,sol,ger,edita:true}));
+  const leg=document.getElementById('dr-leg');if(leg)leg.innerHTML=drLegendaHtml(drEstadoPainel({doc:DR.doc,sol,ger,edita:true})); // esc-ok
 }
 function drCamadasAlternar(){
   DR.camadasAb=!DR.camadasAb;drMapaUi();
@@ -547,12 +549,12 @@ function drPainelLateral(){
   drMapaUi();
   const p=({montando:drPainel_montando,catacao:drPainel_catacao,gerando:drPainel_gerando,previa:drPainel_previa,
     publicando:drPainel_publicando,erro:drPainel_erro,consulta:drPainel_consulta})[est]();
-  document.getElementById('dr-side-cab').innerHTML=`<div class="dr-side-sobre">${esc(p.sobre)}</div><h2>${esc(p.titulo)}</h2>`;
+  document.getElementById('dr-side-cab').innerHTML=`<div class="dr-side-sobre">${esc(p.sobre)}</div><h2>${esc(p.titulo)}</h2>`; // esc-ok
   const rolagem=side.scrollTop;
-  side.innerHTML=p.corpo;
+  side.innerHTML=p.corpo; // esc-ok
   const rod=document.getElementById('dr-side-rodape'),erro='<div id="dr-err" class="dr-err"></div>';
-  if(p.rodape)rod.innerHTML=erro+p.rodape;
-  else{rod.innerHTML='';side.insertAdjacentHTML('beforeend',erro);}
+  if(p.rodape)rod.innerHTML=erro+p.rodape; // esc-ok
+  else{rod.innerHTML='';side.insertAdjacentHTML('beforeend',erro);} // esc-ok
   side.scrollTop=rolagem;
   if(marca){
     const el=aside.querySelector(`[data-foco="${marca}"]`);

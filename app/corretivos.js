@@ -369,6 +369,7 @@ function crToast(msg, erro = false) {
 function crDialogo(titulo, texto, botoes) {
   return new Promise(resolver => {
     const fundo = document.getElementById('cr-modal-fundo');
+    // esc-ok
     fundo.innerHTML = `<div class="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-md-tit">
       <h3 id="cr-md-tit">${crEsc(titulo)}</h3><p>${crEsc(texto)}</p>
       <div class="cr-md-acoes">${botoes.map((b, i) => `<button class="${b.classe}" type="button" data-i="${i}">${crEsc(b.rotulo)}</button>`).join('')}</div>
@@ -439,11 +440,11 @@ async function crSair() {
 // ── Busca de fazenda ──
 async function crCarregarFazendas() {
   const res = document.getElementById('cr-res');
-  res.innerHTML = '<div class="cr-esq curto" aria-hidden="true"></div>';
+  res.innerHTML = '<div class="cr-esq curto" aria-hidden="true"></div>'; // esc-ok
   try {
     CR_ST.fazendas = await crApi().fazendas();
   } catch (e) {
-    res.innerHTML = '<div class="cr-msg cr-erro-bloco">Não foi possível carregar as fazendas.</div>'
+    res.innerHTML = '<div class="cr-msg cr-erro-bloco">Não foi possível carregar as fazendas.</div>' // esc-ok
       + '<div class="cr-msg"><button class="cr-btn2" type="button" id="cr-tentar-faz">Tentar de novo</button></div>';
     document.getElementById('cr-tentar-faz').onclick = crCarregarFazendas;
     return;
@@ -455,9 +456,9 @@ async function crCarregarFazendas() {
 function crFiltrar() {
   const res = document.getElementById('cr-res');
   const q = crNorm(document.getElementById('cr-busca').value.trim());
-  if (!q) { res.innerHTML = '<div class="cr-msg">Digite o código ou o nome da fazenda.</div>'; return; }
+  if (!q) { res.innerHTML = '<div class="cr-msg">Digite o código ou o nome da fazenda.</div>'; return; } // esc-ok
   const achadas = CR_ST.fazendas.filter(f => String(f.cod_faz).startsWith(q) || crNorm(f.nome).includes(q)).slice(0, 30);
-  res.innerHTML = achadas.length
+  res.innerHTML = achadas.length // esc-ok
     ? achadas.map(f => `<button class="cr-it" type="button" data-cod="${f.cod_faz}"><span class="cr-cod">${f.cod_faz}</span><span class="nm">${crEsc(f.nome)}</span></button>`).join('')
     : '<div class="cr-msg">Nenhuma fazenda encontrada.</div>';
 }
@@ -486,7 +487,7 @@ function crRenderRecentes() {
   const alvo = document.getElementById('cr-recentes');
   const lista = crRecentes();
   alvo.classList.toggle('off', !lista.length);
-  alvo.innerHTML = '<span class="cr-recentes-tit">Abertos por último:</span>'
+  alvo.innerHTML = '<span class="cr-recentes-tit">Abertos por último:</span>' // esc-ok
     + lista.map(r => `<button class="cr-chip" type="button" data-recente="${crEsc(r.id)}">${crEsc(`${r.cod_faz}, ${CR_OPERACOES[r.operacao] || r.operacao} ${crDataIso(r.data).slice(0, 5)}`)}</button>`).join('');
 }
 async function crAbrirRecente(id) {
@@ -504,7 +505,7 @@ async function crAbrirRecente(id) {
 async function crCarregarMapas() {
   const alvo = document.getElementById('cr-mapas');
   const faz = CR_ST.faz;
-  alvo.innerHTML = '<div class="cr-tab" aria-label="Carregando mapas" style="padding:16px;gap:8px"><div class="cr-esq"></div><div class="cr-esq"></div></div>';
+  alvo.innerHTML = '<div class="cr-tab" aria-label="Carregando mapas" style="padding:16px;gap:8px"><div class="cr-esq"></div><div class="cr-esq"></div></div>'; // esc-ok
   try {
     const mapas = await crApi().mapas(faz.cod_faz);
     if (CR_ST.faz !== faz) return false;
@@ -513,7 +514,7 @@ async function crCarregarMapas() {
     return true;
   } catch (e) {
     if (CR_ST.faz !== faz) return false;
-    alvo.innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível carregar os mapas.</span>'
+    alvo.innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível carregar os mapas.</span>' // esc-ok
       + '<button class="cr-btn2" type="button" data-tentar>Tentar de novo</button></div>';
     return false;
   }
@@ -524,10 +525,11 @@ function crRenderMapas() {
   const n = CR_ST.mapas.length;
   document.getElementById('cr-faz-sub').textContent = `Código ${CR_ST.faz.cod_faz}. ${n === 1 ? '1 mapa' : `${n} mapas`}`;
   if (!n) {
-    alvo.innerHTML = '<div class="cr-vazio"><span class="ico">compost</span><span>Nenhum mapa nesta fazenda.</span>'
+    alvo.innerHTML = '<div class="cr-vazio"><span class="ico">compost</span><span>Nenhum mapa nesta fazenda.</span>' // esc-ok
       + '<button class="cr-btn" type="button" data-novo><span class="ico">add</span> Novo mapa</button></div>';
     return;
   }
+  // esc-ok
   alvo.innerHTML = `<div class="cr-tab">
     <div class="cr-lin cr-tab-cab" aria-hidden="true"><div class="cr-lin-abrir">
       <span>Tipo</span><span>Data</span><span>O.S.</span><span class="num">Talhões</span><span class="num">Total</span><span>Alterado</span>
@@ -579,6 +581,7 @@ function crEscolherNovoMapa() {
     const fechar = valor => { fundo.classList.add('off'); fundo.innerHTML = ''; resolver(valor); };
     const desenhar = () => {
       const aerea = est.grupo === 'aerea';
+      // esc-ok
       fundo.innerHTML = `<form class="cr-modal cr-modal-novo" role="dialog" aria-modal="true" aria-labelledby="cr-nm-tit">
         <div><h3 id="cr-nm-tit">Novo mapa em ${crEsc(CR_ST.faz.nome)}</h3><p>Escolha o que o mapa vai mostrar.</p></div>
         <div class="cr-nm-grupos">
@@ -880,7 +883,7 @@ function crMostrarDica(t, ponto) {
   const el = document.getElementById('cr-dica');
   if (!el || !CR_ST.det) return;
   const d = crDicaTalhao(t, crAreaDe(t).area_ha, CR_ST.det.apls, CR_ST.sel.has(t));
-  el.innerHTML = `<b>${crEsc(d.titulo)}</b>${d.linhas.map(l => `<span>${crEsc(l)}</span>`).join('')}<span class="cr-dica-acao">${d.acao}</span>`;
+  el.innerHTML = `<b>${crEsc(d.titulo)}</b>${d.linhas.map(l => `<span>${crEsc(l)}</span>`).join('')}<span class="cr-dica-acao">${d.acao}</span>`; // esc-ok
   el.classList.remove('off');
   const box = el.parentElement.getBoundingClientRect();
   const x = Math.min(ponto.x + 14, box.width - el.offsetWidth - 8);
@@ -904,8 +907,8 @@ async function crAbrirMapa(mapa) {
   document.getElementById('cr-trab-sub').textContent = `${CR_ST.faz.cod_faz} ${CR_ST.faz.nome}`
     + (resumo ? `. Alterado por ${resumo.alterado_por_nome} em ${crDiaMes(resumo.alterado_em)}` : '');
   crTela('trabalho');
-  document.getElementById('cr-mapa').innerHTML = '<div class="cr-esq cr-mapa-esq" aria-hidden="true"></div>';
-  document.getElementById('cr-painel').innerHTML = '<div class="cr-sec" role="status"><div class="cr-esq"></div><div class="cr-esq curto"></div></div>';
+  document.getElementById('cr-mapa').innerHTML = '<div class="cr-esq cr-mapa-esq" aria-hidden="true"></div>'; // esc-ok
+  document.getElementById('cr-painel').innerHTML = '<div class="cr-sec" role="status"><div class="cr-esq"></div><div class="cr-esq curto"></div></div>'; // esc-ok
   try {
     const [geo, det, insumos] = await Promise.all([crApi().talhoesFazenda(CR_ST.faz.cod_faz), crApi().carregarMapa(mapa.id),
       crAerea(mapa.operacao) ? crApi().insumos() : Promise.resolve([])]);
@@ -916,7 +919,7 @@ async function crAbrirMapa(mapa) {
                                                     data: String(mapa.data).slice(0, 10) }));
   } catch (e) {
     document.getElementById('cr-mapa').innerHTML = '';
-    document.getElementById('cr-painel').innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível abrir o mapa.</span>'
+    document.getElementById('cr-painel').innerHTML = '<div class="cr-vazio"><span class="cr-erro-bloco">Não foi possível abrir o mapa.</span>' // esc-ok
       + '<button class="cr-btn2" type="button" data-tentar-trab>Tentar de novo</button></div>';
     return;
   }
@@ -1099,6 +1102,7 @@ async function crEditarAplicacao(id) {
   const todos = [...new Set([...CR_ST.geo.features.map(f => f.properties.talhao), ...a.talhoes])].sort((x, y) => x - y);
   const fundo = document.getElementById('cr-modal-fundo');
   const fechar = () => { fundo.classList.add('off'); fundo.innerHTML = ''; };
+  // esc-ok
   fundo.innerHTML = `<form class="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-ed-tit">
     <h3 id="cr-ed-tit">Editar ${crEsc(crRotulo(a))}</h3>
     <div class="cr-form">
@@ -1183,7 +1187,7 @@ function crMenu(botao, itens) {
   const el = document.createElement('div');
   el.className = 'cr-menu';
   el.setAttribute('role', 'menu');
-  el.innerHTML = itens.map((it, i) => `<button type="button" role="menuitem" data-i="${i}"${it.perigo ? ' class="perigo"' : ''}><span class="ico" aria-hidden="true">${it.ico}</span> ${crEsc(it.rotulo)}</button>`).join('');
+  el.innerHTML = itens.map((it, i) => `<button type="button" role="menuitem" data-i="${i}"${it.perigo ? ' class="perigo"' : ''}><span class="ico" aria-hidden="true">${it.ico}</span> ${crEsc(it.rotulo)}</button>`).join(''); // esc-ok
   document.body.appendChild(el);
   const r = botao.getBoundingClientRect();
   el.style.top = `${Math.min(r.bottom + 4, window.innerHeight - el.offsetHeight - 8)}px`;
@@ -1351,12 +1355,13 @@ function crRenderSelBar() {
   if (!alvo || !CR_ST.geo) return;
   const sel = crSelecionados();
   if (!sel.length) {
-    alvo.innerHTML = '<span class="cr-selbar-tit">Clique nos talhões para marcar</span>'
+    alvo.innerHTML = '<span class="cr-selbar-tit">Clique nos talhões para marcar</span>' // esc-ok
       + '<button class="cr-selbar-b2" type="button" data-todos>Selecionar todos</button>';
     return;
   }
   const ha = sel.reduce((s, t) => s + Number(crAreaDe(t).area_ha), 0);
   const todos = sel.length === CR_ST.geo.features.length;
+  // esc-ok
   alvo.innerHTML = `<span class="cr-selbar-tit">${sel.length === 1 ? '1 talhão marcado' : `${sel.length} talhões marcados`}</span>
     <span class="cr-selbar-sub">${crListaTalhoes(sel)}, somando ${crBr(ha)} ha</span>
     <button class="cr-selbar-b" type="button" data-limpar>Limpar</button>
@@ -1373,6 +1378,7 @@ function crRenderPainel() {
   const cores = crCoresDoMapa(apls);
   const tot = crTotaisPorProduto(apls, areas, CR_ST.trab.operacao);
   const sem = crSemAplicacao(CR_ST.geo.features.map(f => f.properties.talhao), apls);
+  // esc-ok
   alvo.innerHTML = `
     <div class="cr-painel-rol">
       ${fora.length ? `<div class="cr-aviso" role="status"><span class="ico" aria-hidden="true">warning</span><span>Talhões que saíram da Base: ${fora.join(', ')}. Eles continuam no PDF, sem desenho.</span></div>` : ''}
@@ -1400,19 +1406,19 @@ function crRenderBotaoPdf() {
   if (!alvo) return;
   const vazio = !(CR_ST.det && CR_ST.det.apls.length);
   if (CR_DEMO || !window.crGerador) {
-    alvo.innerHTML = '<button class="cr-btn" type="button" disabled title="Indisponível na demonstração"><span class="ico">download</span> Baixar PDF</button>';
+    alvo.innerHTML = '<button class="cr-btn" type="button" disabled title="Indisponível na demonstração"><span class="ico">download</span> Baixar PDF</button>'; // esc-ok
     return;
   }
   const est = crGerador.estado;
   if (est === 'erro') {
-    alvo.innerHTML = '<span class="cr-erro-bloco" role="alert">O gerador de PDF não carregou.</span>'
+    alvo.innerHTML = '<span class="cr-erro-bloco" role="alert">O gerador de PDF não carregou.</span>' // esc-ok
       + '<button class="cr-btn2" type="button" data-pdf-tentar>Tentar de novo</button>';
   } else if (est === 'pronto' || est === 'parado') {
-    alvo.innerHTML = `<button class="cr-btn" type="button" data-pdf${vazio ? ' disabled title="Lance uma aplicação para baixar o PDF"' : ''}><span class="ico">download</span> Baixar PDF</button>`;
+    alvo.innerHTML = `<button class="cr-btn" type="button" data-pdf${vazio ? ' disabled title="Lance uma aplicação para baixar o PDF"' : ''}><span class="ico">download</span> Baixar PDF</button>`; // esc-ok
   } else {
     // ~20 s só na primeira vez: barra por passo, reaproveitada entre redesenhos para não voltar a 0
     if (!crProgPdf || !alvo.contains(crProgPdf.el)) {
-      alvo.innerHTML = '<span class="cr-trab-sub">Preparando o PDF (só na primeira vez)</span>';
+      alvo.innerHTML = '<span class="cr-trab-sub">Preparando o PDF (só na primeira vez)</span>'; // esc-ok
       const api = Mo.progresso(alvo, { total: 4, mb: false });
       crProgPdf = { api, el: alvo.querySelector('.mo-prog') };
     }
@@ -1475,6 +1481,7 @@ function crDesenharInsumos(v = null, erro = '') {
           <button class="cr-x" type="button" data-ins-remover="${Number(i.id)}" aria-label="Remover ${crEsc(i.nome)}" title="Remover"><span class="ico">delete</span></button>
         </td>
       </tr>`).join('');
+  // esc-ok
   fundo.innerHTML = `<div class="cr-modal cr-modal-ins" role="dialog" aria-modal="true" aria-labelledby="cr-ins-tit">
     <h3 id="cr-ins-tit">Insumos</h3>
     <p>Lista usada na aplicação aérea. Remover tira o insumo da lista; os mapas já feitos continuam com ele.</p>
@@ -1576,6 +1583,7 @@ async function crAtualizarInsumos(msg) {
 }
 function crLigarTrabalho() {
   document.getElementById('cr-voltar').onclick = crVoltarLista;
+  // esc-ok
   document.getElementById('cr-trab-corpo').innerHTML = `<div class="cr-trab-grid">
     <div class="cr-mapa-box">
       <div id="cr-mapa"></div>

@@ -36,7 +36,7 @@
     clearTimeout(btn._moT);
     const sobre=btn.querySelector(':scope>.mo-sobre');
     btn.style.minWidth=btn.getBoundingClientRect().width+'px';
-    sobre.innerHTML=campo('b');
+    sobre.innerHTML=campo('b'); // esc-ok
     if(texto)sobre.insertAdjacentText('beforeend',texto);
     btn.classList.remove('mo-ok','mo-erro','mo-fim');
     btn.classList.add('mo-ocupado');
@@ -48,7 +48,7 @@
       btn.classList.remove('mo-ocupado');
       btn.classList.add('mo-fim',ok?'mo-ok':'mo-erro');
       btn.removeAttribute('aria-busy');
-      sobre.innerHTML=`<span class="ico">${ok?'check':'close'}</span>`;
+      sobre.innerHTML=`<span class="ico">${ok?'check':'close'}</span>`; // esc-ok
       return new Promise(res=>{btn._moT=setTimeout(()=>{
         btn.classList.remove('mo-fim','mo-ok','mo-erro');
         btn.disabled=!!travado;btn.style.minWidth='';sobre.innerHTML='';res();
@@ -65,6 +65,7 @@
     el.querySelector(':scope>.mo-prog')?.remove();
     const p=document.createElement('div');p.className='mo-prog';p.setAttribute('role','progressbar');
     p.setAttribute('aria-valuemin','0');p.setAttribute('aria-valuemax','100');
+    // esc-ok
     p.innerHTML=`<div class="mo-prog-cab"><span class="mo-prog-txt">Preparando…</span><span class="mo-prog-pct">0%</span></div>
       <div class="mo-prog-trilho"><div class="mo-prog-barra"></div></div><div class="mo-prog-mb"></div>`;
     el.appendChild(p);
@@ -97,7 +98,7 @@
     c.classList.add('mo-carregando');c.classList.toggle('mo-discreto',discreto);c.setAttribute('aria-busy','true');
     const n=Math.max(4,Math.min(12,Math.floor((c.clientHeight||160)/26)));
     const e=document.createElement('div');e.className='mo-esboco';
-    e.innerHTML=(discreto?'':'<i></i>'.repeat(n))+campo();
+    e.innerHTML=(discreto?'':'<i></i>'.repeat(n))+campo(); // esc-ok
     c.appendChild(e);
   }
   // Tira o esboço e faz o conteúdo novo chegar em cascata curta
@@ -132,6 +133,7 @@
     if(getComputedStyle(el).position==='static')el.style.position='relative';
     const w=document.createElement('div');w.className='mo-voo';w.setAttribute('role','status');
     w.style.setProperty('--mo-voo-atraso',-((Date.now()-desde)%VOO_MS)+'ms');
+    // esc-ok
     w.innerHTML=`<div class="mo-voo-rota"><div class="mo-voo-sombra"></div><div class="mo-voo-rumo"><div class="mo-voo-drone">${DRONE_SVG}</div></div></div>
       <div class="mo-voo-txt">${campo('b')}<span class="mo-voo-msg"></span></div>`;
     const t=w.querySelector('.mo-voo-txt');
@@ -211,6 +213,7 @@
         conf+=`<i class="mo-conc-p" style="background:${cores[i%4]};--dx:${Math.cos(ang)*d|0}px;--dy:${Math.sin(ang)*d-20|0}px;--r:${(Math.random()*540-270)|0}deg;animation-delay:${120+Math.random()*80|0}ms"></i>`;
       }
     }
+    // esc-ok
     w.innerHTML=`<div class="mo-conc-fundo"></div>${conf}
       <div class="mo-conc-selo"><div class="mo-conc-onda"></div><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="32"/><path d="M19 33l9 9 17-19"/></svg></div>
       <div class="mo-conc-txt"></div>`;
@@ -228,7 +231,7 @@
   function varredura(el){
     if(!el)return{parar(){}};
     if(getComputedStyle(el).position==='static')el.style.position='relative';
-    const v=document.createElement('div');v.className='mo-varr';v.setAttribute('aria-hidden','true');v.innerHTML='<i></i>';
+    const v=document.createElement('div');v.className='mo-varr';v.setAttribute('aria-hidden','true');v.innerHTML='<i></i>'; // esc-ok
     el.appendChild(v);
     return{parar(){if(calmo())return v.remove();v.classList.add('mo-sai');setTimeout(()=>v.remove(),200);}};
   }

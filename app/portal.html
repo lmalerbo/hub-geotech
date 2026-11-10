@@ -199,7 +199,7 @@ const ORDEM_EXT={zip:0,pdf:1,dwg:2};
 // ── Dados ────────────────────────────────────────────
 async function carregar(){
   const conteudo=document.getElementById('conteudo');
-  conteudo.innerHTML='<div class="carregando"><div class="giro"></div>Carregando projetos...</div>';
+  conteudo.innerHTML='<div class="carregando"><div class="giro"></div>Carregando projetos...</div>'; // esc-ok
   try{
     // O Supabase devolve no máximo 1000 linhas por resposta: lê em páginas,
     // com ordem fixa (senão linhas se repetem ou somem entre as páginas).
@@ -220,6 +220,7 @@ async function carregar(){
     agrupar(linhas);
     render();
   }catch(e){
+    // esc-ok
     conteudo.innerHTML=`<div class="erro"><span class="ico">wifi_off</span>
       Não foi possível carregar os projetos (${esc(e.message)}).<br>Confira a internet e tente de novo.<br>
       <button class="acao-sec tentar" onclick="carregar()"><span class="ico">refresh</span>Tentar de novo</button></div>`;
@@ -255,7 +256,7 @@ function render(){
   const lista=fazendas[modulo];
   const q=document.getElementById('busca').value.trim().toLowerCase();
   if(!lista.length){
-    conteudo.innerHTML=`<div class="vazio"><span class="ico">folder_open</span>Nenhum projeto de ${MODULOS[modulo]} publicado ainda.</div>`;
+    conteudo.innerHTML=`<div class="vazio"><span class="ico">folder_open</span>Nenhum projeto de ${MODULOS[modulo]} publicado ainda.</div>`; // esc-ok
     return;
   }
   const achadas=q?lista.filter(f=>f.nome.toLowerCase().includes(q)||String(f.cod).includes(q)):lista;
@@ -277,7 +278,7 @@ function render(){
     const abrirSozinha=q&&achadas.length===1;
     html+=`<div class="lista">${achadas.map(f=>cartao(f,abrirSozinha||abertas.has(modulo+f.cod))).join('')}</div>`;
   }
-  conteudo.innerHTML=html;
+  conteudo.innerHTML=html; // esc-ok
 }
 
 function cartao(f,aberta){

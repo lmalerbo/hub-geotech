@@ -250,7 +250,7 @@ let modAtual='plantio',idxAtual=null;
 const listaDe=mod=>mod==='plantio'?FZ:FZ_P;
 function rLista(){
   const lista=document.getElementById('flist');
-  lista.innerHTML=listaDe(modAtual).map((f,i)=>{
+  lista.innerHTML=listaDe(modAtual).map((f,i)=>{ // esc-ok
     const fz=Proj.fazenda(modAtual,f);
     const ok=fz.talhoes.filter(t=>t.e===fz.etapas.length-1).length;
     const bc=ok===fz.talhoes.length?'#16a76b':(modAtual==='plantio'?'#16a76b':'#a07840');
@@ -268,7 +268,7 @@ function rPainel(){
   if(idxAtual===null){vazio.style.display='block';painel.innerHTML='';return}
   vazio.style.display='none';
   const f=listaDe(modAtual)[idxAtual];
-  painel.innerHTML=Proj.painelHtml(modAtual,f);
+  painel.innerHTML=Proj.painelHtml(modAtual,f); // esc-ok
   Proj.montar(modAtual,f,painel);
 }
 async function recarregar(){

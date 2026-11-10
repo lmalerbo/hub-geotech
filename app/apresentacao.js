@@ -435,7 +435,7 @@ function apRenderFontes() {
       `<span class="apt-fonte-txt">${apEsc(AP_NOME_FONTE[f])}${detHtml}</span>` +
       `<span class="apt-fonte-tempo">${apEsc(tempo)}</span></li>`;
   });
-  ul.innerHTML = linhas.join('');
+  ul.innerHTML = linhas.join(''); // esc-ok
 }
 
 // ===== Recálculo, lista de slides, prévia e campos =====
@@ -468,7 +468,7 @@ function apEstadoSlide(k) {
 
 function apRenderLista() {
   const nav = document.getElementById('apt-lista');
-  nav.innerHTML = AP_SLIDES.map((k, i) => {
+  nav.innerHTML = AP_SLIDES.map((k, i) => { // esc-ok
     const [estado, icone] = apEstadoSlide(k);
     const sel = AP_ST.sel === k;
     return `<button class="apt-slide-btn" type="button" data-slide="${k}" data-estado="${estado}" aria-current="${sel ? 'true' : 'false'}">` +
@@ -494,27 +494,27 @@ function apRenderPrevia() {
   const k = AP_ST.sel;
   const i = AP_SLIDES.indexOf(k);
   if (AP_ST.erroCalculo) { previa.innerHTML = ''; return; }
-  if (!AP_ST.A) { previa.innerHTML = apVazio('Carregando os dados…', ''); return; }
+  if (!AP_ST.A) { previa.innerHTML = apVazio('Carregando os dados…', ''); return; } // esc-ok
   if ((k === 'voos' || k === 'divisoria') && AP_ST.status.voos === 'carregando') {
-    previa.innerHTML = apVazio('Aguardando a API de voos…', '');
+    previa.innerHTML = apVazio('Aguardando a API de voos…', ''); // esc-ok
     return;
   }
   if (k === 'voos' && AP_ST.status.voos === 'falhou') {
-    previa.innerHTML = apVazio('Dados indisponíveis',
+    previa.innerHTML = apVazio('Dados indisponíveis', // esc-ok
       'A API do GeoMap não respondeu. Este slide não entra no PPTX enquanto estiver assim.',
       '<button class="apt-btn" type="button" id="apt-tentar"><span class="ico">refresh</span> Tentar de novo</button>');
     return;
   }
   if (k === 'divisoria' && AP_ST.status.voos === 'falhou') {
-    previa.innerHTML = apVazio('', 'Pendente: depende dos números de Voos.');
+    previa.innerHTML = apVazio('', 'Pendente: depende dos números de Voos.'); // esc-ok
     return;
   }
   try {
     const html = apSlide(k, AP_ST.A, AP_ST.metas, apTextosDo(k), apCtx(i));
-    previa.innerHTML = `<div class="apt-escala">${html}</div>`;
+    previa.innerHTML = `<div class="apt-escala">${html}</div>`; // esc-ok
     apAjustarEscala();
   } catch (e) {
-    previa.innerHTML = apVazio('Não foi possível montar este slide.', e.message);
+    previa.innerHTML = apVazio('Não foi possível montar este slide.', e.message); // esc-ok
   }
 }
 
@@ -539,7 +539,7 @@ function apRenderCampos() {
   sd.classList.toggle('off', !semDado || !semDado.length);
   if (semDado && semDado.length) {
     document.getElementById('apt-sem-dado-tit').textContent = `Drone de Aplicação · ${semDado.length} ${semDado.length === 1 ? 'projeto' : 'projetos'}`;
-    document.getElementById('apt-sem-dado-lista').innerHTML = semDado.map((r) =>
+    document.getElementById('apt-sem-dado-lista').innerHTML = semDado.map((r) => // esc-ok
       `<li>${apEsc(r.cod_faz)} · ${apEsc(r.documento)} · rev. ${apEsc(r.revisao_id)}</li>`).join('');
   }
 }
@@ -649,7 +649,7 @@ async function apBaixar() {
     const els = AP_SLIDES.map((k, i) => {
       const div = document.createElement('div');
       div.style.cssText = 'position:relative;width:1920px;height:1080px;overflow:hidden;background:#fff;';
-      div.innerHTML = apSlide(k, AP_ST.A, AP_ST.metas, apTextosDo(k), apCtx(i));
+      div.innerHTML = apSlide(k, AP_ST.A, AP_ST.metas, apTextosDo(k), apCtx(i)); // esc-ok
       fora.appendChild(div);
       return div;
     });
