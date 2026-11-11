@@ -110,3 +110,82 @@ def test_o_teste_de_modais_enxerga_os_modais():
     nomes = {c[0] for c in _todas_caixas()}
     assert {'index.html', 'corretivos.js', 'projetos.js'} <= nomes
     assert sum(1 for _ in _todas_caixas()) >= 11
+
+
+# ── Tarefa 3: imagens e campos ────────────────────────────────────────────────
+IMG = re.compile(r'<img(?=[\s>/])([^>]*)>', re.I | re.S)
+CAMPO = re.compile(r'<(input|select|textarea)(?=[\s>/])([^>]*)>', re.I | re.S)
+ALT = re.compile(r'\balt\s*=', re.I)
+TIPO = re.compile(r'\btype\s*=\s*["\']?(\w+)', re.I)
+ARIA_LABEL = re.compile(r'\baria-label\s*=\s*"[^"]*[^"\s][^"]*"|\baria-label\s*=\s*\'[^\']*[^\'\s][^\']*\'', re.I)
+ARIA_LABELLEDBY = re.compile(r'\baria-labelledby\s*=', re.I)
+ID_ATTR = re.compile(r'\bid\s*=\s*["\']([^"\']+)["\']', re.I)
+LABEL_ABRE = re.compile(r'<label\b', re.I)
+LABEL_FECHA = re.compile(r'</label\s*>', re.I)
+
+
+def _blocos():
+    """Rende (arquivo, texto do bloco, linha-base, texto completo do arquivo)."""
+    for arq in sorted(APP.glob('*.html')):
+        t = arq.read_text(encoding='utf-8')
+        yield arq.name, t, 0, t
+    for arq in sorted(APP.glob('*.js')):
+        t = arq.read_text(encoding='utf-8')
+        for c in CRASE.finditer(t):
+            yield arq.name, c.group(0), t.count('\n', 0, c.start()), t
+
+
+def _dentro_de_label(texto, pos):
+    ult_abre = [m.start() for m in LABEL_ABRE.finditer(texto, 0, pos)]
+    if not ult_abre:
+        return False
+    return not LABEL_FECHA.search(texto, ult_abre[-1], pos)
+
+
+def _imagens():
+    return [(n, base + t.count('\n', 0, m.start()) + 1, m.group(1))
+            for n, t, base, _ in _blocos() for m in IMG.finditer(t)]
+
+
+def _campos():
+    achados = []
+    for n, t, base, completo in _blocos():
+        for m in CAMPO.finditer(t):
+            achados.append((n, base + t.count('\n', 0, m.start()) + 1, m.group(2), t, m.start(), completo))
+    return achados
+
+
+def _campo_sem_rotulo(attrs, bloco, pos, completo):
+    tipo = TIPO.search(attrs)
+    tipo = tipo.group(1).lower() if tipo else ''
+    if tipo == 'hidden':
+        return False
+    if tipo in ('submit', 'button', 'reset') and re.search(r'\bvalue\s*=', attrs):
+        return False
+    if ARIA_LABEL.search(attrs) or ARIA_LABELLEDBY.search(attrs):
+        return False
+    i = ID_ATTR.search(attrs)
+    if i and re.search(r'<label\b[^>]*\bfor\s*=\s*["\']' + re.escape(i.group(1)) + r'["\']', completo, re.I):
+        return False
+    if _dentro_de_label(bloco, pos):
+        return False
+    return True
+
+
+def test_imagens_tem_alt():
+    ruins = [f'{n}:{l}' for n, l, a in _imagens() if not ALT.search(a)]
+    assert not ruins, 'img sem alt: ' + ', '.join(ruins)
+
+
+def test_campos_tem_rotulo():
+    ruins = [f'{n}:{l}' for n, l, a, b, p, c in _campos() if _campo_sem_rotulo(a, b, p, c)]
+    assert not ruins, 'campo sem rótulo: ' + ', '.join(ruins)
+
+
+def test_o_teste_de_campos_enxerga_o_app():
+    # sem isso o teste de campos passaria vazio se a regex quebrasse (hoje são 92 campos)
+    campos = _campos()
+    assert len(campos) >= 85
+    assert {'index.html', 'projetos.js', 'drone-previa.js'} <= {c[0] for c in campos}
+    # as <img> do app estão em strings de aspas simples (fora do alcance da varredura);
+    # por isso não há guarda de piso para imagens: test_imagens_tem_alt cobre só html/crase.

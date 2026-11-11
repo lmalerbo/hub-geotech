@@ -129,7 +129,7 @@ function droCorpoHtml(){
         <div class="dro-solta-t"><b>Arraste aqui os shapes de 15, 25 e 50 m, todos de uma vez</b>
           <small>.shp + .shx + .dbf + .prj, ou .zip (aberto aqui mesmo). A classe vem do nome do arquivo; troque se precisar.</small></div>
         <button class="dro-escolher" onclick="droEscolher()">Escolher arquivos</button>
-        <input type="file" id="dro-inp" multiple accept=".shp,.shx,.dbf,.prj,.cpg,.zip" hidden onchange="droAdicionar(this.files);this.value=''">
+        <input aria-label="Adicionar arquivos de obstáculos" type="file" id="dro-inp" multiple accept=".shp,.shx,.dbf,.prj,.cpg,.zip" hidden onchange="droAdicionar(this.files);this.value=''">
       </div>`;
   }
   return `<div class="dro-cartoes">${cartoes}</div>${erroEnvio}${acao}<div id="dro-lista"></div>`;

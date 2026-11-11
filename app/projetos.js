@@ -247,7 +247,7 @@ function pjModalObs(){
     `<div class="modal-t" id="pj-obs-t">Confirmar observações</div>`+
     `<div class="pj-volta-txt" data-pj-obs-txt></div>`+
     `<div class="envio-nota-rot">Observações recebidas (opcional)</div>`+
-    `<textarea class="prep-obs-area" data-pj-obs placeholder="Observações de campo"></textarea>`+
+    `<textarea aria-label="Observações recebidas" class="prep-obs-area" data-pj-obs placeholder="Observações de campo"></textarea>`+
     `<div class="pj-erro" data-pj-obs-erro role="alert"></div>`+
     `<div class="modal-botoes"><button type="button" class="btn-retro" data-pj-fechar>Cancelar</button>`+
     `<button type="button" class="btn-acao" data-pj-obs-ok>Confirmar</button></div></div>`;
@@ -313,7 +313,7 @@ function pjModalVolta(){
     `<div class="modal-t" id="pj-volta-t">Retroceder etapa</div>`+
     `<div class="pj-volta-txt" data-pj-volta-txt></div>`+
     `<div class="envio-nota-rot">Justificativa (obrigatória)</div>`+
-    `<textarea class="prep-obs-area" data-pj-just placeholder="Ex.: linhas deslocadas, projeto refeito"></textarea>`+
+    `<textarea aria-label="Justificativa" class="prep-obs-area" data-pj-just placeholder="Ex.: linhas deslocadas, projeto refeito"></textarea>`+
     `<div class="pj-erro" data-pj-volta-erro role="alert"></div>`+
     `<div class="modal-botoes"><button type="button" class="btn-retro" data-pj-fechar>Cancelar</button>`+
     `<button type="button" class="btn-acao pj-btn-perigo" data-pj-volta-ok>Voltar</button></div></div>`;
@@ -492,7 +492,7 @@ function pjSlotHtml(cp,f){
     `<div class="arq-tipo ${pjH(cp.ext)}">${pjH(cp.ext.toUpperCase())}</div>`+
     `<div class="arq-slot-txt"><div class="arq-slot-rot">${pjH(cp.rot)}</div><div class="arq-slot-nome">${nome}</div></div>`+
     `<span class="arq-slot-btn">${f?'Trocar':'Escolher'}</span>`+
-    `<input type="file" accept=".${pjH(cp.ext)}" data-pj-arq="${cp.k}" hidden></div>`;
+    `<input aria-label="Arquivo ${pjH(cp.rot)}" type="file" accept=".${pjH(cp.ext)}" data-pj-arq="${cp.k}" hidden></div>`;
 }
 function pjRenderRev(m){
   const M=m._M;
@@ -504,7 +504,7 @@ function pjRenderRev(m){
     const on=ef.has(cp.k);
     const travado=M.mod==='preparo'&&PJ_TRAVA_PREPARO.includes(cp.k)&&ef.has('projeto');
     return `<div class="pj-doc${on?' on':''}"><label class="pj-doc-h">`+
-      `<input type="checkbox" data-pj-campo="${cp.k}"${on?' checked':''}${(bloq||travado)?' disabled':''}>`+
+      `<input aria-label="${pjH(cp.rotulo)}" type="checkbox" data-pj-campo="${cp.k}"${on?' checked':''}${(bloq||travado)?' disabled':''}>`+
       `<span>${pjH(cp.rotulo)}</span>`+
       (cp.opc?'<span class="pj-opc">opcional</span>':'')+
       (travado?'<span class="pj-opc">junto com o projeto</span>':'')+
@@ -534,7 +534,7 @@ function pjRenderRev(m){
     `<div class="pj-sec"><div class="envio-nota-rot">Talhões que chegam ou mudam</div>${dica}`+
     `<div class="pj-chips-w">${chips}</div><div class="pj-efeito">${pjH(efeito)}</div></div>`+
     `<div class="pj-sec"><div class="envio-nota-rot">${motivoObr?'Motivo da revisão (obrigatório)':'Motivo (opcional)'}</div>`+
-    `<textarea class="prep-obs-area pj-motivo" data-pj-motivo placeholder="${motivoObr?'Ex.: projeto refeito após vistoria':'Opcional'}"${bloq?' disabled':''}>${pjH(M.motivo)}</textarea></div>`;
+    `<textarea aria-label="Motivo da revisão" class="prep-obs-area pj-motivo" data-pj-motivo placeholder="${motivoObr?'Ex.: projeto refeito após vistoria':'Opcional'}"${bloq?' disabled':''}>${pjH(M.motivo)}</textarea></div>`;
   m.querySelector('[data-pj-prog]').hidden=!M.enviando;
   m.querySelector('[data-pj-rev-erro]').textContent=M.erroMsg||'';
   const ok=m.querySelector('[data-pj-rev-ok]');

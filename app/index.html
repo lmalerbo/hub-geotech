@@ -631,7 +631,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
 .modal-botoes button:focus{outline:none}
 .modal-botoes button:focus-visible{outline:3px solid rgba(32,38,46,.18);outline-offset:2px}
 #envio-corpo{display:flex;flex-direction:column;gap:8px}
-/* Cartão de arquivo (substitui o <input type=file> nativo) */
+/* Cartão de arquivo (substitui o campo de arquivo nativo) */
 .arq-slot{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1.5px dashed var(--bd2);border-radius:12px;background:var(--sf);cursor:pointer;transition:border-color var(--tf),background var(--tf)}
 .arq-slot:hover,.arq-slot.sobre{border-color:var(--colheita);background:rgba(212,137,10,.05)}
 .arq-slot.ok{border-style:solid;border-color:rgba(22,167,107,.45);background:rgba(22,167,107,.05)}
@@ -811,7 +811,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
             <div class="sec-h">Fazendas</div>
             <div class="search-wrap">
               <span class="ico search-ico">search</span>
-              <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarF(this.value)"
+              <input aria-label="Buscar fazenda ou código" class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarF(this.value)"
                 style="--focus-c:var(--plantio)">
             </div>
             <div class="flist" id="flist"></div>
@@ -832,7 +832,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
             <div class="sec-h">Fazendas</div>
             <div class="search-wrap">
               <span class="ico search-ico">search</span>
-              <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarC(this.value)"
+              <input aria-label="Buscar fazenda ou código" class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarC(this.value)"
                 style="--focus-c:var(--colheita)">
             </div>
             <button class="btn-tal-action" style="margin:0 0 8px" onclick="abrirFila()"><span class="ico" style="font-size:14px">flight</span>Fila de voos <span id="fila-n"></span></button>
@@ -853,7 +853,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--t1);-webk
             <div class="sec-h">Fazendas</div>
             <div class="search-wrap">
               <span class="ico search-ico">search</span>
-              <input class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarP(this.value)"
+              <input aria-label="Buscar fazenda ou código" class="search-inp" type="text" placeholder="Buscar fazenda ou código…" oninput="filtrarP(this.value)"
                 style="--focus-c:var(--preparo)">
             </div>
             <div class="flist" id="flist-p"></div>
@@ -1434,7 +1434,7 @@ function acaoPreparo(f,cur,done4){
     else if(cur===1) html+=info('Envie o Mapa de Escoamento (.pdf) — a etapa conclui junto com o envio.')
                           +botaoEnvio('var(--preparo)','water','Enviar Mapa de Escoamento',{modulo:'preparo',cod,
                              itens:[ENVIO_PREPARO.escoamento],depois:['preparo_concluir_etapa',{p_cod_faz:cod,p_ordem:2}]});
-    else if(cur===2) html+=`<textarea class="prep-obs-area" id="obs-prep" placeholder="Observações recebidas (opcional)…">${esc(f.obs)}</textarea>`
+    else if(cur===2) html+=`<textarea aria-label="Observações recebidas" class="prep-obs-area" id="obs-prep" placeholder="Observações recebidas (opcional)…">${esc(f.obs)}</textarea>`
                           +concluir(3,'Confirmar observações');
     else             html+=obs+info('Envie os 3 arquivos obrigatórios — a etapa conclui junto com o envio.')
                           +botaoEnvio('var(--preparo)','construction','Enviar projeto, exportação e sistematização',{modulo:'preparo',cod,
@@ -2130,11 +2130,11 @@ function rCfgGeral(){
       <div class="cfg-card-t"><span class="ico">agriculture</span>Colheita</div>
       <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Safra atual</div>
         <div class="cfg-row-sub">Ciclo gravado ao marcar o tipo de linha. A safra ${esc(PARAM.colheita_safra||'')} vai de abril a março; ao trocar, o que não for refeito vira Reavaliar.</div></div>
-        <input class="cfg-inp w-sm" id="cfg-safra" value="${esc(PARAM.colheita_safra||'')}" placeholder="26-27"></div>
+        <input aria-label="Safra atual" class="cfg-inp w-sm" id="cfg-safra" value="${esc(PARAM.colheita_safra||'')}" placeholder="26-27"></div>
       <div class="cfg-sep"></div>
       <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Dias de porte para voo</div>
         <div class="cfg-row-sub">Pedido de voo/revoo é agendado quando o talhão completa esses dias depois do corte.</div></div>
-        <input class="cfg-inp w-sm" id="cfg-porte" value="${esc(PARAM.colheita_dias_porte||'100')}" inputmode="numeric"></div>
+        <input aria-label="Dias de porte para voo" class="cfg-inp w-sm" id="cfg-porte" value="${esc(PARAM.colheita_dias_porte||'100')}" inputmode="numeric"></div>
       <div class="cfg-savebar"><button class="btn-cfg-save" onclick="salvarCfgGeral(this)">Salvar</button></div>
     </div>`;
 }
@@ -2210,7 +2210,7 @@ function rCfgPortal(){
       <div class="cfg-card-t"><span class="ico">phone_iphone</span>Portal de downloads</div>
       <div class="cfg-row"><div class="cfg-row-l"><div class="cfg-row-lbl">Endereço</div>
         <div class="cfg-row-sub">Público, sem login. Mostra Plantio, Preparo, Colheita e Drone — só a revisão vigente de cada arquivo. Os links antigos (project-plantio, project-preparo e portal-safra) redirecionam para cá.</div></div>
-        <div style="display:flex;gap:6px"><input class="cfg-inp w-lg" value="${esc(PORTAL_URL)}" readonly>
+        <div style="display:flex;gap:6px"><input aria-label="Endereço do portal de downloads" class="cfg-inp w-lg" value="${esc(PORTAL_URL)}" readonly>
           <button class="ico-btn" title="Copiar" onclick="navigator.clipboard?.writeText(PORTAL_URL);showToast('Link copiado')"><span class="ico">content_copy</span></button>
           <a class="ico-btn" title="Abrir" href="${esc(PORTAL_URL)}" target="_blank" rel="noopener"><span class="ico">open_in_new</span></a></div></div>
     </div>`;
@@ -2303,7 +2303,7 @@ function rCons(pg){
   const totalHa=all.reduce((s,r)=>s+(r.ha||0),0);
 
   // Header cols
-  let thHtml='<th style="width:32px"><input type="checkbox" class="cons-cb" onchange="consSelAll(this,event)"></th>';
+  let thHtml='<th style="width:32px"><input aria-label="Selecionar todas as linhas" type="checkbox" class="cons-cb" onchange="consSelAll(this,event)"></th>';
   if(cMod==='plantio')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Mês</th><th>Ha</th><th>Etapa</th>';
   if(cMod==='colheita') thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Talhões</th><th>Ha total</th>';
   if(cMod==='preparo')  thHtml+='<th>Fazenda</th><th>Código</th><th>Ciclo</th><th>Entregue em</th><th>Ha</th><th>Etapa</th>';
@@ -2339,7 +2339,7 @@ function rCons(pg){
         cells=`<td>${expIco}<strong>${esc(r.n)}</strong>${r._ciclo25?' <span class="cons-badge" style="background:var(--s2);color:var(--t2)">ciclo 25-26 · PLANAGRI</span>':''}</td><td style="font-family:monospace;font-size:11.5px">${esc(r.cod)}</td><td><span class="cons-badge" style="background:var(--s2);color:var(--t2)">${esc(r.ciclo)}</span></td><td>${esc(r.mes)}</td><td style="font-variant-numeric:tabular-nums">${r.ha} ha</td><td><span class="cons-badge" style="background:${r._etapaC}18;color:${r._etapaC}">${r.etapa}</span></td>`;
       }
       tbHtml+=`<tr class="cons-faz-row${sel?' sel':''}${exp?' exp':''}" onclick="consExpand('${r._key}',event)">
-        <td onclick="event.stopPropagation()"><input type="checkbox" class="cons-cb" ${sel?'checked':''} onchange="consSel('${r._key}',this)"></td>
+        <td onclick="event.stopPropagation()"><input aria-label="Selecionar linha" type="checkbox" class="cons-cb" ${sel?'checked':''} onchange="consSel('${r._key}',this)"></td>
         ${cells}</tr>`;
       // detail row
       if(exp){
@@ -2413,35 +2413,35 @@ function rConsFilters(){
   let html='';
   if(cMod==='plantio'){
     const meses=[...new Set(FZ.map(f=>f.mes))];
-    html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Etapa" class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option>${ET.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}</select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Mês" class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todos os meses</option>${meses.map(m=>`<option>${esc(m)}</option>`).join('')}</select>`;
   } else if(cMod==='colheita'){
     const meses=[...new Set(FZ_C.flatMap(f=>f.tals.map(t=>t.mes)))];
-    html+=`<select class="cons-sel" onchange="cFilters.status=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Status" class="cons-sel" onchange="cFilters.status=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todos os status</option><option>CONCLUIDO</option><option>A FAZER</option><option>SEM LINHAS</option><option>REAVALIAR</option><option>REVOO</option></select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.faz=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Fazenda" class="cons-sel" onchange="cFilters.faz=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as fazendas</option>${FZ_C.map(f=>`<option>${esc(f.n)}</option>`).join('')}</select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Período" class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todos os períodos</option>${meses.filter(Boolean).sort((a,b)=>parseInt(a.slice(8))-parseInt(b.slice(8))).map(m=>`<option>${esc(m)}</option>`).join('')}</select>`;
   } else if(cMod==='drone'){
-    html+=`<select class="cons-sel" onchange="cFilters.normal=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Normal" class="cons-sel" onchange="cFilters.normal=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Normal: todas</option><option value="completa">Completa</option><option value="incompleta">Incompleta</option><option value="sem">Sem Normal</option></select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.catacao=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Catação" class="cons-sel" onchange="cFilters.catacao=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Catação: todas</option><option value="com">Com Catação</option><option value="sem">Sem Catação</option></select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.obst=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Obstáculos" class="cons-sel" onchange="cFilters.obst=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Obstáculos: todos</option><option value="ok">Em dia</option><option value="antigos">+24 meses</option><option value="sem">Sem obstáculos</option></select>`;
   } else {
     const meses=[...new Map(FZ_P.filter(f=>f.mesIso).map(f=>[f.mesIso,f.mes])).entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(x=>x[1]);
     const voos=[...new Set(FZ_P.map(f=>f.voo))];
-    html+=`<select class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Etapa" class="cons-sel" onchange="cFilters.etapa=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Todas as etapas</option><option value="voo">Voo</option>${ET_P.map((e,i)=>`<option value="${i}">${e.l}</option>`).join('')}<option value="-1">Entregue</option></select>`;
-    html+=`<select class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
+    html+=`<select aria-label="Entregue em" class="cons-sel" onchange="cFilters.mes=this.value;this.classList.toggle('active',!!this.value);cPage=0;rCons()">
       <option value="">Entregue em: todos</option>${meses.map(m=>`<option>${esc(m)}</option>`).join('')}</select>`;
   }
   html+=`<button class="cons-sel" style="cursor:pointer;color:var(--t3)" onclick="limparCons()">Limpar</button>`;
-  html+=`<input class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
+  html+=`<input aria-label="Buscar fazenda ou código" class="cons-search" placeholder="Buscar fazenda ou código…" oninput="cFilters.q=this.value.toLowerCase();cPage=0;rCons()">`;
   document.getElementById('cons-filters').innerHTML=html; // esc-ok
   cFilters={etapa:'',mes:'',status:'',faz:'',voo:'',q:'',normal:'',catacao:'',obst:''};
   rCons();
@@ -2730,7 +2730,7 @@ function abrirEnvio(cfg){
     document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i, // esc-ok
         it.substitui?'<span class="ebadge" style="background:rgba(212,137,10,.14);color:#9a6200">substitui o atual</span>':'')).join('')
       +`<div class="envio-nota-rot">Nota da atualização${ENVIO.precisaMotivo?' (obrigatória)':' (opcional)'}</div>
-        <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas nos talhões 5 e 6, projeto refeito"></textarea>`;
+        <textarea aria-label="Nota da atualização" class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas nos talhões 5 e 6, projeto refeito"></textarea>`;
     prepararSlots();
     document.getElementById('envio-erro').textContent='';
     const okC=document.getElementById('envio-ok');okC.disabled=false;okC.textContent='Enviar';
@@ -2752,7 +2752,7 @@ function abrirEnvio(cfg){
   document.getElementById('envio-corpo').innerHTML=itens.map((it,i)=>slotHtml(it,i, // esc-ok
       `<span class="ebadge" style="background:var(--s2);color:var(--t2)">${marc(it)}</span>`)).join('')
     +(ENVIO.precisaMotivo?`<div class="envio-nota-rot">Motivo da revisão (obrigatório)</div>
-      <textarea class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas no talhão 12"></textarea>`:'');
+      <textarea aria-label="Motivo da revisão" class="prep-obs-area" id="envio-motivo" placeholder="Ex.: linhas deslocadas no talhão 12"></textarea>`:'');
   prepararSlots();
   document.getElementById('envio-erro').textContent='';
   const ok=document.getElementById('envio-ok');ok.disabled=false;ok.textContent='Enviar';
@@ -2778,7 +2778,7 @@ function slotHtml(it,i,selo){
     </div>
     <button type="button" class="arq-slot-x" title="Remover" onclick="limparSlot(${i})"><span class="ico" style="font-size:18px">close</span></button>
     <span class="arq-slot-btn">Escolher</span>
-    <input type="file" id="envio-arq-${i}" accept=".${esc(it.ext)}" onchange="atualizarSlot(${i})" onclick="event.stopPropagation()">
+    <input aria-label="Escolher arquivo .${esc(it.ext)}" type="file" id="envio-arq-${i}" accept=".${esc(it.ext)}" onchange="atualizarSlot(${i})" onclick="event.stopPropagation()">
   </div>`;
 }
 function atualizarSlot(i){

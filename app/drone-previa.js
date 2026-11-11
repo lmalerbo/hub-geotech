@@ -105,7 +105,7 @@ function drPrevAbrir(){
       ${al?`<div class="dr-box"><h3><span aria-hidden="true" class="ico" style="color:#d4890a;font-size:15px;vertical-align:-3px">warning</span> Alertas</h3><ul style="margin:0;padding-left:16px;color:#d4890a">${al}</ul></div>`:''}
       ${ger.publicacao_erro?`<div class="dr-err">Falha ao publicar: ${esc(ger.publicacao_erro)}</div>`:''}
       <div style="font-size:12px;font-weight:600">Motivo</div>
-      <input class="dr-mot" id="dr-mot" placeholder="ex.: completar talhões 20–33; talhão 129 reformado"
+      <input aria-label="Motivo" class="dr-mot" id="dr-mot" placeholder="ex.: completar talhões 20–33; talhão 129 reformado"
         value="${esc(DRP.motivo[ger.id]||'')}" oninput="DRP.motivo[${ger.id}]=this.value">
       <button class="dr-btn" onclick="drPrevAcao('publicar',this)"><span aria-hidden="true" class="ico">publish</span> Publicar</button>
       <button class="dr-btn2" onclick="drPrevAcao('descartar',this)"><span aria-hidden="true" class="ico">undo</span> Descartar e ajustar</button>
