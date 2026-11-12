@@ -27,3 +27,7 @@ tests/dados/paralelismo/*
 *.jdl
 *.fdl
 *.fdd
+
+# artefatos locais de ferramentas
+.playwright-mcp/
+supabase/.temp/
