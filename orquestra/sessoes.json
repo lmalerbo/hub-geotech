@@ -12,7 +12,10 @@
       "modelo": "opus",
       "etapa": "P2",
       "pedido": "Faça a etapa P2 inteira: rotas POST /paralelismo/parte e POST /paralelismo/excluida no worker/arquivos.js, e todas as funções puras de app/paralelismo-puro.js. O reenvio com rodada_ja_enviada é tratado como sucesso (ver P1, ajuste 7).",
-      "criterios": ["node --test tests/app/paralelismo_puro.test.js", "python orquestra/verifica.py --contem worker/arquivos.js /paralelismo/parte"]
+      "criterios": [
+        "node --test tests/app/paralelismo_puro.test.js",
+        "python orquestra/verifica.py --contem worker/arquivos.js /paralelismo/parte"
+      ]
     },
     {
       "id": "S2",
@@ -20,7 +23,9 @@
       "modelo": "opus",
       "etapa": "P3",
       "pedido": "Faça a metade de lógica da P3: app/paralelismo-worker.js (Pyodide, leitura de um arquivo por vez, linhas_do_grupo, analisar_fazenda), SHA-256 e cópia no OPFS, fila, parOpfsSobras, memória conforme a spec §8. Filtre o manifesto por módulo e fixe a versão do pyshp (pendências da P0). Prove no Edge via Playwright, servindo localmente as amostras de tests/dados/paralelismo, que os números batem com o Python. Sem tela final: isso é da S3.",
-      "criterios": ["python orquestra/verifica.py --existe app/paralelismo-worker.js"]
+      "criterios": [
+        "python orquestra/verifica.py --existe app/paralelismo-worker.js"
+      ]
     },
     {
       "id": "S3",
@@ -28,7 +33,9 @@
       "modelo": "sonnet",
       "etapa": "P3",
       "pedido": "Faça a tela da P3: app/paralelismo.html, .css e .js, com login, abas, conferência, prévia e envio com fflate, modo demonstração por file:// e erros da spec §10, seguindo a maquete aprovada (mapa como palco, só tema claro). Crie a migration pequena do cartão em Ferramentas, sem aplicá-la. Teste em tests/app/teste_paralelismo_tela.py.",
-      "criterios": ["python orquestra/verifica.py --existe app/paralelismo.html app/paralelismo.js app/paralelismo.css tests/app/teste_paralelismo_tela.py"]
+      "criterios": [
+        "python orquestra/verifica.py --existe app/paralelismo.html app/paralelismo.js app/paralelismo.css tests/app/teste_paralelismo_tela.py"
+      ]
     },
     {
       "id": "S4",
@@ -36,23 +43,42 @@
       "modelo": "sonnet",
       "etapa": "P4",
       "pedido": "Faça a etapa P4 inteira, inclusive o recálculo no Worker quando o RPC responder recalculo_necessario e os testes de tela por nível no modo demonstração. Trate partes[].url e amostras_url como dado não confiável.",
-      "criterios": ["python orquestra/verifica.py --contem app/paralelismo.js recalculo_necessario"]
+      "criterios": [
+        "python orquestra/verifica.py --contem app/paralelismo.js recalculo_necessario"
+      ]
+    },
+    {
+      "id": "S4b",
+      "titulo": "Dois pontos: banco, leitores, Worker e envio",
+      "modelo": "opus",
+      "etapa": "P5",
+      "pedido": "Faça as Tarefas 1, 2 e 3 de docs/superpowers/plans/2026-11-12-paralelismo-dois-pontos.md (spec §3, §4 e §5 ajustados em 10/11/2026): migration 20261112090000 com a coluna ponto, metodo pipeline|agrocad_fme e vigente por ponto, sem aplicá-la; leitores e Grupo nos dois pontos; Worker, prévia e envio por ponto. A regressão com dado real (pytest -m dados_reais) fica listada no relatório para o usuário rodar.",
+      "criterios": [
+        "python -m pytest tests/paralelismo -q",
+        "node --test tests/app/paralelismo_puro.test.js",
+        "python orquestra/verifica.py --existe supabase/migrations/20261112090000_paralelismo_dois_pontos.sql"
+      ]
     },
     {
       "id": "S5",
       "titulo": "P5a: Painel (Resumo e Talhões com mapa)",
       "modelo": "sonnet",
       "etapa": "P5",
-      "pedido": "Faça da P5 as abas Resumo e Talhões, com o mapa MapLibre e as funções de agregação em app/paralelismo-puro.js. Use a skill dataviz nos gráficos. A maquete aprovada substitui a escolha de variações no Subframe: não espere escolha do usuário.",
-      "criterios": ["node --test tests/app/paralelismo_puro.test.js"]
+      "pedido": "Faça da P5 as abas Resumo e Talhões, com o mapa MapLibre e as funções de agregação em app/paralelismo-puro.js. Use a skill dataviz nos gráficos. A maquete aprovada substitui a escolha de variações no Subframe: não espere escolha do usuário. O Painel já está commitado (68d291e e dcbc866): confira o que falta, aplique a Tarefa 4 de docs/superpowers/plans/2026-11-12-paralelismo-dois-pontos.md (seletor Os dois | Implemento | Trator) e escreva o relatório.",
+      "criterios": [
+        "node --test tests/app/paralelismo_puro.test.js"
+      ]
     },
     {
       "id": "S6",
       "titulo": "P5b: Fazenda, Frentes e Relatório",
       "modelo": "sonnet",
       "etapa": "P5",
-      "pedido": "Faça da P5 as abas Fazenda, Frentes e frotas e Relatório, com CSS de impressão. No fim, rode o polimento da skill impeccable na página inteira.",
-      "criterios": ["python orquestra/verifica.py --contem app/paralelismo.css @media print"]
+      "pedido": "Faça da P5 as abas Fazenda, Frentes e frotas e Relatório, com CSS de impressão. No fim, rode o polimento da skill impeccable na página inteira. Aplique também a Tarefa 5 de docs/superpowers/plans/2026-11-12-paralelismo-dois-pontos.md (os dois pontos nessas abas).",
+      "criterios": [
+        "python orquestra/verifica.py --contem app/paralelismo.css @media print",
+        "node --test tests/app/paralelismo_puro.test.js"
+      ]
     },
     {
       "id": "S7",
@@ -60,8 +86,10 @@
       "modelo": "opus",
       "etapa": "P6",
       "portao": "historico",
-      "pedido": "Faça migracao/paralelismo_historico.py com testes em banco local e rode em modo simulação contra os arquivos reais, conferindo os totais. Não grave no banco real: a gravação é feita depois, com o usuário.",
-      "criterios": ["python orquestra/verifica.py --existe migracao/paralelismo_historico.py"]
+      "pedido": "Faça a Tarefa 6 de docs/superpowers/plans/2026-11-12-paralelismo-dois-pontos.md: migracao/paralelismo_historico.py reprocessa os BRUTOS nos dois pontos (AgroCAD só nas 16 sem brutos; conferência das 20 com brutos em CSV), com testes em banco local, e rode --simular contra a cópia local dos BRUTOS, entregando a conferência. Não grave no banco real: a gravação é feita depois, com o usuário.",
+      "criterios": [
+        "python orquestra/verifica.py --existe migracao/paralelismo_historico.py"
+      ]
     },
     {
       "id": "S8",
@@ -69,12 +97,12 @@
       "modelo": "opus",
       "etapa": "P6",
       "portao": "e2e",
-      "pedido": "Faça o E2E da spec §11, o manual curto e a revisão de código do conjunto todo do módulo. Liste no relatório tudo o que ainda não estiver 100%.",
+      "pedido": "Faça o E2E da spec §11, o manual curto e a revisão de código do conjunto todo do módulo. Liste no relatório tudo o que ainda não estiver 100%. Inclua a Tarefa 7 de docs/superpowers/plans/2026-11-12-paralelismo-dois-pontos.md (regressão e E2E nos dois pontos).",
       "criterios": []
     }
   ],
   "portoes": {
-    "historico": "Mesclar e enviar P1 a P5, publicar o Worker e aplicar a migration do cartão.",
+    "historico": "Mesclar e enviar P1 a P5, publicar o Worker e aplicar as migrations do cartão e dos dois pontos (20261112090000).",
     "e2e": "Importação do histórico gravada no banco real e duas contas de teste criadas."
   }
 }
