@@ -13,7 +13,7 @@ function parSb() {
 const PAR = {
   eu: null, frotas: [], metas: new Map(), enviados: [], sel: null, faz: null, rascunho: null, sobras: [],
   aba: 'painel', vigentes: {}, geo: {}, fila: null, itens: [], mapa: null,
-  painel: { sub: 'resumo', dados: null, carregando: false, erro: null, busca: '', sel: null, geo: {}, ml: null },
+  painel: { sub: 'resumo', dados: null, carregando: false, erro: null, busca: '', sel: null, geo: {}, geoErro: {}, ml: null },
   sub: 'historico', frotaForm: null, gestao: { carregando: false, erro: null, rodadas: [], ocupado: null, msg: '' },
 };
 const PAR_FASES = ['preparando', 'lendo', 'linhas', 'analise'];
@@ -407,6 +407,7 @@ function parDesenharAbas() {
     PAR.faz = null;
     parRenderTudo();
     if (PAR.aba === 'pendentes' || PAR.aba === 'rodadas') parCarregarGestao();
+    if (PAR.aba === 'painel') parCarregarPainel(true);   // pode ter sido publicada uma rodada desde a última leitura
   };
   });
 }

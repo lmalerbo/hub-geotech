@@ -1,6 +1,6 @@
 # Paralelismo: análise do executado de plantio a partir do pen-drive
 
-**Data:** 26/10/2026 · **Status:** aprovada em 29/10/2026 (fila de pen-drives, validação pelo editor antes do BI, acesso pelos níveis por usuário que o Hub já tem).
+**Data:** 26/10/2026 · **Status:** aprovada em 29/10/2026 (fila de pen-drives, validação pelo editor antes do BI, acesso pelos níveis por usuário que o Hub já tem). **Ajustada e aprovada em 10/11/2026:** toda análise sai em dois pontos, implemento e trator, e os dois são o padrão de exibição. O AgroCAD/FME só entra onde não há brutos para rodar o pipeline. Ver §3 "Ponto da análise", §5, §7, §9 e §11.
 
 ## 1. Objetivo
 
@@ -21,16 +21,29 @@ Fora do escopo: AgroCAD/FME (as análises antigas entram só como histórico), m
 ## 3. Regras do domínio
 
 **Pipeline (igual ao validado, parâmetros fixos no código):**
-1. Leitura:
-   - `.jdl` (JDLink): trilha do trator, a cada 0,2 s, só nos instantes com estado de trabalho ligado.
-   - GS3_2630 (`.fdl`/`.fdd`): antena do trator `_5140`, registros com gravação ligada.
-2. Por frota e fazenda: LSFP 10 m → QBD 160° → CLE 10 m.
-3. Na união das linhas da fazenda: `limpar` (passadas empilhadas, cruzamentos, linhas isoladas).
+1. Leitura, uma vez por arquivo, devolvendo os dois pontos (ver "Ponto da análise" abaixo):
+   - `.jdl` (JDLink):
+     - **implemento:** pontos de (PLANTIO) do GOIMP (documentação do implemento + estado de trabalho);
+     - **trator:** trilha do trator, a cada 0,2 s, só nos instantes com estado de trabalho ligado.
+   - GS3_2630 (`.fdl`/`.fdd`), registros com gravação ligada:
+     - **implemento:** `_5141` (ponto calculado do implemento, ~4,7 m atrás da antena);
+     - **trator:** antena `_5140`.
+2. Por frota, fazenda e ponto: LSFP 10 m → QBD 160° → CLE 10 m.
+3. Na união das linhas da fazenda (cada ponto separado): `limpar` (passadas empilhadas, cruzamentos, linhas isoladas).
 4. PLL:
    - amostra a cada 10 m;
    - ideal 2,90–3,10 m; ignora fora de 2,60–3,40 m.
 5. Cada amostra vai para o talhão (polígono) onde cai. Talhão com **menos de 25 amostras** = "amostra insuficiente".
 6. **Aderência** = amostras aderentes / amostras, ponderada por amostra.
+
+**Ponto da análise (10/11/2026):**
+- Os passos 2 a 6 rodam duas vezes, uma por ponto. Cada (operação, fazenda) tem duas análises: `implemento` e `trator`.
+- **Os dois pontos são o padrão** (decisão do usuário, 10/11/2026): painel, relatório e KPIs mostram implemento e trator lado a lado.
+  - **Implemento:** o que o AgroCAD usa e o que a equipe confere à mão; mede onde o sulco ficou.
+  - **Trator:** o quanto o trator seguiu a linha-guia.
+  - A diferença entre os dois é o desvio da plantadeira em relação ao trator (curva, declive), somado ao ruído do cálculo do ponto do implemento.
+- **Gabarito:** a 10075Rev1 (64086 + 64088, 31/10 a 02/11) deu 86,05% no AgroCAD (amostra a cada 5 m). O pipeline dá 86,62% no implemento (5 m) e 96,79% no trator.
+- Diferença medida nas fazendas de referência: 10233 (torta), 77,85% no trator e 59,56% no implemento; 10966 (cana), 88,86% no trator e 72,92% no implemento.
 
 **Frota:**
 - Vem do **nº de série do trator** gravado no `.jdl` (`BM\d{4}[A-Z]\d{6}`), pela tabela de frotas. O nome da pasta não é confiável.
@@ -76,8 +89,9 @@ Fora do escopo: AgroCAD/FME (as análises antigas entram só como histórico), m
 3. **Adicionar à fila** → processar:
    - Pyodide num Web Worker (a tela não trava), com barra de progresso por fazenda.
    - Tempo medido no teste: 16 s para uma fazenda de torta pequena; 2,3 min para a 10966, com 144 sessões GS3 e 30 mil amostras.
+   - Com os dois pontos, medido no Python nativo em 10/11/2026: 10966 levou 132 s no trator e 52 s no implemento; 10233, 22 s e 13 s. O implemento sai mais barato (menos pontos que a trilha de 0,2 s). Os dois juntos custam cerca de 1,4× o trator sozinho; no navegador (~2,7× mais lento), a 10966 passa de ~6 min para ~8 min.
    - A página precisa ficar aberta enquanto houver item na fila.
-4. **Prévia:** aderência por fazenda, talhão e frota, comparada com a análise vigente quando a fazenda já existia. Aviso de **frota sem trabalho registrado**: trilha longa com implemento quase sempre desligado, como a 55805 na 10010 em 26/10.
+4. **Prévia:** aderência por fazenda, talhão e frota, nos dois pontos lado a lado, comparada com a análise vigente quando a fazenda já existia. Aviso de **frota sem trabalho registrado**: trilha longa com implemento quase sempre desligado, como a 55805 na 10010 em 26/10.
 5. **Enviar para validação**:
    - zipa os brutos no navegador, em partes de até 90 MB, e envia pelo Worker para o GitHub Releases;
    - grava rodada (pendente), arquivos (com SHA-256), linhas e resultados;
@@ -120,15 +134,17 @@ paralelismo_linhas                -- linhas após LSFP/QBD/CLE (antes do limpar)
   id bigserial pk
   rodada_id bigint fk on delete cascade
   operacao text, cod_faz int, frota text, data date
+  ponto text not null check (ponto in ('implemento','trator'))
   geom geometry(LineString, 31983)
 
-paralelismo_analises              -- uma por (operação, fazenda) a cada rodada que a toca
+paralelismo_analises              -- uma por (operação, fazenda, ponto) a cada rodada que a toca
   id bigserial pk
   operacao text, cod_faz int, rodada_id bigint fk
-  metodo text check (metodo in ('trator','agrocad_fme'))
+  ponto text not null check (ponto in ('implemento','trator'))
+  metodo text check (metodo in ('pipeline','agrocad_fme'))   -- agrocad_fme só com ponto 'implemento'
   mes date                        -- 1º dia do mês de execução
   amostras int, aderentes int, acima int, abaixo int
-  vigente boolean                 -- a mais recente por (operação, cod_faz)
+  vigente boolean                 -- a mais recente por (operação, cod_faz, ponto)
   amostras_url text               -- shapefile zipado das amostras na release
 
 paralelismo_talhoes
@@ -139,6 +155,11 @@ paralelismo_talhoes
   pk (analise_id, talhao_num)
 ```
 
+- **Dois pontos (10/11/2026):** a migration `20261104090000_paralelismo.sql` já foi aplicada, então a mudança vai numa migration nova:
+  - coluna `ponto` em `paralelismo_linhas` e `paralelismo_analises`;
+  - `metodo` passa a `pipeline | agrocad_fme`, e o que estiver gravado como `trator` vira `ponto = 'trator', metodo = 'pipeline'`;
+  - o índice de vigente passa a `(operacao, cod_faz, ponto) where vigente`;
+  - `paralelismo_enviar` e `paralelismo_publicar` recebem e trocam o vigente por ponto. Uma rodada sempre grava os dois pontos de cada fazenda que toca.
 - **Declividade:** coluna nova `hub.talhoes.declividade` (numeric; 99 → nulo), alimentada pela Base Fazendas em `ingestao/base_fazendas.py` (campo `DECLIVIDAD`). Área e geometria já vêm de `hub.talhoes` e `hub.talhao_geom`.
 - **Enviar** = RPC `hub.paralelismo_enviar(jsonb)` numa transação. Ela grava a rodada pendente, os arquivos, as linhas, as análises (`vigente = false`) e os talhões. Pode chamar: solicitante ou editor.
 - **Publicar** = RPC `hub.paralelismo_publicar(rodada_id, recalculo jsonb)`. Grava o recálculo, quando houver, marca a rodada como publicada e troca o `vigente`. Pode chamar: só editor (`hub.pode_editar('paralelismo')`).
@@ -162,7 +183,10 @@ paralelismo_talhoes
 
 ## 7. Telas
 
-- **Painel** (abertura), com o conteúdo do BI atual lendo do banco e só as análises vigentes:
+- **Seletor de ponto** no cabeçalho do Painel e do Relatório: **Os dois** (padrão) | **Implemento** | **Trator**.
+  - Em "Os dois", KPIs e tabelas trazem as duas aderências e a diferença em pontos percentuais; gráficos mostram as duas séries; o mapa pinta pelo implemento, com a opção de pintar pela diferença.
+  - Fazenda só com AgroCAD/FME (sem brutos) mostra o implemento com o selo "AgroCAD" e o trator como "sem dado".
+- **Painel** (abertura), com o conteúdo do BI atual lendo do banco e só as análises vigentes do ponto escolhido:
   - **Resumo:**
     - KPIs;
     - aderência por faixa de declividade;
@@ -207,11 +231,16 @@ paralelismo_talhoes
 
 Script único em `migracao/paralelismo_historico.py`, rodado uma vez no notebook:
 - Frotas: `frotas_maquinas.csv` → `paralelismo_frotas`.
-- Uma rodada "histórico até 26/10/2026", sem brutos:
-  - análises e talhões vindos de `Paralelismo8.xlsx`;
-  - método `agrocad_fme` nas 16 fazendas antigas de cana e `trator` nas demais;
+- **Reprocessar o histórico a partir dos brutos (10/11/2026),** em vez de importar a `Paralelismo8.xlsx`:
+  - entrada: `EXECUTADOS\2026-2027\BRUTOS` (manifesto de 27/10 + pen-drives posteriores), com os dois pontos de cada fazenda, no Python nativo do notebook;
+  - volume: cerca de 4,7 GB (cana GS3 308 MB em 69 fazendas; cana `.jdl` 2,1 GB em 24; torta `.jdl` 2,3 GB em 35);
+  - custo estimado pela medição das fazendas de referência: ~1 h 50 no trator + ~50 min no implemento, mais ~35 min para copiar os brutos da rede para o disco local. **Cerca de 3 h 15, uma vez só**, sem custo de tokens (é só o script);
+  - linhas e análises dos dois pontos saem do próprio reprocessamento, então não é preciso ler os `*_Linhas.shp` antigos.
+- **Fazendas AgroCAD/FME** (36 seções na `Paralelismo10.xlsx`, não 16):
+  - **Regra (decisão do usuário, 10/11/2026):** onde há brutos, vale a nossa análise; o AgroCAD só entra onde não conseguimos rodar o pipeline.
+  - **20 têm brutos** (10003, 10016, 10027, 10045, 10235, 10350, 10454, 10575, 10609, 10658, 10674, 10677, 10793, 10797, 10806, 10810, 10811, 10871, 10946, 10949): entram só pelo pipeline, nos dois pontos; o número do AgroCAD **não** vai para o banco. Antes de importar, o script gera uma conferência única (implemento do pipeline × AgroCAD, fazenda a fazenda, diferença acima de 3 p.p. destacada) para o usuário revisar. É o gabarito do implemento;
+  - **16 não têm brutos** (10008, 10086, 10146, 10214, 10296, 10404, 10434, 10463, 10464, 10727, 10729, 10732, 10733, 10734, 10760, 10777): entram só com `ponto = 'implemento', metodo = 'agrocad_fme'`, vindos da planilha, sem trator e sem linhas. Se os brutos de uma delas aparecerem depois, a rodada nova substitui o AgroCAD pelo pipeline;
   - mês pelo `meses_fazendas.csv` nas antigas.
-- Linhas das análises `trator`: a partir dos `*_Linhas.shp` da pasta de resultado mais recente de cada fazenda, para a próxima rodada conseguir juntar dados novos aos antigos.
 - `paralelismo_arquivos` com o SHA-256 dos brutos já analisados, tirados de `ORGANIZAR-02`. Assim, um arquivo antigo que reaparecer num pen-drive não é contado duas vezes.
 
 ## 10. Erros
@@ -226,7 +255,10 @@ Script único em `migracao/paralelismo_historico.py`, rodado uma vez no notebook
 - **Python (pytest):**
   - leitores com arquivos de amostra pequenos (um `.jdl` e uma sessão GS3), guardados em `tests/dados/paralelismo/`;
   - pipeline com linhas sintéticas: espaçamento conhecido dá aderência conhecida, e `limpar` remove empilhadas e cruzamentos;
-  - **regressão:** 10233Rev0 com 2.506 amostras e 77,85%, contra o resultado atual.
+  - **regressão, nos dois pontos** (medido no `base-op` em 10/11/2026):
+    - 10233Rev0: trator 2.506 amostras / 77,85%; implemento 2.468 / 59,56%;
+    - 10966Rev0: trator 30.395 / 88,86%; implemento 30.724 / 72,92%;
+    - 10075Rev1: implemento 13.127 / 87,22% (10 m), perto do AgroCAD (86,05%, 5 m).
 - **JS (`node --test`):** funções puras, como o agrupamento da conferência, a divisão em partes de 90 MB, a mesclagem com a análise vigente e o cálculo do mês de execução.
 - **Teste de ponta a ponta (E2E, Playwright, duas contas de teste, uma solicitante e uma editora):**
   - a solicitante coloca duas pastas de amostra na fila e envia;

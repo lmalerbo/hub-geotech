@@ -39,6 +39,7 @@ const parApiPainelReal = {
 };
 const parApiPainelDemo = {
   async painel() {
+    window.PAR_DEMO_PAINEL_CHAMADAS = (window.PAR_DEMO_PAINEL_CHAMADAS || 0) + 1;
     if (window.PAR_DEMO_PAINEL_VAZIO) return { analises: [], base: {} };
     const fazendas = [
       { cod_faz: 10001, nome: 'Santa Rita', mes: '2026-09-01' }, { cod_faz: 10002, nome: 'São José <b>x</b>', mes: '2026-10-01' },
@@ -56,7 +57,10 @@ const parApiPainelDemo = {
     }
     return { analises, base };
   },
-  async geoFazenda(cod) { return parTalhoesDemo(cod); },
+  async geoFazenda(cod) {
+    if (window.PAR_DEMO_GEO_ERRO && cod === 10002) throw new Error('Failed to fetch');
+    return parTalhoesDemo(cod);
+  },
 };
 const parApiP = () => (PAR_DEMO ? parApiPainelDemo : parApiPainelReal);
 
@@ -106,9 +110,9 @@ function parHtmlResumo() {
   const meses = parPorMes(analises);
   const colunas = meses.map((m) => `<div class="par-col-v" title="${parMesTxt(m.mes)}: ${parPctTxt(m.pct)} (${parNumTxt(m.amostras)} amostras)">
       <span class="n num">${parPctTxt(m.pct)}</span><span class="tr"><i style="height:${m.pct == null ? 0 : m.pct}%"></i></span><span class="r">${parMesTxt(m.mes)}</span></div>`).join('');
-  const fazendas = parTabelaFazendas(analises, base).map((f) => `<tr><td>${parEsc(f.fazenda || f.cod_faz)}<small>${f.cod_faz} · ${f.operacao}</small></td>
+  const fazendas = parTabelaFazendas(analises, base).map((f) => `<tr><td>${parEsc(f.fazenda || f.cod_faz)}<small>${parEsc(f.cod_faz)} · ${parEsc(f.operacao)}</small></td>
       <td class="num">${parMesTxt(f.mes)}</td><td class="num">${parPctTxt(f.pct)}</td><td>${parSelo(f.situacao, f.pct == null)}</td></tr>`).join('');
-  return `<div class="par-kpis">${kpi('Aderência', parPctTxt(r.pct), parSelo(r.situacao))}${kpi('Amostras', parNumTxt(r.amostras), 'dentro de talhão')}
+  return `<div class="par-kpis">${kpi('Aderência', parPctTxt(r.pct), parSelo(r.situacao))}${kpi('Amostras', parNumTxt(r.amostras), 'dentro de talhão, inclui amostra insuficiente')}
       ${kpi('Fazendas', parNumTxt(r.fazendas), `${parNumTxt(r.area, 0)} ha`)}${kpi('Talhões', parNumTxt(r.talhoesValidos), `de ${parNumTxt(r.talhoes)} · amostra suficiente`)}</div>
     <section><h3>Aderência por declividade<small>ideal 2,90–3,10 m</small></h3>${barras}</section>
     <section><h3>Aderência por mês</h3><div class="par-colunas">${colunas}</div></section>
@@ -132,8 +136,8 @@ function parLinhasTalhoes() {
   const P = PAR.painel, { analises, base } = P.dados;
   const lista = parFiltrarTalhoes(parTalhoesPlanos(analises, base), P.busca);
   const chave = (p) => `${p.operacao}|${p.cod_faz}`;
-  const linhas = lista.slice(0, 300).map((p) => `<tr data-acao="painel-fazenda" data-chave="${chave(p)}" tabindex="0" class="${P.sel === chave(p) ? 'sel' : ''}">
-      <td>${parEsc(p.fazenda || p.cod_faz)}<small>${p.cod_faz} · ${p.operacao}</small></td><td class="num">${p.talhao}</td><td class="num">${parNumTxt(p.dec, 1)}</td>
+  const linhas = lista.slice(0, 300).map((p) => `<tr data-acao="painel-fazenda" data-chave="${parEsc(chave(p))}" class="${P.sel === chave(p) ? 'sel' : ''}">
+      <td><button type="button" class="par-lnk" data-acao="painel-fazenda" data-chave="${parEsc(chave(p))}" aria-pressed="${P.sel === chave(p)}">${parEsc(p.fazenda || p.cod_faz)}</button><small>${parEsc(p.cod_faz)} · ${parEsc(p.operacao)}</small></td><td class="num">${p.talhao}</td><td class="num">${parNumTxt(p.dec, 1)}</td>
       <td class="num">${parNumTxt(p.area, 1)}</td><td class="num">${parNumTxt(p.amostras)}</td><td class="num">${p.insuficiente ? '—' : parPctTxt(p.pct)}</td><td>${parSelo(parSituacao(p.pct), p.insuficiente)}</td></tr>`).join('');
   return linhas || '<tr><td colspan="7">Nenhum talhão encontrado.</td></tr>';
 }
@@ -180,10 +184,17 @@ async function parPainelMapa() {
   if (!P.sel) return;
   const [op, cod] = P.sel.split('|');
   const meu = P.sel;
-  if (!P.geo[cod]) {
-    try { P.geo[cod] = await parApiP().geoFazenda(Number(cod)); } catch (e) { parToast('Não foi possível carregar os talhões da fazenda.', true); return; }
+  const aviso = (txt) => { const v = $par('par-mapa-vazio'); v.textContent = txt; v.classList.toggle('off', !txt); };
+  if (!P.geoErro[cod] && !P.geo[cod]) {
+    try { P.geo[cod] = await parApiP().geoFazenda(Number(cod)); } catch (e) { P.geoErro[cod] = true; parToast('Não foi possível carregar os talhões da fazenda.', true); }
     if (P.sel !== meu || !parPainelNoMapa()) return;
   }
+  if (P.geoErro[cod]) {   // não mostra os talhões da fazenda anterior como se fossem desta
+    if (P.ml && P.ml.pronto) P.ml.m.getSource('talhoes').setData({ type: 'FeatureCollection', features: [] });
+    aviso('Não foi possível carregar os talhões desta fazenda. Escolha outra ou recarregue a página.');
+    return;
+  }
+  aviso('');
   const cores = {};
   for (const p of parTalhoesPlanos(P.dados.analises.filter((a) => `${a.operacao}|${a.cod_faz}` === meu), P.dados.base)) {
     cores[p.talhao] = { cor: p.insuficiente ? PAR_COR_INSUF : parCorSit(p.pct), txt: p.insuficiente ? 'amostra insuficiente' : `${parPctTxt(p.pct)} aderente`, amostras: p.amostras };
@@ -191,7 +202,10 @@ async function parPainelMapa() {
   const geo = { type: 'FeatureCollection', features: P.geo[cod].features.map((f) => ({ ...f, properties: { ...f.properties, ...(cores[f.properties.talhao] || { cor: PAR_COR_INSUF, txt: 'sem análise', amostras: 0 }) } })) };
   if (!P.ml) {
     cont.innerHTML = '';
-    const m = new maplibregl.Map({ container: cont, style: PAR_MAPA_ESTILO, attributionControl: false, center: [-48, -21], zoom: 12 });
+    let m;
+    try { m = new maplibregl.Map({ container: cont, style: PAR_MAPA_ESTILO, attributionControl: false, center: [-48, -21], zoom: 12 }); } catch (e) {
+      cont.innerHTML = '<div class="par-vazio">Este navegador não conseguiu abrir o mapa (WebGL). A tabela continua valendo.</div>'; return;
+    }
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     P.ml = { m, pronto: false, fila: null };
     m.on('load', () => {
@@ -200,26 +214,30 @@ async function parPainelMapa() {
       m.addLayer({ id: 'talhoes-fill', type: 'fill', source: 'talhoes', paint: { 'fill-color': ['get', 'cor'], 'fill-opacity': 0.9 } });
       m.addLayer({ id: 'talhoes-line', type: 'line', source: 'talhoes', paint: { 'line-color': '#ffffff', 'line-width': 2 } });
       const dica = $par('par-dica');
-      m.on('mousemove', 'talhoes-fill', (e) => {
+      const mostra = (e) => {
         const p = e.features[0].properties;
         dica.innerHTML = `<b>Talhão ${parEsc(p.talhao)}</b> · ${parEsc(p.area_ha)} ha<br>${parEsc(p.txt)} · ${parEsc(p.amostras)} amostras`;
         dica.style.left = `${Math.min(e.point.x + 12, cont.clientWidth - 190)}px`; dica.style.top = `${e.point.y + 12}px`;
         dica.classList.add('on');
-      });
+      };
+      m.on('mousemove', 'talhoes-fill', mostra);
+      m.on('click', 'talhoes-fill', mostra);   // toque no celular
       m.on('mouseleave', 'talhoes-fill', () => dica.classList.remove('on'));
-      if (P.ml.fila) parPainelAplicar(P.ml.fila);
+      if (P.ml.fila) parPainelAplicar(P.ml.fila.geo, P.ml.fila.chave);
     });
   }
-  if (P.ml.pronto) parPainelAplicar(geo); else P.ml.fila = geo;
+  if (P.ml.pronto) parPainelAplicar(geo, meu); else P.ml.fila = { geo, chave: meu };
 }
-function parPainelAplicar(geo) {
+function parPainelAplicar(geo, chave) {
   const { m } = PAR.painel.ml;
   m.resize();
   m.getSource('talhoes').setData(geo);
   const b = new maplibregl.LngLatBounds();
   const ext = (c) => (typeof c[0] === 'number' ? b.extend(c) : c.forEach(ext));
   geo.features.forEach((f) => f.geometry && ext(f.geometry.coordinates));
-  if (!b.isEmpty()) m.fitBounds(b, { padding: 60, duration: 0, maxZoom: 17 });
+  const mudou = PAR.painel.ml.chave !== chave;   // não perde o zoom e o pan quando a coluna só é refeita
+  PAR.painel.ml.chave = chave;
+  if (mudou && !b.isEmpty()) m.fitBounds(b, { padding: 60, duration: 0, maxZoom: 17 });
   window.PAR_PAINEL_DESENHADO = geo.features.length;   // gancho para o teste de tela
 }
 
@@ -229,7 +247,15 @@ function parAcaoPainel(b) {
   return {
     'painel-sub': () => { P.sub = b.dataset.sub; parRenderTudo(); },
     'painel-recarregar': () => parCarregarPainel(true),
-    'painel-fazenda': () => { P.sel = b.dataset.chave; parRenderTudo(); },
+    'painel-fazenda': () => {   // só classes e mapa: refazer a coluna tiraria o foco do teclado
+      P.sel = b.dataset.chave;
+      document.querySelectorAll('#par-tab-tal tr[data-chave]').forEach((tr) => {
+        const on = tr.dataset.chave === P.sel;
+        tr.classList.toggle('sel', on);
+        tr.querySelector('button').setAttribute('aria-pressed', String(on));
+      });
+      parPainelMapa();
+    },
   }[b.dataset.acao] || null;
 }
 function parLigarPainel() {
@@ -239,9 +265,5 @@ function parLigarPainel() {
     PAR.painel.busca = e.target.value;
     const tb = $par('par-tab-tal');
     if (tb) tb.innerHTML = parLinhasTalhoes();   // só a tabela: a caixa de busca mantém o foco
-  });
-  col.addEventListener('keydown', (e) => {
-    const tr = e.target.closest && e.target.closest('tr[data-acao="painel-fazenda"]');
-    if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); PAR.painel.sel = tr.dataset.chave; parRenderTudo(); }
   });
 }

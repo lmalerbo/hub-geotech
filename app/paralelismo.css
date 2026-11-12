@@ -197,6 +197,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .par-tabela td small{display:block;color:var(--t3);font-size:10.5px}
 .par-tabela tr[data-acao]{cursor:pointer}
 .par-tabela tr.sel{background:color-mix(in srgb,var(--plantio) 10%,var(--sf))}
+.par-lnk{border:0;background:none;padding:0;text-align:left;cursor:pointer;font-weight:500;color:var(--t1)}
+.par-lnk:hover{text-decoration:underline}
 .par-sit{display:inline-flex;align-items:center;gap:3px;font-weight:600;white-space:nowrap}
 .par-sit .ico{font-size:15px}
 .par-sit.bom{color:#157a4b}.par-sit.atencao{color:#8f5d00}.par-sit.critico{color:#b03a22}.par-sit.insuf{color:var(--t3);font-weight:500}
