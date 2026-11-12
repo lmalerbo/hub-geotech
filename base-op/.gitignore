@@ -1,0 +1,20 @@
+# secrets
+.env
+.deere_tokens.json
+
+# estado local do harness (nao é projeto)
+.claude/
+
+# python cache
+__pycache__/
+*.pyc
+
+# build outputs (regeneraveis via PyInstaller)
+dist/
+build_pyinstaller/CopiarExecutadosJDL/
+
+# pastas de dados grandes (nao versionadas aqui, so os scripts)
+linhas-vant/
+material-mapa/
+base/
+referencia_jd_samples/

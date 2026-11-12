@@ -1,0 +1,35 @@
+# Configuracao unica para format_oc_boundaries.py e sync_boundaries_api.py
+#
+# Fluxo de uso: jogue o shapefile bruto novo (todos os arquivos .shp/.shx/.dbf/
+# .prj/.cpg) dentro da pasta indicada em "input_dir", substituindo o que tiver
+# la, e rode o atualizar_limites.bat.
+
+# Pasta onde o shapefile bruto (exportado do QGIS) fica. Precisa ter
+# exatamente um .shp dentro (com os sidecars .shx/.dbf/.prj/.cpg).
+input_dir: "base/input"
+
+# Coluna do shapefile de entrada que contem o codigo numerico da fazenda
+farm_code_field: "SECAO"
+
+# Valor a usar em CLIENT_NAM / nome do cliente no Operations Center
+client_name: "US PEDRA"
+
+# So processa fazendas cujo codigo comeca com este prefixo (ex: "1" mantem
+# 10001, 10438 etc. e descarta qualquer coisa que comece com 2, 3...)
+include_prefix: "1"
+
+# Onde salvar o shapefile/zip formatado e prefixo do nome do arquivo
+output_dir: "base/output"
+output_basename: "USPEDRA_OPCENTER"
+
+# --- usado por sync_boundaries_api.py ---
+org_id: "2285801"
+
+# Restringe a sincronizacao via API a codigos especificos de fazenda (para
+# teste). Deixe null para processar todas as fazendas do resultado formatado.
+only_farm_codes: null
+
+# true = so simula e imprime o que faria, sem gravar nada na API.
+# O atualizar_limites.bat sempre roda um dry-run primeiro e so grava de
+# verdade se voce confirmar (nao precisa mudar isso manualmente).
+dry_run: true
